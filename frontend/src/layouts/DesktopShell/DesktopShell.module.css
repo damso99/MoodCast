@@ -1,0 +1,28 @@
+.layout {
+  display: grid;
+  grid-template-columns: 240px minmax(740px, 1fr) 306px;
+  column-gap: 26px;
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px 28px 40px;
+  align-items: start;
+}
+
+.center {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.right {
+  min-width: 0;
+  display: grid;
+  gap: 22px;
+  align-content: start;
+}
+
+@media (max-width: 1023px) {
+  .layout {
+    display: none;
+  }
+}

@@ -1,0 +1,137 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(17, 24, 39, 0.52);
+  backdrop-filter: blur(12px);
+}
+
+.modal {
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(84vh, 780px);
+  overflow: auto;
+  padding: 20px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 22px 60px rgba(17, 24, 39, 0.16);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header strong {
+  display: block;
+  color: #111827;
+  font-size: 1.08rem;
+}
+
+.header p {
+  margin: 6px 0 0;
+  color: #667085;
+}
+
+.close {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #f5f7ff;
+}
+
+.composer {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.composer textarea {
+  min-height: 124px;
+  padding: 14px 16px;
+  border: 1px solid #e6e8f3;
+  border-radius: 18px;
+  resize: vertical;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  color: #667085;
+}
+
+.send {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+}
+
+.list {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.item {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: #f8f9ff;
+}
+
+.meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f6b0ff, #b59cff);
+  color: #111827;
+  font-weight: 800;
+}
+
+.meta strong {
+  color: #111827;
+}
+
+.meta p {
+  margin: 4px 0 0;
+  color: #667085;
+}
+
+.item > p {
+  margin: 12px 0 0;
+  color: #111827;
+}
+
+@media (max-width: 1023px) {
+  .overlay {
+    place-items: end center;
+    padding: 12px;
+  }
+
+  .modal {
+    width: 100%;
+    border-radius: 28px 28px 0 0;
+    max-height: 88vh;
+  }
+}

@@ -1,0 +1,76 @@
+.page {
+  min-height: 100vh;
+  padding: 12px 8px 92px;
+}
+
+.frame {
+  position: relative;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 18px 14px 100px;
+  border-radius: 30px;
+  background: rgba(251, 251, 255, 0.96);
+  box-shadow: 0 18px 52px rgba(17, 24, 39, 0.1);
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 56px;
+  padding: 2px 4px 12px;
+}
+
+.topBar h1 {
+  margin: 0;
+  font-size: 1.18rem;
+  color: #111827;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.iconButton,
+.avatarButton {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #111827;
+}
+
+.iconButton span {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ec4899;
+}
+
+.avatarButton img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.12);
+}
+
+.content {
+  display: grid;
+  gap: 16px;
+  padding-bottom: calc(112px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  .page {
+    display: none;
+  }
+}

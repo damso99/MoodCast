@@ -1,0 +1,146 @@
+.desktopChat {
+  display: grid;
+  gap: 18px;
+}
+
+.mobileChat {
+  display: grid;
+  gap: 14px;
+}
+
+.hero {
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 36px rgba(17, 24, 39, 0.07);
+}
+
+.hero strong {
+  display: block;
+  color: #111827;
+  font-size: 1.06rem;
+}
+
+.hero p {
+  margin: 8px 0 0;
+  color: #667085;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.threadList {
+  display: grid;
+  gap: 12px;
+}
+
+.threadItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(229, 231, 235, 1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  text-align: left;
+}
+
+.threadItem strong,
+.roomHeader strong {
+  color: #111827;
+}
+
+.threadItem p,
+.threadItem span,
+.roomHeader span {
+  color: #667085;
+}
+
+.active {
+  border-color: rgba(124, 77, 255, 0.26);
+  background: rgba(124, 77, 255, 0.08);
+}
+
+.room {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 36px rgba(17, 24, 39, 0.07);
+}
+
+.roomHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.messages {
+  display: grid;
+  gap: 12px;
+}
+
+.bubble {
+  max-width: 74%;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: #f8f9ff;
+}
+
+.me {
+  justify-self: end;
+  background: rgba(124, 77, 255, 0.09);
+}
+
+.bubble p {
+  margin: 0;
+  color: #111827;
+}
+
+.bubble span {
+  display: inline-block;
+  margin-top: 8px;
+  color: #667085;
+  font-size: 0.84rem;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+}
+
+.composer input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #e6e8f3;
+  border-radius: 16px;
+}
+
+.composer button {
+  min-width: 92px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  color: white;
+  font-weight: 800;
+}
+
+.threadHeader {
+  padding: 8px 2px;
+}
+
+@media (max-width: 1023px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bubble {
+    max-width: 88%;
+  }
+}
