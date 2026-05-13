@@ -1,0 +1,16 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: moodcast-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:oracle:thin:@//localhost:1521/XEPDB1}
+    username: ${DATABASE_USER:moodcast}
+    password: ${DATABASE_PASSWORD:moodcast}
+    driver-class-name: oracle.jdbc.OracleDriver
+
+mybatis:
+  mapper-locations: classpath:/mappers/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
