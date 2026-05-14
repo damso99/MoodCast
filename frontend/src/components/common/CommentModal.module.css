@@ -16,14 +16,24 @@
   max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 22px 60px rgba(17, 24, 39, 0.16);
 }
 
+.modal::-webkit-scrollbar {
+  display: none;
+}
+
 .header {
   position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -31,6 +41,7 @@
   gap: 16px;
   padding: 14px 16px;
   border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.98);
 }
 
 .headerMeta {
@@ -80,11 +91,8 @@
 }
 
 .body {
-  flex: 1;
-  min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
+  grid-template-rows: auto auto;
 }
 
 .postSection {
@@ -139,11 +147,8 @@
 }
 
 .commentsSection {
-  min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
   padding: 0 16px 16px;
-  overflow: hidden;
 }
 
 .sectionTitle {
@@ -164,11 +169,8 @@
 }
 
 .list {
-  min-height: 0;
   display: grid;
   gap: 10px;
-  overflow-y: auto;
-  padding-right: 2px;
 }
 
 .item {
@@ -212,6 +214,9 @@
 }
 
 .composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   flex-shrink: 0;
   display: grid;
   gap: 12px;
