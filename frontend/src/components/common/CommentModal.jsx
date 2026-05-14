@@ -18,10 +18,12 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
     const prevHtml = documentElement.style.overflow;
     body.style.overflow = 'hidden';
     documentElement.style.overflow = 'hidden';
+    body.classList.add('comment-modal-open');
 
     return () => {
       body.style.overflow = prevBody;
       documentElement.style.overflow = prevHtml;
+      body.classList.remove('comment-modal-open');
     };
   }, [open]);
 
