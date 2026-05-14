@@ -5,7 +5,7 @@
 }
 
 .card {
-  padding: 20px 18px 18px;
+  padding: 18px 18px 16px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
@@ -15,7 +15,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .header strong {
@@ -30,7 +30,7 @@
 
 .moodList {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .moodRow {
@@ -78,7 +78,7 @@
 
 .trendList {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .trendRow {
@@ -103,7 +103,7 @@
 
 .moreButton {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 12px;
   min-height: 42px;
   border: 0;
   border-radius: 16px;

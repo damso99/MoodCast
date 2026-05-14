@@ -6,8 +6,9 @@ import styles from './HomeFeedPage.module.css';
 
 export function HomeFeedPage() {
   return (
-    <DesktopShell splitLayout topContent={<ComposerCard />}>
+    <DesktopShell>
       <section className={styles.column}>
+        <ComposerCard />
         {feedPosts.map((post) => (
           <FeedCard key={post.id} post={post} />
         ))}
