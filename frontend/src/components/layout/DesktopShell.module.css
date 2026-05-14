@@ -1,6 +1,6 @@
 .layout {
   display: grid;
-  grid-template-columns: 240px minmax(740px, 1fr) 306px;
+  grid-template-columns: 240px minmax(0, 1fr) 306px;
   column-gap: 26px;
   width: 100%;
   min-height: 100vh;
@@ -10,6 +10,7 @@
 
 .center {
   min-width: 0;
+  overflow: hidden;
   display: grid;
   gap: 16px;
 }
@@ -19,6 +20,16 @@
   display: grid;
   gap: 22px;
   align-content: start;
+}
+
+@media (max-width: 1399px) {
+  .layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .right {
+    display: none;
+  }
 }
 
 @media (max-width: 1023px) {

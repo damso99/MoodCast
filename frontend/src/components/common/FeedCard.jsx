@@ -1,5 +1,4 @@
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
@@ -30,8 +29,20 @@ function MoodVisual({ tone }) {
 }
 
 export function FeedCard({ post, compact = false }) {
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [comments, setComments] = useState(post.commentsList);
+  const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
+
+  const openCommentModal = () => {
+    setSelectedPost(post);
+    setIsCommentModalOpen(true);
+  };
+
+  const closeCommentModal = () => {
+    setSelectedPost(null);
+    setIsCommentModalOpen(false);
+  };
 
   return (
     <>
@@ -48,14 +59,20 @@ export function FeedCard({ post, compact = false }) {
         </div>
 
         <p className={styles.text}>{post.text}</p>
-        <MoodVisual tone={post.tone} />
+        {imageSrc ? (
+          <div className={styles.postImageWrap}>
+            <img className={styles.postImage} src={imageSrc} alt={post.imageAlt ?? post.author} />
+          </div>
+        ) : (
+          <MoodVisual tone={post.tone} />
+        )}
 
         <div className={styles.actions}>
           <span className={styles.reaction}>
             <FavoriteIcon className={styles.heart} />
             {post.likes}
           </span>
-          <button type="button" className={styles.reactionButton} onClick={() => setCommentsOpen(true)}>
+          <button type="button" className={styles.reactionButton} onClick={openCommentModal}>
             <ChatBubbleOutlineIcon />
             {comments.length}
           </button>
@@ -77,7 +94,13 @@ export function FeedCard({ post, compact = false }) {
         ) : null}
       </article>
 
-      <CommentModal open={commentsOpen} post={post} comments={comments} onClose={() => setCommentsOpen(false)} onSubmit={(nextComment) => setComments((prev) => [...prev, nextComment])} />
+      <CommentModal
+        open={isCommentModalOpen}
+        post={selectedPost}
+        comments={comments}
+        onClose={closeCommentModal}
+        onSubmit={(nextComment) => setComments((prev) => [...prev, nextComment])}
+      />
     </>
   );
 }
