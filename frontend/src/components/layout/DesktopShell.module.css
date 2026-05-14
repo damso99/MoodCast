@@ -20,6 +20,8 @@
   overflow: hidden;
   display: grid;
   gap: 16px;
+  width: min(100%, 860px);
+  justify-self: center;
 }
 
 .rightSlot {
