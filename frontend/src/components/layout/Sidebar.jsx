@@ -10,16 +10,23 @@ import styles from './Sidebar.module.css';
 
 const items = [
   { label: '홈', to: '/app/feed', icon: HomeOutlinedIcon },
-  { label: '저장된 게시물', to: '/app/saved', icon: BookmarkBorderOutlinedIcon },
+  { label: '저장한 게시물', to: '/app/saved', icon: BookmarkBorderOutlinedIcon },
   { label: 'Mood Chat', to: '/app/mood-chat', icon: ChatBubbleOutlineOutlinedIcon },
   { label: '프로필', to: '/app/profile', icon: PersonOutlineOutlinedIcon },
   { label: '설정', to: '/app/settings', icon: SettingsOutlinedIcon },
 ];
 
-export function Sidebar() {
+export function SidebarTop() {
   return (
-    <aside className={styles.sidebar}>
+    <div className={styles.top}>
       <Logo />
+    </div>
+  );
+}
+
+export function SidebarContent() {
+  return (
+    <div className={styles.content}>
       <nav className={styles.nav}>
         {items.map(({ label, to, icon: Icon }) => (
           <NavLink key={to} to={to} className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}>
@@ -37,6 +44,15 @@ export function Sidebar() {
         <p>더 많은 기능과 통계를 확인해보세요.</p>
         <button type="button">업그레이드</button>
       </section>
+    </div>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className={styles.sidebar}>
+      <SidebarTop />
+      <SidebarContent />
     </aside>
   );
 }
