@@ -37,6 +37,11 @@
 
 .centerAction {
   transform: translateY(-10px);
+  background: transparent;
+}
+
+.centerAction.active {
+  background: transparent;
 }
 
 .iconWrap {
@@ -51,6 +56,10 @@
   color: #fff;
   background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
   box-shadow: 0 16px 34px rgba(124, 77, 255, 0.32);
+}
+
+.centerAction > span:last-child {
+  display: none;
 }
 
 .centerIcon {
