@@ -1,7 +1,7 @@
-import { MobileShell } from '../../layouts/MobileShell/MobileShell';
-import { ComposerCard } from '../../widgets/ComposerCard/ComposerCard';
-import { FeedCard } from '../../widgets/FeedCard/FeedCard';
-import { feedPosts } from '../../app/data/moodcastData';
+import { MobileShell } from '../../components/layout/MobileShell';
+import { ComposerCard } from '../../components/common/ComposerCard';
+import { FeedCard } from '../../components/common/FeedCard';
+import { feedPosts } from '../../data/moodcastData';
 import styles from './MobileFeedPage.module.css';
 
 export function MobileFeedPage() {

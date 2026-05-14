@@ -5,7 +5,7 @@ import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutline
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LocalFireDepartmentOutlinedIcon from '@mui/icons-material/LocalFireDepartmentOutlined';
-import { Logo } from '../../shared/ui/Logo/Logo';
+import { Logo } from '../common/Logo';
 import styles from './Sidebar.module.css';
 
 const items = [

@@ -1,7 +1,7 @@
-import { DesktopShell } from '../../layouts/DesktopShell/DesktopShell';
-import { MobileShell } from '../../layouts/MobileShell/MobileShell';
-import { chatMessages, chatThreads } from '../../app/data/moodcastData';
-import { useIsDesktop } from '../../app/hooks/useViewportWidth';
+import { DesktopShell } from '../../components/layout/DesktopShell';
+import { MobileShell } from '../../components/layout/MobileShell';
+import { chatMessages, chatThreads } from '../../data/moodcastData';
+import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useState } from 'react';
 import styles from './MoodChatPage.module.css';
 

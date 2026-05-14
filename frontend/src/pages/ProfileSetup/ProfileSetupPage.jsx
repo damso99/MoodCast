@@ -1,8 +1,8 @@
-import { DesktopShell } from '../../layouts/DesktopShell/DesktopShell';
-import { MobileShell } from '../../layouts/MobileShell/MobileShell';
-import { interestTags } from '../../app/data/moodcastData';
+import { DesktopShell } from '../../components/layout/DesktopShell';
+import { MobileShell } from '../../components/layout/MobileShell';
+import { interestTags } from '../../data/moodcastData';
 import { useState } from 'react';
-import { useIsDesktop } from '../../app/hooks/useViewportWidth';
+import { useIsDesktop } from '../../hooks/useViewportWidth';
 import styles from './ProfileSetupPage.module.css';
 
 export function ProfileSetupPage() {

@@ -1,8 +1,8 @@
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import { useState } from 'react';
-import { SearchModal } from '../../features/SearchModal/SearchModal';
-import { BottomNav } from '../../widgets/BottomNav/BottomNav';
+import { SearchModal } from '../common/SearchModal';
+import { BottomNav } from './BottomNav';
 import styles from './MobileShell.module.css';
 
 export function MobileShell({ title, children, hideSearch = false }) {

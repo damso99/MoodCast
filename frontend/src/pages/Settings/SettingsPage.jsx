@@ -1,6 +1,6 @@
-import { DesktopShell } from '../../layouts/DesktopShell/DesktopShell';
-import { MobileShell } from '../../layouts/MobileShell/MobileShell';
-import { useIsDesktop } from '../../app/hooks/useViewportWidth';
+import { DesktopShell } from '../../components/layout/DesktopShell';
+import { MobileShell } from '../../components/layout/MobileShell';
+import { useIsDesktop } from '../../hooks/useViewportWidth';
 import styles from './SettingsPage.module.css';
 
 const sections = ['계정', '알림', '보안'];

@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { useIsDesktop } from './app/hooks/useViewportWidth';
+import { useIsDesktop } from './hooks/useViewportWidth';
 import { HomeFeedPage } from './pages/HomeFeed/HomeFeedPage';
 import { MobileFeedPage } from './pages/MobileFeed/MobileFeedPage';
 import { SavedPage } from './pages/Saved/SavedPage';

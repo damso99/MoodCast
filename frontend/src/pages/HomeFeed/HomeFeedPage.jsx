@@ -1,7 +1,7 @@
-import { DesktopShell } from '../../layouts/DesktopShell/DesktopShell';
-import { ComposerCard } from '../../widgets/ComposerCard/ComposerCard';
-import { FeedCard } from '../../widgets/FeedCard/FeedCard';
-import { feedPosts } from '../../app/data/moodcastData';
+import { DesktopShell } from '../../components/layout/DesktopShell';
+import { ComposerCard } from '../../components/common/ComposerCard';
+import { FeedCard } from '../../components/common/FeedCard';
+import { feedPosts } from '../../data/moodcastData';
 import styles from './HomeFeedPage.module.css';
 
 export function HomeFeedPage() {

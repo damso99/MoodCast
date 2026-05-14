@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import styles from './DesktopShell.module.css';
-import { Sidebar } from '../../widgets/Sidebar/Sidebar';
-import { TopUtilityIcons } from '../../widgets/TopUtilityIcons/TopUtilityIcons';
-import { RightRail } from '../../widgets/RightRail/RightRail';
-import { SearchModal } from '../../features/SearchModal/SearchModal';
-import { moodStats, trendingTags } from '../../app/data/moodcastData';
+import { Sidebar } from './Sidebar';
+import { TopUtilityIcons } from './TopUtilityIcons';
+import { RightRail } from './RightRail';
+import { SearchModal } from '../common/SearchModal';
+import { moodStats, trendingTags } from '../../data/moodcastData';
 
 export function DesktopShell({ children }) {
   const [searchOpen, setSearchOpen] = useState(false);

@@ -2,7 +2,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { feedPosts, searchUsers, trendingTags } from '../../app/data/moodcastData';
+import { feedPosts, searchUsers, trendingTags } from '../../data/moodcastData';
 import styles from './SearchModal.module.css';
 
 export function SearchModal({ open, onClose }) {

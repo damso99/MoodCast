@@ -5,7 +5,7 @@ import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useState } from 'react';
-import { CommentModal } from '../../features/CommentModal/CommentModal';
+import { CommentModal } from './CommentModal';
 import styles from './FeedCard.module.css';
 
 function MoodVisual({ tone }) {

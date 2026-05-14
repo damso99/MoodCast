@@ -5,7 +5,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
-import { useAuthState } from '../../app/hooks/useAuthState';
+import { useAuthState } from '../../hooks/useAuthState';
 import styles from './TopUtilityIcons.module.css';
 
 const avatarSrc =

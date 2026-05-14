@@ -48,19 +48,3 @@ img {
   display: block;
   max-width: 100%;
 }
-
-@media (max-width: 1023px) {
-  .desktopOnly {
-    display: none !important;
-  }
-
-  .mobileOnly {
-    display: block !important;
-  }
-}
-
-@media (min-width: 1024px) {
-  .mobileOnly {
-    display: none !important;
-  }
-}

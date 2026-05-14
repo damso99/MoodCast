@@ -1,5 +1,5 @@
-import { MobileShell } from '../../layouts/MobileShell/MobileShell';
-import { profileHighlights, profileStats } from '../../app/data/moodcastData';
+import { MobileShell } from '../../components/layout/MobileShell';
+import { profileHighlights, profileStats } from '../../data/moodcastData';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {

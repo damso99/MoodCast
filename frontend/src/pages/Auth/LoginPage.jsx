@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuthState } from '../../app/hooks/useAuthState';
-import { Logo } from '../../shared/ui/Logo/Logo';
+import { useAuthState } from '../../hooks/useAuthState';
+import { Logo } from '../../components/common/Logo';
 import styles from './LoginPage.module.css';
 
 export function LoginPage() {

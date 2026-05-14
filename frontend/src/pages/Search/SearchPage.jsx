@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { DesktopShell } from '../../layouts/DesktopShell/DesktopShell';
-import { MobileShell } from '../../layouts/MobileShell/MobileShell';
-import { feedPosts, searchUsers, trendingTags } from '../../app/data/moodcastData';
-import { useIsDesktop } from '../../app/hooks/useViewportWidth';
+import { DesktopShell } from '../../components/layout/DesktopShell';
+import { MobileShell } from '../../components/layout/MobileShell';
+import { feedPosts, searchUsers, trendingTags } from '../../data/moodcastData';
+import { useIsDesktop } from '../../hooks/useViewportWidth';
 import styles from './SearchPage.module.css';
 
 export function SearchPage() {

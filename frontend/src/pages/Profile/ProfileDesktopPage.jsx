@@ -1,6 +1,6 @@
-import { DesktopShell } from '../../layouts/DesktopShell/DesktopShell';
-import { FeedCard } from '../../widgets/FeedCard/FeedCard';
-import { feedPosts, profileHighlights, profileStats } from '../../app/data/moodcastData';
+import { DesktopShell } from '../../components/layout/DesktopShell';
+import { FeedCard } from '../../components/common/FeedCard';
+import { feedPosts, profileHighlights, profileStats } from '../../data/moodcastData';
 import styles from './ProfileDesktopPage.module.css';
 import { useNavigate } from 'react-router-dom';
 
