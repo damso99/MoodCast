@@ -1,0 +1,526 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 24px;
+  padding: 22px;
+  color: #111827;
+}
+
+.sidebar {
+  position: sticky;
+  top: 22px;
+  height: calc(100vh - 44px);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 22px;
+  padding: 22px 14px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.07);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.brand a {
+  flex: 0 0 auto;
+}
+
+.brand img {
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.brand strong,
+.adminProfile strong {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.1;
+}
+
+.brand span,
+.adminProfile span {
+  color: #667085;
+  font-size: 0.72rem;
+}
+
+.nav {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: #667085;
+  font-size: 0.88rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.navItem:hover,
+.active {
+  color: #633df2;
+  background: rgba(124, 77, 255, 0.11);
+}
+
+.navItem:hover {
+  transform: translateX(2px);
+}
+
+.navIcon {
+  font-size: 20px !important;
+}
+
+.adminProfile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(251, 251, 253, 0.92);
+}
+
+.adminProfile svg {
+  color: #111827;
+  font-size: 32px;
+}
+
+.main {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.header {
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.header h1 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  letter-spacing: 0;
+}
+
+.header p {
+  margin: 5px 0 0;
+  color: #667085;
+  font-size: 0.94rem;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+}
+
+.headerActions button,
+.segmented button,
+.actionStrip button,
+.dangerActions button {
+  border: 0;
+  font-weight: 800;
+}
+
+.headerActions button {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #667085;
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.06);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.metricCard,
+.panel {
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.83);
+  box-shadow: 0 22px 52px rgba(17, 24, 39, 0.055);
+}
+
+.metricCard {
+  min-height: 126px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px;
+}
+
+.metricCard span,
+.panelHead h2 {
+  color: #111827;
+  font-weight: 900;
+}
+
+.metricCard span {
+  display: block;
+  font-size: 0.88rem;
+}
+
+.metricCard strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.metricCard p {
+  margin: 9px 0 0;
+  color: #22a06b;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.metricIcon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  color: #7c4dff;
+  background: rgba(124, 77, 255, 0.12);
+}
+
+.blue {
+  color: #2f7efb;
+  background: rgba(47, 126, 251, 0.12);
+}
+
+.pink {
+  color: #ff2f8f;
+  background: rgba(255, 47, 143, 0.12);
+}
+
+.orange {
+  color: #ff8a1c;
+  background: rgba(255, 138, 28, 0.13);
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: 16px;
+}
+
+.widePanel {
+  min-height: 360px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 18px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panelHead h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f3f0ff;
+}
+
+.segmented button {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 9px;
+  color: #667085;
+  background: transparent;
+}
+
+.segmented .selected {
+  color: #fff;
+  background: #7c4dff;
+  box-shadow: 0 8px 18px rgba(124, 77, 255, 0.25);
+}
+
+.chartBox {
+  position: relative;
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(102, 112, 133, 0.1);
+  border-radius: 15px;
+  background: linear-gradient(180deg, rgba(251, 251, 253, 0.9), rgba(255, 255, 255, 0.7));
+}
+
+.chartGrid {
+  position: absolute;
+  inset: 18px;
+  opacity: 0.7;
+  background-image:
+    linear-gradient(rgba(102, 112, 133, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102, 112, 133, 0.12) 1px, transparent 1px);
+  background-size: 100% 25%, 16.66% 100%;
+}
+
+.line::after,
+.bar::after {
+  content: "";
+  position: absolute;
+  inset: auto 34px 44px;
+  height: 44%;
+  border-bottom: 3px dashed rgba(47, 126, 251, 0.28);
+  border-radius: 50%;
+}
+
+.emptyState {
+  position: relative;
+  z-index: 1;
+  max-width: 280px;
+  margin: auto;
+  padding: 22px;
+  text-align: center;
+  border-radius: 15px;
+  color: #667085;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.emptyState strong {
+  display: block;
+  color: #111827;
+  font-size: 0.96rem;
+}
+
+.emptyState p {
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+}
+
+.moodFilters,
+.quickLinks,
+.actionStrip,
+.dangerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.moodFilters button,
+.quickLinks a,
+.actionStrip button,
+.dangerActions button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 11px;
+  text-decoration: none;
+}
+
+.moodFilters button,
+.quickLinks a,
+.actionStrip button {
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  color: #633df2;
+  background: rgba(124, 77, 255, 0.08);
+  font-weight: 800;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.searchBar {
+  min-width: 280px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  border: 1px solid rgba(102, 112, 133, 0.13);
+  border-radius: 13px;
+  color: #667085;
+  background: #fff;
+}
+
+.searchBar input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: #111827;
+  background: transparent;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(102, 112, 133, 0.12);
+  text-align: left;
+  white-space: nowrap;
+}
+
+th {
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 900;
+  background: rgba(245, 243, 251, 0.72);
+}
+
+td {
+  color: #111827;
+  font-size: 0.9rem;
+}
+
+td .emptyState {
+  max-width: none;
+  margin: 14px auto;
+}
+
+.actionStrip {
+  justify-content: flex-start;
+}
+
+.twoColumn {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.dangerActions button {
+  border: 1px solid rgba(255, 47, 143, 0.2);
+  color: #d92d20;
+  background: rgba(255, 47, 143, 0.08);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: #667085;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.steps span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #7c4dff;
+}
+
+@media (max-width: 1120px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .nav {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .navItem {
+    justify-content: center;
+  }
+
+  .navItem span {
+    display: none;
+  }
+
+  .metricGrid,
+  .dashboardGrid,
+  .twoColumn {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 14px;
+  }
+
+  .header,
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .searchBar {
+    min-width: 0;
+  }
+
+  .segmented {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .segmented button {
+    flex: 0 0 auto;
+  }
+}
