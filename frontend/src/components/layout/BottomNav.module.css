@@ -37,6 +37,11 @@
 
 .centerAction {
   transform: translateY(-10px);
+  background: transparent;
+}
+
+.centerAction.active {
+  background: transparent;
 }
 
 .iconWrap {
@@ -49,10 +54,18 @@
   height: 58px;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
-  box-shadow: 0 16px 34px rgba(124, 77, 255, 0.32);
+  background: linear-gradient(135deg, #4da6ff, #7c4dff);
+  box-shadow: 0 16px 34px rgba(124, 77, 255, 0.24);
+}
+
+.centerAction > span:last-child {
+  display: none;
 }
 
 .centerIcon {
   font-size: 30px !important;
+}
+
+:global(body.comment-modal-open) .nav {
+  display: none;
 }
