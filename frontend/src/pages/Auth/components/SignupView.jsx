@@ -1,6 +1,7 @@
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import AuthToast from "./AuthToast";
 import styles from "../SignupPage.module.css";
 
 export const SignupView = ({
@@ -22,11 +23,14 @@ export const SignupView = ({
   completeSignup,
   showReadyMessage,
   goLogin,
+  toast,
 }) => {
   const allTermsChecked = terms.service && terms.privacy && terms.marketing;
 
   return (
     <main className={styles.page}>
+      <AuthToast toast={toast} />
+
       <section className={styles.authCard}>
         <header className={styles.brandHeader}>
           <div className={styles.brand}>

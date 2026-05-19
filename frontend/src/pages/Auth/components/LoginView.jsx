@@ -1,9 +1,11 @@
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
+import AuthToast from "./AuthToast";
 import styles from "../LoginPage.module.css";
 
 export const LoginView = ({
   member,
   message,
+  toast,
   isLoading,
   inputMember,
   handleLogin,
@@ -12,6 +14,8 @@ export const LoginView = ({
 }) => {
   return (
     <main className={styles.page}>
+      <AuthToast toast={toast} />
+
       <section className={styles.card}>
         <header className={styles.header}>
           <div className={styles.brand}>
@@ -23,38 +27,33 @@ export const LoginView = ({
         </header>
 
         <form className={styles.form} onSubmit={handleLogin}>
-          <label className={styles.field}>
-            <span>
+          <div className={styles.field}>
+            <label htmlFor="loginEmail">
               이메일 <b>*</b>
-            </span>
+            </label>
             <input
               type="email"
+              id="loginEmail"
               name="email"
-              id="email"
               value={member.email}
               onChange={inputMember}
               placeholder="이메일 주소를 입력하세요"
             />
-          </label>
+          </div>
 
-          <label className={styles.field}>
-            <span>
+          <div className={styles.field}>
+            <label htmlFor="loginPassword">
               비밀번호 <b>*</b>
-            </span>
+            </label>
             <input
               type="password"
+              id="loginPassword"
               name="password"
-              id="password"
               value={member.password}
               onChange={inputMember}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleLogin(e);
-                }
-              }}
               placeholder="비밀번호를 입력하세요"
             />
-          </label>
+          </div>
 
           <div className={styles.options}>
             <label className={styles.remember}>
@@ -106,6 +105,7 @@ export const LoginView = ({
             <ChatBubbleRoundedIcon fontSize="small" />
             카카오로 로그인
           </button>
+
           <button
             type="button"
             className={`${styles.socialButton} ${styles.naver}`}
@@ -114,6 +114,7 @@ export const LoginView = ({
             <b>N</b>
             네이버로 로그인
           </button>
+
           <button
             type="button"
             className={styles.socialButton}

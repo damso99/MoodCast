@@ -2,6 +2,8 @@ package com.moodcast.member.controller;
 
 import com.moodcast.member.dto.EmailAuthSendRequest;
 import com.moodcast.member.dto.EmailAuthVerifyRequest;
+import com.moodcast.member.dto.PhoneAuthSendRequest;
+import com.moodcast.member.dto.PhoneAuthVerifyRequest;
 import com.moodcast.member.service.SignupService;
 import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +20,7 @@ public class SignupController {
     @Autowired
     private SignupService signupService;
 
-    // 이메일 인증
+    // 회원가입 이메일 인증번호 발송
     @PostMapping(value="auth/email/send")
     public ResponseEntity<?> sendEmailAuthCode(@RequestBody EmailAuthSendRequest request) {
         try {
@@ -47,6 +49,7 @@ public class SignupController {
         }
     }
 
+    // 회원가입 이메일 인증번호 확인
     @PostMapping(value="auth/email/verify")
     public ResponseEntity<?> verifyEmailAuthCode(@RequestBody EmailAuthVerifyRequest request) {
         try {
@@ -65,6 +68,61 @@ public class SignupController {
                     )
             );
         } catch (IllegalStateException e) {
+            return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        }
+    }
+
+    @PostMapping(value="auth/phone/send")
+    public ResponseEntity<?> sendPhoneAuthCode(@RequestBody PhoneAuthSendRequest request) {
+        try {
+            String phone = signupService.sendPhoneAuthCode(request.getPhone());
+            return ResponseEntity.ok(
+                    Map.of(
+                            "success", true,
+                            "message", "인증번호가 발송되었습니다.",
+                            "phone", phone
+                    )
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        } catch (IllegalStateException e) {
+            return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        }
+    }
+
+    @PostMapping(value="auth/phone/verify")
+    public ResponseEntity<?> verifyPhoneAuthCode(@RequestBody PhoneAuthVerifyRequest request) {
+        try {
+            signupService.verifyPhoneAuthCode(request.getPhone(), request.getAuthCode());
+            return ResponseEntity.ok(
+                    Map.of(
+                            "success", true,
+                            "message", "인증이 완료되었습니다."
+                    )
+            );
+        } catch(IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        } catch(IllegalStateException e) {
             return ResponseEntity.internalServerError().body(
                     Map.of(
                             "success", false,

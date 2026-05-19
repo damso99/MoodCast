@@ -6,6 +6,10 @@
         select count(*) from members where email = #{email}
     </select>
 
+    <select id="countByPhone">
+        select count(*) from members where phone = #{phone}
+    </select>
+
     <insert id="insertAuthCode">
         insert into auth_codes (
             member_id,
@@ -37,9 +41,9 @@
             created_at
         from auth_codes
         where
-            target_type = 'EMAIL'
-            and target_value = #{email}
-            and purpose = 'SIGNUP'
+            target_type = #{targetType}
+            and target_value = #{targetValue}
+            and purpose = #{purpose}
             and used_at is null
         order by created_at desc
         limit 1
@@ -51,10 +55,19 @@
         where auth_code_id = #{authCodeId}
     </update>
 
-    <update id="updateEmailVerifiedAt">
+    <update id="updateVerifiedAt">
         update auth_codes
         set verified_at = now(6),
             attempt_count = 0
         where auth_code_id = #{authCodeId}
     </update>
+
+    <select id="countAuthCodeSend">
+        select count(*)
+        from auth_codes
+        where target_type = #{targetType}
+        and target_value = #{targetValue}
+        and purpose = #{purpose}
+        and created_at >= #{from}
+    </select>
 </mapper>

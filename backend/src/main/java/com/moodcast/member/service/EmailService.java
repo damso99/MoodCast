@@ -9,8 +9,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
     @Autowired
-    private SignupDao signupDao;
-    @Autowired
     private MailSender mailSender;
 
     public void sendSignupAuthCode(String email, String authCode) {
