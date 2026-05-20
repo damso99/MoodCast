@@ -55,3 +55,7 @@ backend/.idea/
 *.temp
 *.swp
 *.swo
+## Documentation & generated files
+docs/*.xlsx
+docs/*.py
+docs/spec_data.tsv
