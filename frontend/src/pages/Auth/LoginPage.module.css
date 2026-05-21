@@ -177,6 +177,11 @@
   font-size: 1rem;
 }
 
+.primary:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
 .socialArea {
   display: grid;
   gap: 12px;
@@ -240,10 +245,18 @@
   font-weight: 800;
 }
 
-.signupText a {
+.signupText a,
+.signupText button {
+  padding: 0;
+  border: 0;
   color: #7b3ff2;
+  background: transparent;
   font-weight: 900;
   text-decoration: none;
+}
+
+.signupText button {
+  cursor: pointer;
 }
 
 @media (max-width: 520px) {

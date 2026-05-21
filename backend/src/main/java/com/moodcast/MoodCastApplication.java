@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.mybatis.spring.annotation.MapperScan;
 
 @SpringBootApplication
-@MapperScan("com.moodcast.repository")
+@MapperScan("com.moodcast.member.dao")
 public class MoodCastApplication {
 
   public static void main(String[] args) {

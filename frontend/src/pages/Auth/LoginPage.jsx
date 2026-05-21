@@ -1,131 +1,100 @@
-import { useState } from 'react';
-import ChatBubbleRoundedIcon from '@mui/icons-material/ChatBubbleRounded';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuthState } from '../../hooks/useAuthState';
-import styles from './LoginPage.module.css';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthState } from "../../hooks/useAuthState";
+import { LoginView } from "./components/LoginView";
 
-const defaultForm = {
-  email: '',
-  password: '',
+const defaultMember = {
+  email: "",
+  password: "",
   remember: false,
 };
 
-export function LoginPage() {
+const defaultToast = {
+  show: false,
+  type: "",
+  message: "",
+};
+
+export const LoginPage = () => {
   const navigate = useNavigate();
   const { setIsLoggedIn } = useAuthState();
-  const [form, setForm] = useState(defaultForm);
-  const [message, setMessage] = useState('');
 
-  const updateForm = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    setMessage('');
+  const [member, setMember] = useState(defaultMember);
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [toast, setToast] = useState(defaultToast);
+
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+
+  const showToast = (type, message) => {
+    setToast({
+      show: true,
+      type: type,
+      message: message,
+    });
+
+    setTimeout(() => {
+      setToast(defaultToast);
+    }, 2500);
   };
 
-  const handleLogin = (event) => {
-    event.preventDefault();
+  const inputMember = (e) => {
+    const name = e.target.name;
+    const value =
+      e.target.type === "checkbox" ? e.target.checked : e.target.value;
 
-    if (!form.email.trim() || !form.password.trim()) {
-      setMessage('이메일과 비밀번호를 입력해주세요.');
+    setMember({
+      ...member,
+      [name]: value,
+    });
+
+    setMessage("");
+  };
+
+  const handleLogin = (e) => {
+    if (e) {
+      e.preventDefault();
+    }
+
+    if (!member.email.trim() || !member.password.trim()) {
+      showToast("error", "이메일과 비밀번호를 입력해주세요.");
       return;
     }
 
-    setIsLoggedIn(true);
-    navigate('/app/feed');
+    setIsLoading(true);
+
+    console.log("로그인 요청 데이터:", member);
+    console.log("서버 주소:", BACKSERVER);
+
+    setTimeout(() => {
+      setIsLoggedIn(true);
+      setIsLoading(false);
+      setMember(defaultMember);
+      showToast("success", "로그인되었습니다.");
+      navigate("/app/feed");
+    }, 300);
   };
 
-  const handlePendingFeature = (label) => {
-    setMessage(`${label}은 백엔드 연결 후 사용할 수 있습니다.`);
+  const showReadyMessage = (label) => {
+    showToast("info", `${label}은 백엔드 연결 후 사용할 수 있습니다.`);
+  };
+
+  const goSignup = () => {
+    navigate("/auth/signup");
   };
 
   return (
-    <main className={styles.page}>
-      <section className={styles.card}>
-        <header className={styles.header}>
-          <div className={styles.brand}>
-            <img src="/MoodCast-logo.svg" alt="" aria-hidden="true" />
-            <strong>MoodCast</strong>
-          </div>
-          <h1>로그인</h1>
-          <p>MoodCast에 오신 것을 환영합니다</p>
-        </header>
-
-        <form className={styles.form} onSubmit={handleLogin}>
-          <label className={styles.field}>
-            <span>
-              이메일 <b>*</b>
-            </span>
-            <input
-              type="email"
-              value={form.email}
-              onChange={(event) => updateForm('email', event.target.value)}
-              placeholder="이메일 주소를 입력하세요"
-            />
-          </label>
-
-          <label className={styles.field}>
-            <span>
-              비밀번호 <b>*</b>
-            </span>
-            <input
-              type="password"
-              value={form.password}
-              onChange={(event) => updateForm('password', event.target.value)}
-              placeholder="비밀번호를 입력하세요"
-            />
-          </label>
-
-          <div className={styles.options}>
-            <label className={styles.remember}>
-              <input
-                type="checkbox"
-                checked={form.remember}
-                onChange={(event) => updateForm('remember', event.target.checked)}
-              />
-              <span>로그인 상태 유지</span>
-            </label>
-            <div className={styles.findLinks}>
-              <button type="button" onClick={() => handlePendingFeature('아이디 찾기')}>
-                아이디 찾기
-              </button>
-              <i />
-              <button type="button" onClick={() => handlePendingFeature('비밀번호 찾기')}>
-                비밀번호 찾기
-              </button>
-            </div>
-          </div>
-
-          {message ? <p className={styles.message}>{message}</p> : null}
-
-          <button type="submit" className={styles.primary}>
-            로그인
-          </button>
-        </form>
-
-        <div className={styles.socialArea}>
-          <div className={styles.divider}>
-            <span />
-            <em>또는 소셜 계정으로 로그인</em>
-            <span />
-          </div>
-
-          <button type="button" className={`${styles.socialButton} ${styles.kakao}`} onClick={() => handlePendingFeature('카카오 로그인')}>
-            <ChatBubbleRoundedIcon fontSize="small" />
-            카카오로 로그인
-          </button>
-          <button type="button" className={`${styles.socialButton} ${styles.naver}`} onClick={() => handlePendingFeature('네이버 로그인')}>
-            <b>N</b>
-            네이버로 로그인
-          </button>
-          <button type="button" className={styles.socialButton} onClick={() => handlePendingFeature('Google 로그인')}>
-            <span className={styles.googleMark}>G</span>
-            Google로 로그인
-          </button>
-        </div>
-
-        <p className={styles.signupText}>
-          아직 회원이 아니신가요? <Link to="/auth/signup">회원가입</Link>
-        </p>
-      </section>
-    </main>
+    <LoginView
+      member={member}
+      message={message}
+      toast={toast}
+      isLoading={isLoading}
+      inputMember={inputMember}
+      handleLogin={handleLogin}
+      showReadyMessage={showReadyMessage}
+      goSignup={goSignup}
+    />
   );
-}
+};
+
+export default LoginPage;

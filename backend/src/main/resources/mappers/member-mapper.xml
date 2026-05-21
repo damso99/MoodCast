@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodcast.member.dao.SignupDao">
+
+    <select id="countByEmail">
+        select count(*) from members where email = #{email}
+    </select>
+
+    <select id="countByPhone">
+        select count(*) from members where phone = #{phone}
+    </select>
+
+    <insert id="insertAuthCode">
+        insert into auth_codes (
+            member_id,
+            target_type,
+            target_value,
+            purpose,
+            code_hash,
+            expires_at,
+            attempt_count
+        ) values (
+                  #{memberId},
+                  #{targetType},
+                  #{targetValue},
+                  #{purpose},
+                  #{codeHash},
+                  #{expiresAt},
+                  #{attemptCount}
+            )
+    </insert>
+
+    <select id="findLastAuthCode" resultType="AuthCode">
+        select
+            auth_code_id,
+            code_hash,
+            expires_at,
+            verified_at,
+            used_at,
+            attempt_count,
+            created_at
+        from auth_codes
+        where
+            target_type = #{targetType}
+            and target_value = #{targetValue}
+            and purpose = #{purpose}
+            and used_at is null
+        order by created_at desc
+        limit 1
+    </select>
+
+    <update id="incrementAttempt">
+        update auth_codes
+        set attempt_count = attempt_count +1
+        where auth_code_id = #{authCodeId}
+    </update>
+
+    <update id="updateVerifiedAt">
+        update auth_codes
+        set verified_at = now(6),
+            attempt_count = 0
+        where auth_code_id = #{authCodeId}
+    </update>
+
+    <select id="countAuthCodeSend">
+        select count(*)
+        from auth_codes
+        where target_type = #{targetType}
+        and target_value = #{targetValue}
+        and purpose = #{purpose}
+        and created_at >= #{from}
+    </select>
+</mapper>
