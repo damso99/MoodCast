@@ -6,6 +6,7 @@ import { SavedPage } from './pages/Saved/SavedPage';
 import { MoodChatPage } from './pages/MoodChat/MoodChatPage';
 import { ProfileDesktopPage } from './pages/Profile/ProfileDesktopPage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
+import { ProfileEditPage } from './pages/Profile/ProfileEditPage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
 import { SearchPage } from './pages/Search/SearchPage';
 import { CreatePostPage } from './pages/CreatePost/CreatePostPage';
@@ -32,6 +33,7 @@ function AppRoutes() {
       <Route path="/app/chat" element={<MoodChatPage />} />
       <Route path="/app/profile" element={desktop ? <ProfileDesktopPage /> : <ProfilePage />} />
       <Route path="/app/profile-mobile" element={<ProfilePage />} />
+      <Route path="/app/profile/edit" element={<ProfileEditPage />} />
       <Route path="/app/settings" element={<SettingsPage />} />
       <Route path="/app/search" element={<SearchPage />} />
       <Route path="/app/write" element={<CreatePostPage />} />

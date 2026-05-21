@@ -16,8 +16,8 @@ export function ProfileDesktopPage() {
             <strong>Lena Parks</strong>
             <p>감성 기록과 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.</p>
           </div>
-          <button type="button" onClick={() => navigate('/app/write')}>
-            새 게시물 작성
+          <button type="button" onClick={() => navigate('/app/profile/edit')}>
+            프로필 편집
           </button>
         </article>
 
