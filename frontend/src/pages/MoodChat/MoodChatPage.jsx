@@ -5,6 +5,7 @@ import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { useEffect, useState } from "react";
 import styles from "./MoodChatPage.module.css";
 import axios from "axios";
+import.meta.env.VITE_BACKSERVER;
 
 function ChatBody({ desktop }) {
   const [activeThreadId, setActiveThreadId] = useState(chatThreads[0].id);
@@ -14,24 +15,37 @@ function ChatBody({ desktop }) {
   );
   const [post, setPosts] = useState();
   const [message, setMessage] = useState("");
-  const handleSend = () => {
+  const handleSend = async () => {
     if (message.trim() === "") return;
 
     const messageObj = {
       content: message,
-      userId: 1, //보내는 아이디
-      reciverId: activeThread.id, // 받는 아이디
+      senderId: 1, // 보내는 아이디
+      receiverId: activeThread.id, // 받는 아이디
       createdAt: new Date().toISOString(),
     };
 
     console.log(messageObj);
 
-    setMessage("");
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKSERVER}/chat/send`,
+        messageObj,
+      );
+
+      console.log("성공", response.data);
+
+      setMessage("");
+    } catch (error) {
+      console.log("실패", error);
+    }
   };
   useEffect(() => {
     const getPosts = async () => {
       try {
-        const response = await axios.get("http://localhost:8980/api/posts");
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKSERVER}/chat/messages`,
+        );
         console.log(response.data);
         setPosts(response.data);
       } catch (error) {
