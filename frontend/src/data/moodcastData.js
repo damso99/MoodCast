@@ -11,6 +11,10 @@ export const feedPosts = [
     likes: 234,
     comments: 45,
     vibes: 18,
+    attachments: [
+      { id: 'a1', name: 'project-plan.pdf', type: '문서' },
+      { id: 'a2', name: 'behind-the-scenes.mov', type: '영상' },
+    ],
     previewComment: { author: 'Juno', time: '1분 전', text: '이 하늘 색감 정말 좋아요.' },
     commentsList: [{ id: 1, author: 'Juno', time: '1분 전', text: '이 하늘 색감 정말 좋아요.' }],
   },
@@ -82,13 +86,28 @@ export const chatMessages = {
 export const profileStats = [
   { label: '게시물', value: '128' },
   { label: '저장됨', value: '42' },
-  { label: '참여', value: '18' },
+  { label: '팔로워', value: '310' },
+  { label: '팔로잉', value: '180' },
 ];
 
 export const profileHighlights = [
   { label: '감정 공감률', value: '72%' },
   { label: '주간 반응', value: '94' },
   { label: '프로필 상태', value: '완료' },
+];
+
+export const followers = [
+  { id: 1, name: 'Juno', handle: '@juno', avatar: 'J', isFollowing: true },
+  { id: 2, name: 'Haru', handle: '@haru', avatar: 'H', isFollowing: false },
+  { id: 3, name: 'Min', handle: '@min', avatar: 'M', isFollowing: true },
+  { id: 4, name: 'Eun', handle: '@eun', avatar: 'E', isFollowing: false },
+];
+
+export const following = [
+  { id: 1, name: 'John Park', handle: '@johnpark', avatar: 'J', isFollowing: true },
+  { id: 2, name: 'Mina Lee', handle: '@minalee', avatar: 'M', isFollowing: true },
+  { id: 3, name: 'Sora Kim', handle: '@sorakim', avatar: 'S', isFollowing: true },
+  { id: 4, name: 'Daehoon', handle: '@daehoon', avatar: 'D', isFollowing: true },
 ];
 
 export const interestTags = ['감성', '여행', '사진', '카페', '운동', '기록', '음악', '영화'];

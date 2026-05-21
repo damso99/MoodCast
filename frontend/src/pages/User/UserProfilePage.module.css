@@ -1,0 +1,68 @@
+.wrap {
+  display: grid;
+  gap: 18px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 36px rgba(17, 24, 39, 0.07);
+}
+
+.avatar {
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f6b0ff, #b59cff);
+  color: #111827;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.hero strong {
+  display: block;
+  color: #111827;
+  font-size: 1.4rem;
+}
+
+.hero span {
+  display: block;
+  margin-top: 6px;
+  color: #667085;
+}
+
+.hero p {
+  margin: 10px 0 0;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.stats article {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 36px rgba(17, 24, 39, 0.07);
+}
+
+.stats strong {
+  display: block;
+  color: #111827;
+  font-size: 1.2rem;
+}
+
+.stats span {
+  color: #667085;
+}

@@ -4,7 +4,9 @@ import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { CommentModal } from './CommentModal';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 import styles from './FeedCard.module.css';
 
 function MoodVisual({ tone }) {
@@ -29,9 +31,14 @@ function MoodVisual({ tone }) {
 }
 
 export function FeedCard({ post, compact = false }) {
+  const navigate = useNavigate();
+  const currentUser = 'Sarah Kim';
+  const isOwner = post.author === currentUser;
   const [selectedPost, setSelectedPost] = useState(null);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [comments, setComments] = useState(post.commentsList);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
 
   const openCommentModal = () => {
@@ -44,6 +51,29 @@ export function FeedCard({ post, compact = false }) {
     setIsCommentModalOpen(false);
   };
 
+  const toggleMenu = () => {
+    setMenuOpen((prev) => !prev);
+  };
+
+  const handleEdit = () => {
+    setMenuOpen(false);
+    navigate(`/app/post/edit/${post.id}`);
+  };
+
+  const handleDelete = () => {
+    setMenuOpen(false);
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModalOpen(false);
+  };
+
+  const confirmDelete = () => {
+    console.log('Delete post', post.id);
+    setDeleteModalOpen(false);
+  };
+
   return (
     <>
       <article className={`${styles.card} ${compact ? styles.compact : ''}`}>
@@ -53,9 +83,23 @@ export function FeedCard({ post, compact = false }) {
             <strong>{post.author}</strong>
             <span>{post.time}</span>
           </div>
-          <button type="button" className={styles.more}>
-            <MoreHorizIcon />
-          </button>
+          {isOwner ? (
+            <div className={styles.moreWrapper}>
+              <button type="button" className={styles.more} onClick={toggleMenu} aria-label="더보기">
+                <MoreHorizIcon />
+              </button>
+              {menuOpen ? (
+                <div className={styles.moreMenu}>
+                  <button type="button" className={styles.menuItem} onClick={handleEdit}>
+                    수정
+                  </button>
+                  <button type="button" className={styles.menuItem} onClick={handleDelete}>
+                    삭제
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <p className={styles.text}>{post.text}</p>
@@ -66,6 +110,20 @@ export function FeedCard({ post, compact = false }) {
         ) : (
           <MoodVisual tone={post.tone} />
         )}
+
+        {post.attachments?.length ? (
+          <div className={styles.attachmentArea}>
+            <strong>첨부파일</strong>
+            <ul className={styles.fileList}>
+              {post.attachments.map((file) => (
+                <li key={file.id} className={styles.attachmentItem}>
+                  <span>{file.name}</span>
+                  <span>{file.type}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className={styles.actions}>
           <span className={styles.reaction}>
@@ -100,6 +158,13 @@ export function FeedCard({ post, compact = false }) {
         comments={comments}
         onClose={closeCommentModal}
         onSubmit={(nextComment) => setComments((prev) => [...prev, nextComment])}
+      />
+      <DeleteConfirmModal
+        open={deleteModalOpen}
+        title="게시물을 삭제하시겠습니까?"
+        description="삭제한 게시물은 복구할 수 없습니다. 계속 진행하시겠습니까?"
+        onCancel={closeDeleteModal}
+        onConfirm={confirmDelete}
       />
     </>
   );

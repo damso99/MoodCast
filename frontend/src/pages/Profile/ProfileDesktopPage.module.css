@@ -55,7 +55,7 @@
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -64,6 +64,18 @@
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 14px 36px rgba(17, 24, 39, 0.07);
+  border: 0;
+  cursor: pointer;
+  text-align: center;
+}
+
+.stat:hover {
+  background: #f8f9ff;
+}
+
+.stat:focus-visible {
+  outline: 2px solid #7c4dff;
+  outline-offset: 4px;
 }
 
 .stat strong,

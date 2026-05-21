@@ -23,27 +23,232 @@
 
 .card {
   display: grid;
-  gap: 14px;
+  gap: 18px;
 }
 
+.field {
+  display: grid;
+  gap: 12px;
+}
+
+.field label {
+  color: #475569;
+  font-weight: 700;
+}
+
+
 .card input,
-.card textarea {
+.card textarea,
+.editor {
   width: 100%;
   border: 1px solid #e6e8f3;
   border-radius: 16px;
   padding: 14px 16px;
+  color: #111827;
+  background: #fcfdff;
+  font-weight: 700;
+}
+
+.editor {
+  min-height: 220px;
+  resize: vertical;
+  outline: none;
+}
+
+.editor:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+}
+
+.editorImage {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 16px;
+  margin: 12px 0;
 }
 
 .card textarea {
-  min-height: 160px;
+  min-height: 220px;
   resize: vertical;
 }
 
-.card button {
-  min-height: 46px;
+.uploadSection {
+  display: grid;
+  gap: 10px;
+}
+
+.uploadGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.uploadButton,
+.uploadButtonSecondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-weight: 800;
+  cursor: pointer;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  color: #fff;
+}
+
+.uploadButtonSecondary {
+  background: #fff;
+  color: #3730a3;
+  border-color: #e6e8f3;
+}
+
+.uploadDescription {
+  color: #667085;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.uploadButton input,
+.uploadButtonSecondary input {
+  display: none;
+}
+
+.uploadDescription {
+  color: #667085;
+  font-size: 0.95rem;
+}
+
+.previewList {
+  display: grid;
+  gap: 12px;
+}
+
+.previewItem {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #fafbff;
+  border: 1px solid #e6e8f3;
+}
+
+.previewItem img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.previewItem strong {
+  display: block;
+  color: #111827;
+}
+
+.previewItem button {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  color: #7c4dff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.previewSection {
+  display: grid;
+  gap: 12px;
+}
+
+.sectionLabel {
+  color: #111827;
+  font-size: 0.96rem;
+}
+
+.previewMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.imageSizeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.sizeButton {
+  border: 1px solid #e6e8f3;
+  border-radius: 999px;
+  background: #fff;
+  color: #475569;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.sizeActive {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #3730a3;
+}
+
+.removeButton {
+  border: 0;
+  background: transparent;
+  color: #7c4dff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.attachmentList {
+  display: grid;
+  gap: 10px;
+}
+
+.attachmentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid #e6e8f3;
+}
+
+.attachmentItem span {
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachmentItem button {
+  border: 0;
+  background: transparent;
+  color: #7c4dff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.submitButton {
+  min-height: 52px;
   border: 0;
   border-radius: 16px;
   color: white;
-  font-weight: 800;
+  font-weight: 900;
   background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  cursor: pointer;
+}
+
+.message {
+  color: #7c4dff;
+  font-weight: 800;
+  background: #f3edff;
+  padding: 12px 14px;
+  border-radius: 16px;
 }
