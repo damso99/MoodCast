@@ -4,6 +4,7 @@ import com.moodcast.member.dto.EmailAuthSendRequest;
 import com.moodcast.member.dto.EmailAuthVerifyRequest;
 import com.moodcast.member.dto.PhoneAuthSendRequest;
 import com.moodcast.member.dto.PhoneAuthVerifyRequest;
+import com.moodcast.member.service.PhoneService;
 import com.moodcast.member.service.SignupService;
 import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,8 @@ import java.util.Map;
 public class SignupController {
     @Autowired
     private SignupService signupService;
+    @Autowired
+    private PhoneService phoneService;
 
     // 회원가입 이메일 인증번호 발송
     @PostMapping(value="auth/email/send")
@@ -77,6 +80,7 @@ public class SignupController {
         }
     }
 
+    // 회원가입 휴대폰 인증 발송
     @PostMapping(value="auth/phone/send")
     public ResponseEntity<?> sendPhoneAuthCode(@RequestBody PhoneAuthSendRequest request) {
         try {
@@ -105,6 +109,7 @@ public class SignupController {
         }
     }
 
+    // 회원가입 휴대폰 인증 확인
     @PostMapping(value="auth/phone/verify")
     public ResponseEntity<?> verifyPhoneAuthCode(@RequestBody PhoneAuthVerifyRequest request) {
         try {
@@ -124,6 +129,27 @@ public class SignupController {
             );
         } catch(IllegalStateException e) {
             return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "success", false,
+                            "message", e.getMessage()
+                    )
+            );
+        }
+    }
+
+    // 이메일 기본검사, 중복체크
+    @GetMapping(value="check/email")
+    public ResponseEntity<?> checkEmail(@RequestParam String email) {
+        try {
+            boolean available = signupService.checkEmailAvailable(email);
+            return ResponseEntity.ok(
+                    Map.of(
+                            "success", true,
+                            "available", available
+                    )
+            );
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
                     Map.of(
                             "success", false,
                             "message", e.getMessage()

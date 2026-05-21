@@ -1,6 +1,11 @@
 server:
   port: ${PORT:8080}
 
+solapi:
+  api-key: ${SOLAPI_API_KEY}
+  api-secret: ${SOLAPI_API_SECRET}
+  sender-number: ${SOLAPI_SENDER_NUMBER}
+
 spring:
   config:
     import: optional:file:.env[.properties]
@@ -22,10 +27,7 @@ spring:
           auth: true
           starttls:
             enable: true
-  solapi:
-    api-key: ${SOLAPI_API_KEY}
-    api-secret: ${SOLAPI_API_SECRET}
-    sender-number: ${SOLAPI_SENDER_NUMBER}
+
 
 mybatis:
   mapper-locations: classpath:/mappers/**/*.xml

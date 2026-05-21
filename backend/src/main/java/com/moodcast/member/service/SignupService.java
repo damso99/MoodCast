@@ -204,12 +204,14 @@ public class SignupService {
             throw new IllegalStateException("인증코드 저장에 실패했습니다.");
         }
 
-        phoneService.sendSignupAuthCode(phone, authCode);
+        // phoneService.sendSignupAuthCode(phone, authCode); 포인트 없어서 일단 주석
+        System.out.println("휴대폰 인증번호: " + authCode);
         return phone;
     }
 
     // 이메일 인증코드 확인
-    @Transactional
+    // IllegalArgumentException 예외는 사용자 문제이므로 롤백 대상에서 제외
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyEmailAuthCode(String email, String authCode) {
         email = normalizeEmail(email);
         AuthCode lastAuthCode = signupDao.findLastAuthCode("EMAIL", email, "SIGNUP");
@@ -223,7 +225,7 @@ public class SignupService {
     }
 
     // 휴대폰 인증코드 확인
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyPhoneAuthCode(String phone, String authCode) {
         phone = normalizePhone(phone);
         AuthCode lastAuthCode = signupDao.findLastAuthCode("PHONE", phone, "SIGNUP");
@@ -236,8 +238,10 @@ public class SignupService {
         }
     }
 
-
-
-
-
+    // 이메일 기본검사, 중복여부
+    public boolean checkEmailAvailable(String email) {
+        email = normalizeEmail(email);
+        int emailCount = signupDao.countByEmail(email);
+        return emailCount == 0;
+    }
 }

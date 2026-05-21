@@ -1,30 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 import { SignupView } from "./components/SignupView";
-
-const defaultSignup = {
-  name: "",
-  nickname: "",
-  email: "",
-  emailCode: "",
-  password: "",
-  passwordConfirm: "",
-  phone: "",
-  phoneCode: "",
-};
-
-const defaultTerms = {
-  service: false,
-  privacy: false,
-  marketing: false,
-};
-
-const defaultToast = {
-  show: false,
-  type: "",
-  message: "",
-};
 
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 
@@ -32,15 +9,50 @@ export const SignupPage = () => {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
-  const [signup, setSignup] = useState(defaultSignup);
-  const [terms, setTerms] = useState(defaultTerms);
+  const [signup, setSignup] = useState({
+    name: "",
+    nickname: "",
+    email: "",
+    emailCode: "",
+    password: "",
+    passwordConfirm: "",
+    phone: "",
+    phoneCode: "",
+  });
+
+  const [fieldMessage, setFieldMessage] = useState({
+    name: "",
+    nickname: "",
+    email: "",
+    password: "",
+    passwordConfirm: "",
+  });
+  const [fieldStatus, setFieldStatus] = useState({
+    name: "",
+    nickname: "",
+    email: "",
+    password: "",
+    passwordConfirm: "",
+  });
+
+  const [terms, setTerms] = useState({
+    service: false,
+    privacy: false,
+    marketing: false,
+  });
 
   // 0: 인증 전, 1: 인증번호 발송 완료, 3: 인증 완료
   const [emailAuth, setEmailAuth] = useState(0);
   const [phoneAuth, setPhoneAuth] = useState(0);
 
+  const [emailSendLoading, setEmailSendLoading] = useState(false);
+
   const [message, setMessage] = useState("");
-  const [toast, setToast] = useState(defaultToast);
+  const [toast, setToast] = useState({
+    show: false,
+    type: "",
+    message: "",
+  });
 
   const showToast = (type, message) => {
     setToast({
@@ -50,7 +62,11 @@ export const SignupPage = () => {
     });
 
     setTimeout(() => {
-      setToast(defaultToast);
+      setToast({
+        show: false,
+        type: "",
+        message: "",
+      });
     }, 2500);
   };
 
@@ -74,16 +90,109 @@ export const SignupPage = () => {
     setMessage("");
   };
 
+  useEffect(() => {
+    const email = signup.email.trim().toLowerCase();
+
+    if (!email) {
+      setFieldMessage((prev) => ({
+        ...prev,
+        email: "",
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        email: "",
+      }));
+
+      return;
+    }
+
+    if (!emailRegex.test(email)) {
+      setFieldMessage((prev) => ({
+        ...prev,
+        email: "이메일 형식이 올바르지 않습니다.",
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        email: "invalid",
+      }));
+
+      return;
+    }
+
+    setFieldMessage((prev) => ({
+      ...prev,
+      email: "이메일 중복 확인 중입니다.",
+    }));
+
+    setFieldStatus((prev) => ({
+      ...prev,
+      email: "checking",
+    }));
+
+    const timer = setTimeout(() => {
+      axios
+        .get(`${import.meta.env.VITE_BACKSERVER}/signup/check/email`, {
+          params: {
+            email: email,
+          },
+        })
+        .then((res) => {
+          if (res.data.available) {
+            setFieldMessage((prev) => ({
+              ...prev,
+              email: "사용 가능한 이메일입니다.",
+            }));
+
+            setFieldStatus((prev) => ({
+              ...prev,
+              email: "valid",
+            }));
+          } else {
+            setFieldMessage((prev) => ({
+              ...prev,
+              email: "이미 사용 중인 이메일입니다.",
+            }));
+
+            setFieldStatus((prev) => ({
+              ...prev,
+              email: "invalid",
+            }));
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+
+          setFieldMessage((prev) => ({
+            ...prev,
+            email:
+              err.response?.data?.message ||
+              "이메일 확인 중 오류가 발생했습니다.",
+          }));
+
+          setFieldStatus((prev) => ({
+            ...prev,
+            email: "invalid",
+          }));
+        });
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [signup.email]);
+
   const sendEmailAuthCode = () => {
-    const email = signup.email.trim();
+    const email = signup.email.trim().toLowerCase();
 
     if (!email) {
       showToast("error", "이메일을 입력해주세요.");
       return;
     }
 
-    if (!emailRegex.test(email)) {
-      showToast("error", "이메일 형식이 올바르지 않습니다.");
+    if (fieldStatus.email !== "valid") {
+      showToast("error", "사용 가능한 이메일을 입력해주세요.");
       return;
     }
 
@@ -207,15 +316,21 @@ export const SignupPage = () => {
     }
 
     axios
-      .post(`${import.meta.env.VITE_BACKSERVER}/signup/auth/phone/verifiy`, {
+      .post(`${import.meta.env.VITE_BACKSERVER}/signup/auth/phone/verify`, {
         phone: signup.phone,
         authCode: signup.phoneCode,
       })
       .then((res) => {
         console.log(res);
+        setPhoneAuth(3);
+        showToast("success", res?.data?.message);
       })
       .catch((err) => {
-        console.log(err);
+        setPhoneAuth(1);
+        showToast(
+          "error",
+          err.response?.data?.message || "인증 오류가 발생했습니다.",
+        );
       });
   };
 
@@ -294,6 +409,8 @@ export const SignupPage = () => {
       completeSignup={completeSignup}
       showReadyMessage={showReadyMessage}
       goLogin={goLogin}
+      fieldMessage={fieldMessage}
+      fieldStatus={fieldStatus}
     />
   );
 };

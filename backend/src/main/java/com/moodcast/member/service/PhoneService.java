@@ -29,10 +29,9 @@ public class PhoneService {
         try {
             messageService.send(message);
         } catch(SolapiMessageNotReceivedException e) {
-            System.out.println(e.getFailedMessageList());
-            System.out.println(e.getMessage());
+            throw new IllegalStateException("문자 발송을 실패했습니다.");
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            throw new IllegalStateException("문자 발송 중 오류가 발생했습니다.");
         }
     }
 

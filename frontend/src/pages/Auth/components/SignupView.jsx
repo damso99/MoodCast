@@ -24,6 +24,8 @@ export const SignupView = ({
   showReadyMessage,
   goLogin,
   toast,
+  fieldMessage,
+  fieldStatus,
 }) => {
   const allTermsChecked = terms.service && terms.privacy && terms.marketing;
 
@@ -141,6 +143,17 @@ export const SignupView = ({
                       {emailAuth === 3 ? "인증완료" : "인증 요청"}
                     </button>
                   </div>
+                  {fieldMessage.email && (
+                    <p
+                      className={
+                        fieldStatus.email === "valid"
+                          ? styles.validText
+                          : styles.invalidText
+                      }
+                    >
+                      {fieldMessage.email}
+                    </p>
+                  )}
                 </div>
 
                 {(emailAuth === 1 || emailAuth === 3) && (

@@ -3,26 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { useAuthState } from "../../hooks/useAuthState";
 import { LoginView } from "./components/LoginView";
 
-const defaultMember = {
-  email: "",
-  password: "",
-  remember: false,
-};
-
-const defaultToast = {
-  show: false,
-  type: "",
-  message: "",
-};
-
 export const LoginPage = () => {
   const navigate = useNavigate();
   const { setIsLoggedIn } = useAuthState();
 
-  const [member, setMember] = useState(defaultMember);
+  const [member, setMember] = useState({
+    email: "",
+    password: "",
+    remember: false,
+  });
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [toast, setToast] = useState(defaultToast);
+  const [toast, setToast] = useState({
+    show: false,
+    type: "",
+    message: "",
+  });
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
@@ -34,7 +30,11 @@ export const LoginPage = () => {
     });
 
     setTimeout(() => {
-      setToast(defaultToast);
+      setToast({
+        show: false,
+        type: "",
+        message: "",
+      });
     }, 2500);
   };
 
@@ -69,7 +69,11 @@ export const LoginPage = () => {
     setTimeout(() => {
       setIsLoggedIn(true);
       setIsLoading(false);
-      setMember(defaultMember);
+      setMember({
+        email: "",
+        password: "",
+        remember: false,
+      });
       showToast("success", "로그인되었습니다.");
       navigate("/app/feed");
     }, 300);
