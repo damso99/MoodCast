@@ -109,6 +109,32 @@
   cursor: pointer;
 }
 
+.buttonRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.backButton {
+  min-height: 46px;
+  border: 1px solid #e6e8f3;
+  border-radius: 16px;
+  color: #374151;
+  background: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.saveButton {
+  min-height: 46px;
+  border: 0;
+  border-radius: 16px;
+  color: white;
+  font-weight: 800;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  cursor: pointer;
+}
+
 .message {
   padding: 14px 16px;
   border-radius: 18px;

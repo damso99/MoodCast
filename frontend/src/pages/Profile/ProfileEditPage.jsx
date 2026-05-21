@@ -1,6 +1,7 @@
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
+import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import styles from './ProfileEditPage.module.css';
 
@@ -11,6 +12,7 @@ const defaultProfile = {
 
 export function ProfileEditPage() {
   const desktop = useIsDesktop();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(defaultProfile);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saved, setSaved] = useState(false);
@@ -34,8 +36,12 @@ export function ProfileEditPage() {
   const handleSave = () => {
     setSaved(true);
     window.setTimeout(() => {
-      setSaved(false);
-    }, 3000);
+      navigate('/app/profile');
+    }, 800);
+  };
+
+  const handleBack = () => {
+    navigate('/app/profile');
   };
 
   const content = (
@@ -79,9 +85,14 @@ export function ProfileEditPage() {
           />
         </div>
 
-        <button type="button" className={styles.saveButton} onClick={handleSave}>
-          저장하기
-        </button>
+        <div className={styles.buttonRow}>
+          <button type="button" className={styles.backButton} onClick={handleBack}>
+            취소
+          </button>
+          <button type="button" className={styles.saveButton} onClick={handleSave}>
+            완료
+          </button>
+        </div>
 
         {saved ? <div className={styles.message}>프로필 변경 사항이 저장되었습니다.</div> : null}
       </div>

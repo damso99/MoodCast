@@ -16,6 +16,7 @@ export function CreatePostPage() {
         <p>지금 어떤 기분인가요?</p>
         <input placeholder="무슨 생각을 하고 계신가요?" />
         <textarea placeholder="오늘의 감정과 생각을 적어보세요." />
+        <input placeholder="#해시태그를 입력하세요." />
         <button type="button">게시하기</button>
       </div>
     </section>
