@@ -122,15 +122,17 @@ export function SearchModal({ open, onClose }) {
             </article>
           ) : results.length ? (
             results.map((item) => {
+              // 사용자 검색 탭일 때의 리스트 아이템 렌더링
               if (activeTab === 'users') {
                 return (
                   <article
                     key={item.memberId}
                     className={styles.item}
                     style={{ cursor: 'pointer' }}
+                    // 사용자를 클릭하면 해당 사용자의 프로필 페이지로 이동합니다.
                     onClick={() => {
-                      onClose();
-                      navigate(`/app/user/${item.memberId}`);
+                      onClose(); // 검색창(모달)을 닫습니다.
+                      navigate(`/app/user/${item.memberId}`); // 사용자의 고유 ID를 경로로 사용해 이동합니다.
                     }}
                   >
                     <strong>{item.nickname || item.name}</strong>
@@ -138,6 +140,7 @@ export function SearchModal({ open, onClose }) {
                   </article>
                 );
               }
+              // 해시태그 검색 탭일 때의 리스트 아이템 렌더링
               if (activeTab === 'hashtags') {
                 return (
                   <article key={item.hashtagId} className={styles.item}>
@@ -146,6 +149,7 @@ export function SearchModal({ open, onClose }) {
                   </article>
                 );
               }
+              // 게시글 검색 결과 (기본값)
               return (
                 <article key={item.postId} className={styles.item}>
                   <strong>{item.authorName || item.authorNickname}</strong>

@@ -49,23 +49,28 @@ export function ProfileEditPage() {
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // [저장 버튼 클릭 시 실행되는 함수]
   const handleSave = () => {
     const newNickname = profile.nickname?.trim();
+    
+    // 1. 유효성 검사: 닉네임이 비어있는지 확인
     if (!newNickname) {
       setErrorMessage('닉네임을 입력해주세요.');
       setSaved(false);
       return;
     }
 
+    // 2. 권한 확인: 로그인이 되어있는지 확인
     if (!member || !accessToken) {
       setErrorMessage('로그인이 필요합니다. 다시 로그인해주세요.');
       setSaved(false);
       return;
     }
 
+    // 3. 백엔드로 보낼 데이터 구성
     const requestBody = {
-      nickname: newNickname,
-      bio: profile.bio,
+      nickname: newNickname, // 수정한 닉네임
+      bio: profile.bio,      // 수정한 자기소개
     };
 
     console.log('프로필 저장 요청', { requestBody, accessToken });
@@ -73,24 +78,29 @@ export function ProfileEditPage() {
     setLoading(true);
     setErrorMessage('');
 
+    // 4. 백엔드 API (PUT /auth/profile) 호출
     axios
       .put(`${BACKSERVER}/auth/profile`, requestBody, {
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`, // JWT 토큰을 헤더에 담아 보냅니다.
         },
         withCredentials: true,
       })
       .then((res) => {
+        // 성공 시: 서버에서 돌려준 최신 사용자 정보를 내 로컬 상태(Store)에 업데이트
         if (res.data?.member) {
           setAuthData(accessToken, res.data.member);
         }
-        setSaved(true);
+        setSaved(true); // "저장됨" 상태 표시
         setErrorMessage('');
+        
+        // 0.8초 후에 프로필 메인 화면으로 이동
         window.setTimeout(() => {
           navigate('/app/profile');
         }, 800);
       })
       .catch((error) => {
+        // 실패 시: 에러 메시지를 화면에 보여줍니다.
         console.error('프로필 저장 실패', error);
         const responseMessage = error.response?.data?.message;
         const responseDetail = error.response?.data?.details;
@@ -102,7 +112,7 @@ export function ProfileEditPage() {
         setSaved(false);
       })
       .finally(() => {
-        setLoading(false);
+        setLoading(false); // 로딩 종료
       });
   };
 

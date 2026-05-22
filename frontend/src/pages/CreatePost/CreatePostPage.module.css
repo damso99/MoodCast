@@ -37,7 +37,6 @@
   font-weight: 700;
 }
 
-
 .card input,
 .card textarea,
 .editor {
@@ -99,43 +98,42 @@
   flex-wrap: wrap;
 }
 
-.uploadButton,
-.uploadButtonSecondary {
+.uploadButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 12px;
-  border: 0;
+  min-height: 46px;
+  padding: 0 24px;
+  border-radius: 99px; /* 알약 모양으로 변경 */
+  border: none;
   font-weight: 800;
   cursor: pointer;
-  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  background: linear-gradient(
+    135deg,
+    #4da6ff,
+    #a162ff,
+    #ec24c7
+  ); /* 그라데이션 색상 부드럽게 조정 */
   color: #fff;
-  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(124, 77, 255, 0.2);
 }
 
-.uploadButtonSecondary {
-  background: rgba(255, 255, 255, 0.34);
-  color: #3730a3;
-  border-color: rgba(17, 24, 39, 0.085);
-  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.055);
+.uploadButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(124, 77, 255, 0.3);
 }
 
-.uploadDescription {
-  color: #667085;
-  font-size: 0.88rem;
-  line-height: 1.4;
-}
-
-.uploadButton input,
-.uploadButtonSecondary input {
-  display: none;
+.uploadButton:active {
+  transform: translateY(0);
 }
 
 .uploadDescription {
   color: #667085;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .previewList {

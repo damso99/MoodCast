@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
@@ -31,9 +31,51 @@ export function TopUtilityIcons({ onSearch }) {
   const { isLoggedIn, member, clearAuthData } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  
+  // 메뉴와 알림창의 영역을 가리키는 참조(Ref) 생성함
+  const menuRef = useRef(null);
+  const notificationRef = useRef(null);
+  
+  // 버튼 자체를 클릭했을 때 닫히는 현상을 방지하기 위한 버튼 참조임
+  const profileBtnRef = useRef(null);
+  const bellBtnRef = useRef(null);
+
   const notifications = [];
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const hasUnreadNotifications = notifications.length > 0;
+
+  // 화면의 다른 곳을 눌렀을 때 메뉴를 닫아주는 기능임
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // 1. 알림창이 열려있고, 클릭한 곳이 알림창 밖이며, 종 모양 버튼도 아닐 때 닫음
+      if (
+        notificationOpen &&
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target) &&
+        !bellBtnRef.current.contains(event.target)
+      ) {
+        setNotificationOpen(false);
+      }
+      
+      // 2. 프로필 메뉴가 열려있고, 클릭한 곳이 메뉴 밖이며, 프로필 버튼도 아닐 때 닫음
+      if (
+        menuOpen &&
+        menuRef.current &&
+        !menuRef.current.contains(event.target) &&
+        !profileBtnRef.current.contains(event.target)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+
+    // 마우스 누름 이벤트를 감시하기 시작함
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // 컴포넌트가 사라질 때 감시를 종료함 (메모리 관리임)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [menuOpen, notificationOpen]);
 
   const logout = () => {
     axios
@@ -62,6 +104,7 @@ export function TopUtilityIcons({ onSearch }) {
       </button>
       <button
         type="button"
+        ref={bellBtnRef}
         className={styles.bell}
         aria-label="알림"
         onClick={() => {
@@ -73,7 +116,7 @@ export function TopUtilityIcons({ onSearch }) {
         {hasUnreadNotifications ? <span /> : null}
       </button>
       {notificationOpen ? (
-        <div className={styles.notificationCard}>
+        <div className={styles.notificationCard} ref={notificationRef}>
           <strong>알림</strong>
           <p>알림이 없습니다.</p>
         </div>
@@ -83,6 +126,7 @@ export function TopUtilityIcons({ onSearch }) {
         <>
           <button
             type="button"
+            ref={profileBtnRef}
             className={styles.profile}
             aria-label="회원 메뉴"
             onClick={() => {
@@ -93,8 +137,11 @@ export function TopUtilityIcons({ onSearch }) {
             <img src={member?.profileImageUrl || defaultAvatarSrc} alt="" />
           </button>
           {menuOpen ? (
-            <div className={styles.menu}>
-              <button type="button" onClick={() => navigate('/app/profile')}>
+            <div className={styles.menu} ref={menuRef}>
+              <button type="button" onClick={() => {
+                setMenuOpen(false);
+                navigate(`/app/user/${member.memberId}`);
+              }}>
                 <AccountCircleOutlinedIcon />
                 프로필 보기
               </button>

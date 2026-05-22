@@ -9,7 +9,7 @@ import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './BottomNav.module.css';
 
 export function BottomNav() {
-  const { isLoggedIn } = useAuthStore();
+  const { isLoggedIn, member } = useAuthStore();
 
   const items = [
     { label: '홈', to: '/app/feed', icon: HomeOutlinedIcon },
@@ -17,7 +17,7 @@ export function BottomNav() {
     { label: '작성', to: '/app/write', icon: AddCircleOutlineOutlinedIcon, centerAction: true },
     { label: '채팅', to: '/app/mood-chat', icon: ChatBubbleOutlineOutlinedIcon },
     isLoggedIn
-      ? { label: '프로필', to: '/app/profile', icon: PersonOutlineOutlinedIcon }
+      ? { label: '프로필', to: `/app/user/${member?.memberId}`, icon: PersonOutlineOutlinedIcon }
       : { label: '로그인', to: '/auth/login', icon: LoginOutlinedIcon },
   ];
 

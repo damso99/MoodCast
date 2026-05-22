@@ -10,7 +10,6 @@ export function CreatePostPage() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
-  const [attachments, setAttachments] = useState([]);
   const [saving, setSaving] = useState(false);
 
   const handleImageUpload = (event) => {
@@ -41,18 +40,6 @@ export function CreatePostPage() {
     event.target.value = '';
   };
 
-  const handleAttachmentUpload = (event) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-
-    const next = files.map((file) => ({
-      id: `${file.name}-${file.size}-${Date.now()}`,
-      file,
-    }));
-    setAttachments((prev) => [...prev, ...next]);
-    event.target.value = '';
-  };
-
   const handleRemoveImage = (id) => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -70,7 +57,6 @@ export function CreatePostPage() {
       setTitle('');
       setContent('');
       setTags('');
-      setAttachments([]);
       if (editorRef.current) {
         editorRef.current.innerHTML = '';
       }
@@ -111,10 +97,10 @@ export function CreatePostPage() {
         <div className={`${styles.uploadSection} ${styles.bodyUploadSection}`}>
           <div className={styles.uploadGroup}>
             <label className={styles.uploadButton}>
-              본문 이미지 첨부
-              <input type="file" accept="image/*" multiple onChange={handleImageUpload} />
+              사진 첨부
+              <input type="file" accept="image/*" multiple onChange={handleImageUpload} style={{ display: 'none' }} />
             </label>
-            <span className={styles.uploadDescription}>본문에 올라갈 이미지를 첨부하세요.</span>
+            <span className={styles.uploadDescription}>본문에 들어갈 사진을 선택하세요.</span>
           </div>
         </div>
 
@@ -127,29 +113,6 @@ export function CreatePostPage() {
             placeholder="#감성 #기록 #무드"
           />
         </div>
-
-        <div className={styles.uploadSection}>
-          <div className={styles.uploadGroup}>
-            <label className={styles.uploadButtonSecondary}>
-              첨부파일 추가
-              <input type="file" accept="image/*,video/*,application/*" multiple onChange={handleAttachmentUpload} />
-            </label>
-            <span className={styles.uploadDescription}>사진, 영상, 문서 등 다양한 파일을 업로드하세요.</span>
-          </div>
-        </div>
-
-        {attachments.length > 0 ? (
-          <div className={styles.attachmentList}>
-            {attachments.map((item) => (
-              <div key={item.id} className={styles.attachmentItem}>
-                <span>{item.file.name}</span>
-                <button type="button" onClick={() => handleRemoveAttachment(item.id)}>
-                  삭제
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : null}
 
         <button type="button" className={styles.submitButton} onClick={handleSubmit}>
           게시하기
