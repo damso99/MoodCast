@@ -1,4 +1,4 @@
-package com.moodcast.member.dto;
+package com.moodcast.member.dto.signup;
 
 import lombok.Data;
 

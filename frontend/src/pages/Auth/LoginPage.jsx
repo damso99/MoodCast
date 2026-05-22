@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuthState } from "../../hooks/useAuthState";
 import { LoginView } from "./components/LoginView";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { setIsLoggedIn } = useAuthState();
+  const { setAuthData } = useAuthState();
 
   const [member, setMember] = useState({
     email: "",
@@ -66,17 +67,38 @@ export const LoginPage = () => {
     console.log("로그인 요청 데이터:", member);
     console.log("서버 주소:", BACKSERVER);
 
-    setTimeout(() => {
-      setIsLoggedIn(true);
-      setIsLoading(false);
-      setMember({
-        email: "",
-        password: "",
-        remember: false,
+    axios
+      .post(
+        `${BACKSERVER}/auth/login`,
+        {
+          email: member.email,
+          password: member.password,
+          remember: member.remember,
+        },
+        {
+          withCredentials: true,
+        },
+      )
+      .then((res) => {
+        setAuthData(res.data.accessToken, res.data.member);
+        setMember({
+          email: "",
+          password: "",
+          remember: false,
+        });
+        showToast("success", res.data.message || "로그인되었습니다.");
+        navigate("/app/feed");
+      })
+      .catch((err) => {
+        console.log(err);
+        showToast(
+          "error",
+          err.response?.data?.message || "로그인 중 오류가 발생했습니다.",
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      showToast("success", "로그인되었습니다.");
-      navigate("/app/feed");
-    }, 300);
   };
 
   const showReadyMessage = (label) => {

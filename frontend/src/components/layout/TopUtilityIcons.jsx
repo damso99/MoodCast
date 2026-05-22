@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
@@ -27,8 +28,22 @@ const avatarSrc =
 
 export function TopUtilityIcons({ onSearch }) {
   const navigate = useNavigate();
-  const { isLoggedIn, setIsLoggedIn } = useAuthState();
+  const { isLoggedIn, clearAuthData } = useAuthState();
   const [menuOpen, setMenuOpen] = useState(false);
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
+  const logout = () => {
+    axios
+      .post(`${BACKSERVER}/auth/logout`, {}, { withCredentials: true })
+      .catch((err) => {
+        console.log(err);
+      })
+      .finally(() => {
+        clearAuthData();
+        setMenuOpen(false);
+        navigate('/auth/login');
+      });
+  };
 
   return (
     <div className={styles.wrap}>
@@ -52,8 +67,7 @@ export function TopUtilityIcons({ onSearch }) {
             type="button"
             onClick={() => {
               if (isLoggedIn) {
-                setIsLoggedIn(false);
-                navigate('/auth/login');
+                logout();
                 return;
               }
               navigate('/auth/login');

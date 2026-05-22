@@ -1,0 +1,140 @@
+package com.moodcast.member.service;
+
+import com.moodcast.member.dao.AuthDao;
+import com.moodcast.member.dto.login.LoginMemberResponse;
+import com.moodcast.member.dto.login.LoginRequest;
+import com.moodcast.member.dto.login.LoginResult;
+import com.moodcast.member.vo.Member;
+import io.jsonwebtoken.JwtException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.regex.Pattern;
+
+@Service
+public class AuthService {
+    @Autowired
+    private AuthDao authDao;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtService jwtService;
+
+    private static final Pattern EMAIL_PATTERN =
+            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            throw new IllegalArgumentException("이메일을 입력해주세요.");
+        }
+
+        email = email.trim().toLowerCase();
+
+        if (email.isEmpty()) {
+            throw new IllegalArgumentException("이메일을 입력해주세요.");
+        }
+
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
+        }
+
+        return email;
+    }
+
+    private String checkPasswordInput(String password) {
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("비밀번호를 입력해주세요.");
+        }
+
+        return password;
+    }
+
+    private void checkLoginAllowed(Member member) {
+        if (!"ACTIVE".equals(member.getStatus()) || member.getDeletedAt() != null) {
+            throw new IllegalArgumentException("로그인할 수 없는 계정입니다.");
+        }
+
+        if (!Integer.valueOf(1).equals(member.getEmailVerified())) {
+            throw new IllegalArgumentException("이메일 인증이 완료되지 않은 계정입니다.");
+        }
+
+        if (!Integer.valueOf(1).equals(member.getPhoneVerified())) {
+            throw new IllegalArgumentException("휴대폰 인증이 완료되지 않은 계정입니다.");
+        }
+    }
+
+    private LoginMemberResponse toLoginMemberResponse(Member member) {
+        return new LoginMemberResponse(
+                member.getMemberId(),
+                member.getEmail(),
+                member.getName(),
+                member.getNickname(),
+                member.getProfileImageUrl(),
+                member.getRole()
+        );
+    }
+
+    @Transactional
+    public LoginResult login(LoginRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("로그인 정보를 입력해주세요.");
+        }
+
+        String email = normalizeEmail(request.getEmail());
+        String password = checkPasswordInput(request.getPassword());
+
+        Member member = authDao.findMemberByEmail(email);
+
+        if (member == null || member.getPasswordHash() == null) {
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        boolean matches = passwordEncoder.matches(password, member.getPasswordHash());
+        if (!matches) {
+            throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+
+        checkLoginAllowed(member);
+
+        int result = authDao.updateLastLoginAt(member.getMemberId());
+        if (result != 1) {
+            throw new IllegalStateException("로그인 처리에 실패했습니다.");
+        }
+
+        String accessToken = jwtService.createAccessToken(member);
+        String refreshToken = jwtService.createRefreshToken(member);
+
+        return new LoginResult(accessToken, refreshToken, toLoginMemberResponse(member));
+    }
+
+    public LoginMemberResponse getLoginMember(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        String accessToken = authorizationHeader.substring(7).trim();
+
+        if (accessToken.isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        try {
+            Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
+            Member member = authDao.findMemberById(memberId);
+
+            if (member == null) {
+                throw new IllegalArgumentException("로그인 정보를 찾을 수 없습니다.");
+            }
+
+            checkLoginAllowed(member);
+
+            return toLoginMemberResponse(member);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 만료되었습니다. 다시 로그인해주세요.");
+        }
+    }
+}

@@ -10,6 +10,10 @@
         select count(*) from members where phone = #{phone}
     </select>
 
+    <select id="countByNickname">
+        select count(*) from members where nickname = #{nickname}
+    </select>
+
     <insert id="insertAuthCode">
         insert into auth_codes (
             member_id,
@@ -70,4 +74,103 @@
         and purpose = #{purpose}
         and created_at >= #{from}
     </select>
+
+    <select id="findActiveTerms" resultType="Terms">
+        select
+            terms_id,
+            terms_type,
+            version,
+            title,
+            content,
+            is_required,
+            is_active,
+            created_at
+        from terms
+        where is_active = 1
+        order by is_required desc, terms_id asc
+    </select>
+
+    <select id="findRequiredTerms" resultType="Terms">
+        select
+            terms_id,
+            terms_type,
+            version,
+            title,
+            content,
+            is_required,
+            is_active,
+            created_at
+        from terms
+        where is_active = 1
+          and is_required = 1
+        order by terms_id asc
+    </select>
+
+    <select id="countVerifiedEmailAuthCode">
+        select count(*)
+        from auth_codes
+        where target_type = 'EMAIL'
+        and target_value = #{email}
+        and purpose = 'SIGNUP'
+        and verified_at is not null
+        and used_at is null
+        and verified_at >= date_sub(now(6), interval 10 minute)
+    </select>
+
+
+    <select id="countVerifiedPhoneAuthCode">
+        select count(*)
+        from auth_codes
+        where target_type = 'PHONE'
+          and target_value = #{phone}
+          and purpose = 'SIGNUP'
+          and verified_at is not null
+          and used_at is null
+          and verified_at >= date_sub(now(6), interval 10 minute)
+    </select>
+
+    <insert id="insertMember" useGeneratedKeys="true" keyProperty="memberId">
+        insert into members (
+            email,
+            password_hash,
+            name,
+            nickname,
+            phone,
+            email_verified,
+            phone_verified
+        ) values (
+            #{email},
+            #{passwordHash},
+            #{name},
+            #{nickname},
+            #{phone},
+            #{emailVerified},
+            #{phoneVerified}
+        )
+    </insert>
+
+    <insert id="insertMemberTermsAgreement">
+        insert into member_terms_agreements (
+            member_id,
+            terms_id,
+            agreed,
+            agreed_at
+        ) values (
+            #{memberId},
+            #{termsId},
+            #{agreed},
+            case when #{agreed} = 1 then now(6) else null end
+        )
+    </insert>
+
+    <update id="updateAuthCodeUsed">
+        update auth_codes
+        set used_at = now(6)
+        where target_type = #{targetType}
+          and target_value = #{targetValue}
+          and purpose = #{purpose}
+          and verified_at is not null
+          and used_at is null
+          and verified_at >= date_sub(now(6), interval 10 minute)
+    </update>
 </mapper>

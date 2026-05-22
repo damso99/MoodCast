@@ -6,6 +6,13 @@ solapi:
   api-secret: ${SOLAPI_API_SECRET}
   sender-number: ${SOLAPI_SENDER_NUMBER}
 
+jwt:
+  secret: ${JWT_SECRET:moodcast-local-jwt-secret-key-2026-change-this-value}
+  issuer: ${JWT_ISSUER:moodcast}
+  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:30}
+  refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:14}
+  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:moodcast_refresh_token}
+
 spring:
   config:
     import: optional:file:.env[.properties]
@@ -28,10 +35,8 @@ spring:
           starttls:
             enable: true
 
-
 mybatis:
   mapper-locations: classpath:/mappers/**/*.xml
   type-aliases-package: com.moodcast.member.vo
   configuration:
     map-underscore-to-camel-case: true
-

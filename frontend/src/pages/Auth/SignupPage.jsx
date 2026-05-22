@@ -4,6 +4,11 @@ import axios from "axios";
 import { SignupView } from "./components/SignupView";
 
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+const nameRegex = /^[가-힣]{2,10}$/;
+const nicknameRegex = /^[가-힣A-Za-z0-9]{2,12}$/;
+const passwordRegex =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
+const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
 export const SignupPage = () => {
   const navigate = useNavigate();
@@ -41,11 +46,26 @@ export const SignupPage = () => {
     marketing: false,
   });
 
+  // 약관 목록
+  const [termsList, setTermsList] = useState([]);
+  // 선택된 약관
+  const [selectedTerm, setSelectedTerm] = useState(null);
+  const [termsLoading, setTermsLoading] = useState(false);
+  const [signupSubmitting, setSignupSubmitting] = useState(false);
+
   // 0: 인증 전, 1: 인증번호 발송 완료, 3: 인증 완료
   const [emailAuth, setEmailAuth] = useState(0);
   const [phoneAuth, setPhoneAuth] = useState(0);
 
+  // 이메일
   const [emailSendLoading, setEmailSendLoading] = useState(false);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  const [emailExpireTime, setEmailExpireTime] = useState(0);
+
+  // 휴대폰
+  const [phoneSendLoading, setPhoneSendLoading] = useState(false);
+  const [phoneCooldown, setPhoneCooldown] = useState(0);
+  const [phoneExpireTime, setPhoneExpireTime] = useState(0);
 
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState({
@@ -70,6 +90,78 @@ export const SignupPage = () => {
     }, 2500);
   };
 
+  // 이메일
+  useEffect(() => {
+    if (emailCooldown <= 0) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setEmailCooldown(emailCooldown - 1);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [emailCooldown]);
+
+  useEffect(() => {
+    if (emailExpireTime <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setEmailExpireTime(emailExpireTime - 1);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [emailExpireTime]);
+
+  // 휴대폰
+  useEffect(() => {
+    if (phoneCooldown <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setPhoneCooldown(phoneCooldown - 1);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [phoneCooldown]);
+
+  useEffect(() => {
+    if (phoneExpireTime <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setPhoneExpireTime(phoneExpireTime - 1);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [phoneExpireTime]);
+
+  const getTermsList = () => {
+    setTermsLoading(true);
+
+    return axios
+      .get(`${BACKSERVER}/signup/terms`)
+      .then((res) => {
+        const nextTermsList = res.data.terms || [];
+        setTermsList(nextTermsList);
+        return nextTermsList;
+      })
+      .finally(() => {
+        setTermsLoading(false);
+      });
+  };
+
   const inputSignup = (e) => {
     const name = e.target.name;
     const value = e.target.value;
@@ -79,15 +171,180 @@ export const SignupPage = () => {
       [name]: value,
     });
 
+    if (name === "name") {
+      const result = checkNameField(value);
+
+      setFieldMessage((prev) => ({
+        ...prev,
+        name: result.message,
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        name: result.status,
+      }));
+    }
+
+    if (name === "nickname") {
+      const result = checkNicknameField(value);
+
+      setFieldMessage((prev) => ({
+        ...prev,
+        nickname: result.message,
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        nickname: result.status,
+      }));
+    }
+
+    if (name === "password") {
+      const passwordResult = checkPasswordField(value);
+      const passwordConfirmResult = checkPasswordConfirmField(
+        value,
+        signup.passwordConfirm,
+      );
+
+      setFieldMessage((prev) => ({
+        ...prev,
+        password: passwordResult.message,
+        passwordConfirm: signup.passwordConfirm
+          ? passwordConfirmResult.message
+          : "",
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        password: passwordResult.status,
+        passwordConfirm: signup.passwordConfirm
+          ? passwordConfirmResult.status
+          : "",
+      }));
+    }
+
+    if (name === "passwordConfirm") {
+      const result = checkPasswordConfirmField(signup.password, value);
+
+      setFieldMessage((prev) => ({
+        ...prev,
+        passwordConfirm: result.message,
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        passwordConfirm: result.status,
+      }));
+    }
+
     if (name === "email") {
       setEmailAuth(0);
+      setEmailCooldown(0);
+      setEmailExpireTime(0);
     }
 
     if (name === "phone") {
       setPhoneAuth(0);
+      setPhoneCooldown(0);
+      setPhoneExpireTime(0);
     }
 
     setMessage("");
+  };
+
+  const checkNameField = (value) => {
+    const name = value.trim();
+
+    if (!name) {
+      return {
+        status: "invalid",
+        message: "이름을 입력해주세요.",
+      };
+    }
+
+    if (!nameRegex.test(name)) {
+      return {
+        status: "invalid",
+        message: "한글 2~10자로 입력해주세요.",
+      };
+    }
+
+    return {
+      status: "valid",
+      message: "올바른 이름 형식입니다.",
+    };
+  };
+
+  const checkNicknameField = (value) => {
+    const nickname = value.trim();
+
+    if (!nickname) {
+      return {
+        status: "",
+        message: "",
+      };
+    }
+
+    if (!nicknameRegex.test(nickname)) {
+      return {
+        status: "invalid",
+        message: "한글/영문/숫자 2~12자",
+      };
+    }
+
+    return {
+      status: "checking",
+      message: "닉네임 중복 확인 중입니다.",
+    };
+  };
+
+  const checkPasswordField = (value) => {
+    if (!value) {
+      return {
+        status: "invalid",
+        message: "비밀번호를 입력해주세요.",
+      };
+    }
+
+    if (!passwordRegex.test(value)) {
+      return {
+        status: "invalid",
+        message: "영문/숫자/특수문자 포함 8~20자",
+      };
+    }
+
+    return {
+      status: "valid",
+      message: "사용 가능한 비밀번호입니다.",
+    };
+  };
+
+  const checkPasswordConfirmField = (password, passwordConfirm) => {
+    if (!passwordConfirm) {
+      return {
+        status: "invalid",
+        message: "비밀번호 확인을 입력해주세요.",
+      };
+    }
+
+    if (!passwordRegex.test(password)) {
+      return {
+        status: "invalid",
+        message: "비밀번호 조건을 먼저 확인해주세요.",
+      };
+    }
+
+    if (password !== passwordConfirm) {
+      return {
+        status: "invalid",
+        message: "비밀번호가 일치하지 않습니다.",
+      };
+    }
+
+    return {
+      status: "valid",
+      message: "비밀번호가 일치합니다.",
+    };
   };
 
   useEffect(() => {
@@ -133,7 +390,7 @@ export const SignupPage = () => {
 
     const timer = setTimeout(() => {
       axios
-        .get(`${import.meta.env.VITE_BACKSERVER}/signup/check/email`, {
+        .get(`${BACKSERVER}/signup/check/email`, {
           params: {
             email: email,
           },
@@ -183,8 +440,109 @@ export const SignupPage = () => {
     };
   }, [signup.email]);
 
+  useEffect(() => {
+    const nickname = signup.nickname.trim();
+
+    if (!nickname) {
+      setFieldMessage((prev) => ({
+        ...prev,
+        nickname: "",
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        nickname: "",
+      }));
+
+      return;
+    }
+
+    if (!nicknameRegex.test(nickname)) {
+      setFieldMessage((prev) => ({
+        ...prev,
+        nickname: "한글/영문/숫자 2~12자",
+      }));
+
+      setFieldStatus((prev) => ({
+        ...prev,
+        nickname: "invalid",
+      }));
+
+      return;
+    }
+
+    setFieldMessage((prev) => ({
+      ...prev,
+      nickname: "닉네임 중복 확인 중입니다.",
+    }));
+
+    setFieldStatus((prev) => ({
+      ...prev,
+      nickname: "checking",
+    }));
+
+    const timer = setTimeout(() => {
+      axios
+        .get(`${BACKSERVER}/signup/check/nickname`, {
+          params: {
+            nickname: nickname,
+          },
+        })
+        .then((res) => {
+          if (res.data.available) {
+            setFieldMessage((prev) => ({
+              ...prev,
+              nickname: "사용 가능한 닉네임입니다.",
+            }));
+
+            setFieldStatus((prev) => ({
+              ...prev,
+              nickname: "valid",
+            }));
+          } else {
+            setFieldMessage((prev) => ({
+              ...prev,
+              nickname: "이미 사용 중인 닉네임입니다.",
+            }));
+
+            setFieldStatus((prev) => ({
+              ...prev,
+              nickname: "invalid",
+            }));
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+
+          setFieldMessage((prev) => ({
+            ...prev,
+            nickname:
+              err.response?.data?.message ||
+              "닉네임 확인 중 오류가 발생했습니다.",
+          }));
+
+          setFieldStatus((prev) => ({
+            ...prev,
+            nickname: "invalid",
+          }));
+        });
+    }, 500);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [signup.nickname]);
+
   const sendEmailAuthCode = () => {
     const email = signup.email.trim().toLowerCase();
+
+    if (emailSendLoading) {
+      return;
+    }
+    if (emailCooldown > 0) {
+      showToast("error", `${emailCooldown}초 후 다시 요청할 수 있습니다.`);
+      return;
+    }
 
     if (!email) {
       showToast("error", "이메일을 입력해주세요.");
@@ -196,13 +554,17 @@ export const SignupPage = () => {
       return;
     }
 
+    setEmailSendLoading(true);
+
     axios
-      .post(`${import.meta.env.VITE_BACKSERVER}/signup/auth/email/send`, {
+      .post(`${BACKSERVER}/signup/auth/email/send`, {
         email: email,
       })
       .then((res) => {
         console.log(res);
         setEmailAuth(1);
+        setEmailCooldown(60);
+        setEmailExpireTime(180);
         showToast("success", res.data.message);
       })
       .catch((err) => {
@@ -213,6 +575,9 @@ export const SignupPage = () => {
           err.response?.data?.message ||
             "이메일 인증 요청 중 오류가 발생했습니다.",
         );
+      })
+      .finally(() => {
+        setEmailSendLoading(false);
       });
   };
 
@@ -222,19 +587,25 @@ export const SignupPage = () => {
       return;
     }
 
+    if (emailExpireTime <= 0) {
+      showToast("error", "인증번호가 만료되었습니다. 다시 요청해주세요.");
+      return;
+    }
+
     if (!signup.emailCode.trim()) {
       showToast("error", "이메일 인증번호를 입력해주세요.");
       return;
     }
 
     axios
-      .post(`${import.meta.env.VITE_BACKSERVER}/signup/auth/email/verify`, {
+      .post(`${BACKSERVER}/signup/auth/email/verify`, {
         email: signup.email,
         authCode: signup.emailCode,
       })
       .then((res) => {
         console.log(res);
         setEmailAuth(3);
+        setEmailExpireTime(0);
         showToast("success", res.data.message);
       })
       .catch((err) => {
@@ -249,13 +620,20 @@ export const SignupPage = () => {
   };
 
   const movePhoneStep = () => {
-    if (!signup.name.trim()) {
-      showToast("error", "이름을 입력해주세요.");
+    const hasNickname = signup.nickname.trim().length > 0;
+
+    if (fieldStatus.name !== "valid") {
+      showToast("error", fieldMessage.name || "이름을 확인해주세요.");
       return;
     }
 
-    if (!signup.email.trim()) {
-      showToast("error", "이메일을 입력해주세요.");
+    if (hasNickname && fieldStatus.nickname !== "valid") {
+      showToast("error", fieldMessage.nickname || "닉네임을 확인해주세요.");
+      return;
+    }
+
+    if (fieldStatus.email !== "valid") {
+      showToast("error", fieldMessage.email || "이메일을 확인해주세요.");
       return;
     }
 
@@ -264,43 +642,78 @@ export const SignupPage = () => {
       return;
     }
 
-    if (!signup.password.trim() || !signup.passwordConfirm.trim()) {
-      showToast("error", "비밀번호를 입력해주세요.");
+    if (fieldStatus.password !== "valid") {
+      showToast("error", fieldMessage.password || "비밀번호를 확인해주세요.");
       return;
     }
 
-    if (signup.password !== signup.passwordConfirm) {
-      showToast("error", "비밀번호가 일치하지 않습니다.");
+    if (fieldStatus.passwordConfirm !== "valid") {
+      showToast(
+        "error",
+        fieldMessage.passwordConfirm || "비밀번호 확인을 입력해주세요.",
+      );
       return;
     }
-
-    setStep(2);
-    setMessage("");
+    axios
+      .post(`${BACKSERVER}/signup/validate/basic`, {
+        name: signup.name,
+        nickname: signup.nickname,
+        email: signup.email,
+        password: signup.password,
+        passwordConfirm: signup.passwordConfirm,
+      })
+      .then((res) => {
+        console.log(res);
+        setStep(2);
+        setMessage("");
+      })
+      .catch((err) => {
+        console.log(err);
+        showToast(
+          "error",
+          err.response?.data?.message ||
+            "기본 정보 확인 중 오류가 발생했습니다.",
+        );
+      });
   };
 
   const sendPhoneAuthCode = () => {
-    // 프론트 1차 빈값 체크
+    if (phoneSendLoading) {
+      return;
+    }
+
+    if (phoneCooldown > 0) {
+      showToast("error", `${phoneCooldown}초 후 다시 요청할 수 있습니다.`);
+      return;
+    }
+
     if (!signup.phone.trim()) {
       showToast("error", "휴대폰 번호를 입력해주세요.");
       return;
     }
+
+    setPhoneSendLoading(true);
+
     axios
-      .post(`${import.meta.env.VITE_BACKSERVER}/signup/auth/phone/send`, {
+      .post(`${BACKSERVER}/signup/auth/phone/send`, {
         phone: signup.phone,
       })
       .then((res) => {
-        console.log(res.data);
         setPhoneAuth(1);
+        setPhoneCooldown(60);
+        setPhoneExpireTime(180);
         showToast("success", res.data.message);
       })
       .catch((err) => {
-        console.log(err);
         setPhoneAuth(0);
         showToast(
           "error",
           err.response?.data?.message ||
-            "인증번호 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요",
+            "인증번호 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
         );
+      })
+      .finally(() => {
+        setPhoneSendLoading(false);
       });
   };
 
@@ -310,19 +723,24 @@ export const SignupPage = () => {
       return;
     }
 
+    if (phoneExpireTime <= 0) {
+      showToast("error", "인증번호가 만료되었습니다. 다시 요청해주세요.");
+      return;
+    }
+
     if (!signup.phoneCode.trim()) {
       showToast("error", "휴대폰 인증번호를 입력해주세요.");
       return;
     }
 
     axios
-      .post(`${import.meta.env.VITE_BACKSERVER}/signup/auth/phone/verify`, {
+      .post(`${BACKSERVER}/signup/auth/phone/verify`, {
         phone: signup.phone,
         authCode: signup.phoneCode,
       })
       .then((res) => {
-        console.log(res);
         setPhoneAuth(3);
+        setPhoneExpireTime(0);
         showToast("success", res?.data?.message);
       })
       .catch((err) => {
@@ -334,14 +752,37 @@ export const SignupPage = () => {
       });
   };
 
+  // 폰인증 -> 약관동의
   const moveTermsStep = () => {
     if (phoneAuth !== 3) {
       showToast("error", "휴대폰 인증을 완료해주세요.");
       return;
     }
 
-    setStep(3);
-    setMessage("");
+    axios
+      .post(`${BACKSERVER}/signup/validate/phone`, {
+        phone: signup.phone,
+      })
+      .then(() => {
+        return getTermsList();
+      })
+      .then((nextTermsList) => {
+        if (nextTermsList.length === 0) {
+          showToast("error", "등록된 약관 정보가 없습니다.");
+          return;
+        }
+
+        setStep(3);
+        setMessage("");
+      })
+      .catch((err) => {
+        console.log(err);
+        showToast(
+          "error",
+          err.response?.data?.message ||
+            "다음 단계 준비 중 오류가 발생했습니다.",
+        );
+      });
   };
 
   const movePrevStep = () => {
@@ -368,16 +809,87 @@ export const SignupPage = () => {
     });
   };
 
+  const openTermContent = (termsType) => {
+    const term = termsList.find((item) => item.termsType === termsType);
+
+    if (!term) {
+      showToast("error", "약관 내용을 찾을 수 없습니다.");
+      return;
+    }
+
+    setSelectedTerm(term);
+  };
+
+  const closeTermContent = () => {
+    setSelectedTerm(null);
+  };
+
+  const getAgreementList = () => {
+    return termsList.map((term) => {
+      let agreed = false;
+
+      if (term.termsType === "SERVICE") {
+        agreed = terms.service;
+      }
+
+      if (term.termsType === "PRIVACY") {
+        agreed = terms.privacy;
+      }
+
+      if (term.termsType === "MARKETING") {
+        agreed = terms.marketing;
+      }
+
+      return {
+        termsId: term.termsId,
+        agreed: agreed,
+      };
+    });
+  };
+
   const completeSignup = () => {
+    if (signupSubmitting) {
+      return;
+    }
+
+    if (termsList.length === 0) {
+      showToast("error", "약관 정보를 불러온 뒤 다시 시도해주세요.");
+      return;
+    }
+
     if (!terms.service || !terms.privacy) {
       showToast("error", "필수 약관에 동의해주세요.");
       return;
     }
 
-    showToast(
-      "success",
-      "프론트 회원가입 흐름 확인 완료. 이제 백엔드 API를 붙이면 됩니다.",
-    );
+    setSignupSubmitting(true);
+
+    axios
+      .post(`${BACKSERVER}/signup/complete`, {
+        name: signup.name,
+        nickname: signup.nickname,
+        email: signup.email,
+        password: signup.password,
+        passwordConfirm: signup.passwordConfirm,
+        phone: signup.phone,
+        agreements: getAgreementList(),
+      })
+      .then((res) => {
+        showToast("success", res.data.message);
+
+        setTimeout(() => {
+          navigate("/auth/login");
+        }, 700);
+      })
+      .catch((err) => {
+        showToast(
+          "error",
+          err.response?.data?.message || "회원가입 중 오류가 발생했습니다.",
+        );
+      })
+      .finally(() => {
+        setSignupSubmitting(false);
+      });
   };
 
   const showReadyMessage = (label) => {
@@ -411,6 +923,18 @@ export const SignupPage = () => {
       goLogin={goLogin}
       fieldMessage={fieldMessage}
       fieldStatus={fieldStatus}
+      emailSendLoading={emailSendLoading}
+      emailCooldown={emailCooldown}
+      emailExpireTime={emailExpireTime}
+      termsList={termsList}
+      selectedTerm={selectedTerm}
+      openTermContent={openTermContent}
+      closeTermContent={closeTermContent}
+      phoneSendLoading={phoneSendLoading}
+      phoneCooldown={phoneCooldown}
+      phoneExpireTime={phoneExpireTime}
+      termsLoading={termsLoading}
+      signupSubmitting={signupSubmitting}
     />
   );
 };
