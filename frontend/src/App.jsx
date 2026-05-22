@@ -40,7 +40,9 @@ function AppRoutes() {
       <Route path="/app/profile/edit" element={<ProfileEditPage />} />
       <Route path="/app/post/edit/:postId" element={<PostEditPage />} />
       <Route path="/app/followers" element={<FollowersPage />} />
+      <Route path="/app/followers/:memberId" element={<FollowersPage />} />
       <Route path="/app/following" element={<FollowingPage />} />
+      <Route path="/app/following/:memberId" element={<FollowingPage />} />
       <Route path="/app/user/:handle" element={<ProfilePage />} />
       <Route path="/app/settings" element={<SettingsPage />} />
       <Route path="/app/search" element={<SearchPage />} />

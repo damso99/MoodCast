@@ -1,34 +1,74 @@
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
-import { useNavigate } from 'react-router-dom';
-import { following } from '../../data/moodcastData';
+import { useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './FollowPage.module.css';
 
 export function FollowingPage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
+  const params = useParams();
+  const { member: currentMember, accessToken: token } = useAuthStore();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('name');
-  const [items, setItems] = useState(following);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  
+  // 프로필 주인의 ID 가져오기
+  const targetId = params.memberId || currentMember?.memberId;
+
+  const fetchData = useCallback(() => {
+    if (!targetId) return;
+    setLoading(true);
+    
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    
+    axios.get(`${BACKSERVER}/auth/follow/following/${targetId}`, config)
+      .then(res => {
+        setItems(res.data);
+      })
+      .catch(err => console.error('팔로잉 목록 조회 실패:', err))
+      .finally(() => setLoading(false));
+  }, [targetId, BACKSERVER, token]);
 
   useEffect(() => {
-    setItems(following);
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const result = items.filter((user) => `${user.name} ${user.handle}`.toLowerCase().includes(normalized));
+    const result = items.filter((user) => 
+      `${user.name} ${user.nickname}`.toLowerCase().includes(normalized)
+    );
 
     if (sort === 'name') {
-      return [...result].sort((a, b) => a.name.localeCompare(b.name));
+      return [...result].sort((a, b) => (a.nickname || a.name).localeCompare(b.nickname || b.name));
     }
     return [...result];
   }, [items, query, sort]);
 
   const toggleFollow = (id) => {
-    setItems((prev) => prev.map((user) => (user.id === id ? { ...user, isFollowing: !user.isFollowing } : user)));
+    if (!token) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    axios.post(`${BACKSERVER}/auth/follow/${id}`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then((res) => {
+      // 서버에서 전달해준 최신 팔로우 상태(res.data.following)를 반영하여 
+      // 로컬 상태만 업데이트 (목록에서 바로 사라지지 않게 함)
+      setItems(prev => prev.map(item => 
+        item.memberId === id ? { ...item, isFollowing: res.data.following } : item
+      ));
+    })
+    .catch(err => console.error('팔로우 토글 실패:', err));
   };
 
   const content = (
@@ -37,10 +77,10 @@ export function FollowingPage() {
         <strong>팔로잉</strong>
         <p>내가 팔로우하고 있는 사람들의 목록입니다.</p>
         <div className={styles.tabs}>
-          <button type="button" className={styles.tab} onClick={() => navigate('/app/followers')}>
+          <button type="button" className={styles.tab} onClick={() => navigate(`/app/followers/${targetId}`)}>
             팔로워
           </button>
-          <button type="button" className={styles.activeTab} onClick={() => navigate('/app/following')}>
+          <button type="button" className={styles.activeTab} onClick={() => navigate(`/app/following/${targetId}`)}>
             팔로잉
           </button>
         </div>
@@ -63,25 +103,53 @@ export function FollowingPage() {
         </div>
       </div>
       <div className={styles.list}>
-        {filtered.map((user) => (
-          <article key={user.id} className={styles.item} onClick={() => navigate(`/app/user/${user.handle.slice(1)}`)}>
-            <div className={styles.avatar}>{user.avatar}</div>
-            <div className={styles.userInfo}>
-              <strong>{user.name}</strong>
-              <span>{user.handle}</span>
-            </div>
-            <button
-              type="button"
-              className={styles.unfollowButton}
-              onClick={(event) => {
-                event.stopPropagation();
-                toggleFollow(user.id);
-              }}
-            >
-              언팔로우
-            </button>
-          </article>
-        ))}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px' }}>불러오는 중...</div>
+        ) : filtered.length > 0 ? (
+          filtered.map((user) => (
+            <article key={user.memberId} className={styles.item} onClick={() => navigate(`/app/user/${user.memberId}`)}>
+              <div className={styles.avatar}>
+                {user.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt={user.nickname || user.name} style={{width:'100%', height:'100%', borderRadius:'50%'}} />
+                ) : (
+                  (user.nickname || user.name).charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className={styles.userInfo}>
+                <strong>{user.nickname || user.name}</strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>@{user.email ? user.email.split('@')[0] : user.memberId}</span>
+                  {user.followsMe && (
+                    <em style={{ 
+                      fontSize: '11px', 
+                      background: '#eee', 
+                      padding: '2px 6px', 
+                      borderRadius: '4px', 
+                      fontStyle: 'normal',
+                      color: '#666'
+                    }}>나를 팔로우함</em>
+                  )}
+                </div>
+              </div>
+              
+              {/* 본인이 아닐 때만 팔로우 버튼 표시 */}
+              {currentMember?.memberId !== user.memberId && (
+                <button
+                  type="button"
+                  className={user.isFollowing ? styles.unfollowButton : styles.followButton}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleFollow(user.memberId);
+                  }}
+                >
+                  {user.isFollowing ? '언팔로우' : '팔로우'}
+                </button>
+              )}
+            </article>
+          ))
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#666' }}>목록이 비어 있습니다.</div>
+        )}
       </div>
     </section>
   );

@@ -28,10 +28,12 @@
             member_id as memberId,
             name,
             nickname,
+            email,
             profile_image_url as profileImageUrl
         from members
         where lower(name) like concat('%', lower(#{query}), '%')
            or lower(nickname) like concat('%', lower(#{query}), '%')
+           or lower(email) like concat('%', lower(#{query}), '%')
         order by name asc
         limit 50
     </select>

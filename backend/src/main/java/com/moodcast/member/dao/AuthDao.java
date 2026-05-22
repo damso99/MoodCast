@@ -15,4 +15,17 @@ public interface AuthDao {
     int updateMemberProfile(@Param("memberId") Long memberId,
                              @Param("nickname") String nickname,
                              @Param("bio") String bio);
+
+    // 팔로우 관련
+    int isFollowing(@Param("followerId") Long followerId, @Param("followingId") Long followingId);
+    int follow(@Param("followerId") Long followerId, @Param("followingId") Long followingId);
+    int unfollow(@Param("followerId") Long followerId, @Param("followingId") Long followingId);
+    long countFollowers(@Param("memberId") Long memberId);
+    long countFollowing(@Param("memberId") Long memberId);
+    long countPosts(@Param("memberId") Long memberId);
+    long countSavedPosts(@Param("memberId") Long memberId);
+
+    // 상세 리스트 조회
+    java.util.List<com.moodcast.member.dto.follow.FollowItemResponse> getFollowerList(@Param("targetId") Long targetId, @Param("loginId") Long loginId);
+    java.util.List<com.moodcast.member.dto.follow.FollowItemResponse> getFollowingList(@Param("targetId") Long targetId, @Param("loginId") Long loginId);
 }

@@ -129,20 +129,32 @@
 
 .followButton,
 .unfollowButton {
-  min-height: 42px;
+  min-height: 38px;
+  min-width: 90px;
   padding: 0 16px;
-  border: 0;
-  border-radius: 14px;
+  border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .followButton {
-  background: #eef2ff;
-  color: #3730a3;
+  background: #0095f6;
+  color: white;
+  border: none;
+}
+
+.followButton:hover {
+  background: #1877f2;
 }
 
 .unfollowButton {
-  background: linear-gradient(135deg, #ff5a7a, #ec24c7);
+  background: #ff4d4f;
   color: white;
+  border: none;
+}
+
+.unfollowButton:hover {
+  background: #ff7875;
 }

@@ -135,8 +135,33 @@ export function SearchModal({ open, onClose }) {
                       navigate(`/app/user/${item.memberId}`); // 사용자의 고유 ID를 경로로 사용해 이동합니다.
                     }}
                   >
-                    <strong>{item.nickname || item.name}</strong>
-                    <p>{item.name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '50%', 
+                        backgroundColor: '#eee', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        color: '#999',
+                        overflow: 'hidden'
+                      }}>
+                        {item.profileImageUrl ? (
+                          <img src={item.profileImageUrl} alt={item.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          (item.nickname || item.name || '?').charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div>
+                        <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
+                        <span style={{ fontSize: '12px', color: '#888' }}>
+                          @{item.email ? item.email.split('@')[0] : item.memberId}
+                        </span>
+                      </div>
+                    </div>
                   </article>
                 );
               }
