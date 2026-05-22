@@ -1,15 +1,59 @@
-import { DesktopShell } from '../../components/layout/DesktopShell';
-import { MobileShell } from '../../components/layout/MobileShell';
-import { chatMessages, chatThreads } from '../../data/moodcastData';
-import { useIsDesktop } from '../../hooks/useViewportWidth';
-import { useState } from 'react';
-import styles from './MoodChatPage.module.css';
+import { DesktopShell } from "../../components/layout/DesktopShell";
+import { MobileShell } from "../../components/layout/MobileShell";
+import { chatMessages, chatThreads } from "../../data/moodcastData";
+import { useIsDesktop } from "../../hooks/useViewportWidth";
+import { useEffect, useState } from "react";
+import styles from "./MoodChatPage.module.css";
+import axios from "axios";
+import.meta.env.VITE_BACKSERVER;
 
 function ChatBody({ desktop }) {
   const [activeThreadId, setActiveThreadId] = useState(chatThreads[0].id);
   const messages = chatMessages[activeThreadId];
-  const activeThread = chatThreads.find((thread) => thread.id === activeThreadId);
+  const activeThread = chatThreads.find(
+    (thread) => thread.id === activeThreadId,
+  );
+  const [post, setPosts] = useState();
+  const [message, setMessage] = useState("");
+  const handleSend = async () => {
+    if (message.trim() === "") return;
 
+    const messageObj = {
+      content: message,
+      senderId: 1, // 보내는 아이디
+      receiverId: activeThread.id, // 받는 아이디
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log(messageObj);
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKSERVER}/chat/send`,
+        messageObj,
+      );
+
+      console.log("성공", response.data);
+
+      setMessage("");
+    } catch (error) {
+      console.log("실패", error);
+    }
+  };
+  useEffect(() => {
+    const getPosts = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKSERVER}/chat/messages`,
+        );
+        console.log(response.data);
+        setPosts(response.data);
+      } catch (error) {
+        console.error("게시글 조회 실패:", error);
+      }
+    };
+    getPosts();
+  }, []);
   if (!desktop) {
     return (
       <section className={styles.mobileChat}>
@@ -18,7 +62,12 @@ function ChatBody({ desktop }) {
         </div>
         <div className={styles.threadList}>
           {chatThreads.map((thread) => (
-            <button key={thread.id} type="button" className={`${styles.threadItem} ${thread.id === activeThreadId ? styles.active : ''}`} onClick={() => setActiveThreadId(thread.id)}>
+            <button
+              key={thread.id}
+              type="button"
+              className={`${styles.threadItem} ${thread.id === activeThreadId ? styles.active : ""}`}
+              onClick={() => setActiveThreadId(thread.id)}
+            >
               <div>
                 <strong>{thread.name}</strong>
                 <p>{thread.preview}</p>
@@ -29,7 +78,10 @@ function ChatBody({ desktop }) {
         </div>
         <div className={styles.messages}>
           {messages.map((message) => (
-            <div key={message.id} className={`${styles.bubble} ${message.sender === 'me' ? styles.me : styles.them}`}>
+            <div
+              key={message.id}
+              className={`${styles.bubble} ${message.sender === "me" ? styles.me : styles.them}`}
+            >
               <p>{message.text}</p>
               <span>{message.time}</span>
             </div>
@@ -52,7 +104,12 @@ function ChatBody({ desktop }) {
       <div className={styles.grid}>
         <aside className={styles.threadList}>
           {chatThreads.map((thread) => (
-            <button key={thread.id} type="button" className={`${styles.threadItem} ${thread.id === activeThreadId ? styles.active : ''}`} onClick={() => setActiveThreadId(thread.id)}>
+            <button
+              key={thread.id}
+              type="button"
+              className={`${styles.threadItem} ${thread.id === activeThreadId ? styles.active : ""}`}
+              onClick={() => setActiveThreadId(thread.id)}
+            >
               <div>
                 <strong>{thread.name}</strong>
                 <p>{thread.preview}</p>
@@ -68,15 +125,24 @@ function ChatBody({ desktop }) {
           </div>
           <div className={styles.messages}>
             {messages.map((message) => (
-              <div key={message.id} className={`${styles.bubble} ${message.sender === 'me' ? styles.me : styles.them}`}>
+              <div
+                key={message.id}
+                className={`${styles.bubble} ${message.sender === "me" ? styles.me : styles.them}`}
+              >
                 <p>{message.text}</p>
                 <span>{message.time}</span>
               </div>
             ))}
           </div>
           <div className={styles.composer}>
-            <input placeholder="메시지를 입력하세요" />
-            <button type="button">보내기</button>
+            <input
+              placeholder="메시지를 입력하세요"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <button type="button" onClick={handleSend}>
+              보내기
+            </button>
           </div>
         </div>
       </div>

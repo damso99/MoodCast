@@ -1,0 +1,11 @@
+package com.moodcast.moodchat.vo;
+
+import lombok.Data;
+
+@Data
+public class ChatVo {
+    private int senderId;
+    private int receiverId;
+    private String content;
+    private String createdAt;
+}
