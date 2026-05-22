@@ -65,6 +65,14 @@ export function ProfilePage() {
   const displayName = user?.nickname || user?.name || 'MoodCast 사용자';
   const displayInitial = displayName.charAt(0).toUpperCase();
   const displayText = user?.bio || (isOwnProfile ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.' : '안녕하세요! MoodCast 사용자입니다.');
+  const handleChatClick = () => {
+    const searchParams = new URLSearchParams({
+      partnerId: String(targetId),
+      partnerName: displayName,
+    });
+
+    navigate(`/app/chat?${searchParams.toString()}`);
+  };
 
   const content = (
     <section className={styles.wrap}>
@@ -88,7 +96,7 @@ export function ProfilePage() {
         ) : (
           <div className={styles.actionsRich}>
             <button type="button" className={styles.followBtn}>팔로잉 하기</button>
-            <button type="button" className={styles.chatBtn}>채팅하기</button>
+            <button type="button" className={styles.chatBtn} onClick={handleChatClick}>채팅하기</button>
           </div>
         )}
       </article>

@@ -104,6 +104,62 @@
   font-weight: 900;
 }
 
+.userCell {
+  display: grid;
+  gap: 4px;
+}
+
+.userCell strong {
+  color: #111827;
+  font-size: 0.92rem;
+}
+
+.userCell span {
+  color: #667085;
+  font-size: 0.78rem;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: #039855;
+  font-size: 0.78rem;
+  font-weight: 900;
+  background: rgba(209, 250, 223, 0.9);
+}
+
+.warningBadge {
+  color: #b54708;
+  background: rgba(254, 240, 199, 0.95);
+}
+
+.tableActionButton {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(124, 77, 255, 0.16);
+  border-radius: 10px;
+  color: #633df2;
+  font-size: 0.8rem;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.08);
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.tableActionButton:hover {
+  background: rgba(124, 77, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.tableActionButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
 @media (max-width: 1120px) {
   .metricGrid,
   .infoGrid {

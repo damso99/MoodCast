@@ -55,22 +55,29 @@
           )
         order by created_at asc, chat_id asc
     </select>
-    <insert id="insertChat" parameterType="com.moodcast.moodchat.vo.ChatVo">
+    <insert id="insertChat" parameterType="com.moodcast.moodchat.vo.ChatVo" useGeneratedKeys="true" keyProperty="chatId">
         INSERT INTO chat_tbl (
             sender_id,
             receiver_id,
             content,
             is_read,
-            deleted_yn,
-            created_at
+            deleted_yn
         )
         VALUES (
                    #{senderId},
                    #{receiverId},
                    #{content},
                    COALESCE(#{isRead}, 0),
-                   0,
-                   COALESCE(#{createdAt}, now(6))
+                   0
                )
     </insert>
+
+    <update id="updateMessagesRead">
+        update chat_tbl
+        set is_read = 1
+        where receiver_id = #{memberId}
+          and sender_id = #{partnerId}
+          and is_read = 0
+          and deleted_yn = 0
+    </update>
 </mapper>

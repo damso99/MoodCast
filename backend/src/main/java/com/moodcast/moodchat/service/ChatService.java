@@ -16,8 +16,9 @@ public class ChatService {
     @Autowired
     private ChatDao chatDao;
 
-    public int insertChat(ChatVo chatVo) {
-        return chatDao.insertChat(chatVo);
+    public ChatVo insertChat(ChatVo chatVo) {
+        chatDao.insertChat(chatVo);
+        return chatVo;
     }
 
     public List<ChatThreadVo> selectChatThreads(Long memberId) {
@@ -26,5 +27,9 @@ public class ChatService {
 
     public List<ChatVo> selectChatMessages(Long memberId, Long partnerId) {
         return chatDao.selectChatMessages(memberId, partnerId);
+    }
+
+    public int markMessagesAsRead(Long memberId, Long partnerId) {
+        return chatDao.updateMessagesRead(memberId, partnerId);
     }
 }

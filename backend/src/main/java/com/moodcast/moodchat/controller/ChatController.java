@@ -34,8 +34,17 @@ public class ChatController {
     }
 
     @PostMapping("/send")
-    public String sendMessage(@RequestBody ChatVo chatVo) {
-        chatService.insertChat(chatVo);
-        return "success";
+    public ResponseEntity<?> sendMessage(@RequestBody ChatVo chatVo) {
+        ChatVo savedChat = chatService.insertChat(chatVo);
+        return ResponseEntity.ok(savedChat);
+    }
+
+    @PostMapping("/read")
+    public ResponseEntity<?> markMessagesAsRead(
+        @RequestParam Long memberId,
+        @RequestParam Long partnerId
+    ) {
+        int updatedCount = chatService.markMessagesAsRead(memberId, partnerId);
+        return ResponseEntity.ok(updatedCount);
     }
 }

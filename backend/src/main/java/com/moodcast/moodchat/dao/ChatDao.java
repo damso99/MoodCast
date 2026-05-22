@@ -17,4 +17,9 @@ public interface ChatDao {
         @Param("memberId") Long memberId,
         @Param("partnerId") Long partnerId
     );
+
+    int updateMessagesRead(
+        @Param("memberId") Long memberId,
+        @Param("partnerId") Long partnerId
+    );
 }

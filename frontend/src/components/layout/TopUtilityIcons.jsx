@@ -7,6 +7,7 @@ import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
 import styles from './TopUtilityIcons.module.css';
 
 const defaultAvatarSrc =
@@ -39,10 +40,11 @@ export function TopUtilityIcons({ onSearch }) {
   // 버튼 자체를 클릭했을 때 닫히는 현상을 방지하기 위한 버튼 참조임
   const profileBtnRef = useRef(null);
   const bellBtnRef = useRef(null);
-
-  const notifications = [];
+  const { notifications, unreadCount, removeNotification, clearNotifications } = useRealtimeNotifications(
+    isLoggedIn ? member?.memberId : null,
+  );
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
-  const hasUnreadNotifications = notifications.length > 0;
+  const hasUnreadNotifications = unreadCount > 0;
 
   // 화면의 다른 곳을 눌렀을 때 메뉴를 닫아주는 기능임
   useEffect(() => {
@@ -97,6 +99,21 @@ export function TopUtilityIcons({ onSearch }) {
     navigate('/auth/login');
   };
 
+  const openChatFromNotification = (notification) => {
+    if (!notification?.senderId) {
+      return;
+    }
+
+    const searchParams = new URLSearchParams({
+      partnerId: String(notification.senderId),
+      partnerName: notification.senderNickname || notification.senderName || `회원 ${notification.senderId}`,
+    });
+
+    removeNotification(notification.id);
+    setNotificationOpen(false);
+    navigate(`/app/chat?${searchParams.toString()}`);
+  };
+
   return (
     <div className={styles.wrap}>
       <button type="button" className={styles.search} onClick={onSearch} aria-label="검색">
@@ -118,7 +135,34 @@ export function TopUtilityIcons({ onSearch }) {
       {notificationOpen ? (
         <div className={styles.notificationCard} ref={notificationRef}>
           <strong>알림</strong>
-          <p>알림이 없습니다.</p>
+          {notifications.length > 0 ? (
+            <>
+              <div className={styles.notificationList}>
+                {notifications.map((notification) => (
+                  <button
+                    key={notification.id}
+                    type="button"
+                    className={styles.notificationItem}
+                    onClick={() => openChatFromNotification(notification)}
+                  >
+                    <span className={styles.notificationTitle}>
+                      {notification.senderNickname || notification.senderName || `회원 ${notification.senderId}`}
+                    </span>
+                    <span className={styles.notificationPreview}>{notification.content}</span>
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className={styles.notificationClear}
+                onClick={clearNotifications}
+              >
+                모두 지우기
+              </button>
+            </>
+          ) : (
+            <p>알림이 없습니다.</p>
+          )}
         </div>
       ) : null}
 

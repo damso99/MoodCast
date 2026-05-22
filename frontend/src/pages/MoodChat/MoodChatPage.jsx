@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
+import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
 import { DesktopShell } from "../../components/layout/DesktopShell";
 import { MobileShell } from "../../components/layout/MobileShell";
 import { useAuthStore } from "../../hooks/useAuthStore";
+import { useRealtimeChat } from "../../hooks/useRealtimeChat";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
+import { useSearchParams } from "react-router-dom";
 import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
@@ -47,10 +53,16 @@ function normalizeIncomingMessage(message, currentUserId) {
 
 function ChatBody({ desktop }) {
   const { member } = useAuthStore();
+  const [searchParams] = useSearchParams();
   const currentMemberId = useMemo(() => {
     const memberId = Number(member?.memberId);
     return Number.isFinite(memberId) && memberId > 0 ? memberId : DEFAULT_CURRENT_USER_ID;
   }, [member?.memberId]);
+  const initialPartnerId = useMemo(() => {
+    const partnerId = Number(searchParams.get("partnerId"));
+    return Number.isFinite(partnerId) && partnerId > 0 ? partnerId : null;
+  }, [searchParams]);
+  const initialPartnerName = searchParams.get("partnerName") || "";
   const messageListRef = useRef(null);
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
@@ -61,6 +73,63 @@ function ChatBody({ desktop }) {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
+  const handleIncomingMessage = (incomingMessage) => {
+    const normalizedMessage = normalizeIncomingMessage(incomingMessage, currentMemberId);
+    const incomingPartnerId =
+      normalizedMessage.senderId === currentMemberId
+        ? normalizedMessage.receiverId
+        : normalizedMessage.senderId;
+    const isActiveThreadMessage =
+      activeThread &&
+      Number(activeThread.partnerMemberId) === Number(incomingPartnerId) &&
+      (normalizedMessage.senderId === currentMemberId || normalizedMessage.receiverId === currentMemberId);
+
+    setMessages((previousMessages) => {
+      if (previousMessages.some((item) => item.id === normalizedMessage.id)) {
+        return previousMessages;
+      }
+
+      if (!isActiveThreadMessage) {
+        return previousMessages;
+      }
+
+      return [...previousMessages, normalizedMessage];
+    });
+
+    if (isActiveThreadMessage && normalizedMessage.receiverId === currentMemberId) {
+      markMessagesAsRead(incomingPartnerId).then(loadThreads);
+      return;
+    }
+
+    loadThreads();
+  };
+
+  const { connected: isChatConnected, sendMessage } = useRealtimeChat(currentMemberId, handleIncomingMessage);
+
+  const markMessagesAsRead = async (partnerId) => {
+    if (!currentMemberId || !partnerId) {
+      return;
+    }
+
+    try {
+      await axios.post(`${API_BASE}/chat/read`, null, {
+        params: {
+          memberId: currentMemberId,
+          partnerId,
+        },
+      });
+
+      setThreads((previousThreads) =>
+        previousThreads.map((thread) =>
+          Number(thread.partnerMemberId) === Number(partnerId)
+            ? { ...thread, unreadCount: 0 }
+            : thread,
+        ),
+      );
+    } catch (requestError) {
+      console.error("메시지 읽음 처리 실패", requestError);
+    }
+  };
 
   const loadThreads = async () => {
     if (!currentMemberId) {
@@ -95,6 +164,8 @@ function ChatBody({ desktop }) {
     setError("");
 
     try {
+      await markMessagesAsRead(partnerThread.partnerMemberId);
+
       const response = await axios.get(`${API_BASE}/chat/messages`, {
         params: {
           memberId: currentMemberId,
@@ -103,6 +174,7 @@ function ChatBody({ desktop }) {
       });
       const list = Array.isArray(response.data) ? response.data : [];
       setMessages(list.map((item) => normalizeIncomingMessage(item, currentMemberId)));
+      await loadThreads();
     } catch (requestError) {
       console.error("메시지 조회 실패", requestError);
       setMessages([]);
@@ -116,6 +188,28 @@ function ChatBody({ desktop }) {
     loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMemberId]);
+
+  useEffect(() => {
+    if (!currentMemberId || !initialPartnerId) {
+      return;
+    }
+
+    const partnerThread = {
+      partnerMemberId: initialPartnerId,
+      partnerName: initialPartnerName || `회원 ${initialPartnerId}`,
+      partnerNickname: initialPartnerName || `회원 ${initialPartnerId}`,
+      partnerProfileImageUrl: "",
+      lastMessage: "",
+      lastMessageAt: "",
+      unreadCount: 0,
+    };
+
+    setActiveThread(partnerThread);
+    setIsRoomOpen(true);
+    setMessage("");
+    loadMessages(partnerThread);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMemberId, initialPartnerId, initialPartnerName]);
 
   useEffect(() => {
     const messageListElement = messageListRef.current;
@@ -152,30 +246,25 @@ function ChatBody({ desktop }) {
     setIsSending(true);
     setError("");
 
-    const createdAt = new Date().toISOString();
-    const draftMessage = {
-      id: `draft-${Date.now()}`,
-      sender: "me",
-      text: trimmedMessage,
-      time: formatMessageTime(createdAt),
-      senderId: currentMemberId,
-      receiverId: activeThread.partnerMemberId,
-      createdAt,
-      isRead: 0,
-    };
-
     try {
-      await axios.post(`${API_BASE}/chat/send`, {
+      const isPublished = sendMessage({
         content: trimmedMessage,
         senderId: currentMemberId,
         receiverId: activeThread.partnerMemberId,
-        createdAt,
         isRead: 0,
       });
 
-      setMessages((prevMessages) => [...prevMessages, draftMessage]);
+      if (!isPublished) {
+        await axios.post(`${API_BASE}/chat/send`, {
+          content: trimmedMessage,
+          senderId: currentMemberId,
+          receiverId: activeThread.partnerMemberId,
+          isRead: 0,
+        });
+        await loadMessages(activeThread);
+      }
+
       setMessage("");
-      await loadMessages(activeThread);
       await loadThreads();
     } catch (requestError) {
       console.error("메시지 전송 실패", requestError);
@@ -189,6 +278,8 @@ function ChatBody({ desktop }) {
     event.preventDefault();
     await handleSend();
   };
+  const partnerName = activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
+  const partnerInitial = partnerName.charAt(0).toUpperCase();
 
   const threadList = (
     <div className={styles.threadList}>
@@ -226,12 +317,24 @@ function ChatBody({ desktop }) {
       {messages.map((item) => (
         <div
           key={item.id}
-          className={`${styles.messageItem} ${item.sender === "me" ? styles.me : styles.them}`}
+          className={`${styles.messageRow} ${item.sender === "me" ? styles.me : styles.them}`}
         >
-          <div className={styles.bubble}>
-            <p>{item.text}</p>
+          {item.sender === "them" ? (
+            <div className={styles.messageAvatar}>{partnerInitial}</div>
+          ) : null}
+          <div className={`${styles.messageItem} ${item.sender === "me" ? styles.me : styles.them}`}>
+          {item.sender === "them" ? (
+            <span className={styles.senderLabel}>
+              {partnerName}
+            </span>
+          ) : null}
+          <div className={styles.bubbleWrap}>
+            <div className={styles.bubble}>
+              <p>{item.text}</p>
+            </div>
+            <span className={styles.messageTime}>{item.time}</span>
           </div>
-          <span className={styles.messageTime}>{item.time}</span>
+          </div>
         </div>
       ))}
     </div>
@@ -239,19 +342,35 @@ function ChatBody({ desktop }) {
 
   const composer = (
     <form className={styles.composer} onSubmit={handleSubmit}>
-      <input
-        placeholder="메시지를 입력하세요"
-        value={message}
-        onChange={(event) => setMessage(event.target.value)}
-        disabled={isSending || !activeThread}
-      />
+      <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+        <AddRoundedIcon />
+        <input type="file" accept="image/*" />
+      </label>
+      <div className={styles.inputShell}>
+        <input
+          placeholder="메시지를 입력하세요..."
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          disabled={isSending || !activeThread}
+        />
+        <button
+          type="button"
+          className={styles.emojiButton}
+          aria-label="이모티콘"
+          title="이모티콘"
+          disabled={!activeThread}
+        >
+          <SentimentSatisfiedAltRoundedIcon />
+        </button>
+      </div>
       <button
         type="submit"
+        className={styles.sendButton}
         aria-label="메시지 보내기"
         title="메시지 보내기"
         disabled={isSending || !activeThread}
       >
-        <SendRoundedIcon fontSize="small" />
+        <SendRoundedIcon />
       </button>
     </form>
   );
@@ -259,9 +378,18 @@ function ChatBody({ desktop }) {
   const chatRoom = (
     <div className={styles.room}>
       <div className={styles.roomHeader}>
+        <div className={styles.headerAvatar}>{partnerInitial}</div>
         <div className={styles.roomTitle}>
-          <strong>{activeThread?.partnerNickname || activeThread?.partnerName || "Conversation"}</strong>
-          <span>{activeThread?.lastMessageAt ? formatMessageTime(activeThread.lastMessageAt) : ""}</span>
+          <strong>{partnerName}</strong>
+          <span>{isChatConnected ? "지금, 실시간으로 연결 중" : "연결을 준비하는 중"}</span>
+        </div>
+        <div className={styles.headerActions}>
+          <button type="button" aria-label="전화">
+            <PhoneRoundedIcon />
+          </button>
+          <button type="button" aria-label="더보기">
+            <MoreVertRoundedIcon />
+          </button>
         </div>
         <button type="button" className={styles.backButton} onClick={handleExitRoom}>
           나가기
@@ -293,7 +421,7 @@ function ChatBody({ desktop }) {
     <section className={styles.desktopChat}>
       <div className={styles.hero}>
         <strong>Mood Chat</strong>
-        <p>오늘의 감정을 나눠보세요.</p>
+        <p>{isChatConnected ? "실시간 연결됨" : "연결을 시도하는 중입니다."}</p>
       </div>
       {!isRoomOpen ? (
         <div className={styles.listView}>
