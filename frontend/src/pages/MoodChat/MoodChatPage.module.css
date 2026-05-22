@@ -1,11 +1,24 @@
 .desktopChat {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 18px;
+  height: calc(100vh - 48px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .mobileChat {
   display: grid;
   gap: 14px;
+  min-height: 0;
+}
+
+.mobileListView {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  min-height: 0;
 }
 
 .hero {
@@ -38,13 +51,17 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 0;
 }
 
-.listView,
+.listView {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 .roomView {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .threadList {
@@ -138,27 +155,33 @@
 }
 
 .room {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
+  height: 100%;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
   padding: 22px;
   border-radius: 28px;
-  background:
-    radial-gradient(circle at 0% 0%, rgba(224, 247, 242, 0.8), transparent 34%),
-    radial-gradient(circle at 100% 12%, rgba(242, 232, 255, 0.74), transparent 32%),
-    rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(17, 24, 39, 0.085);
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.055);
 }
 
 .roomHeader {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding-bottom: 4px;
+  gap: 12px;
+  margin: -10px -10px 0;
+  padding: 12px 12px 14px;
+  border-radius: 22px 22px 16px 16px;
+  background: rgba(255, 255, 255, 0.76);
+  border-bottom: 1px solid rgba(17, 24, 39, 0.075);
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.045);
+  backdrop-filter: blur(14px);
 }
 
 .headerAvatar,
@@ -173,9 +196,9 @@
 }
 
 .headerAvatar {
-  width: 52px;
-  height: 52px;
-  font-size: 1.12rem;
+  width: 44px;
+  height: 44px;
+  font-size: 1rem;
 }
 
 .messageAvatar {
@@ -193,7 +216,7 @@
 }
 
 .roomTitle strong {
-  font-size: 1.12rem;
+  font-size: 1.04rem;
 }
 
 .headerActions {
@@ -215,13 +238,17 @@
 }
 
 .backButton {
-  min-height: 36px;
-  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 50%;
   background: rgba(17, 24, 39, 0.06);
-  color: #111827;
-  font-weight: 700;
+  color: #7c4dff;
   cursor: pointer;
 }
 
@@ -229,14 +256,15 @@
   --message-time-width: 58px;
   --message-avatar-space: 48px;
   display: flex;
-  flex: 1;
+  flex: 1 1 auto;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 18px;
+  height: 0;
   min-height: 0;
-  min-height: 520px;
   overflow-y: auto;
-  padding: 14px 4px 8px;
+  overscroll-behavior: contain;
+  padding: 18px 4px 12px;
 }
 
 .messageRow {
@@ -296,6 +324,18 @@
   align-items: flex-end;
 }
 
+.bubbleLine {
+  display: flex;
+  align-items: flex-end;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.messageItem.me .bubbleLine {
+  justify-content: flex-end;
+}
+
 .bubble {
   position: relative;
   display: inline-block;
@@ -308,6 +348,15 @@
   overflow-wrap: anywhere;
   word-break: normal;
   box-shadow: 0 10px 26px rgba(17, 24, 39, 0.055);
+}
+
+.unreadMarker {
+  flex: 0 0 auto;
+  margin-bottom: 4px;
+  color: #7c4dff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .messageItem.me .bubble {
@@ -363,21 +412,30 @@
   font-size: 0.8rem;
 }
 
-.backButton {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(17, 24, 39, 0.06);
-  color: #111827;
-  font-weight: 700;
+.scrollBottomButton {
+  position: absolute;
+  left: 50%;
+  bottom: 96px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  color: #7c4dff;
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
   cursor: pointer;
+  transform: translateX(-50%);
 }
 
 .composer {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
+  flex: 0 0 auto;
   gap: 10px;
   margin: 0;
   padding: 8px;
@@ -467,6 +525,25 @@
 }
 
 @media (max-width: 1023px) {
+  .mobileChat {
+    height: 100%;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .mobileListView {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .mobileChat .threadList {
+    align-content: start;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
@@ -484,13 +561,17 @@
   }
 
   .room {
-    min-height: calc(100vh - 180px);
+    height: 100%;
+    min-height: 0;
     padding: 16px;
     border-radius: 22px;
+    overflow: hidden;
   }
 
   .roomHeader {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    margin: -8px -8px 0;
+    padding: 10px 10px 12px;
   }
 
   .headerActions {
@@ -498,12 +579,23 @@
   }
 
   .messages {
-    min-height: calc(100vh - 300px);
+    flex: 1 1 auto;
+    justify-content: flex-start;
+    min-height: 0;
+    height: 0;
+    max-height: none;
+    overscroll-behavior: contain;
+    padding-bottom: 8px;
   }
 
   .composer {
     gap: 6px;
     padding: 6px;
+    flex: 0 0 auto;
+  }
+
+  .scrollBottomButton {
+    bottom: 82px;
   }
 
   .addButton {
