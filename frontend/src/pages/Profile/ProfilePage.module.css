@@ -107,7 +107,6 @@
   gap: 16px;
 }
 
-.stats .stat,
 .pill {
   padding: 16px;
   border-radius: 18px;
@@ -117,20 +116,33 @@
   text-align: center;
 }
 
-.stats button {
+.statCard {
+  min-height: 90px;
+  padding: 18px 16px;
+  border-radius: 20px;
   border: 1px solid rgba(17, 24, 39, 0.085);
   background: rgba(255, 255, 255, 0.28);
-  text-align: center;
-  padding: 16px;
-  cursor: pointer;
-  text-align: center;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.055);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 4px;
+  text-align: center;
+}
+
+.stats button {
+  font: inherit;
+  cursor: pointer;
 }
 
 .statCard:hover {
   background: #f8f9ff;
+}
+
+.statCard:focus-visible {
+  outline: 2px solid #7c4dff;
+  outline-offset: 4px;
 }
 
 .statCard strong {
