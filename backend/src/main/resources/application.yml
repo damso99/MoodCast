@@ -34,3 +34,4 @@ mybatis:
   type-aliases-package: com.moodcast.member.vo
   configuration:
     map-underscore-to-camel-case: true
+

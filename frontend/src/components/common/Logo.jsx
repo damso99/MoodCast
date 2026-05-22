@@ -1,9 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import styles from './Logo.module.css';
 
-export function Logo({ compact = false }) {
+export function Logo({ compact = false, to = '/app/feed' }) {
   return (
-    <NavLink to="/app/feed" className={`${styles.brand} ${compact ? styles.compact : ''}`}>
+    <NavLink to={to} className={`${styles.brand} ${compact ? styles.compact : ''}`}>
       <img className={`${styles.image} ${compact ? styles.imageCompact : ''}`} src="/MoodCast-logo.svg" alt="MoodCast" />
       {!compact ? (
         <div className={styles.text}>

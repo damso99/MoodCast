@@ -1,0 +1,136 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.infoGrid,
+.twoColumn {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.infoBox {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.infoBox strong {
+  display: block;
+  color: #111827;
+  font-size: 0.94rem;
+}
+
+.infoBox p {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 0.88rem;
+}
+
+.panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.83);
+  box-shadow: 0 22px 52px rgba(17, 24, 39, 0.055);
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panelHead h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.dangerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dangerActions button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 47, 143, 0.2);
+  border-radius: 11px;
+  color: #d92d20;
+  font-weight: 800;
+  background: rgba(255, 47, 143, 0.08);
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.dangerActions button:hover {
+  background: rgba(255, 47, 143, 0.14);
+  box-shadow: 0 10px 22px rgba(217, 45, 32, 0.12);
+  transform: translateY(-1px);
+}
+
+.dangerActions button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.dangerActions button:focus-visible {
+  outline: 3px solid rgba(124, 77, 255, 0.28);
+  outline-offset: 2px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  color: #667085;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.steps span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #7c4dff;
+}
+
+@media (max-width: 1120px) {
+  .infoGrid,
+  .twoColumn {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

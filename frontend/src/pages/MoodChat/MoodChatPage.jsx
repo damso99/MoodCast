@@ -12,7 +12,22 @@ function ChatBody({ desktop }) {
   const activeThread = chatThreads.find(
     (thread) => thread.id === activeThreadId,
   );
+  const [post, setPosts] = useState();
+  const [message, setMessage] = useState("");
+  const handleSend = () => {
+    if (message.trim() === "") return;
 
+    const messageObj = {
+      content: message,
+      userId: 1, //보내는 아이디
+      reciverId: activeThread.id, // 받는 아이디
+      createdAt: new Date().toISOString(),
+    };
+
+    console.log(messageObj);
+
+    setMessage("");
+  };
   useEffect(() => {
     const getPosts = async () => {
       try {
@@ -106,8 +121,14 @@ function ChatBody({ desktop }) {
             ))}
           </div>
           <div className={styles.composer}>
-            <input placeholder="메시지를 입력하세요" />
-            <button type="button">보내기</button>
+            <input
+              placeholder="메시지를 입력하세요"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <button type="button" onClick={handleSend}>
+              보내기
+            </button>
           </div>
         </div>
       </div>
