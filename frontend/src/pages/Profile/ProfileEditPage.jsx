@@ -1,8 +1,10 @@
+import axios from 'axios';
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuthState } from '../../hooks/useAuthState';
 import styles from './ProfileEditPage.module.css';
 
 const defaultProfile = {
@@ -13,9 +15,19 @@ const defaultProfile = {
 export function ProfileEditPage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
+  const { member, accessToken, setAuthData } = useAuthState();
   const [profile, setProfile] = useState(defaultProfile);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!member) return;
+    setProfile((prev) => ({
+      ...prev,
+      nickname: member.nickname || prev.nickname,
+      bio: member.bio || prev.bio,
+    }));
+  }, [member]);
 
   const handleInput = (event) => {
     const { name, value } = event.target;
@@ -33,11 +45,39 @@ export function ProfileEditPage() {
     setSaved(false);
   };
 
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
   const handleSave = () => {
-    setSaved(true);
-    window.setTimeout(() => {
-      navigate('/app/profile');
-    }, 800);
+    if (!member || !accessToken) {
+      setSaved(false);
+      return;
+    }
+
+    axios
+      .put(
+        `${BACKSERVER}/auth/profile`,
+        {
+          nickname: profile.nickname,
+          bio: profile.bio,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      )
+      .then((res) => {
+        if (res.data?.member) {
+          setAuthData(accessToken, res.data.member);
+        }
+        setSaved(true);
+        window.setTimeout(() => {
+          navigate('/app/profile');
+        }, 800);
+      })
+      .catch((error) => {
+        console.error('프로필 저장 실패', error);
+      });
   };
 
   const handleBack = () => {

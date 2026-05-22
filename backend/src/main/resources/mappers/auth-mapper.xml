@@ -54,4 +54,12 @@
         where member_id = #{memberId}
     </update>
 
+    <update id="updateMemberProfile">
+        update members
+        set nickname = #{nickname},
+            bio = #{bio},
+            updated_at = now(6)
+        where member_id = #{memberId}
+    </update>
+
 </mapper>

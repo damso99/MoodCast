@@ -1,10 +1,18 @@
 import { MobileShell } from '../../components/layout/MobileShell';
 import { profileHighlights, profileStats } from '../../data/moodcastData';
 import { useNavigate } from 'react-router-dom';
+import { useAuthState } from '../../hooks/useAuthState';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const { member } = useAuthState();
+
+  const displayName = member?.nickname || member?.name || 'MoodCast';
+  const displayInitial = displayName.charAt(0).toUpperCase();
+  const displayText = member
+    ? '감정을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.'
+    : '로그인 후 프로필 정보를 확인할 수 있습니다.';
 
   const handleStatClick = (label) => {
     if (label === '저장됨') navigate('/app/saved');
@@ -15,10 +23,10 @@ export function ProfilePage() {
   return (
     <MobileShell title="프로필" hideSearch>
       <section className={styles.hero}>
-        <div className={styles.avatar}>L</div>
+        <div className={styles.avatar}>{displayInitial}</div>
         <p>MOODCAST PROFILE</p>
-        <h1>Lena_Parks</h1>
-        <span>감정을 기록하고 커뮤니티에 참여하는 라이프로그 스타일의 프로필입니다.</span>
+        <h1>{displayName}</h1>
+        <span>{displayText}</span>
       </section>
 
       <section className={styles.stats}>

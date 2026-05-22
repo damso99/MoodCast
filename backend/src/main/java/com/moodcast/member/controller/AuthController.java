@@ -3,6 +3,7 @@ package com.moodcast.member.controller;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResponse;
 import com.moodcast.member.dto.login.LoginResult;
+import com.moodcast.member.dto.login.UpdateProfileRequest;
 import com.moodcast.member.service.AuthService;
 import com.moodcast.member.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +59,20 @@ public class AuthController {
                 Map.of(
                         "success", true,
                         "member", authService.getLoginMember(authorizationHeader)
+                )
+        );
+    }
+
+    @PutMapping("profile")
+    public ResponseEntity<?> updateProfile(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody UpdateProfileRequest request
+    ) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "프로필이 수정되었습니다.",
+                        "member", authService.updateProfile(authorizationHeader, request)
                 )
         );
     }

@@ -4,6 +4,7 @@ import com.moodcast.member.dao.AuthDao;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResult;
+import com.moodcast.member.dto.login.UpdateProfileRequest;
 import com.moodcast.member.vo.Member;
 import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -133,6 +134,44 @@ public class AuthService {
             checkLoginAllowed(member);
 
             return toLoginMemberResponse(member);
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 만료되었습니다. 다시 로그인해주세요.");
+        }
+    }
+
+    @Transactional
+    public LoginMemberResponse updateProfile(String authorizationHeader, UpdateProfileRequest request) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        String accessToken = authorizationHeader.substring(7).trim();
+        if (accessToken.isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        if (request == null || request.getNickname() == null || request.getNickname().trim().isEmpty()) {
+            throw new IllegalArgumentException("닉네임을 입력해주세요.");
+        }
+
+        try {
+            Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
+            Member member = authDao.findMemberById(memberId);
+
+            if (member == null) {
+                throw new IllegalArgumentException("로그인 정보를 찾을 수 없습니다.");
+            }
+
+            checkLoginAllowed(member);
+
+            authDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio());
+
+            Member updated = authDao.findMemberById(memberId);
+            if (updated == null) {
+                throw new IllegalStateException("프로필 정보를 불러올 수 없습니다.");
+            }
+
+            return toLoginMemberResponse(updated);
         } catch (JwtException | IllegalArgumentException e) {
             throw new IllegalArgumentException("로그인이 만료되었습니다. 다시 로그인해주세요.");
         }

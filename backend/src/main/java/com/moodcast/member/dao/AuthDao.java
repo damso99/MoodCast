@@ -11,4 +11,8 @@ public interface AuthDao {
     Member findMemberById(@Param("memberId") Long memberId);
 
     int updateLastLoginAt(@Param("memberId") Long memberId);
+
+    int updateMemberProfile(@Param("memberId") Long memberId,
+                             @Param("nickname") String nickname,
+                             @Param("bio") String bio);
 }
