@@ -9,7 +9,7 @@ solapi:
 jwt:
   secret: ${JWT_SECRET:moodcast-local-jwt-secret-key-2026-change-this-value}
   issuer: ${JWT_ISSUER:moodcast}
-  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:30}
+  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:1000000}
   refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:14}
   refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:moodcast_refresh_token}
 

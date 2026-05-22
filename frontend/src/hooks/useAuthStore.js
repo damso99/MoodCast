@@ -6,11 +6,12 @@ const MEMBER_KEY = 'moodcast-member';
 const AUTH_EVENT_NAME = 'moodcast-auth-change';
 const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
-const readAuthState = () => {
+const readAuthStore = () => {
   const accessToken = window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
   const memberText = window.sessionStorage.getItem(MEMBER_KEY);
   let member = null;
 
+  // 문자열 -> json 파싱
   if (memberText) {
     try {
       member = JSON.parse(memberText);
@@ -19,6 +20,7 @@ const readAuthState = () => {
     }
   }
 
+
   return {
     isLoggedIn: Boolean(accessToken),
     accessToken,
@@ -26,20 +28,21 @@ const readAuthState = () => {
   };
 };
 
-export function useAuthState() {
-  const [authState, setAuthState] = useState(readAuthState);
+// 본체
+export function useAuthStore() {
+  const [authStore, setAuthStore] = useState(readAuthStore);
 
   useEffect(() => {
-    const syncAuthState = () => {
-      setAuthState(readAuthState());
+    const syncAuthStore = () => {
+      setAuthStore(readAuthStore());
     };
 
-    window.addEventListener('storage', syncAuthState);
-    window.addEventListener(AUTH_EVENT_NAME, syncAuthState);
+    window.addEventListener('storage', syncAuthStore);
+    window.addEventListener(AUTH_EVENT_NAME, syncAuthStore);
 
     return () => {
-      window.removeEventListener('storage', syncAuthState);
-      window.removeEventListener(AUTH_EVENT_NAME, syncAuthState);
+      window.removeEventListener('storage', syncAuthStore);
+      window.removeEventListener(AUTH_EVENT_NAME, syncAuthStore);
     };
   }, []);
 
@@ -51,7 +54,7 @@ export function useAuthState() {
     window.sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     window.sessionStorage.setItem(MEMBER_KEY, JSON.stringify(member));
     window.localStorage.setItem('moodcast-auth', 'true');
-    setAuthState(readAuthState());
+    setAuthStore(readAuthStore());
     notifyAuthChange();
   };
 
@@ -59,7 +62,7 @@ export function useAuthState() {
     window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     window.sessionStorage.removeItem(MEMBER_KEY);
     window.localStorage.setItem('moodcast-auth', 'false');
-    setAuthState(readAuthState());
+    setAuthStore(readAuthStore());
     notifyAuthChange();
   };
 
@@ -70,7 +73,7 @@ export function useAuthState() {
     }
 
     window.localStorage.setItem('moodcast-auth', 'true');
-    setAuthState((prev) => ({
+    setAuthStore((prev) => ({
       ...prev,
       isLoggedIn: true,
     }));
@@ -78,32 +81,32 @@ export function useAuthState() {
   };
 
   useEffect(() => {
-    if (!authState.accessToken) {
+    if (!authStore.accessToken) {
       return;
     }
 
     axios
       .get(`${BACKSERVER}/auth/me`, {
         headers: {
-          Authorization: `Bearer ${authState.accessToken}`,
+          Authorization: `Bearer ${authStore.accessToken}`,
         },
         withCredentials: true,
       })
       .then((res) => {
         if (res.data.member) {
           window.sessionStorage.setItem(MEMBER_KEY, JSON.stringify(res.data.member));
-          setAuthState(readAuthState());
+          setAuthStore(readAuthStore());
         }
       })
       .catch(() => {
         clearAuthData();
       });
-  }, [authState.accessToken]);
+  }, [authStore.accessToken]);
 
   return {
-    isLoggedIn: authState.isLoggedIn,
-    accessToken: authState.accessToken,
-    member: authState.member,
+    isLoggedIn: authStore.isLoggedIn,
+    accessToken: authStore.accessToken,
+    member: authStore.member,
     setIsLoggedIn,
     setAuthData,
     clearAuthData,

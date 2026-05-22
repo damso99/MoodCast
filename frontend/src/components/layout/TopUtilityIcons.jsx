@@ -6,7 +6,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
-import { useAuthState } from '../../hooks/useAuthState';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './TopUtilityIcons.module.css';
 
 const avatarSrc =
@@ -28,7 +28,7 @@ const avatarSrc =
 
 export function TopUtilityIcons({ onSearch }) {
   const navigate = useNavigate();
-  const { isLoggedIn, clearAuthData } = useAuthState();
+  const { isLoggedIn, clearAuthData } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
