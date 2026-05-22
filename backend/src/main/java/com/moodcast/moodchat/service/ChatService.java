@@ -2,6 +2,7 @@ package com.moodcast.moodchat.service;
 
 import com.moodcast.moodchat.dao.ChatDao;
 import com.moodcast.moodchat.vo.ChatVo;
+import com.moodcast.moodchat.vo.ChatThreadVo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,8 +20,11 @@ public class ChatService {
         return chatDao.insertChat(chatVo);
     }
 
-    public List<ChatVo> selectChatList() {
-        List<ChatVo> list = chatDao.selectChatList();
-        return list;
+    public List<ChatThreadVo> selectChatThreads(Long memberId) {
+        return chatDao.selectChatThreads(memberId);
+    }
+
+    public List<ChatVo> selectChatMessages(Long memberId, Long partnerId) {
+        return chatDao.selectChatMessages(memberId, partnerId);
     }
 }

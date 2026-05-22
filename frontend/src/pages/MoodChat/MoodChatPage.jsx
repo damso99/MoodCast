@@ -3,12 +3,12 @@ import axios from "axios";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { DesktopShell } from "../../components/layout/DesktopShell";
 import { MobileShell } from "../../components/layout/MobileShell";
-import { chatMessages, chatThreads } from "../../data/moodcastData";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-const DEFAULT_CURRENT_USER_ID = 1;
+const DEFAULT_CURRENT_USER_ID = null;
+const MEMBER_STORAGE_KEY = "moodcast-member";
 
 function formatMessageTime(createdAt) {
   if (!createdAt) {
@@ -45,99 +45,97 @@ function normalizeIncomingMessage(message, currentUserId) {
   };
 }
 
-function getStoredCurrentUserId() {
+function readStoredMember() {
   if (typeof window === "undefined") {
-    return DEFAULT_CURRENT_USER_ID;
+    return null;
   }
 
-  const storedUserId = Number(window.localStorage.getItem("moodcast-user-id"));
-  return Number.isFinite(storedUserId) && storedUserId > 0
-    ? storedUserId
-    : DEFAULT_CURRENT_USER_ID;
+  const memberText = window.sessionStorage.getItem(MEMBER_STORAGE_KEY);
+  if (!memberText) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(memberText);
+  } catch {
+    return null;
+  }
 }
 
-function getSeedMessages(threadId, currentUserId) {
-  return (chatMessages[threadId] ?? []).map((message) => ({
-    id: message.id,
-    sender: message.sender === "me" ? "me" : "them",
-    text: message.text,
-    time: message.time,
-    senderId: message.sender === "me" ? currentUserId : threadId,
-    receiverId: message.sender === "me" ? threadId : currentUserId,
-    createdAt: new Date().toISOString(),
-    isRead: message.sender === "me" ? 1 : 0,
-  }));
+function readCurrentMemberId() {
+  const member = readStoredMember();
+  const memberId = Number(member?.memberId);
+
+  return Number.isFinite(memberId) && memberId > 0 ? memberId : DEFAULT_CURRENT_USER_ID;
 }
 
 function ChatBody({ desktop }) {
-  const currentUserId = useMemo(() => getStoredCurrentUserId(), []);
+  const currentMemberId = useMemo(() => readCurrentMemberId(), []);
   const messageListRef = useRef(null);
-  const [activeThreadId, setActiveThreadId] = useState(chatThreads[0]?.id ?? 1);
+  const [threads, setThreads] = useState([]);
+  const [activeThread, setActiveThread] = useState(null);
   const [isRoomOpen, setIsRoomOpen] = useState(false);
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState(() =>
-    getSeedMessages(chatThreads[0]?.id ?? 1, currentUserId),
-  );
-  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [isLoadingThreads, setIsLoadingThreads] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
 
-  const activeThread = useMemo(
-    () => chatThreads.find((thread) => thread.id === activeThreadId) ?? chatThreads[0],
-    [activeThreadId],
-  );
+  const loadThreads = async () => {
+    if (!currentMemberId) {
+      setThreads([]);
+      return;
+    }
 
-  const syncMessages = async (threadId) => {
-    setIsLoading(true);
+    setIsLoadingThreads(true);
     setError("");
 
     try {
-      const response = await axios.get(`${API_BASE}/chat/messages`);
-      const list = Array.isArray(response.data) ? response.data : [];
-
-      const filteredMessages = list
-        .filter((item) => {
-          const senderId = Number(item?.senderId);
-          const receiverId = Number(item?.receiverId);
-
-          return (
-            (senderId === currentUserId && receiverId === threadId) ||
-            (senderId === threadId && receiverId === currentUserId)
-          );
-        })
-        .map((item) => normalizeIncomingMessage(item, currentUserId));
-
-      setMessages(
-        filteredMessages.length > 0
-          ? filteredMessages
-          : getSeedMessages(threadId, currentUserId),
-      );
+      const response = await axios.get(`${API_BASE}/chat/threads`, {
+        params: { memberId: currentMemberId },
+      });
+      setThreads(Array.isArray(response.data) ? response.data : []);
     } catch (requestError) {
-      console.error("Message fetch failed", requestError);
-      setError("메시지를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
-      setMessages(getSeedMessages(threadId, currentUserId));
+      console.error("채팅 리스트 조회 실패", requestError);
+      setThreads([]);
+      setError("채팅 리스트를 불러오지 못했습니다.");
     } finally {
-      setIsLoading(false);
+      setIsLoadingThreads(false);
     }
   };
 
-  const openThread = (threadId) => {
-    setActiveThreadId(threadId);
-    setIsRoomOpen(true);
-  };
+  const loadMessages = async (partnerThread) => {
+    if (!currentMemberId || !partnerThread?.partnerMemberId) {
+      setMessages([]);
+      return;
+    }
 
-  const handleExitRoom = () => {
-    setIsRoomOpen(false);
-    setMessage("");
+    setIsLoadingMessages(true);
     setError("");
+
+    try {
+      const response = await axios.get(`${API_BASE}/chat/messages`, {
+        params: {
+          memberId: currentMemberId,
+          partnerId: partnerThread.partnerMemberId,
+        },
+      });
+      const list = Array.isArray(response.data) ? response.data : [];
+      setMessages(list.map((item) => normalizeIncomingMessage(item, currentMemberId)));
+    } catch (requestError) {
+      console.error("메시지 조회 실패", requestError);
+      setMessages([]);
+      setError("메시지를 불러오지 못했습니다.");
+    } finally {
+      setIsLoadingMessages(false);
+    }
   };
 
   useEffect(() => {
-    if (activeThreadId && isRoomOpen) {
-      syncMessages(activeThreadId);
-    }
+    loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeThreadId, isRoomOpen]);
+  }, [currentMemberId]);
 
   useEffect(() => {
     const messageListElement = messageListRef.current;
@@ -147,48 +145,61 @@ function ChatBody({ desktop }) {
     }
 
     messageListElement.scrollTop = messageListElement.scrollHeight;
-  }, [messages, activeThreadId, isLoading, isRoomOpen]);
+  }, [messages, isRoomOpen, activeThread]);
+
+  const openThread = (thread) => {
+    setActiveThread(thread);
+    setIsRoomOpen(true);
+    setMessage("");
+    loadMessages(thread);
+  };
+
+  const handleExitRoom = () => {
+    setIsRoomOpen(false);
+    setActiveThread(null);
+    setMessages([]);
+    setMessage("");
+    setError("");
+  };
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();
 
-    if (!trimmedMessage || !activeThread) {
+    if (!trimmedMessage || !activeThread || !currentMemberId) {
       return;
     }
 
     setIsSending(true);
     setError("");
 
+    const createdAt = new Date().toISOString();
     const draftMessage = {
       id: `draft-${Date.now()}`,
       sender: "me",
       text: trimmedMessage,
-      time: new Intl.DateTimeFormat("ko-KR", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      }).format(new Date()),
-      senderId: currentUserId,
-      receiverId: activeThread.id,
-      createdAt: new Date().toISOString(),
+      time: formatMessageTime(createdAt),
+      senderId: currentMemberId,
+      receiverId: activeThread.partnerMemberId,
+      createdAt,
       isRead: 0,
     };
 
     try {
       await axios.post(`${API_BASE}/chat/send`, {
         content: trimmedMessage,
-        senderId: currentUserId,
-        receiverId: activeThread.id,
-        createdAt: draftMessage.createdAt,
+        senderId: currentMemberId,
+        receiverId: activeThread.partnerMemberId,
+        createdAt,
         isRead: 0,
       });
 
       setMessages((prevMessages) => [...prevMessages, draftMessage]);
       setMessage("");
-      await syncMessages(activeThread.id);
+      await loadMessages(activeThread);
+      await loadThreads();
     } catch (requestError) {
-      console.error("Message send failed", requestError);
-      setError("메시지 전송에 실패했습니다. 네트워크 또는 서버 상태를 확인해주세요.");
+      console.error("메시지 전송 실패", requestError);
+      setError("메시지 전송에 실패했습니다.");
     } finally {
       setIsSending(false);
     }
@@ -199,25 +210,27 @@ function ChatBody({ desktop }) {
     await handleSend();
   };
 
-  const renderedMessages =
-    messages.length > 0
-      ? messages
-      : getSeedMessages(activeThreadId, currentUserId);
-
   const threadList = (
     <div className={styles.threadList}>
-      {chatThreads.map((thread) => (
+      {isLoadingThreads ? <p className={styles.statusText}>채팅 리스트를 불러오는 중입니다.</p> : null}
+      {!isLoadingThreads && threads.length === 0 ? (
+        <p className={styles.emptyState}>대화 중인 채팅방이 없습니다.</p>
+      ) : null}
+      {threads.map((thread) => (
         <button
-          key={thread.id}
+          key={thread.partnerMemberId}
           type="button"
-          className={`${styles.threadItem} ${thread.id === activeThreadId ? styles.active : ""}`}
-          onClick={() => openThread(thread.id)}
+          className={`${styles.threadItem} ${activeThread?.partnerMemberId === thread.partnerMemberId ? styles.active : ""}`}
+          onClick={() => openThread(thread)}
         >
-          <div>
-            <strong>{thread.name}</strong>
-            <p>{thread.preview}</p>
+          <div className={styles.threadContent}>
+            <strong>{thread.partnerNickname || thread.partnerName || `회원 ${thread.partnerMemberId}`}</strong>
+            <p className={styles.threadPreview}>{thread.lastMessage || "메시지가 없습니다."}</p>
           </div>
-          <span>{thread.time}</span>
+          <div className={styles.threadMeta}>
+            <span>{thread.lastMessageAt ? formatMessageTime(thread.lastMessageAt) : ""}</span>
+            {thread.unreadCount > 0 ? <b className={styles.unreadBadge}>{thread.unreadCount}</b> : null}
+          </div>
         </button>
       ))}
     </div>
@@ -225,12 +238,12 @@ function ChatBody({ desktop }) {
 
   const messageList = (
     <div ref={messageListRef} className={styles.messages} aria-live="polite">
-      {isLoading ? <p className={styles.statusText}>메시지를 불러오는 중입니다.</p> : null}
+      {isLoadingMessages ? <p className={styles.statusText}>메시지를 불러오는 중입니다.</p> : null}
       {error ? <p className={styles.errorText}>{error}</p> : null}
-      {!isLoading && renderedMessages.length === 0 ? (
+      {!isLoadingMessages && messages.length === 0 ? (
         <p className={styles.emptyState}>아직 메시지가 없습니다. 대화를 시작해보세요.</p>
       ) : null}
-      {renderedMessages.map((item) => (
+      {messages.map((item) => (
         <div
           key={item.id}
           className={`${styles.messageItem} ${item.sender === "me" ? styles.me : styles.them}`}
@@ -250,13 +263,13 @@ function ChatBody({ desktop }) {
         placeholder="메시지를 입력하세요"
         value={message}
         onChange={(event) => setMessage(event.target.value)}
-        disabled={isSending}
+        disabled={isSending || !activeThread}
       />
       <button
         type="submit"
         aria-label="메시지 보내기"
         title="메시지 보내기"
-        disabled={isSending}
+        disabled={isSending || !activeThread}
       >
         <SendRoundedIcon fontSize="small" />
       </button>
@@ -267,8 +280,8 @@ function ChatBody({ desktop }) {
     <div className={styles.room}>
       <div className={styles.roomHeader}>
         <div className={styles.roomTitle}>
-          <strong>{activeThread?.name ?? "Conversation"}</strong>
-          <span>{activeThread?.time ?? ""}</span>
+          <strong>{activeThread?.partnerNickname || activeThread?.partnerName || "Conversation"}</strong>
+          <span>{activeThread?.lastMessageAt ? formatMessageTime(activeThread.lastMessageAt) : ""}</span>
         </div>
         <button type="button" className={styles.backButton} onClick={handleExitRoom}>
           나가기
@@ -300,7 +313,7 @@ function ChatBody({ desktop }) {
     <section className={styles.desktopChat}>
       <div className={styles.hero}>
         <strong>Mood Chat</strong>
-        <p>원하는 채팅방을 눌러 대화를 시작하고, 나가기 버튼으로 목록으로 돌아갑니다.</p>
+        <p>세션에 저장된 회원 정보 기준으로 채팅 리스트를 불러옵니다.</p>
       </div>
       {!isRoomOpen ? (
         <div className={styles.listView}>

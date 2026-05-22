@@ -1,7 +1,9 @@
 package com.moodcast.moodchat.dao;
 
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import com.moodcast.moodchat.vo.ChatVo;
+import com.moodcast.moodchat.vo.ChatThreadVo;
 
 import java.util.List;
 
@@ -9,5 +11,10 @@ import java.util.List;
 public interface ChatDao {
     int insertChat(ChatVo chatVo);
 
-    List<ChatVo> selectChatList();
+    List<ChatThreadVo> selectChatThreads(@Param("memberId") Long memberId);
+
+    List<ChatVo> selectChatMessages(
+        @Param("memberId") Long memberId,
+        @Param("partnerId") Long partnerId
+    );
 }

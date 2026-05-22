@@ -39,6 +39,13 @@
   gap: 16px;
 }
 
+.listView,
+.roomView {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .threadList {
   display: grid;
   gap: 12px;
@@ -79,6 +86,37 @@
   text-align: left;
   width: 100%;
   cursor: pointer;
+}
+
+.threadContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.threadPreview {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threadMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.unreadBadge {
+  min-width: 20px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #7c4dff;
+  color: #fff;
+  font-size: 0.78rem;
+  text-align: center;
 }
 
 .threadItem strong,
@@ -185,6 +223,17 @@
   text-align: inherit;
   color: #667085;
   font-size: 0.84rem;
+}
+
+.backButton {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.06);
+  color: #111827;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .composer {
