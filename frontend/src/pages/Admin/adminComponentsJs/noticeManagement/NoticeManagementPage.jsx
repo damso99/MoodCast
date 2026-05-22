@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { AdminLayout } from './AdminLayout';
-import { EmptyState } from './EmptyState';
-import { SegmentedControl } from './SegmentedControl';
-import styles from '../adminComponentsCss/NoticeManagementPage.module.css';
+﻿import { useMemo, useState } from 'react';
+import { AdminLayout } from '../common/AdminLayout';
+import { EmptyState } from '../common/EmptyState';
+import { SegmentedControl } from '../common/SegmentedControl';
+import styles from '../../adminComponentsCss/noticeManagement/NoticeManagementPage.module.css';
 
 const noticeCategories = ['전체', '일반', '업데이트', '긴급', '삭제 공지'];
 const writableCategories = ['일반', '업데이트', '긴급'];

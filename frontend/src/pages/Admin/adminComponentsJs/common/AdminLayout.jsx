@@ -2,9 +2,9 @@
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import HelpOutlineOutlinedIcon from '@mui/icons-material/HelpOutlineOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import { Logo } from '../../../components/common/Logo';
+import { Logo } from '../../../../components/common/Logo';
 import { adminNavItems } from './adminConfig';
-import styles from '../adminComponentsCss/AdminLayout.module.css';
+import styles from '../../adminComponentsCss/common/AdminLayout.module.css';
 
 /* ==========================================================================
  * AdminLayout 컴포넌트

@@ -1,5 +1,5 @@
 ﻿import { EmptyState } from './EmptyState';
-import styles from '../adminComponentsCss/EmptyChart.module.css';
+import styles from '../../adminComponentsCss/common/EmptyChart.module.css';
 
 /* ==========================================================================
  * EmptyChart 컴포넌트

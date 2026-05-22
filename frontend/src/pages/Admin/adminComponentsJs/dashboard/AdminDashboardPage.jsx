@@ -4,12 +4,12 @@ import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import GppMaybeOutlinedIcon from '@mui/icons-material/GppMaybeOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import { AdminLayout } from './AdminLayout';
-import { EmptyState } from './EmptyState';
-import { MetricCard } from './MetricCard';
-import { SegmentedControl } from './SegmentedControl';
-import { adminNavItems } from './adminConfig';
-import styles from '../adminComponentsCss/AdminDashboardPage.module.css';
+import { AdminLayout } from '../common/AdminLayout';
+import { EmptyState } from '../common/EmptyState';
+import { MetricCard } from '../common/MetricCard';
+import { SegmentedControl } from '../common/SegmentedControl';
+import { adminNavItems } from '../common/adminConfig';
+import styles from '../../adminComponentsCss/dashboard/AdminDashboardPage.module.css';
 
 /* ==========================================================================
  * 관리자 대시보드 페이지

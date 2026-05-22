@@ -1,4 +1,4 @@
-﻿import styles from '../adminComponentsCss/MetricCard.module.css';
+﻿import styles from '../../adminComponentsCss/common/MetricCard.module.css';
 
 /* ==========================================================================
  * MetricCard 컴포넌트

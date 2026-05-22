@@ -4,13 +4,13 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import GppMaybeOutlinedIcon from '@mui/icons-material/GppMaybeOutlined';
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import { AdminLayout } from './AdminLayout';
-import { EmptyState } from './EmptyState';
-import { EmptyTableRow, TableShell } from './TableShell';
-import { MetricCard } from './MetricCard';
-import { SearchBar } from './SearchBar';
-import { SegmentedControl } from './SegmentedControl';
-import styles from '../adminComponentsCss/UserManagementPage.module.css';
+import { AdminLayout } from '../common/AdminLayout';
+import { EmptyState } from '../common/EmptyState';
+import { EmptyTableRow, TableShell } from '../common/TableShell';
+import { MetricCard } from '../common/MetricCard';
+import { SearchBar } from '../common/SearchBar';
+import { SegmentedControl } from '../common/SegmentedControl';
+import styles from '../../adminComponentsCss/userManagement/UserManagementPage.module.css';
 
 /* ==========================================================================
  * 사용자 관리 페이지

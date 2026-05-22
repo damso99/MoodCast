@@ -1,9 +1,9 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { AdminLayout } from './AdminLayout';
-import { EmptyState } from './EmptyState';
-import { EmptyTableRow, TableShell } from './TableShell';
-import styles from '../adminComponentsCss/AdminCreatePage.module.css';
+import { AdminLayout } from '../common/AdminLayout';
+import { EmptyState } from '../common/EmptyState';
+import { EmptyTableRow, TableShell } from '../common/TableShell';
+import styles from '../../adminComponentsCss/userManagement/AdminCreatePage.module.css';
 
 /* ==========================================================================
  * 관리자 추가 페이지

@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
-import { AdminLayout } from "./AdminLayout";
-import styles from "../adminComponentsCss/AdminProfilePage.module.css";
+﻿import { useRef, useState } from "react";
+import { AdminLayout } from '../common/AdminLayout';
+import styles from '../../adminComponentsCss/userManagement/AdminProfilePage.module.css';
 
 /* ==========================================================================
  * 관리자 개인 정보 수정 페이지

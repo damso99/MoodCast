@@ -3,12 +3,12 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import GroupOutlinedIcon from '@mui/icons-material/GroupOutlined';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
-import { AdminLayout } from './AdminLayout';
-import { EmptyChart } from './EmptyChart';
-import { MetricCard } from './MetricCard';
-import { SearchBar } from './SearchBar';
-import { SegmentedControl } from './SegmentedControl';
-import styles from '../adminComponentsCss/StatisticsDashboardPage.module.css';
+import { AdminLayout } from '../common/AdminLayout';
+import { EmptyChart } from '../common/EmptyChart';
+import { MetricCard } from '../common/MetricCard';
+import { SearchBar } from '../common/SearchBar';
+import { SegmentedControl } from '../common/SegmentedControl';
+import styles from '../../adminComponentsCss/statisticsDashboard/StatisticsDashboardPage.module.css';
 
 /* ==========================================================================
  * 통계 대시보드 페이지

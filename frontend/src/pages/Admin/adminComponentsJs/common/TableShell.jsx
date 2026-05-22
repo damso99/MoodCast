@@ -1,5 +1,5 @@
 ﻿import { EmptyState } from './EmptyState';
-import styles from '../adminComponentsCss/TableShell.module.css';
+import styles from '../../adminComponentsCss/common/TableShell.module.css';
 
 /* ==========================================================================
  * TableShell 컴포넌트
