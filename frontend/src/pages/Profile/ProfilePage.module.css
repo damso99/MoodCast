@@ -1,14 +1,28 @@
+.wrap {
+  display: grid;
+  gap: 18px;
+}
+
+.hero,
+.highlights,
+.recent {
+  padding: 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(17, 24, 39, 0.085);
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.055);
+}
+
 .hero {
   display: grid;
-  gap: 12px;
-  justify-items: center;
-  text-align: center;
-  padding-top: 12px;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
 }
 
 .avatar {
-  width: 88px;
-  height: 88px;
+  width: 84px;
+  height: 84px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -18,61 +32,180 @@
   font-weight: 800;
 }
 
-.hero h1 {
-  margin: 0;
+.heroContent strong {
+  display: block;
   color: #111827;
+  font-size: 1.2rem;
 }
 
-.hero p,
-.hero span {
+.heroContent p {
+  margin: 8px 0 0;
   color: #667085;
+}
+
+.handle {
+  display: block;
+  margin-top: 4px;
+  color: #98a2b3;
+  font-size: 0.9rem;
+}
+
+.editBtnRich {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 77, 255, 0.12),
+    rgba(124, 77, 255, 0.06)
+  );
+  color: #7c4dff;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.actionsRich {
+  display: flex;
+  gap: 8px;
+}
+
+.followBtn, .chatBtn {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.followBtn {
+  background: #111827;
+  color: #fff;
+  border: none;
+}
+
+.followBtn:hover {
+  background: #374151;
+}
+
+.chatBtn {
+  background: #fff;
+  color: #111827;
+  border: 1px solid #e2e8f0;
+}
+
+.chatBtn:hover {
+  background: #f8fafc;
 }
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.stats .stat,
-.pill {
-  padding: 16px;
-  border-radius: 18px;
+.statCard {
+  padding: 18px;
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 14px 36px rgba(17, 24, 39, 0.07);
-  text-align: center;
-}
-
-.stats button {
   border: 0;
-  background: rgba(255, 255, 255, 0.98);
-  text-align: center;
-  padding: 16px;
   cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.stats button:hover {
+.statCard:hover {
   background: #f8f9ff;
 }
 
-.stats button:focus-visible {
-  outline: 2px solid #7c4dff;
-  outline-offset: 4px;
-}
-
-.stats strong,
-.pill strong {
+.statCard strong {
   display: block;
   color: #111827;
+  font-size: 1.2rem;
 }
 
-.stats span,
-.pill span {
+.statCard span {
   color: #667085;
+  font-size: 0.9rem;
 }
 
-.pill {
+.highlights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.highlight {
+  text-align: center;
+}
+
+.highlight span {
+  display: block;
+  color: #667085;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.highlight strong {
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sectionHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.sectionHeader h2 {
+  font-size: 1.25rem;
+  color: #111827;
+  margin: 0;
+}
+
+.sectionHeader button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(124, 77, 255, 0.1);
+  color: #7c4dff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.postList {
+  display: grid;
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+  
+  .avatar {
+    margin: 0 auto;
+  }
+  
+  .actionsRich, .editBtnRich {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }

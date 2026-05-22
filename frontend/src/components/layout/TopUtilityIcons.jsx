@@ -138,7 +138,10 @@ export function TopUtilityIcons({ onSearch }) {
           </button>
           {menuOpen ? (
             <div className={styles.menu} ref={menuRef}>
-              <button type="button" onClick={() => navigate('/app/profile')}>
+              <button type="button" onClick={() => {
+                setMenuOpen(false);
+                navigate(`/app/user/${member.memberId}`);
+              }}>
                 <AccountCircleOutlinedIcon />
                 프로필 보기
               </button>
