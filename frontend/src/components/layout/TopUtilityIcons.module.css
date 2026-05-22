@@ -41,6 +41,17 @@
   box-shadow: 0 0 0 2px #fff;
 }
 
+.loginButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  background: transparent;
+  color: #121826;
+}
+
 .profile {
   position: relative;
   width: 40px;
@@ -69,6 +80,30 @@
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 38px rgba(17, 24, 39, 0.12);
   z-index: 20;
+}
+
+.notificationCard {
+  position: absolute;
+  right: 58px;
+  top: calc(100% + 10px);
+  width: 240px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 38px rgba(17, 24, 39, 0.12);
+  z-index: 20;
+}
+
+.notificationCard strong {
+  display: block;
+  color: #111827;
+  font-size: 0.96rem;
+}
+
+.notificationCard p {
+  margin: 12px 0 0;
+  color: #667085;
+  font-size: 0.92rem;
 }
 
 .menu button {

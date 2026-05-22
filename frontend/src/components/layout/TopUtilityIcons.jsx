@@ -9,7 +9,7 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './TopUtilityIcons.module.css';
 
-const avatarSrc =
+const defaultAvatarSrc =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
@@ -28,9 +28,12 @@ const avatarSrc =
 
 export function TopUtilityIcons({ onSearch }) {
   const navigate = useNavigate();
-  const { isLoggedIn, clearAuthData } = useAuthStore();
+  const { isLoggedIn, member, clearAuthData } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const notifications = [];
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const hasUnreadNotifications = notifications.length > 0;
 
   const logout = () => {
     axios
@@ -41,8 +44,15 @@ export function TopUtilityIcons({ onSearch }) {
       .finally(() => {
         clearAuthData();
         setMenuOpen(false);
+        setNotificationOpen(false);
         navigate('/auth/login');
       });
+  };
+
+  const goLogin = () => {
+    setMenuOpen(false);
+    setNotificationOpen(false);
+    navigate('/auth/login');
   };
 
   return (
@@ -50,34 +60,56 @@ export function TopUtilityIcons({ onSearch }) {
       <button type="button" className={styles.search} onClick={onSearch} aria-label="검색">
         <SearchOutlinedIcon />
       </button>
-      <button type="button" className={styles.bell} aria-label="알림">
+      <button
+        type="button"
+        className={styles.bell}
+        aria-label="알림"
+        onClick={() => {
+          setNotificationOpen((value) => !value);
+          setMenuOpen(false);
+        }}
+      >
         <NotificationsNoneOutlinedIcon />
-        <span />
+        {hasUnreadNotifications ? <span /> : null}
       </button>
-      <button type="button" className={styles.profile} aria-label="프로필" onClick={() => setMenuOpen((value) => !value)}>
-        <img src={avatarSrc} alt="" />
-      </button>
-      {menuOpen ? (
-        <div className={styles.menu}>
-          <button type="button" onClick={() => navigate('/app/profile')}>
-            <AccountCircleOutlinedIcon />
-            프로필 보기
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (isLoggedIn) {
-                logout();
-                return;
-              }
-              navigate('/auth/login');
-            }}
-          >
-            {isLoggedIn ? <LogoutOutlinedIcon /> : <LoginOutlinedIcon />}
-            {isLoggedIn ? '로그아웃' : '로그인'}
-          </button>
+      {notificationOpen ? (
+        <div className={styles.notificationCard}>
+          <strong>알림</strong>
+          <p>알림이 없습니다.</p>
         </div>
       ) : null}
+
+      {isLoggedIn ? (
+        <>
+          <button
+            type="button"
+            className={styles.profile}
+            aria-label="회원 메뉴"
+            onClick={() => {
+              setMenuOpen((value) => !value);
+              setNotificationOpen(false);
+            }}
+          >
+            <img src={member?.profileImageUrl || defaultAvatarSrc} alt="" />
+          </button>
+          {menuOpen ? (
+            <div className={styles.menu}>
+              <button type="button" onClick={() => navigate('/app/profile')}>
+                <AccountCircleOutlinedIcon />
+                프로필 보기
+              </button>
+              <button type="button" onClick={logout}>
+                <LogoutOutlinedIcon />
+                로그아웃
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : (
+        <button type="button" className={styles.loginButton} onClick={goLogin} aria-label="로그인">
+          <LoginOutlinedIcon />
+        </button>
+      )}
     </div>
   );
 }

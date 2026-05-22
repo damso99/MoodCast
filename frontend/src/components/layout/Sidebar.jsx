@@ -4,7 +4,6 @@ import BookmarkBorderOutlinedIcon from '@mui/icons-material/BookmarkBorderOutlin
 import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import LocalFireDepartmentOutlinedIcon from '@mui/icons-material/LocalFireDepartmentOutlined';
 import { Logo } from '../common/Logo';
 import styles from './Sidebar.module.css';
 
@@ -29,21 +28,16 @@ export function SidebarContent() {
     <div className={styles.content}>
       <nav className={styles.nav}>
         {items.map(({ label, to, icon: Icon }) => (
-          <NavLink key={to} to={to} className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}>
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) => `${styles.item} ${isActive ? styles.active : ''}`}
+          >
             <Icon className={styles.itemIcon} />
             <span>{label}</span>
           </NavLink>
         ))}
       </nav>
-
-      <section className={styles.premiumCard}>
-        <div className={styles.premiumBadge}>
-          <LocalFireDepartmentOutlinedIcon />
-          <strong>MoodCast Premium</strong>
-        </div>
-        <p>더 많은 기능과 통계를 확인해보세요.</p>
-        <button type="button">업그레이드</button>
-      </section>
     </div>
   );
 }

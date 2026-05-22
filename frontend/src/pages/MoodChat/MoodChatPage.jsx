@@ -3,12 +3,12 @@ import axios from "axios";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import { DesktopShell } from "../../components/layout/DesktopShell";
 import { MobileShell } from "../../components/layout/MobileShell";
+import { useAuthStore } from "../../hooks/useAuthStore";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
-const MEMBER_STORAGE_KEY = "moodcast-member";
 
 function formatMessageTime(createdAt) {
   if (!createdAt) {
@@ -45,32 +45,12 @@ function normalizeIncomingMessage(message, currentUserId) {
   };
 }
 
-function readStoredMember() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const memberText = window.sessionStorage.getItem(MEMBER_STORAGE_KEY);
-  if (!memberText) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(memberText);
-  } catch {
-    return null;
-  }
-}
-
-function readCurrentMemberId() {
-  const member = readStoredMember();
-  const memberId = Number(member?.memberId);
-
-  return Number.isFinite(memberId) && memberId > 0 ? memberId : DEFAULT_CURRENT_USER_ID;
-}
-
 function ChatBody({ desktop }) {
-  const currentMemberId = useMemo(() => readCurrentMemberId(), []);
+  const { member } = useAuthStore();
+  const currentMemberId = useMemo(() => {
+    const memberId = Number(member?.memberId);
+    return Number.isFinite(memberId) && memberId > 0 ? memberId : DEFAULT_CURRENT_USER_ID;
+  }, [member?.memberId]);
   const messageListRef = useRef(null);
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
@@ -313,7 +293,7 @@ function ChatBody({ desktop }) {
     <section className={styles.desktopChat}>
       <div className={styles.hero}>
         <strong>Mood Chat</strong>
-        <p>세션에 저장된 회원 정보 기준으로 채팅 리스트를 불러옵니다.</p>
+        <p>오늘의 감정을 나눠보세요.</p>
       </div>
       {!isRoomOpen ? (
         <div className={styles.listView}>
