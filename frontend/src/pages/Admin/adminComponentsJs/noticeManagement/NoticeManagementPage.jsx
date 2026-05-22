@@ -13,26 +13,7 @@ const initialNoticeForm = {
   content: "",
 };
 
-const initialNotices = [
-  {
-    id: 1,
-    title: "서비스 이용 안내",
-    category: "일반",
-    content: "MoodCast 서비스 이용과 관련된 기본 안내 공지입니다.",
-    createdAt: "2026. 05. 21.",
-    adminName: "관리자",
-    deletedAt: null,
-  },
-  {
-    id: 2,
-    title: "긴급 점검 안내",
-    category: "긴급",
-    content: "서비스 안정화를 위한 긴급 점검이 진행될 예정입니다.",
-    createdAt: "2026. 05. 21.",
-    adminName: "관리자",
-    deletedAt: null,
-  },
-];
+const initialNotices = [];
 
 /* ==========================================================================
  * 공지사항 관리 페이지

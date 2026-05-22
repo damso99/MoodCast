@@ -7,171 +7,11 @@ import styles from "../../adminComponentsCss/contentManagement/ContentManagement
 const contentTabs = ["게시글", "댓글", "이미지", "해시태그"];
 const statusFilters = ["전체", "공개", "숨김", "삭제"];
 
-const contentDummyData = {
-  게시글: [
-    {
-      id: "#P-1001",
-      author: "김하루",
-      handle: "@haru_21",
-      time: "2시간 전",
-      text: "오늘 하루, 마음이 따뜻했던 순간. 좋은 사람들과 함께해서 더 행복했어요.",
-      tag: "#일상기록",
-      status: "공개",
-      reports: 2,
-      images: [
-        {
-          id: "P1001-1",
-          src: "/admin-content-demo.png",
-          alt: "웃는 캐릭터 이미지",
-        },
-      ],
-      stats: { likes: 234, comments: 12, empathy: 18, saves: 7 },
-    },
-    {
-      id: "#P-1002",
-      author: "이서연",
-      handle: "@seo_123",
-      time: "5시간 전",
-      text: "새로운 프로젝트 시작. 열심히 해보자.",
-      tag: "#프로젝트",
-      status: "공개",
-      reports: 0,
-      images: [
-        {
-          id: "P1002-1",
-          src: "/admin-post-demo-1.jpg",
-          alt: "캐릭터 여러 표정 이미지",
-        },
-        {
-          id: "P1002-2",
-          src: "/admin-post-demo-2.jpg",
-          alt: "둥근 캐릭터 이미지",
-        },
-        {
-          id: "P1002-3",
-          src: "/admin-post-demo-3.jpg",
-          alt: "울먹이는 캐릭터 이미지",
-        },
-      ],
-      stats: { likes: 156, comments: 8, empathy: 12, saves: 3 },
-    },
-    {
-      id: "#P-1003",
-      author: "박지은",
-      handle: "@jieun_97",
-      time: "1일 전",
-      text: "오늘의 하늘은 정말 예뻤다. 사진으로 남겨두고 싶은 순간.",
-      tag: "#하늘 #감성",
-      status: "숨김",
-      reports: 1,
-      images: [
-        {
-          id: "P1003-1",
-          src: "/admin-content-demo.png",
-          alt: "웃는 캐릭터 이미지",
-        },
-        {
-          id: "P1003-2",
-          src: "/admin-post-demo-1.jpg",
-          alt: "캐릭터 여러 표정 이미지",
-        },
-        {
-          id: "P1003-3",
-          src: "/admin-post-demo-2.jpg",
-          alt: "둥근 캐릭터 이미지",
-        },
-        {
-          id: "P1003-4",
-          src: "/admin-post-demo-3.jpg",
-          alt: "울먹이는 캐릭터 이미지",
-        },
-        {
-          id: "P1003-5",
-          src: "/admin-content-demo.png",
-          alt: "추가 캐릭터 이미지",
-        },
-      ],
-      stats: { likes: 312, comments: 24, empathy: 28, saves: 15 },
-    },
-  ],
-  댓글: [
-    {
-      id: "#C-2041",
-      author: "문지호",
-      handle: "@jiho_m",
-      time: "18분 전",
-      text: "사진 분위기가 정말 좋아요.",
-      target: "오늘의 감정 기록",
-      status: "공개",
-      reports: 0,
-    },
-    {
-      id: "#C-2042",
-      author: "박민준",
-      handle: "@minjun",
-      time: "42분 전",
-      text: "운영 정책 확인이 필요한 댓글입니다.",
-      target: "긴 하루 끝에 남긴 글",
-      status: "숨김",
-      reports: 3,
-    },
-  ],
-  이미지: [
-    {
-      id: "#IMG-3010",
-      author: "김하루",
-      handle: "@haru_21",
-      time: "2시간 전",
-      fileName: "admin-post-demo-1.jpg",
-      target: "오늘의 감정 기록",
-      status: "공개",
-      reports: 0,
-      imageSrc: "/admin-post-demo-1.jpg",
-      size: "112KB",
-    },
-    {
-      id: "#IMG-3011",
-      author: "이서연",
-      handle: "@seo_123",
-      time: "5시간 전",
-      fileName: "admin-post-demo-2.jpg",
-      target: "새로운 프로젝트 시작",
-      status: "공개",
-      reports: 0,
-      imageSrc: "/admin-post-demo-2.jpg",
-      size: "24KB",
-    },
-    {
-      id: "#IMG-3012",
-      author: "박지은",
-      handle: "@jieun_97",
-      time: "1일 전",
-      fileName: "admin-post-demo-3.jpg",
-      target: "오늘의 하늘 기록",
-      status: "숨김",
-      reports: 1,
-      imageSrc: "/admin-post-demo-3.jpg",
-      size: "86KB",
-    },
-  ],
-  해시태그: [
-    {
-      id: "#TAG-88",
-      tagName: "#기분좋음",
-      postCount: 24,
-      status: "공개",
-      reports: 0,
-      createdAt: "2026. 05. 21.",
-    },
-    {
-      id: "#TAG-89",
-      tagName: "#점검필요",
-      postCount: 3,
-      status: "숨김",
-      reports: 1,
-      createdAt: "2026. 05. 21.",
-    },
-  ],
+const contentData = {
+  게시글: [],
+  댓글: [],
+  이미지: [],
+  해시태그: [],
 };
 
 const contentDescriptions = {
@@ -204,17 +44,15 @@ const getStatusClassName = (status) => {
  * - 상단 탭에서 어떤 콘텐츠 유형을 선택했는지 저장합니다.
  * - 선택값에 따라 카드 목록과 안내 문구가 바뀝니다.
  *
- * 현재 더미데이터:
- * - 백엔드 연결 전 화면 형태 확인용입니다.
- * - 게시글 더미데이터는 images 배열을 사용합니다.
- * - 이미지가 1개인 게시글, 3개인 게시글, 4개 이상인 게시글을 각각 확인할 수 있습니다.
- * - 4개 이상인 경우 카드에는 4개까지만 보이고, 마지막 이미지에 +N 오버레이가 표시됩니다.
- * - 이미지 영역을 누르면 게시글 이미지 전체 보기 팝업이 열립니다.
+ * 현재 데이터 상태:
+ * - 더미데이터는 제거했습니다.
+ * - 백엔드 API가 연결되기 전까지 각 탭은 빈 목록 상태로 표시됩니다.
+ * - 실제 데이터가 들어오면 contentData 대신 API 응답값을 연결하면 됩니다.
  * ========================================================================== */
 export function ContentManagementPage() {
   const [selectedContentType, setSelectedContentType] = useState("게시글");
   const [openedImagePost, setOpenedImagePost] = useState(null);
-  const selectedRows = contentDummyData[selectedContentType];
+  const selectedRows = contentData[selectedContentType];
 
   const renderActionButtons = (status) => (
     <div className={styles.cardActions}>
@@ -355,6 +193,15 @@ export function ContentManagementPage() {
   );
 
   const renderContentCards = () => {
+    if (selectedRows.length === 0) {
+      return (
+        <div className={styles.emptyFeed}>
+          <strong>{selectedContentType} 데이터 없음</strong>
+          <span>백엔드에서 데이터를 받아오면 이 영역에 목록이 표시됩니다.</span>
+        </div>
+      );
+    }
+
     if (selectedContentType === "게시글") {
       return selectedRows.map(renderPostCard);
     }

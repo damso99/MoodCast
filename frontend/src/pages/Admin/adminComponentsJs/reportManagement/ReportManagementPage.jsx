@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { AdminLayout } from "../common/AdminLayout";
 import { SearchBar } from "../common/SearchBar";
-import { initialReports } from "./reportDummyData";
 import {
   reportStatusTabs,
   reportTypeTabs,
@@ -51,7 +50,7 @@ import styles from "../../adminComponentsCss/reportManagement/ReportManagementPa
  * - confirm: 최종 제재 확인
  * ========================================================================== */
 export function ReportManagementPage() {
-  const [reports, setReports] = useState(initialReports); // 신고 목록 화면에 보여줄 임시 데이터입니다.
+  const [reports, setReports] = useState([]); // 신고 목록 데이터입니다. 더미데이터를 제거했기 때문에 백엔드 연결 전에는 빈 배열로 시작합니다.
   const [selectedStatusTab, setSelectedStatusTab] = useState("전체"); // 현재 선택한 처리 상태 필터입니다.
   const [selectedTypeTab, setSelectedTypeTab] = useState("전체"); // 현재 선택한 신고 대상 유형 필터입니다.
   const [selectedReport, setSelectedReport] = useState(null); // 오른쪽 패널에서 자세히 볼 신고 1건입니다.
