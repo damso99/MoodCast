@@ -33,3 +33,10 @@ mybatis:
   type-aliases-package: com.moodcast.member.vo
   configuration:
     map-underscore-to-camel-case: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  issuer: ${JWT_ISSUER}
+  access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES}
+  refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS}
+  refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME}

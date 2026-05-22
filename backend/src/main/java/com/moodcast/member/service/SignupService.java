@@ -29,12 +29,12 @@ public class SignupService {
     private EmailService emailService;
     @Autowired
     private PhoneService phoneService;
+    @Autowired
+    private MemberValidationService memberValidationService;
 
     private Integer testSendCount = 100;
 
-    // 이메일 정규식
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
 
     // 이름 정규식 (실명 한글만 2~10자)
     private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
@@ -57,22 +57,7 @@ public class SignupService {
     // 랜덤 난수
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    // 이메일 기본 검증 메서드
-    private String normalizeEmail(String email) {
-        if (email == null) {
-            throw new IllegalArgumentException("이메일을 입력해주세요.");
-        }
-        // 공백제거, 소문자로 변경
-        email = email.trim().toLowerCase();
-        if (email.isEmpty()) {
-            throw new IllegalArgumentException("이메일을 입력해주세요.");
-        }
 
-        if (!EMAIL_PATTERN.matcher(email).matches()) {
-            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
-        }
-        return email;
-    }
 
     // 이름 (실명) 기본검증 메서드
     private String normalizeName(String name) {
@@ -245,7 +230,7 @@ public class SignupService {
     // 이메일 인증코드
     @Transactional
     public String sendEmailAuthCode(String email) {
-        email = normalizeEmail(email);
+        email = memberValidationService.normalizeEmail(email);
 
         checkEmailDuplicate(email);
 
@@ -321,7 +306,7 @@ public class SignupService {
     // IllegalArgumentException 예외는 사용자 문제이므로 롤백 대상에서 제외
     @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyEmailAuthCode(String email, String authCode) {
-        email = normalizeEmail(email);
+        email = memberValidationService.normalizeEmail(email);
         AuthCode lastAuthCode = signupDao.findLastAuthCode("EMAIL", email, "SIGNUP");
 
         checkAuthCode(lastAuthCode, authCode);
@@ -348,7 +333,7 @@ public class SignupService {
 
     // 이메일 기본검사, 중복여부
     public boolean checkEmailAvailable(String email) {
-        email = normalizeEmail(email);
+        email = memberValidationService.normalizeEmail(email);
         int emailCount = signupDao.countByEmail(email);
         return emailCount == 0;
     }
@@ -423,7 +408,7 @@ public class SignupService {
     public void validateBasic(String name, String nickname, String email, String password, String passwordConfirm) {
         normalizeName(name);
         nickname = normalizeNickname(nickname);
-        email = normalizeEmail(email);
+        email = memberValidationService.normalizeEmail(email);
         checkPassword(password, passwordConfirm);
         if (nickname != null) {
             checkNicknameDuplicate(nickname);
@@ -447,7 +432,7 @@ public class SignupService {
 
         String name = normalizeName(request.getName());
         String nickname = normalizeNickname(request.getNickname());
-        String email = normalizeEmail(request.getEmail());
+        String email = memberValidationService.normalizeEmail(request.getEmail());
         String phone = normalizePhone(request.getPhone());
 
         checkPassword(request.getPassword(), request.getPasswordConfirm());

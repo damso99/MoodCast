@@ -1,5 +1,6 @@
 package com.moodcast.common.exception;
 
+import com.moodcast.member.controller.LoginController;
 import com.moodcast.member.controller.SignupController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -10,10 +11,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.Map;
 
 // SignupController에서 발생한 예외만 여기서 잡음
-@RestControllerAdvice(assignableTypes = SignupController.class)
-public class SignupExceptionHandler {
+// LoginController 추가함
+@RestControllerAdvice(assignableTypes = {
+        SignupController.class,
+        LoginController.class
+})
+public class MemberExceptionHandler {
 
-    // 사용자 입력문제 예외 400
+    // 사용자 입력문제 400
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(
@@ -49,13 +54,13 @@ public class SignupExceptionHandler {
         );
     }
 
-    // 약관 조회 중 DB 에러
+    // 예상하지 못한 서버오류
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleException(Exception e) {
         return ResponseEntity.internalServerError().body(
                 Map.of(
                         "success", false,
-                        "message", "서버 오류가 발생했습니다. 500 Server"
+                        "message", e.getMessage() + "서버 오류가 발생했습니다. 500 Server"
                 )
         );
     }

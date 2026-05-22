@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthState } from "../../hooks/useAuthState";
 import { LoginView } from "./components/LoginView";
+import axios from "axios";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -61,19 +62,34 @@ export const LoginPage = () => {
 
     setIsLoading(true);
 
-    console.log("로그인 요청 데이터:", member);
+    axios
+      .post(`${import.meta.env.VITE_BACKSERVER}/auth/login`, {
+        email: member.email,
+        password: member.password,
+        remember: member.remember,
+      })
+      .then((res) => {
+        console.log(res.data);
+        setIsLoading(true);
+        setMember({
+          email: "",
+          password: "",
+          remember: false,
+        });
 
-    setTimeout(() => {
-      setIsLoggedIn(true);
-      setIsLoading(false);
-      setMember({
-        email: "",
-        password: "",
-        remember: false,
+        showToast("success", res.data.message || "로그인 성공");
+        navigate("/app/feed");
+      })
+      .catch((err) => {
+        console.log(err);
+        showToast(
+          "error",
+          err.response?.data?.message || "로그인 중 오류가 발생했습니다.",
+        );
+      })
+      .finally(() => {
+        setIsLoading(false);
       });
-      showToast("success", "로그인되었습니다.");
-      navigate("/app/feed");
-    }, 300);
   };
 
   const showReadyMessage = (label) => {
