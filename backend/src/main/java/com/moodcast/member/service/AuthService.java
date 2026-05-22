@@ -198,17 +198,11 @@ public class AuthService {
         }
 
         boolean isFollowing = authDao.isFollowing(followerId, followingId) > 0;
-        System.out.println("DEBUG: followerId=" + followerId + ", followingId=" + followingId + ", currentlyIsFollowing=" + isFollowing);
-        
         if (isFollowing) {
             authDao.unfollow(followerId, followingId);
-            boolean stillFollowing = authDao.isFollowing(followerId, followingId) > 0;
-            System.out.println("DEBUG: After unfollow, stillFollowing=" + stillFollowing);
             return new FollowResponse(true, "팔로우가 취소되었습니다.", false);
         } else {
             authDao.follow(followerId, followingId);
-            boolean nowFollowing = authDao.isFollowing(followerId, followingId) > 0;
-            System.out.println("DEBUG: After follow, nowFollowing=" + nowFollowing);
             return new FollowResponse(true, "팔로우되었습니다.", true);
         }
     }
@@ -234,13 +228,31 @@ public class AuthService {
 
     public List<FollowItemResponse> getFollowerList(String authHeader, Long targetId) {
         Long loginId = 0L;
-        try { loginId = getMemberIdFromHeader(authHeader); } catch (Exception ignored) {}
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                loginId = getMemberIdFromHeader(authHeader);
+                System.out.println("DEBUG: getFollowerList - loginId found: " + loginId);
+            } catch (Exception e) {
+                System.out.println("DEBUG: getFollowerList - invalid token: " + e.getMessage());
+            }
+        } else {
+            System.out.println("DEBUG: getFollowerList - NO AUTH HEADER RECEIVED");
+        }
         return authDao.getFollowerList(targetId, loginId);
     }
 
     public List<FollowItemResponse> getFollowingList(String authHeader, Long targetId) {
         Long loginId = 0L;
-        try { loginId = getMemberIdFromHeader(authHeader); } catch (Exception ignored) {}
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                loginId = getMemberIdFromHeader(authHeader);
+                System.out.println("DEBUG: getFollowingList - loginId found: " + loginId);
+            } catch (Exception e) {
+                System.out.println("DEBUG: getFollowingList - invalid token: " + e.getMessage());
+            }
+        } else {
+            System.out.println("DEBUG: getFollowingList - NO AUTH HEADER RECEIVED");
+        }
         return authDao.getFollowingList(targetId, loginId);
     }
 

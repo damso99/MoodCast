@@ -160,10 +160,10 @@ export function ProfilePage() {
           <div className={styles.actionsRich}>
             <button 
               type="button" 
-              className={followInfo.following ? styles.chatBtn : styles.followBtn}
+              className={followInfo.following ? styles.unfollowBtnRich : styles.followBtnRich}
               onClick={handleFollowToggle}
             >
-              {followInfo.following ? '팔로잉 취소' : '팔로우 하기'}
+              {followInfo.following ? '언팔로우' : '팔로우'}
             </button>
             <button type="button" className={styles.chatBtn} onClick={handleChatClick}>채팅하기</button>
           </div>

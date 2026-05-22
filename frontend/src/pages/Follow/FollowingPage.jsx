@@ -26,10 +26,16 @@ export function FollowingPage() {
     if (!targetId) return;
     setLoading(true);
     
-    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    // useAuthStore에서 가져온 token이 있으면 사용, 없으면 세션 스토리지 직접 조회
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    
+    console.log('DEBUG: Fetching following list for', targetId, 'Token exists:', !!effectiveToken);
+
+    const config = effectiveToken ? { headers: { Authorization: `Bearer ${effectiveToken}` } } : {};
     
     axios.get(`${BACKSERVER}/auth/follow/following/${targetId}`, config)
       .then(res => {
+        console.log('DEBUG: Received following data:', res.data);
         setItems(res.data);
       })
       .catch(err => console.error('팔로잉 목록 조회 실패:', err))
@@ -53,19 +59,20 @@ export function FollowingPage() {
   }, [items, query, sort]);
 
   const toggleFollow = (id) => {
-    if (!token) {
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    if (!effectiveToken) {
       alert('로그인이 필요합니다.');
       return;
     }
 
     axios.post(`${BACKSERVER}/auth/follow/${id}`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${effectiveToken}` }
     })
     .then((res) => {
-      // 서버에서 전달해준 최신 팔로우 상태(res.data.following)를 반영하여 
-      // 로컬 상태만 업데이트 (목록에서 바로 사라지지 않게 함)
+      console.log('DEBUG: Toggle result for', id, ':', res.data);
+      const newStatus = res.data.following;
       setItems(prev => prev.map(item => 
-        item.memberId === id ? { ...item, isFollowing: res.data.following } : item
+        item.memberId === id ? { ...item, isFollowing: newStatus, following: newStatus } : item
       ));
     })
     .catch(err => console.error('팔로우 토글 실패:', err));
@@ -136,13 +143,13 @@ export function FollowingPage() {
               {currentMember?.memberId !== user.memberId && (
                 <button
                   type="button"
-                  className={user.isFollowing ? styles.unfollowButton : styles.followButton}
+                  className={user.isFollowing || user.following ? styles.unfollowButton : styles.followButton}
                   onClick={(event) => {
                     event.stopPropagation();
                     toggleFollow(user.memberId);
                   }}
                 >
-                  {user.isFollowing ? '언팔로우' : '팔로우'}
+                  {user.isFollowing || user.following ? '언팔로우' : '팔로우'}
                 </button>
               )}
             </article>

@@ -102,12 +102,11 @@
             m.nickname,
             m.email,
             m.profile_image_url as profileImageUrl,
-            CASE WHEN f2.follower_member_id IS NOT NULL THEN 1 ELSE 0 END as isFollowing,
-            CASE WHEN f3.follower_member_id IS NOT NULL THEN 1 ELSE 0 END as followsMe
-        FROM (SELECT * FROM follow_tbl WHERE following_member_id = #{targetId}) f
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = #{loginId} AND f_check.following_member_id = m.member_id) as isFollowing,
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = m.member_id AND f_check.following_member_id = #{loginId}) as followsMe
+        FROM follow_tbl f
         JOIN members m ON f.follower_member_id = m.member_id
-        LEFT JOIN follow_tbl f2 ON f2.follower_member_id = #{loginId} AND f2.following_member_id = m.member_id
-        LEFT JOIN follow_tbl f3 ON f3.follower_member_id = m.member_id AND f3.following_member_id = #{loginId}
+        WHERE f.following_member_id = #{targetId}
         ORDER BY f.created_at DESC
     </select>
 
@@ -118,12 +117,11 @@
             m.nickname,
             m.email,
             m.profile_image_url as profileImageUrl,
-            CASE WHEN f2.follower_member_id IS NOT NULL THEN 1 ELSE 0 END as isFollowing,
-            CASE WHEN f3.follower_member_id IS NOT NULL THEN 1 ELSE 0 END as followsMe
-        FROM (SELECT * FROM follow_tbl WHERE follower_member_id = #{targetId}) f
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = #{loginId} AND f_check.following_member_id = m.member_id) as isFollowing,
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = m.member_id AND f_check.following_member_id = #{loginId}) as followsMe
+        FROM follow_tbl f
         JOIN members m ON f.following_member_id = m.member_id
-        LEFT JOIN follow_tbl f2 ON f2.follower_member_id = #{loginId} AND f2.following_member_id = m.member_id
-        LEFT JOIN follow_tbl f3 ON f3.follower_member_id = m.member_id AND f3.following_member_id = #{loginId}
+        WHERE f.follower_member_id = #{targetId}
         ORDER BY f.created_at DESC
     </select>
 

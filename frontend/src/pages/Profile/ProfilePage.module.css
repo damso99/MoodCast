@@ -70,25 +70,35 @@
   gap: 8px;
 }
 
-.followBtn,
+.followBtnRich,
+.unfollowBtnRich,
 .chatBtn {
   min-height: 44px;
-  padding: 0 20px;
+  padding: 0 24px;
   border-radius: 14px;
   font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.followBtn {
-  background: #111827;
-  color: #fff;
   border: none;
 }
 
-.followBtn:hover {
-  background: #374151;
+.followBtnRich {
+  background: #0095f6;
+  color: #fff;
+}
+
+.followBtnRich:hover {
+  background: #1877f2;
+}
+
+.unfollowBtnRich {
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.unfollowBtnRich:hover {
+  background: #ff7875;
 }
 
 .chatBtn {
