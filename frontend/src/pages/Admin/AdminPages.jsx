@@ -1,13 +1,13 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { AdminCreatePage } from './adminComponentsJs/AdminCreatePage';
-import { AdminDashboardPage } from './adminComponentsJs/AdminDashboardPage';
-import { AdminProfilePage } from './adminComponentsJs/AdminProfilePage';
-import { ContentManagementPage } from './adminComponentsJs/ContentManagementPage';
-import { NoticeManagementPage } from './adminComponentsJs/NoticeManagementPage';
-import { ReportManagementPage } from './adminComponentsJs/ReportManagementPage';
-import { StatisticsDashboardPage } from './adminComponentsJs/StatisticsDashboardPage';
-import { UserManagementPage } from './adminComponentsJs/UserManagementPage';
-import { pageTitles } from './adminComponentsJs/adminConfig';
+﻿import { Navigate, Route, Routes } from "react-router-dom";
+import { AdminCreatePage } from "./adminComponentsJs/userManagement/AdminCreatePage";
+import { AdminDashboardPage } from "./adminComponentsJs/dashboard/AdminDashboardPage";
+import { AdminProfilePage } from "./adminComponentsJs/userManagement/AdminProfilePage";
+import { ContentManagementPage } from "./adminComponentsJs/contentManagement/ContentManagementPage";
+import { NoticeManagementPage } from "./adminComponentsJs/noticeManagement/NoticeManagementPage";
+import { ReportManagementPage } from "./adminComponentsJs/reportManagement/ReportManagementPage";
+import { StatisticsDashboardPage } from "./adminComponentsJs/statisticsDashboard/StatisticsDashboardPage";
+import { UserManagementPage } from "./adminComponentsJs/userManagement/UserManagementPage";
+import { pageTitles } from "./adminComponentsJs/common/adminConfig";
 
 /* ==========================================================================
  * 관리자 페이지 라우팅 파일

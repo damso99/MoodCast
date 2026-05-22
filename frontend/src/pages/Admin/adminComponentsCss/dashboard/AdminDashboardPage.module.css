@@ -1,0 +1,124 @@
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+  gap: 16px;
+}
+
+.panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.83);
+  box-shadow: 0 22px 52px rgba(17, 24, 39, 0.055);
+}
+
+.widePanel {
+  min-height: 360px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panelHead h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.chartBox {
+  position: relative;
+  min-height: 250px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(102, 112, 133, 0.1);
+  border-radius: 15px;
+  background: linear-gradient(
+    180deg,
+    rgba(251, 251, 253, 0.9),
+    rgba(255, 255, 255, 0.7)
+  );
+}
+
+.chartGrid {
+  position: absolute;
+  inset: 18px;
+  opacity: 0.7;
+  background-image:
+    linear-gradient(rgba(102, 112, 133, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102, 112, 133, 0.12) 1px, transparent 1px);
+  background-size:
+    100% 25%,
+    16.66% 100%;
+}
+
+.line::after {
+  content: "";
+  position: absolute;
+  inset: auto 34px 44px;
+  height: 44%;
+  border-bottom: 3px dashed rgba(47, 126, 251, 0.28);
+  border-radius: 50%;
+}
+
+.moodFilters,
+.quickLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.moodFilters button,
+.quickLinks a {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 11px;
+  color: #633df2;
+  font-weight: 800;
+  text-decoration: none;
+  background: rgba(124, 77, 255, 0.08);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.moodFilters button:hover,
+.quickLinks a:hover {
+  background: rgba(124, 77, 255, 0.15);
+  box-shadow: 0 10px 22px rgba(124, 77, 255, 0.13);
+  transform: translateY(-1px);
+}
+
+.moodFilters button:active,
+.quickLinks a:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.moodFilters button:focus-visible,
+.quickLinks a:focus-visible {
+  outline: 3px solid rgba(124, 77, 255, 0.28);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1120px) {
+  .metricGrid,
+  .dashboardGrid {
+    grid-template-columns: 1fr;
+  }
+}
