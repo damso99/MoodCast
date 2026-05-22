@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuthState } from "../../hooks/useAuthState";
+import { useAuthStore } from "../../hooks/useAuthStore";
 import { LoginView } from "./components/LoginView";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { setAuthData } = useAuthState();
+  const { setAuthData } = useAuthStore();
 
   const [member, setMember] = useState({
     email: "",
