@@ -4,6 +4,9 @@ import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResponse;
 import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
+import com.moodcast.member.dto.follow.FollowResponse;
+import com.moodcast.member.dto.follow.FollowCheckResponse;
+import com.moodcast.member.dto.follow.FollowItemResponse;
 import com.moodcast.member.service.AuthService;
 import com.moodcast.member.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -85,6 +89,40 @@ public class AuthController {
                         "member", authService.getMemberById(memberId)
                 )
         );
+    }
+
+    // 팔로우 토글
+    @PostMapping("follow/{memberId}")
+    public ResponseEntity<FollowResponse> toggleFollow(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable("memberId") Long memberId
+    ) {
+        return ResponseEntity.ok(authService.toggleFollow(authHeader, memberId));
+    }
+
+    // 팔로우 상태 및 카운트 조회
+    @GetMapping("follow/status/{memberId}")
+    public ResponseEntity<FollowCheckResponse> getFollowStatus(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable("memberId") Long memberId
+    ) {
+        return ResponseEntity.ok(authService.getFollowStatus(authHeader, memberId));
+    }
+
+    @GetMapping("follow/followers/{memberId}")
+    public ResponseEntity<List<FollowItemResponse>> getFollowers(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable("memberId") Long memberId
+    ) {
+        return ResponseEntity.ok(authService.getFollowerList(authHeader, memberId));
+    }
+
+    @GetMapping("follow/following/{memberId}")
+    public ResponseEntity<List<FollowItemResponse>> getFollowing(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @PathVariable("memberId") Long memberId
+    ) {
+        return ResponseEntity.ok(authService.getFollowingList(authHeader, memberId));
     }
 
     @PostMapping("logout")

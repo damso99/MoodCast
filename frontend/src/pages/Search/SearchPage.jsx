@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
@@ -9,6 +10,7 @@ import styles from './SearchPage.module.css';
 // 입력한 검색어를 백엔드 검색 API로 전달하고 결과를 보여줍니다.
 export function SearchPage() {
   const desktop = useIsDesktop();
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
   const [results, setResults] = useState([]);
@@ -78,9 +80,39 @@ export function SearchPage() {
           results.map((item) => {
             if (activeTab === 'users') {
               return (
-                <article key={item.memberId} className={styles.item}>
-                  <strong>{item.nickname || item.name}</strong>
-                  <p>{item.name}</p>
+                <article 
+                  key={item.memberId} 
+                  className={styles.item}
+                  onClick={() => navigate(`/app/user/${item.memberId}`)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#e0e0e0', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      fontWeight: 'bold',
+                      color: '#666',
+                      overflow: 'hidden'
+                    }}>
+                      {item.profileImageUrl ? (
+                        <img src={item.profileImageUrl} alt={item.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        (item.nickname || item.name || '?').charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div>
+                      <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
+                      <span style={{ fontSize: '13px', color: '#888' }}>
+                        @{item.email ? item.email.split('@')[0] : item.memberId}
+                      </span>
+                    </div>
+                  </div>
                 </article>
               );
             }

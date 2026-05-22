@@ -2,11 +2,11 @@ import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
-import { feedPosts, profileHighlights, profileStats } from '../../data/moodcastData';
+import { feedPosts, profileHighlights } from '../../data/moodcastData';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {
@@ -15,11 +15,40 @@ export function ProfilePage() {
   const { handle } = useParams(); // URL 파라미터 :handle (memberId)
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { member: currentMember } = useAuthStore();
+  const [followInfo, setFollowInfo] = useState({ 
+    following: false, 
+    followerCount: 0, 
+    followingCount: 0,
+    postCount: 0,
+    savedCount: 0
+  });
+  
+  const { member: currentMember, accessToken: token } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 실제 조회할 ID 결정 (파라미터 없으면 내 ID)
   const targetId = handle || currentMember?.memberId;
+
+  // 팔로우 상태 및 카운트 조회 함수
+  const fetchFollowStatus = useCallback(() => {
+    if (!targetId) return;
+    
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    
+    axios.get(`${BACKSERVER}/auth/follow/status/${targetId}`, config)
+      .then(res => {
+        if (res.data.success) {
+          setFollowInfo({
+            following: res.data.following,
+            followerCount: res.data.followerCount,
+            followingCount: res.data.followingCount,
+            postCount: res.data.postCount,
+            savedCount: res.data.savedCount
+          });
+        }
+      })
+      .catch(err => console.error('팔로우 상태 조회 실패:', err));
+  }, [targetId, BACKSERVER, token]);
 
   useEffect(() => {
     if (!targetId) {
@@ -28,10 +57,13 @@ export function ProfilePage() {
     }
 
     setLoading(true);
+    // 1. 사용자 기본 정보 조회
     axios.get(`${BACKSERVER}/auth/member/${targetId}`)
       .then(res => {
         if (res.data.success) {
           setUser(res.data.member);
+          // 2. 팔로우 정보 조회 (실제 데이터)
+          fetchFollowStatus();
         }
       })
       .catch(err => {
@@ -40,14 +72,43 @@ export function ProfilePage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [targetId, BACKSERVER]);
+  }, [targetId, BACKSERVER, fetchFollowStatus]);
 
   const isOwnProfile = currentMember && String(currentMember.memberId) === String(targetId);
 
+  // 팔로우 처리 함수
+  const handleFollowToggle = () => {
+    if (!token) {
+      alert('로그인이 필요한 서비스입니다.');
+      navigate('/auth/login');
+      return;
+    }
+
+    axios.post(`${BACKSERVER}/auth/follow/${targetId}`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    .then(res => {
+      if (res.data.success) {
+        // 성공 시 로컬 상태 업데이트
+        fetchFollowStatus();
+      }
+    })
+    .catch(err => {
+      console.error('팔로우 처리 실패:', err);
+      alert(err.response?.data?.message || '팔로우 처리 중 오류가 발생했습니다.');
+    });
+  };
+
   const handleStatClick = (label) => {
     if (label === '저장됨' && isOwnProfile) navigate('/app/saved');
-    if (label === '팔로워') navigate('/app/followers');
-    if (label === '팔로잉') navigate('/app/following');
+    if (label === '팔로워') {
+      const id = targetId || currentMember?.memberId;
+      navigate(`/app/followers/${id}`);
+    }
+    if (label === '팔로잉') {
+      const id = targetId || currentMember?.memberId;
+      navigate(`/app/following/${id}`);
+    }
   };
 
   if (loading) {
@@ -82,7 +143,9 @@ export function ProfilePage() {
         <div className={styles.heroContent}>
           <strong>{displayName}</strong>
           <p>{displayText}</p>
-          <span className={styles.handle}>@{user?.memberId || targetId}</span>
+          <span className={styles.handle}>
+            @{user?.email ? user.email.split('@')[0] : (user?.memberId || targetId)}
+          </span>
         </div>
         
         {isOwnProfile ? (
@@ -95,15 +158,26 @@ export function ProfilePage() {
           </button>
         ) : (
           <div className={styles.actionsRich}>
-            <button type="button" className={styles.followBtn}>팔로잉 하기</button>
+            <button 
+              type="button" 
+              className={followInfo.following ? styles.unfollowBtnRich : styles.followBtnRich}
+              onClick={handleFollowToggle}
+            >
+              {followInfo.following ? '언팔로우' : '팔로우'}
+            </button>
             <button type="button" className={styles.chatBtn} onClick={handleChatClick}>채팅하기</button>
           </div>
         )}
       </article>
 
-      {/* 통계 섹션 - 클릭 가능하게 수정함 */}
+      {/* 통계 섹션 - 실제 데이터 적용 */}
       <div className={styles.stats}>
-        {profileStats.map((item) => {
+        {[
+          { label: '게시물', value: followInfo.postCount },
+          { label: '저장됨', value: followInfo.savedCount },
+          { label: '팔로워', value: followInfo.followerCount },
+          { label: '팔로잉', value: followInfo.followingCount },
+        ].map((item) => {
           const isClickable = ['저장됨', '팔로워', '팔로잉'].includes(item.label);
           
           // 저장됨의 경우 타인 프로필이면 클릭은 안 되게 처리함

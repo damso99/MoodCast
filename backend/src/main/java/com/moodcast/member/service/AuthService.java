@@ -1,6 +1,9 @@
 package com.moodcast.member.service;
 
 import com.moodcast.member.dao.AuthDao;
+import com.moodcast.member.dto.follow.FollowCheckResponse;
+import com.moodcast.member.dto.follow.FollowItemResponse;
+import com.moodcast.member.dto.follow.FollowResponse;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResult;
@@ -12,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
@@ -184,5 +188,79 @@ public class AuthService {
         } catch (JwtException | IllegalArgumentException e) {
             throw new IllegalArgumentException("로그인이 만료되었습니다. 다시 로그인해주세요.");
         }
+    }
+
+    @Transactional
+    public FollowResponse toggleFollow(String authHeader, Long followingId) {
+        Long followerId = getMemberIdFromHeader(authHeader);
+        if (followerId.equals(followingId)) {
+            throw new IllegalArgumentException("자기 자신을 팔로우할 수 없습니다.");
+        }
+
+        boolean isFollowing = authDao.isFollowing(followerId, followingId) > 0;
+        if (isFollowing) {
+            authDao.unfollow(followerId, followingId);
+            return new FollowResponse(true, "팔로우가 취소되었습니다.", false);
+        } else {
+            authDao.follow(followerId, followingId);
+            return new FollowResponse(true, "팔로우되었습니다.", true);
+        }
+    }
+
+    public FollowCheckResponse getFollowStatus(String authHeader, Long targetMemberId) {
+        Long currentMemberId = 0L;
+        try {
+            currentMemberId = getMemberIdFromHeader(authHeader);
+        } catch (Exception ignored) {}
+
+        boolean following = false;
+        if (currentMemberId > 0 && !currentMemberId.equals(targetMemberId)) {
+            following = authDao.isFollowing(currentMemberId, targetMemberId) > 0;
+        }
+
+        long followerCount = authDao.countFollowers(targetMemberId);
+        long followingCount = authDao.countFollowing(targetMemberId);
+        long postCount = authDao.countPosts(targetMemberId);
+        long savedCount = authDao.countSavedPosts(targetMemberId);
+
+        return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount);
+    }
+
+    public List<FollowItemResponse> getFollowerList(String authHeader, Long targetId) {
+        Long loginId = 0L;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                loginId = getMemberIdFromHeader(authHeader);
+                System.out.println("DEBUG: getFollowerList - loginId found: " + loginId);
+            } catch (Exception e) {
+                System.out.println("DEBUG: getFollowerList - invalid token: " + e.getMessage());
+            }
+        } else {
+            System.out.println("DEBUG: getFollowerList - NO AUTH HEADER RECEIVED");
+        }
+        return authDao.getFollowerList(targetId, loginId);
+    }
+
+    public List<FollowItemResponse> getFollowingList(String authHeader, Long targetId) {
+        Long loginId = 0L;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                loginId = getMemberIdFromHeader(authHeader);
+                System.out.println("DEBUG: getFollowingList - loginId found: " + loginId);
+            } catch (Exception e) {
+                System.out.println("DEBUG: getFollowingList - invalid token: " + e.getMessage());
+            }
+        } else {
+            System.out.println("DEBUG: getFollowingList - NO AUTH HEADER RECEIVED");
+        }
+        return authDao.getFollowingList(targetId, loginId);
+    }
+
+    private Long getMemberIdFromHeader(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+        String token = authHeader.substring(7).trim();
+        return jwtService.getMemberIdFromAccessToken(token);
     }
 }

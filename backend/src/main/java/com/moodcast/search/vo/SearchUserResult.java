@@ -4,6 +4,7 @@ public class SearchUserResult {
     private Long memberId;
     private String name;
     private String nickname;
+    private String email;
     private String profileImageUrl;
 
     public Long getMemberId() {
@@ -28,6 +29,14 @@ public class SearchUserResult {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getProfileImageUrl() {

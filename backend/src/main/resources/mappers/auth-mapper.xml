@@ -62,4 +62,67 @@
         where member_id = #{memberId}
     </update>
 
+    <!-- 팔로우 관련 -->
+    <select id="isFollowing" resultType="int">
+        SELECT COUNT(*) FROM follow_tbl 
+        WHERE follower_member_id = #{followerId} AND following_member_id = #{followingId}
+    </select>
+
+    <insert id="follow">
+        INSERT INTO follow_tbl (follower_member_id, following_member_id)
+        VALUES (#{followerId}, #{followingId})
+        ON DUPLICATE KEY UPDATE created_at = now()
+    </insert>
+
+    <delete id="unfollow">
+        DELETE FROM follow_tbl 
+        WHERE follower_member_id = #{followerId} AND following_member_id = #{followingId}
+    </delete>
+
+    <select id="countFollowers" resultType="long">
+        SELECT COUNT(*) FROM follow_tbl WHERE following_member_id = #{memberId}
+    </select>
+
+    <select id="countFollowing" resultType="long">
+        SELECT COUNT(*) FROM follow_tbl WHERE follower_member_id = #{memberId}
+    </select>
+
+    <select id="countPosts" resultType="long">
+        SELECT COUNT(*) FROM post_tbl WHERE member_id = #{memberId} AND deleted_yn = 'N'
+    </select>
+
+    <select id="countSavedPosts" resultType="long">
+        SELECT COUNT(*) FROM saved_post WHERE member_id = #{memberId}
+    </select>
+
+    <select id="getFollowerList" resultType="com.moodcast.member.dto.follow.FollowItemResponse">
+        SELECT 
+            m.member_id as memberId,
+            m.name,
+            m.nickname,
+            m.email,
+            m.profile_image_url as profileImageUrl,
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = #{loginId} AND f_check.following_member_id = m.member_id) as isFollowing,
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = m.member_id AND f_check.following_member_id = #{loginId}) as followsMe
+        FROM follow_tbl f
+        JOIN members m ON f.follower_member_id = m.member_id
+        WHERE f.following_member_id = #{targetId}
+        ORDER BY f.created_at DESC
+    </select>
+
+    <select id="getFollowingList" resultType="com.moodcast.member.dto.follow.FollowItemResponse">
+        SELECT 
+            m.member_id as memberId,
+            m.name,
+            m.nickname,
+            m.email,
+            m.profile_image_url as profileImageUrl,
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = #{loginId} AND f_check.following_member_id = m.member_id) as isFollowing,
+            (SELECT COUNT(*) FROM follow_tbl f_check WHERE f_check.follower_member_id = m.member_id AND f_check.following_member_id = #{loginId}) as followsMe
+        FROM follow_tbl f
+        JOIN members m ON f.following_member_id = m.member_id
+        WHERE f.follower_member_id = #{targetId}
+        ORDER BY f.created_at DESC
+    </select>
+
 </mapper>
