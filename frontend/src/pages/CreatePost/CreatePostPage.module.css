@@ -56,6 +56,10 @@
   outline: none;
 }
 
+.field:has(.editor) {
+  gap: 8px;
+}
+
 .editor:empty:before {
   content: attr(data-placeholder);
   color: #9ca3af;
@@ -77,12 +81,22 @@
 .uploadSection {
   display: grid;
   gap: 10px;
+  padding-top: 2px;
+}
+
+.bodyUploadSection {
+  margin-top: -10px;
+  padding: 10px 12px;
+  border: 1px solid #e6e8f3;
+  border-radius: 16px;
+  background: #fcfdff;
 }
 
 .uploadGroup {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .uploadButton,
@@ -92,18 +106,20 @@
   justify-content: center;
   min-height: 42px;
   padding: 0 16px;
-  border-radius: 14px;
-  border: 1px solid transparent;
+  border-radius: 12px;
+  border: 0;
   font-weight: 800;
   cursor: pointer;
   background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
   color: #fff;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.08);
 }
 
 .uploadButtonSecondary {
-  background: #fff;
+  background: rgba(255, 255, 255, 0.34);
   color: #3730a3;
-  border-color: #e6e8f3;
+  border-color: rgba(17, 24, 39, 0.085);
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.055);
 }
 
 .uploadDescription {

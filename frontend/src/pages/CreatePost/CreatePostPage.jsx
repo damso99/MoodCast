@@ -108,7 +108,7 @@ export function CreatePostPage() {
           />
         </div>
 
-        <div className={styles.uploadSection}>
+        <div className={`${styles.uploadSection} ${styles.bodyUploadSection}`}>
           <div className={styles.uploadGroup}>
             <label className={styles.uploadButton}>
               본문 이미지 첨부
