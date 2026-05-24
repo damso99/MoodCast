@@ -96,7 +96,7 @@ public class LoginService {
         LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
         String accessToken = jwtService.createAccessToken(member); // 엑세스 토큰 생성
-        String refreshToken = jwtService.getRefreshCookieName();    // 리프레시 토큰담을 쿠키 이름
+        String refreshToken = jwtService.createRefreshToken(member); // 리프레시 토큰 생성
 
         LoginResult loginResult = new LoginResult(
                 accessToken,

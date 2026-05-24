@@ -36,7 +36,7 @@ public class JwtService {
     // 로그인 성공 시 api 요청에 사용할 access token 생성
     public String createAccessToken(Member member) {
         Instant now = Instant.now(); // 현재시간
-        Instant expiresAt = now.plus(accessTokenExpireMinutes, ChronoUnit.MINUTES); // 토큰 만료시간 = 현재시간 + 만료시간
+        Instant expiresAt = now.plus(accessTokenExpireMinutes, ChronoUnit.MINUTES); // 엑세스 토큰 만료시간 = 현재시간 + 엑세스 토큰 유효시간 (분)
 
         return Jwts.builder() // jwt 생성
                 .issuer(issuer) // 발급 주체 세팅
@@ -48,6 +48,21 @@ public class JwtService {
                 .expiration(Date.from(expiresAt))       // 만료 시간
                 .signWith(getSigningKey(), Jwts.SIG.HS256)  // 도장찍기
                 .compact(); // 설정한 정보들을 긴 String 형태 (aaaa.bbbb.cccc)로 압축
+    }
+
+    // Access Token이 만료됐을 때 새 토큰을 받기 위한 Refresh Token 생성
+    public String createRefreshToken(Member member) {
+        Instant now = Instant.now();                                            // 현재시간
+        Instant expiresAt = now.plus(refreshTokenExpireDays, ChronoUnit.DAYS);  // 리프레시 토큰 만료시간 = 현재시간 + 리프레시 토큰 유효시간 (일)
+
+        return Jwts.builder()
+                .issuer(issuer) // 발급 주체
+                .subject(String.valueOf(member.getMemberId())) // 회원 pk 넣기
+                .claim("type", "REFRESH")           // refresh 토큰 명시
+                .issuedAt(Date.from(now))                       // 발급시간
+                .expiration(Date.from(expiresAt))               // 만료시간
+                .signWith(getSigningKey(), Jwts.SIG.HS256)      // 도장찍기
+                .compact();                                     // 위에랑 똑같음
     }
 
     public String getRefreshCookieName() {

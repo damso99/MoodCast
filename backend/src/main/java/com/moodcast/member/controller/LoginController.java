@@ -14,18 +14,22 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 
 @RestController
-@CrossOrigin("*")
+@CrossOrigin(
+        origins = {"http://localhost:5173", "http://127.0.0.1:5173"},
+        allowCredentials = "true" // 쿠키 요청 응답
+)
 @RequestMapping(value="auth")
 public class LoginController {
     @Autowired
     private LoginService loginService;
 
-    // 로그인 검증 + 검증 성공 시 토큰 생성 
+    @Autowired
+    private JwtService jwtService;
+
+    // 로그인 검증 + 검증 성공 시 토큰 생성
     @PostMapping("login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         LoginResult result = loginService.login(request);
-
-        JwtService jwtService = new JwtService();
 
         ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
 

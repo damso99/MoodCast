@@ -63,21 +63,25 @@ export const LoginPage = () => {
     setIsLoading(true);
 
     axios
-      .post(`${import.meta.env.VITE_BACKSERVER}/auth/login`, {
-        email: member.email,
-        password: member.password,
-        remember: member.remember,
-      })
+      .post(
+        `${import.meta.env.VITE_BACKSERVER}/auth/login`,
+        {
+          email: member.email,
+          password: member.password,
+          remember: member.remember,
+        },
+        {
+          withCredentials: true,
+        },
+      )
       .then((res) => {
         console.log(res.data);
-        setIsLoading(true);
+        setIsLoggedIn(true);
         setMember({
           email: "",
           password: "",
           remember: false,
         });
-
-        showToast("success", res.data.message || "로그인 성공");
         navigate("/app/feed");
       })
       .catch((err) => {
