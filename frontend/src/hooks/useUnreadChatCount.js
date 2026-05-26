@@ -34,7 +34,7 @@ export function useUnreadChatCount(memberId) {
       });
       setUnreadCount(sumUnreadCount(response.data));
     } catch (error) {
-      console.error('안읽은 채팅 수 조회 실패', error);
+      console.error('안읽은 채팅 조회 실패', error);
     }
   }, [memberId]);
 
