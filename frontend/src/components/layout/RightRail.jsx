@@ -104,7 +104,6 @@ function RightRailBase({ posts = [], isLoading = false }) {
         const results = response.data?.results || [];
 
         if (!isMounted) return;
-
         setTrendingTags(results);
       } catch (error) {
         console.error('해시태그 순위를 불러오지 못했습니다.', error);
@@ -124,14 +123,9 @@ function RightRailBase({ posts = [], isLoading = false }) {
     };
   }, [BACKSERVER]);
 
-  const handleMoreTags = () => {
-    setExpandedTags((prev) => !prev);
-  };
-
   const visibleTags = expandedTags ? trendingTags : trendingTags.slice(0, 5);
   const hasMoreTags = trendingTags.length > 5;
   const isInitialTagLoading = loadingTags && trendingTags.length === 0;
-  const moreButtonLabel = expandedTags ? '닫기' : '더보기';
 
   return (
     <div className={styles.stack}>
@@ -163,10 +157,13 @@ function RightRailBase({ posts = [], isLoading = false }) {
       <section className={styles.card}>
         <div className={styles.header}>
           <strong>인기 해시태그</strong>
+          <span>{trendingTags.length}개</span>
         </div>
 
         {isInitialTagLoading ? (
           <div className={styles.loadingText}>해시태그 순위를 불러오는 중입니다.</div>
+        ) : trendingTags.length === 0 ? (
+          <div className={styles.loadingText}>표시할 해시태그가 없습니다.</div>
         ) : (
           <>
             <div className={styles.trendList}>
@@ -184,10 +181,10 @@ function RightRailBase({ posts = [], isLoading = false }) {
               <button
                 type="button"
                 className={styles.moreButton}
-                onClick={handleMoreTags}
+                onClick={() => setExpandedTags((prev) => !prev)}
                 disabled={loadingTags}
               >
-                {moreButtonLabel}
+                {expandedTags ? '닫기' : '더보기'}
               </button>
             ) : null}
           </>
