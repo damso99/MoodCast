@@ -14,40 +14,23 @@ import { useRealtimeChat } from "../../hooks/useRealtimeChat";
 import { notifyChatUnreadChanged } from "../../hooks/useUnreadChatCount";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { useSearchParams } from "react-router-dom";
+import { formatKoreanTime } from "../../shared/lib/dateTime";
 import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
-
-function formatMessageTime(createdAt) {
-  if (!createdAt) {
-    return "";
-  }
-
-  const date = new Date(createdAt);
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat("ko-KR", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "Asia/Seoul",
-  }).format(date);
-}
 
 function normalizeIncomingMessage(message, currentUserId) {
   const senderId = Number(message?.senderId);
 
   return {
     id:
-      message?.chatId ??
+    message?.chatId ??
       message?.id ??
       `${senderId}-${message?.createdAt ?? Date.now()}`,
     sender: senderId === currentUserId ? "me" : "them",
     text: message?.content ?? message?.text ?? "",
-    time: formatMessageTime(message?.createdAt) || message?.time || "",
+    time: formatKoreanTime(message?.createdAt) || message?.time || "",
     senderId,
     receiverId: Number(message?.receiverId),
     createdAt: message?.createdAt ?? new Date().toISOString(),
@@ -401,7 +384,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           <div className={styles.threadMeta}>
             <span>
               {thread.lastMessageAt
-                ? formatMessageTime(thread.lastMessageAt)
+                ? formatKoreanTime(thread.lastMessageAt)
                 : ""}
             </span>
             {thread.unreadCount > 0 ? (

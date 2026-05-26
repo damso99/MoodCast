@@ -2,6 +2,7 @@
 import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/noticeManagement/NoticeManagementPage.module.css";
 
 const noticeCategories = ["전체", "일반", "업데이트", "긴급", "삭제 공지"];
@@ -113,7 +114,7 @@ export function NoticeManagementPage() {
       title: trimmedTitle,
       category: noticeForm.category,
       content: trimmedContent,
-      createdAt: new Date().toLocaleDateString("ko-KR"),
+      createdAt: formatKoreanDate(new Date()),
       adminName: "관리자",
       deletedAt: null,
     };
@@ -138,7 +139,7 @@ export function NoticeManagementPage() {
 
   // 공지사항 소프트 삭제 ----------------------------------
   const handleDeleteNotice = (noticeId) => {
-    const deletedDate = new Date().toLocaleDateString("ko-KR");
+    const deletedDate = formatKoreanDate(new Date());
 
     setNotices((prevNotices) =>
       prevNotices.map((notice) =>

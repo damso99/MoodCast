@@ -12,6 +12,7 @@ import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
 
 /* ==========================================================================
@@ -183,15 +184,7 @@ export function UserManagementPage() {
   ).length;
 
   const formatDate = (value) => {
-    if (!value) {
-      return "-";
-    }
-
-    return new Date(value).toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
+    return formatKoreanDate(value);
   };
 
   const getStatusLabel = (status) => {

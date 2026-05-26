@@ -5,6 +5,7 @@ import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.module.css";
 
 /* ==========================================================================
@@ -79,21 +80,7 @@ export function AdminCreatePage() {
   };
 
   const formatDate = (value) => {
-    if (!value) {
-      return "-";
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-      return "-";
-    }
-
-    return new Intl.DateTimeFormat("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(date);
+    return formatKoreanDate(value);
   };
 
   const getSelectedMemberName = () => {
