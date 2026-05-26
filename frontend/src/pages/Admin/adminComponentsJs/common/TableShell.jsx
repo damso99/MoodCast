@@ -12,12 +12,13 @@ import styles from "../../adminComponentsCss/common/TableShell.module.css";
  * - columns: 표의 헤더 이름 배열입니다. 예: ['사용자', '상태', '가입일']
  * - children: tbody 안에 들어갈 실제 행입니다.
  * - className: 특정 페이지에서만 추가 스타일을 적용하고 싶을 때 사용하는 선택 값입니다.
+ * - footer: 표 아래쪽에 페이지네이션처럼 함께 붙여 보여줄 영역입니다.
  *
  * children을 받는 이유:
  * - 페이지마다 표의 행 내용이 달라질 수 있기 때문입니다.
  * - 지금은 데이터가 없어서 EmptyTableRow만 넣지만, 나중에는 map으로 실제 행을 만들 수 있습니다.
  * ========================================================================== */
-export function TableShell({ title, columns, children, className = "" }) {
+export function TableShell({ title, columns, children, className = "", footer = null }) {
   return (
     <section className={`${styles.panel} ${className}`}>
       <div className={styles.panelHead}>
@@ -35,6 +36,7 @@ export function TableShell({ title, columns, children, className = "" }) {
           <tbody>{children}</tbody>
         </table>
       </div>
+      {footer}
     </section>
   );
 }

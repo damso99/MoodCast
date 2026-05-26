@@ -46,6 +46,6 @@ export const pageTitles = {
   "/admin/notices": "공지사항 관리",
   "/admin/reports": "신고 및 제재 관리",
   "/admin/statistics": "통계 대시보드",
-  "/admin/users/new": "관리자 추가",
+  "/admin/users/new": "관리자 권한 관리",
   "/admin/profile": "관리자 개인 정보 수정",
 };
