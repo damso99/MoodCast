@@ -19,5 +19,5 @@ public interface SearchDao {
 
     List<SearchHashtagResult> searchHashtags(String query);
 
-    List<SearchHashtagResult> selectTrendingHashtags(@Param("from") LocalDateTime from);
+    List<SearchHashtagResult> selectTrendingHashtags(@Param("from") LocalDateTime from, @Param("limit") Integer limit);
 }

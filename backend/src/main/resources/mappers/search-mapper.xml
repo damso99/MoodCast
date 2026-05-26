@@ -63,7 +63,7 @@
                     h.use_count as useCount
                 from hashtag h
                 order by h.use_count desc, h.hashtag asc
-                limit 5
+                limit #{limit}
             </when>
             <otherwise>
                 select
@@ -77,7 +77,7 @@
                   and p.created_at &gt;= #{from}
                 group by h.hashtag_id, h.hashtag
                 order by useCount desc, h.hashtag asc
-                limit 5
+                limit #{limit}
             </otherwise>
         </choose>
     </select>

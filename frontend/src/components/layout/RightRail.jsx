@@ -48,7 +48,11 @@ function RangeFilter({ label, value, onChange, align = 'right' }) {
       </button>
 
       {open ? (
-        <div className={`${styles.filterMenu} ${align === 'left' ? styles.filterMenuLeft : ''}`} role="menu" aria-label={`${label} 범위 메뉴`}>
+        <div
+          className={`${styles.filterMenu} ${align === 'left' ? styles.filterMenuLeft : ''}`}
+          role="menu"
+          aria-label={`${label} 범위 메뉴`}
+        >
           {EMOTION_RANGE_OPTIONS.map((option) => {
             const active = value === option.value;
 
@@ -77,9 +81,9 @@ function RangeFilter({ label, value, onChange, align = 'right' }) {
 
 function RightRailBase({ posts = [], isLoading = false }) {
   const [selectedMoodRange, setSelectedMoodRange] = useState('all');
-  const [selectedTagRange, setSelectedTagRange] = useState('all');
   const [trendingTags, setTrendingTags] = useState([]);
   const [loadingTags, setLoadingTags] = useState(true);
+  const [expandedTags, setExpandedTags] = useState(false);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   const moodStats = useMemo(() => {
@@ -92,16 +96,12 @@ function RightRailBase({ posts = [], isLoading = false }) {
 
     const loadTrendingTags = async () => {
       setLoadingTags(true);
-      console.log('[RightRail] hashtag range', selectedTagRange);
 
       try {
         const response = await axios.get(`${BACKSERVER}/search/hashtags`, {
-          params: { range: selectedTagRange },
+          params: { limit: 10 },
         });
         const results = response.data?.results || [];
-
-        console.log('[RightRail] hashtag response', response.data);
-        console.table(results);
 
         if (!isMounted) return;
 
@@ -122,7 +122,16 @@ function RightRailBase({ posts = [], isLoading = false }) {
     return () => {
       isMounted = false;
     };
-  }, [BACKSERVER, selectedTagRange]);
+  }, [BACKSERVER]);
+
+  const handleMoreTags = () => {
+    setExpandedTags((prev) => !prev);
+  };
+
+  const visibleTags = expandedTags ? trendingTags : trendingTags.slice(0, 5);
+  const hasMoreTags = trendingTags.length > 5;
+  const isInitialTagLoading = loadingTags && trendingTags.length === 0;
+  const moreButtonLabel = expandedTags ? '닫기' : '더보기';
 
   return (
     <div className={styles.stack}>
@@ -154,28 +163,33 @@ function RightRailBase({ posts = [], isLoading = false }) {
       <section className={styles.card}>
         <div className={styles.header}>
           <strong>인기 해시태그</strong>
-          <RangeFilter label="해시태그" value={selectedTagRange} onChange={setSelectedTagRange} align="left" />
         </div>
 
-        {loadingTags ? (
+        {isInitialTagLoading ? (
           <div className={styles.loadingText}>해시태그 순위를 불러오는 중입니다.</div>
         ) : (
           <>
             <div className={styles.trendList}>
-              {console.log('[RightRail] hashtag state', trendingTags)}
-              {trendingTags.map((tag, index) => (
+              {visibleTags.map((tag, index) => (
                 <div key={tag.hashtagId} className={styles.trendRow}>
                   <span className={styles.rank}>{index + 1}</span>
                   <div>
                     <strong>#{tag.hashtag}</strong>
-                    <p>{tag.useCount}개 사용</p>
+                    <p>{tag.useCount}회 사용</p>
                   </div>
                 </div>
               ))}
             </div>
-            <button type="button" className={styles.moreButton}>
-              더 보기
-            </button>
+            {hasMoreTags ? (
+              <button
+                type="button"
+                className={styles.moreButton}
+                onClick={handleMoreTags}
+                disabled={loadingTags}
+              >
+                {moreButtonLabel}
+              </button>
+            ) : null}
           </>
         )}
       </section>

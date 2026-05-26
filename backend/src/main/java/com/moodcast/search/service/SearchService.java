@@ -50,16 +50,17 @@ public class SearchService {
         return searchDao.searchUsers(query.trim(), loginId);
     }
 
-    public List<SearchHashtagResult> searchHashtags(String query, String range) {
+    public List<SearchHashtagResult> searchHashtags(String query, String range, Integer limit) {
         if (query != null && !query.trim().isEmpty()) {
             return searchDao.searchHashtags(query.trim());
         }
-        return getTrendingHashtags(range);
+        return getTrendingHashtags(range, limit);
     }
 
-    public List<SearchHashtagResult> getTrendingHashtags(String range) {
+    public List<SearchHashtagResult> getTrendingHashtags(String range, Integer limit) {
         LocalDateTime from = resolveRangeFrom(range);
-        return searchDao.selectTrendingHashtags(from);
+        int safeLimit = limit == null || limit <= 0 ? 5 : limit;
+        return searchDao.selectTrendingHashtags(from, safeLimit);
     }
 
     private LocalDateTime resolveRangeFrom(String range) {
