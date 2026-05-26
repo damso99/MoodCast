@@ -1,21 +1,17 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
-import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
-import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
-import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import PauseCircleOutlineOutlinedIcon from "@mui/icons-material/PauseCircleOutlineOutlined";
 import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { UserManagementDrawer } from "./UserManagementDrawer";
 import { useAuthStore } from "../../../../hooks/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
@@ -30,7 +26,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * - 이름/아이디 검색창
  * - 회원 상태 요약 카드
  * - 사용자 목록 테이블
- * - 관리자 추가 페이지로 이동하는 버튼
+ * - 관리자 권한 관리 페이지로 이동하는 버튼
  * - 권한 변경 로그 영역
  *
  * selectedUserType 상태 설명:
@@ -46,7 +42,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * members 상태 설명:
  * - members 테이블에서 조회한 전체 회원 목록을 기억하는 배열입니다.
  * - "전체 / 일반 회원 / 관리자 회원" 탭에 맞춰 화면에서 필터링해서 출력합니다.
- * - 정지 회원 탭은 정지 기준이 확정되지 않았으므로 아직 실제 필터링을 연결하지 않습니다.
+ * - 정지 회원 탭은 status가 SUSPENDED인 회원만 보여줍니다.
  *
  * searchField / searchKeyword 상태 설명:
  * - searchField는 이름, 닉네임, 이메일 중 어떤 기준으로 검색할지 기억합니다.
@@ -62,24 +58,18 @@ export function UserManagementPage() {
   const [selectedUserType, setSelectedUserType] = useState("전체");
   const [searchField, setSearchField] = useState("name");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalMemberCount, setTotalMemberCount] = useState(null);
   const [totalMemberCountError, setTotalMemberCountError] = useState(false);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState(false);
   const [selectedManagedMember, setSelectedManagedMember] = useState(null);
-  const [memberDetail, setMemberDetail] = useState(null);
-  const [memberDetailLoading, setMemberDetailLoading] = useState(false);
-  const [memberDetailError, setMemberDetailError] = useState("");
-  const [suspendModalType, setSuspendModalType] = useState(null);
-  const [selectedSuspendDays, setSelectedSuspendDays] = useState(7);
-  const [customSuspendDate, setCustomSuspendDate] = useState("");
-  const [suspendLoading, setSuspendLoading] = useState(false);
-  const [suspendError, setSuspendError] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
   const { accessToken } = useAuthStore();
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const MEMBERS_PER_PAGE = 10; // 한 페이지에 보여줄 회원 수입니다.
+  const PAGE_BUTTON_COUNT = 10; // 페이지 번호 버튼은 1~10처럼 최대 10개씩 보여줍니다.
 
   const userTypeDescriptions = {
     전체: "전체 회원 목록이 이 영역에 표시됩니다.",
@@ -127,18 +117,6 @@ export function UserManagementPage() {
         setTotalMemberCountError(true);
       });
   }, [BACKSERVER, accessToken]);
-
-  useEffect(() => {
-    setMemberDetail(null);
-    setMemberDetailError("");
-    setMemberDetailLoading(false);
-    setSuspendModalType(null);
-    setSelectedSuspendDays(7);
-    setCustomSuspendDate("");
-    setSuspendError("");
-    setSuspendLoading(false);
-    setActionMessage("");
-  }, [selectedManagedMember?.memberId]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -208,6 +186,36 @@ export function UserManagementPage() {
     return targetValue.includes(trimmedKeyword);
   });
 
+  const totalPageCount = Math.max(
+    1,
+    Math.ceil(visibleMembers.length / MEMBERS_PER_PAGE),
+  );
+  const pageStartIndex = (currentPage - 1) * MEMBERS_PER_PAGE;
+  const paginatedMembers = visibleMembers.slice(
+    pageStartIndex,
+    pageStartIndex + MEMBERS_PER_PAGE,
+  );
+  const pageGroupStart =
+    Math.floor((currentPage - 1) / PAGE_BUTTON_COUNT) * PAGE_BUTTON_COUNT + 1;
+  const pageGroupEnd = Math.min(
+    pageGroupStart + PAGE_BUTTON_COUNT - 1,
+    totalPageCount,
+  );
+  const pageNumbers = Array.from(
+    { length: pageGroupEnd - pageGroupStart + 1 },
+    (_, index) => pageGroupStart + index,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedUserType, searchField, searchKeyword]);
+
+  useEffect(() => {
+    if (currentPage > totalPageCount) {
+      setCurrentPage(totalPageCount);
+    }
+  }, [currentPage, totalPageCount]);
+
   const normalMemberCount = members.filter(
     (member) => member.role === "USER",
   ).length;
@@ -271,7 +279,7 @@ export function UserManagementPage() {
       return "일반 회원";
     }
 
-    if (role === "ADMIN") {
+    if (role === "ADMIN" || role === "NORMAL_ADMIN") {
       return "관리자";
     }
 
@@ -282,195 +290,17 @@ export function UserManagementPage() {
     return role || "-";
   };
 
-  const getLastLoginLabel = (member) => {
-    return formatDate(member?.lastLoginAt) || "기록 없음";
-  };
-
-  const getLoginMethodLabel = (member) => {
-    return member?.passwordHash === null ? "소셜 로그인" : "이메일 / 비밀번호";
-  };
-
-  const getWarningCount = (member) => {
-    return Number(member?.warningCount ?? 0);
-  };
-
-  const getSuspendConfirmMessage = (member) => {
-    const warningCount = getWarningCount(member);
-
-    if (warningCount >= 3) {
-      return `해당 회원의 경고 횟수는 ${warningCount}회입니다. 정지 처리를 진행하시겠습니까?`;
-    }
-
-    return `해당 회원의 경고 횟수는 ${warningCount}회입니다. 경고 누적이 3회 미만이므로 무고한 제재가 되지 않도록 한 번 더 확인해주세요. 그래도 정지하시겠습니까?`;
-  };
-
-  const getVerifiedLabel = (value) => {
-    return value === 1 ? "인증 완료" : "미인증";
-  };
-
-  const getEmptySafeText = (value) => {
-    return value === null || value === undefined || value === "" ? "-" : value;
-  };
-
-  const handleMemberDetailClick = () => {
-    if (!selectedManagedMember || !accessToken) {
-      return;
-    }
-
-    setMemberDetailLoading(true);
-    setMemberDetailError("");
-
-    axios
-      .get(`${BACKSERVER}/admin/api/members/${selectedManagedMember.memberId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      .then((res) => {
-        setMemberDetail(res.data);
-      })
-      .catch((error) => {
-        console.log(error);
-        setMemberDetail(null);
-        setMemberDetailError("회원 상세 정보를 불러오지 못했습니다.");
-      })
-      .finally(() => {
-        setMemberDetailLoading(false);
-      });
-  };
-
-  const openSuspendModal = (type) => {
-    setSuspendModalType(type);
-    setSelectedSuspendDays(7);
-    setCustomSuspendDate("");
-    setSuspendError("");
-  };
-
-  const closeSuspendModal = () => {
-    if (suspendLoading) {
-      return;
-    }
-
-    setSuspendModalType(null);
-    setSuspendError("");
-  };
-
-  const handleSuspendConfirm = () => {
-    if (!selectedManagedMember || !accessToken) {
-      return;
-    }
-
-    const requestBody =
-      suspendModalType === "PERMANENT"
-        ? { suspendType: "PERMANENT" }
-        : {
-            suspendType: "TEMPORARY",
-            suspendDays: customSuspendDate ? null : selectedSuspendDays,
-            suspendedUntil: customSuspendDate || null,
-          };
-
-    setSuspendLoading(true);
-    setSuspendError("");
-
-    axios
-      .put(
-        `${BACKSERVER}/admin/api/members/${selectedManagedMember.memberId}/suspend`,
-        requestBody,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      )
-      .then((res) => {
-        const updatedMember = res.data?.member;
-        const resultText =
-          suspendModalType === "PERMANENT"
-            ? "회원을 영구 정지했습니다."
-            : "회원을 일시 정지했습니다.";
-
-        if (updatedMember) {
-          setMembers((prevMembers) =>
-            prevMembers.map((member) =>
-              member.memberId === updatedMember.memberId
-                ? { ...member, ...updatedMember }
-                : member,
-            ),
-          );
-          setSelectedManagedMember((prevMember) =>
-            prevMember ? { ...prevMember, ...updatedMember } : prevMember,
-          );
-          setMemberDetail((prevDetail) =>
-            prevDetail ? { ...prevDetail, ...updatedMember } : prevDetail,
-          );
-        }
-
-        setActionMessage(resultText);
-        setSuspendModalType(null);
-      })
-      .catch((error) => {
-        console.log(error);
-        setSuspendError("회원 정지 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
-      })
-      .finally(() => {
-        setSuspendLoading(false);
-      });
-  };
-
-  const handleRestoreConfirm = () => {
-    if (!selectedManagedMember || !accessToken) {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `${selectedManagedMember.name || "선택한 회원"} 회원의 정지를 해제하시겠습니까?`,
+  const handleMemberUpdated = (updatedMember) => {
+    setMembers((prevMembers) =>
+      prevMembers.map((member) =>
+        member.memberId === updatedMember.memberId
+          ? { ...member, ...updatedMember }
+          : member,
+      ),
     );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setSuspendLoading(true);
-    setSuspendError("");
-
-    axios
-      .put(
-        `${BACKSERVER}/admin/api/members/${selectedManagedMember.memberId}/restore`,
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      )
-      .then((res) => {
-        const updatedMember = res.data?.member;
-
-        if (updatedMember) {
-          setMembers((prevMembers) =>
-            prevMembers.map((member) =>
-              member.memberId === updatedMember.memberId
-                ? { ...member, ...updatedMember }
-                : member,
-            ),
-          );
-          setSelectedManagedMember((prevMember) =>
-            prevMember ? { ...prevMember, ...updatedMember } : prevMember,
-          );
-          setMemberDetail((prevDetail) =>
-            prevDetail ? { ...prevDetail, ...updatedMember } : prevDetail,
-          );
-        }
-
-        setActionMessage("회원 정지를 해제했습니다.");
-      })
-      .catch((error) => {
-        console.log(error);
-        setSuspendError("회원 정지 해제에 실패했습니다. 잠시 후 다시 시도해주세요.");
-      })
-      .finally(() => {
-        setSuspendLoading(false);
-      });
+    setSelectedManagedMember((prevMember) =>
+      prevMember ? { ...prevMember, ...updatedMember } : prevMember,
+    );
   };
 
   return (
@@ -504,7 +334,7 @@ export function UserManagementPage() {
           </div>
         </div>
         <NavLink className={styles.primaryLinkButton} to="/admin/users/new">
-          관리자 추가
+          관리자 권한 관리
         </NavLink>
       </section>
 
@@ -541,6 +371,47 @@ export function UserManagementPage() {
         title={`${selectedUserType} 목록`}
         columns={["사용자", "이메일", "상태", "가입일", "권한", "작업"]}
         className={styles.userTable}
+        footer={
+          visibleMembers.length > 0 ? (
+            <nav className={styles.pagination} aria-label="회원 목록 페이지 이동">
+              <div className={styles.paginationButtons}>
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                >
+                  이전
+                </button>
+                {pageNumbers.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    className={
+                      pageNumber === currentPage ? styles.activePage : ""
+                    }
+                    aria-current={
+                      pageNumber === currentPage ? "page" : undefined
+                    }
+                    onClick={() => setCurrentPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPageCount}
+                  onClick={() =>
+                    setCurrentPage((page) =>
+                      Math.min(totalPageCount, page + 1),
+                    )
+                  }
+                >
+                  다음
+                </button>
+              </div>
+            </nav>
+          ) : null
+        }
       >
         {membersLoading ? (
           <EmptyTableRow colSpan={6} label="회원 목록을 불러오는 중입니다." />
@@ -549,7 +420,7 @@ export function UserManagementPage() {
         ) : visibleMembers.length === 0 ? (
           <EmptyTableRow colSpan={6} label={`${selectedUserType} 데이터 없음`} />
         ) : (
-          visibleMembers.map((member) => (
+          paginatedMembers.map((member) => (
             <tr key={member.memberId}>
               <td>
                 <div className={styles.userCell}>
@@ -593,10 +464,10 @@ export function UserManagementPage() {
           <p>{userTypeDescriptions[selectedUserType]}</p>
         </article>
         <article className={styles.infoBox}>
-          <strong>관리자 추가 정보</strong>
+          <strong>관리자 권한 관리 정보</strong>
           <p>
-            관리자 추가 버튼을 누르면 가입된 회원을 이메일 또는 이름으로 검색한
-            뒤 관리자 권한으로 승급하는 화면으로 이동합니다.
+            관리자 권한 관리 버튼을 누르면 가입된 회원을 이메일 또는 이름으로
+            검색한 뒤 관리자 권한을 부여하거나 해제하는 화면으로 이동합니다.
           </p>
         </article>
       </section>
@@ -611,372 +482,13 @@ export function UserManagementPage() {
         />
       </section>
 
-      {selectedManagedMember && (
-        <div className={styles.memberDrawerLayer}>
-          <button
-            type="button"
-            className={styles.memberDrawerDim}
-            aria-label="회원 관리 패널 닫기"
-            onClick={() => setSelectedManagedMember(null)}
-          />
-
-          <aside
-            className={styles.memberDrawer}
-            aria-label={`${selectedManagedMember.name || "회원"} 관리 패널`}
-          >
-            <header className={styles.memberDrawerHeader}>
-              <h2>회원 관리</h2>
-              <button
-                type="button"
-                className={styles.drawerCloseButton}
-                aria-label="회원 관리 패널 닫기"
-                onClick={() => setSelectedManagedMember(null)}
-              >
-                <CloseOutlinedIcon fontSize="small" />
-              </button>
-            </header>
-
-            <section className={styles.memberSummary}>
-              <div className={styles.memberAvatar}>
-                <AccountCircleOutlinedIcon />
-              </div>
-              <div className={styles.memberSummaryText}>
-                <div className={styles.memberNameLine}>
-                  <strong>{selectedManagedMember.name || "-"}</strong>
-                  <span
-                    className={`${styles.normalStatusBadge} ${
-                      isTemporarySuspension(selectedManagedMember)
-                        ? styles.temporarySummaryBadge
-                        : ""
-                    } ${
-                      isPermanentSuspension(selectedManagedMember)
-                        ? styles.permanentSummaryBadge
-                        : ""
-                    }`}
-                  >
-                    {getMemberStatusLabel(selectedManagedMember)}
-                  </span>
-                </div>
-                <p>
-                  {selectedManagedMember.nickname
-                    ? `@${selectedManagedMember.nickname}`
-                    : "닉네임 없음"}
-                </p>
-                <small>
-                  {getRoleLabel(selectedManagedMember.role)} <span>|</span> 가입일{" "}
-                  {formatDate(selectedManagedMember.createdAt)}
-                </small>
-              </div>
-            </section>
-
-            {actionMessage && (
-              <p className={styles.actionMessage}>{actionMessage}</p>
-            )}
-
-            <section className={styles.drawerCard}>
-              <h3>제재 관리</h3>
-              <div className={styles.sanctionGrid}>
-                {isTemporarySuspension(selectedManagedMember) ? (
-                  <button
-                    type="button"
-                    className={styles.restoreSanctionButton}
-                    onClick={handleRestoreConfirm}
-                    disabled={suspendLoading}
-                  >
-                    <PauseCircleOutlineOutlinedIcon />
-                    <strong>정지 해제</strong>
-                    <span>일시 정지 상태 해제</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.temporarySanctionButton}
-                    onClick={() => openSuspendModal("TEMPORARY")}
-                    disabled={isPermanentSuspension(selectedManagedMember)}
-                  >
-                    <PauseCircleOutlineOutlinedIcon />
-                    <strong>일시 정지</strong>
-                    <span>특정 기간 동안 활동 제한</span>
-                  </button>
-                )}
-                {isPermanentSuspension(selectedManagedMember) ? (
-                  <button
-                    type="button"
-                    className={styles.restoreSanctionButton}
-                    onClick={handleRestoreConfirm}
-                    disabled={suspendLoading}
-                  >
-                    <LockOutlinedIcon />
-                    <strong>정지 해제</strong>
-                    <span>영구 정지 상태 해제</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.permanentSanctionButton}
-                    onClick={() => openSuspendModal("PERMANENT")}
-                  >
-                    <LockOutlinedIcon />
-                    <strong>영구 정지</strong>
-                    <span>계정 영구 이용 제한</span>
-                  </button>
-                )}
-              </div>
-            </section>
-
-            <section className={styles.drawerCard}>
-              <div className={styles.drawerCardHead}>
-                <h3>회원 정보</h3>
-                <button
-                  type="button"
-                  className={styles.copyButton}
-                  aria-label="회원 이메일 복사"
-                  onClick={() =>
-                    navigator.clipboard?.writeText(selectedManagedMember.email || "")
-                  }
-                >
-                  <ContentCopyOutlinedIcon fontSize="small" />
-                </button>
-              </div>
-              <dl className={styles.memberInfoList}>
-                <div>
-                  <dt>이메일</dt>
-                  <dd>{selectedManagedMember.email || "-"}</dd>
-                </div>
-                <div>
-                  <dt>최근 로그인</dt>
-                  <dd>{getLastLoginLabel(selectedManagedMember)}</dd>
-                </div>
-                <div>
-                  <dt>가입일</dt>
-                  <dd>{formatDate(selectedManagedMember.createdAt)}</dd>
-                </div>
-                <div>
-                  <dt>신고 횟수</dt>
-                  <dd>{selectedManagedMember.reportCount ?? 0}회</dd>
-                </div>
-                <div>
-                  <dt>게시글 수</dt>
-                  <dd>{selectedManagedMember.postCount ?? 0}개</dd>
-                </div>
-                <div>
-                  <dt>댓글 수</dt>
-                  <dd>{selectedManagedMember.commentCount ?? 0}개</dd>
-                </div>
-                <div>
-                  <dt>로그인 방식</dt>
-                  <dd>{getLoginMethodLabel(selectedManagedMember)}</dd>
-                </div>
-              </dl>
-              <button
-                type="button"
-                className={styles.fullInfoButton}
-                onClick={handleMemberDetailClick}
-                disabled={memberDetailLoading}
-              >
-                {memberDetailLoading ? "회원 정보 불러오는 중" : "회원 정보 전체 보기"}
-              </button>
-              {memberDetailError && (
-                <p className={styles.detailErrorText}>{memberDetailError}</p>
-              )}
-              {memberDetail && (
-                <div className={styles.fullInfoPanel}>
-                  <div>
-                    <span>회원 번호</span>
-                    <strong>{memberDetail.memberId}</strong>
-                  </div>
-                  <div>
-                    <span>이메일</span>
-                    <strong>{getEmptySafeText(memberDetail.email)}</strong>
-                  </div>
-                  <div>
-                    <span>이름</span>
-                    <strong>{getEmptySafeText(memberDetail.name)}</strong>
-                  </div>
-                  <div>
-                    <span>닉네임</span>
-                    <strong>{getEmptySafeText(memberDetail.nickname)}</strong>
-                  </div>
-                  <div>
-                    <span>전화번호</span>
-                    <strong>{getEmptySafeText(memberDetail.phone)}</strong>
-                  </div>
-                  <div>
-                    <span>이메일 인증</span>
-                    <strong>{getVerifiedLabel(memberDetail.emailVerified)}</strong>
-                  </div>
-                  <div>
-                    <span>전화번호 인증</span>
-                    <strong>{getVerifiedLabel(memberDetail.phoneVerified)}</strong>
-                  </div>
-                  <div>
-                    <span>경고 횟수</span>
-                    <strong>{getWarningCount(memberDetail)}회</strong>
-                  </div>
-                  <div>
-                    <span>누적 정지</span>
-                    <strong>{memberDetail.suspensionCount ?? 0}회</strong>
-                  </div>
-                  <div>
-                    <span>정지 해제일</span>
-                    <strong>{formatDate(memberDetail.suspendedUntil) || "-"}</strong>
-                  </div>
-                  <div>
-                    <span>권한</span>
-                    <strong>{getRoleLabel(memberDetail.role)}</strong>
-                  </div>
-                  <div>
-                    <span>상태</span>
-                    <strong>{getMemberStatusLabel(memberDetail)}</strong>
-                  </div>
-                  <div>
-                    <span>최근 로그인</span>
-                    <strong>{formatDate(memberDetail.lastLoginAt) || "기록 없음"}</strong>
-                  </div>
-                  <div>
-                    <span>가입일</span>
-                    <strong>{formatDate(memberDetail.createdAt)}</strong>
-                  </div>
-                  <div>
-                    <span>수정일</span>
-                    <strong>{formatDate(memberDetail.updatedAt) || "-"}</strong>
-                  </div>
-                  <div>
-                    <span>삭제일</span>
-                    <strong>{formatDate(memberDetail.deletedAt) || "-"}</strong>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <section className={styles.drawerCard}>
-              <h3>제재 이력</h3>
-              <div className={styles.emptySanctionHistory}>
-                <DescriptionOutlinedIcon />
-                <strong>제재 이력이 없습니다.</strong>
-              </div>
-            </section>
-          </aside>
-
-          {suspendModalType && (
-            <section className={styles.suspendModal} aria-label="회원 정지 확인">
-              <button
-                type="button"
-                className={styles.suspendModalClose}
-                aria-label="정지 확인 창 닫기"
-                onClick={closeSuspendModal}
-              >
-                <CloseOutlinedIcon fontSize="small" />
-              </button>
-
-              <div
-                className={
-                  suspendModalType === "PERMANENT"
-                    ? styles.permanentModalIcon
-                    : styles.temporaryModalIcon
-                }
-              >
-                {suspendModalType === "PERMANENT" ? (
-                  <LockOutlinedIcon />
-                ) : (
-                  <PauseCircleOutlineOutlinedIcon />
-                )}
-              </div>
-
-              <h3>
-                {suspendModalType === "PERMANENT"
-                  ? "회원 영구 정지"
-                  : "회원 일시 정지"}
-              </h3>
-              <p className={styles.suspendTargetText}>
-                {selectedManagedMember.name || "-"} (
-                {selectedManagedMember.nickname
-                  ? `@${selectedManagedMember.nickname}`
-                  : "닉네임 없음"}
-                ) 회원을 정지하시겠습니까?
-              </p>
-              <p
-                className={
-                  getWarningCount(selectedManagedMember) >= 3
-                    ? styles.warningConfirmText
-                    : styles.cautionConfirmText
-                }
-              >
-                {getSuspendConfirmMessage(selectedManagedMember)}
-              </p>
-
-              {suspendModalType === "TEMPORARY" && (
-                <div className={styles.suspendPeriodBox}>
-                  <strong>정지 기간</strong>
-                  {[7, 30, 90].map((days) => (
-                    <label key={days} className={styles.suspendRadioLabel}>
-                      <input
-                        type="radio"
-                        name="suspendDays"
-                        checked={!customSuspendDate && selectedSuspendDays === days}
-                        onChange={() => {
-                          setSelectedSuspendDays(days);
-                          setCustomSuspendDate("");
-                        }}
-                      />
-                      <span>{days}일</span>
-                    </label>
-                  ))}
-                  <label className={styles.suspendRadioLabel}>
-                    <input
-                      type="radio"
-                      name="suspendDays"
-                      checked={Boolean(customSuspendDate)}
-                      onChange={() => setCustomSuspendDate("")}
-                    />
-                    <span>직접 설정</span>
-                  </label>
-                  <input
-                    type="date"
-                    className={styles.customDateInput}
-                    value={customSuspendDate}
-                    onChange={(event) => setCustomSuspendDate(event.target.value)}
-                  />
-                </div>
-              )}
-
-              {suspendModalType === "PERMANENT" && (
-                <div className={styles.permanentNoticeBox}>
-                  영구 정지는 해제 예정일 없이 계정 이용을 제한합니다. 진행 전
-                  대상 회원과 경고 이력을 다시 확인해주세요.
-                </div>
-              )}
-
-              {suspendError && (
-                <p className={styles.detailErrorText}>{suspendError}</p>
-              )}
-
-              <div className={styles.suspendModalActions}>
-                <button
-                  type="button"
-                  className={styles.suspendCancelButton}
-                  onClick={closeSuspendModal}
-                  disabled={suspendLoading}
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  className={styles.suspendConfirmButton}
-                  onClick={handleSuspendConfirm}
-                  disabled={suspendLoading}
-                >
-                  {suspendLoading
-                    ? "처리 중"
-                    : suspendModalType === "PERMANENT"
-                      ? "영구 정지"
-                      : "일시 정지"}
-                </button>
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+      {/* 회원 관리 우측 패널: 관리 버튼을 누른 회원의 상세 정보와 정지/해제 작업을 담당합니다. */}
+      <UserManagementDrawer
+        selectedManagedMember={selectedManagedMember}
+        onClose={() => setSelectedManagedMember(null)}
+        onMemberUpdated={handleMemberUpdated}
+      />
     </AdminLayout>
   );
 }
+

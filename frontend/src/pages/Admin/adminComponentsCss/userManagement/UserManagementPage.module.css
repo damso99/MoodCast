@@ -271,6 +271,59 @@
   vertical-align: middle;
 }
 
+/* 회원 목록 페이지네이션 ---------------------------------------------------------
+ * 회원 목록은 한 페이지에 10명만 보여줍니다.
+ * 페이지 버튼은 현재 구간 기준으로 최대 10개까지 보여주어 1~10, 11~20처럼
+ * 많은 회원이 있어도 버튼 영역이 과하게 길어지지 않도록 합니다.
+ */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(102, 112, 133, 0.12);
+}
+
+.paginationButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.paginationButtons button {
+  min-width: 30px;
+  height: 30px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: #475467;
+  font-size: 0.76rem;
+  font-weight: 900;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.paginationButtons button:hover:not(:disabled) {
+  color: #633df2;
+  background: rgba(124, 77, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.paginationButtons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.paginationButtons .activePage {
+  border-color: #7c4dff;
+  color: #fff;
+  background: #7c4dff;
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.2);
+}
+
 /* 회원 관리 우측 패널 전체 레이어 ----------------------------------------------
  * 관리 버튼을 눌렀을 때 화면 전체 위에 올라오는 영역입니다.
  * dim 버튼은 왼쪽 화면을 어둡게 만들고, 클릭하면 패널을 닫는 역할도 합니다.
@@ -289,7 +342,7 @@
   border: 0;
   background: rgba(15, 23, 42, 0.48);
   backdrop-filter: blur(2px);
-  cursor: pointer;
+  cursor: default;
 }
 
 /* 회원 관리 우측 패널 본체 ------------------------------------------------------
@@ -305,6 +358,12 @@
   padding: 28px;
   background: #fff;
   box-shadow: -26px 0 60px rgba(15, 23, 42, 0.18);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.memberDrawer::-webkit-scrollbar {
+  display: none;
 }
 
 .memberDrawerHeader {
@@ -723,6 +782,12 @@
   background: #fff;
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.26);
   transform: translate(-50%, -50%);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.suspendModal::-webkit-scrollbar {
+  display: none;
 }
 
 .suspendModalClose {

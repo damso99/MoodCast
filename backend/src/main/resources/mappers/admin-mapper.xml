@@ -155,14 +155,15 @@
     </select>
 
     <!--
-      관리자 추가 페이지의 회원 검색입니다.
+      관리자 권한 관리 페이지의 회원 검색입니다.
 
       searchType 값에 따라 검색 대상 컬럼을 바꿉니다.
       - email: 이메일 검색
       - name: 실명 검색
 
-      limit 20을 둔 이유:
-      - 검색어가 짧을 때 너무 많은 회원이 한 번에 화면에 나오지 않도록 제한합니다.
+      limit 100을 둔 이유:
+      - 검색어가 비어 있을 때도 전체 권한 관리 대상 회원을 조회하되,
+        한 번에 너무 많은 회원이 화면에 나오지 않도록 제한합니다.
     -->
     <select id="searchMembersForAdminPromotion" resultMap="adminMemberMap">
         select
@@ -188,8 +189,10 @@
                and c.deleted_yn = 'N') as comment_count
         from members
         where status = 'ACTIVE'
-          and role in ('USER', 'MEMBER')
+          and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
           and (
+            #{keyword} = ''
+            or
             <choose>
                 <when test="searchType == 'name'">
                     name like concat('%', #{keyword}, '%')
@@ -203,15 +206,15 @@
             </choose>
           )
         order by created_at desc
-        limit 20
+        limit 100
     </select>
 
     <!--
-      관리자 추가 페이지에서 선택한 회원의 role을 관리자 등급으로 변경합니다.
+      관리자 권한 관리 페이지에서 선택한 회원의 role을 변경합니다.
 
       조건을 엄격하게 둔 이유:
-      - ACTIVE 상태가 아닌 회원은 승급 대상이 아닙니다.
-      - 이미 관리자인 회원을 다시 승급하지 않도록 일반 회원 role만 허용합니다.
+      - ACTIVE 상태가 아닌 회원은 권한 변경 대상이 아닙니다.
+      - 지정된 회원/관리자 role만 변경 대상에 포함합니다.
     -->
     <update id="updateMemberRoleForAdminPromotion">
         update members
@@ -219,7 +222,7 @@
             updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
           and status = 'ACTIVE'
-          and role in ('USER', 'MEMBER')
+          and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
     </update>
 
     <!--

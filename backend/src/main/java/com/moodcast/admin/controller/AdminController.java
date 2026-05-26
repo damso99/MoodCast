@@ -152,19 +152,19 @@ public class AdminController {
     }
 
     /* ==========================================================================
-     * 관리자 승급 대상 회원 검색 API
+     * 관리자 권한 관리 대상 회원 검색 API
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
+     * 관리자 권한 관리 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
      *
      * 요청 주소:
-     * - GET /admin/api/members/search?searchType=email&keyword=test@example.com
-     * - GET /admin/api/members/search?searchType=name&keyword=문건우
+     * - GET /admin/api/members/admin-promotion/search?searchType=email&keyword=test@example.com
+     * - GET /admin/api/members/admin-promotion/search?searchType=name&keyword=문건우
      *
      * searchType 값:
      * - email: members.email 기준 검색
      * - name: members.name 기준 검색
      * ========================================================================== */
-    @GetMapping("/members/search")
+    @GetMapping("/members/admin-promotion/search")
     public Map<String, List<AdminMember>> searchMembersForAdminPromotion(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam(defaultValue = "email") String searchType,
@@ -179,12 +179,13 @@ public class AdminController {
     /* ==========================================================================
      * 회원 관리자 등급 변경 API
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 선택한 ACTIVE 일반 회원을 관리자 등급으로 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 관리자 등급으로 변경합니다.
      *
      * 요청 주소:
      * - PUT /admin/api/members/{memberId}/role
      *
      * 요청 body:
+     * - { "role": "USER" }
      * - { "role": "NORMAL_ADMIN" }
      * - { "role": "SUPER_ADMIN" }
      * ========================================================================== */

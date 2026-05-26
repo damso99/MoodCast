@@ -73,6 +73,26 @@ public class AdminService {
         return loginMember;
     }
 
+    /*
+     * 슈퍼 관리자 권한 확인
+     * --------------------------------------------------------------------------
+     * 관리자 추가와 관리자 권한 변경처럼 높은 권한이 필요한 작업에서만 사용합니다.
+     *
+     * 처리 흐름:
+     * 1. validateAdmin()으로 로그인 여부와 관리자 권한 여부를 먼저 확인합니다.
+     * 2. role이 SUPER_ADMIN인지 한 번 더 확인합니다.
+     * 3. 일반 관리자라면 403 FORBIDDEN으로 요청을 막습니다.
+     */
+    private LoginMemberResponse validateSuperAdmin(String authorizationHeader) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+
+        if (!"SUPER_ADMIN".equals(loginMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 권한이 필요합니다.");
+        }
+
+        return loginMember;
+    }
+
     /* ==========================================================================
      * 전체 회원 수 조회
      * --------------------------------------------------------------------------
@@ -268,9 +288,9 @@ public class AdminService {
     }
 
     /* ==========================================================================
-     * 관리자 승급 대상 회원 검색
+     * 관리자 권한 관리 대상 회원 검색
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 "이메일" 또는 "실명" 기준으로 기존 회원을 찾습니다.
+     * 관리자 권한 관리 페이지에서 "이메일" 또는 "실명" 기준으로 기존 회원을 찾습니다.
      *
      * searchType 설명:
      * - "email"이면 members.email 컬럼에서 검색합니다.
@@ -278,36 +298,32 @@ public class AdminService {
      *
      * keyword 설명:
      * - 검색창에 입력한 실제 검색어입니다.
-     * - 비어 있는 검색어로 전체 회원이 한 번에 조회되지 않도록 빈 배열을 반환합니다.
+     * - 비어 있는 검색어면 전체 권한 관리 대상 회원을 조회합니다.
      * ========================================================================== */
     public List<AdminMember> searchMembersForAdminPromotion(
             String authorizationHeader,
             String searchType,
             String keyword
     ) {
-        validateAdmin(authorizationHeader);
-
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
+        validateSuperAdmin(authorizationHeader);
 
         String normalizedSearchType =
                 "name".equals(searchType) || "nickname".equals(searchType)
                         ? searchType
                         : "email";
-        String normalizedKeyword = keyword.trim();
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
 
         return adminDao.searchMembersForAdminPromotion(normalizedSearchType, normalizedKeyword);
     }
 
     /* ==========================================================================
-     * 일반 회원을 관리자 등급으로 변경
+     * 회원 관리자 등급 변경
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 선택한 ACTIVE 일반 회원의 role을 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원의 role을 변경합니다.
      *
      * 처리 규칙:
-     * - 변경 가능한 role은 NORMAL_ADMIN, SUPER_ADMIN 두 가지입니다.
-     * - SQL에서도 ACTIVE 상태와 일반 회원 role 조건을 다시 확인합니다.
+     * - 변경 가능한 role은 USER, NORMAL_ADMIN, SUPER_ADMIN 세 가지입니다.
+     * - SQL에서도 ACTIVE 상태와 변경 가능한 role 조건을 다시 확인합니다.
      * - 조건에 맞지 않으면 400 BAD_REQUEST로 실패 처리합니다.
      * ========================================================================== */
     @Transactional
@@ -316,10 +332,10 @@ public class AdminService {
             Long memberId,
             String role
     ) {
-        validateAdmin(authorizationHeader);
+        LoginMemberResponse loginMember = validateSuperAdmin(authorizationHeader);
 
         if (memberId == null) {
-            throw new IllegalArgumentException("관리자로 승급할 회원을 선택해주세요.");
+            throw new IllegalArgumentException("관리자 등급을 변경할 회원을 선택해주세요.");
         }
 
         String normalizedRole = normalizeAdminRole(role);
@@ -328,9 +344,17 @@ public class AdminService {
         if (updated != 1) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "ACTIVE 상태의 일반 회원만 관리자로 승급할 수 있습니다."
+                    "ACTIVE 상태의 회원만 관리자 등급을 변경할 수 있습니다."
             );
         }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "UPDATE_ADMIN_ROLE",
+                "USER",
+                memberId,
+                "회원 관리자 등급 변경: " + normalizedRole
+        );
     }
 
     private String normalizeAdminRole(String role) {
@@ -340,6 +364,10 @@ public class AdminService {
 
         if ("NORMAL_ADMIN".equals(role)) {
             return "NORMAL_ADMIN";
+        }
+
+        if ("USER".equals(role)) {
+            return "USER";
         }
 
         throw new IllegalArgumentException("관리자 등급을 올바르게 선택해주세요.");

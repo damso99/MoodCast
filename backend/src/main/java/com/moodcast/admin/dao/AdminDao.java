@@ -36,7 +36,7 @@ public interface AdminDao {
     /* 회원 정보 전체 보기에서 사용할 단건 상세 정보를 조회합니다. */
     AdminMemberDetail selectMemberDetail(@Param("memberId") Long memberId);
 
-    /* 관리자 추가 페이지에서 이메일 또는 실명으로 회원을 검색합니다. */
+    /* 관리자 권한 관리 페이지에서 이메일 또는 실명으로 회원을 검색합니다. */
     List<AdminMember> searchMembersForAdminPromotion(
             @Param("searchType") String searchType,
             @Param("keyword") String keyword
