@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
  * 현재 테이블에 필요한 값:
  * - memberId: React에서 목록을 반복 출력할 때 각 행을 구분하는 값
  * - name: 사용자 이름
+ * - nickname: 사용자 닉네임
  * - email: 사용자 이메일
  * - status: 회원 상태
  * - createdAt: 가입일
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 public class AdminMember {
     private Long memberId;
     private String name;
+    private String nickname;
     private String email;
     private String status;
     private LocalDateTime createdAt;

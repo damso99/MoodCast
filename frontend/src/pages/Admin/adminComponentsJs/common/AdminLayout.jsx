@@ -34,8 +34,11 @@ import styles from "../../adminComponentsCss/common/AdminLayout.module.css";
  * ========================================================================== */
 export function AdminLayout({ children, title, description }) {
   const navigate = useNavigate(); // 로그아웃 후 로그인 페이지로 이동하기 위해 사용하는 함수입니다.
-  const { clearAuthData } = useAuthStore(); // 브라우저에 저장된 accessToken과 회원 정보를 지우기 위해 가져옵니다.
+  const { clearAuthData, member } = useAuthStore(); // 브라우저에 저장된 로그인 정보와 현재 로그인 회원 정보를 가져옵니다.
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080"; // 백엔드 서버 주소입니다.
+
+  const adminRoleLabel =
+    member?.role === "SUPER_ADMIN" ? "super" : "admin"; // 사이드바에 표시할 관리자 등급 문구입니다.
 
   /* ==========================================================================
    * 관리자 로그아웃 처리
@@ -91,8 +94,8 @@ export function AdminLayout({ children, title, description }) {
         <NavLink className={styles.adminProfile} to="/admin/profile">
           <AccountCircleOutlinedIcon />
           <div>
-            <strong>관리자</strong>
-            <span>admin · super</span>
+            <strong>{member?.name || "관리자"}</strong>
+            <span>admin · {adminRoleLabel}</span>
           </div>
         </NavLink>
       </aside>

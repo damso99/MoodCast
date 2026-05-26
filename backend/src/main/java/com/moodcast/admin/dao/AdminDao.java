@@ -1,7 +1,10 @@
 package com.moodcast.admin.dao;
 
+import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
+import com.moodcast.admin.vo.AdminProfile;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -27,4 +30,30 @@ public interface AdminDao {
 
     /* members 테이블에 있는 전체 회원 목록을 조회합니다. */
     List<AdminMember> selectMembers();
+
+    /* 관리자 추가 페이지에서 이메일 또는 실명으로 회원을 검색합니다. */
+    List<AdminMember> searchMembersForAdminPromotion(
+            @Param("searchType") String searchType,
+            @Param("keyword") String keyword
+    );
+
+    /* ACTIVE 상태의 일반 회원을 관리자 등급으로 변경합니다. */
+    int updateMemberRoleForAdminPromotion(
+            @Param("memberId") Long memberId,
+            @Param("role") String role
+    );
+
+    /* 관리자 대시보드 상단 카드에 표시할 요약 숫자를 조회합니다. */
+    AdminDashboardSummary selectDashboardSummary();
+
+    /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
+    AdminProfile selectAdminProfile(@Param("memberId") Long memberId);
+
+    /* 로그인한 관리자 본인의 실명, 닉네임, 전화번호를 수정합니다. */
+    int updateAdminProfile(
+            @Param("memberId") Long memberId,
+            @Param("name") String name,
+            @Param("nickname") String nickname,
+            @Param("phone") String phone
+    );
 }

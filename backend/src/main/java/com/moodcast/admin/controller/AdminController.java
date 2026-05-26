@@ -1,10 +1,19 @@
 package com.moodcast.admin.controller;
 
 import com.moodcast.admin.service.AdminService;
+import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
+import com.moodcast.admin.vo.AdminProfile;
+import com.moodcast.admin.vo.AdminProfileUpdateRequest;
+import com.moodcast.admin.vo.AdminRoleUpdateRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -47,8 +56,10 @@ public class AdminController {
      * - { "totalMemberCount": 5 }
      * ========================================================================== */
     @GetMapping("/members/count") // 브라우저에서 이 주소로 GET 요청이 오면 아래 메서드가 실행됩니다.
-    public Map<String, Long> getTotalMemberCount() {
-        return Map.of("totalMemberCount", adminService.getTotalMemberCount());
+    public Map<String, Long> getTotalMemberCount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return Map.of("totalMemberCount", adminService.getTotalMemberCount(authorizationHeader));
     }
 
     /* ==========================================================================
@@ -66,7 +77,115 @@ public class AdminController {
      * - 권한: role
      * ========================================================================== */
     @GetMapping("/members") // 브라우저에서 이 주소로 GET 요청이 오면 전체 회원 목록을 반환합니다.
-    public Map<String, List<AdminMember>> getMembers() {
-        return Map.of("members", adminService.getMembers());
+    public Map<String, List<AdminMember>> getMembers(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return Map.of("members", adminService.getMembers(authorizationHeader));
+    }
+
+    /* ==========================================================================
+     * 관리자 승급 대상 회원 검색 API
+     * --------------------------------------------------------------------------
+     * 관리자 추가 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members/search?searchType=email&keyword=test@example.com
+     * - GET /admin/api/members/search?searchType=name&keyword=문건우
+     *
+     * searchType 값:
+     * - email: members.email 기준 검색
+     * - name: members.name 기준 검색
+     * ========================================================================== */
+    @GetMapping("/members/search")
+    public Map<String, List<AdminMember>> searchMembersForAdminPromotion(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "email") String searchType,
+            @RequestParam(defaultValue = "") String keyword
+    ) {
+        return Map.of(
+                "members",
+                adminService.searchMembersForAdminPromotion(authorizationHeader, searchType, keyword)
+        );
+    }
+
+    /* ==========================================================================
+     * 회원 관리자 등급 변경 API
+     * --------------------------------------------------------------------------
+     * 관리자 추가 페이지에서 선택한 ACTIVE 일반 회원을 관리자 등급으로 변경합니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/role
+     *
+     * 요청 body:
+     * - { "role": "NORMAL_ADMIN" }
+     * - { "role": "SUPER_ADMIN" }
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/role")
+    public Map<String, Object> promoteMemberToAdmin(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId,
+            @RequestBody AdminRoleUpdateRequest request
+    ) {
+        adminService.promoteMemberToAdmin(authorizationHeader, memberId, request.getRole());
+
+        return Map.of(
+                "success", true,
+                "message", "관리자 등급이 변경되었습니다."
+        );
+    }
+
+    /* ==========================================================================
+     * 관리자 대시보드 요약 조회 API
+     * --------------------------------------------------------------------------
+     * 대시보드 상단 카드에 필요한 숫자를 한 번에 조회합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/dashboard/summary
+     *
+     * 현재 응답 값:
+     * - totalMemberCount: 전체 회원 수
+     * - todayNewMemberCount: 오늘 가입한 신규 가입자 수
+     * - postCount: 삭제되지 않은 게시글 수
+     * ========================================================================== */
+    @GetMapping("/dashboard/summary")
+    public AdminDashboardSummary getDashboardSummary(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return adminService.getDashboardSummary(authorizationHeader);
+    }
+
+    /* ==========================================================================
+     * 관리자 개인 정보 조회 API
+     * --------------------------------------------------------------------------
+     * 로그인한 관리자 본인의 실명, 닉네임, 전화번호를 조회합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/profile
+     * ========================================================================== */
+    @GetMapping("/profile")
+    public AdminProfile getAdminProfile(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return adminService.getAdminProfile(authorizationHeader);
+    }
+
+    /* ==========================================================================
+     * 관리자 개인 정보 수정 API
+     * --------------------------------------------------------------------------
+     * 로그인한 관리자 본인의 실명, 닉네임, 전화번호를 수정합니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/profile
+     * ========================================================================== */
+    @PutMapping("/profile")
+    public Map<String, Object> updateAdminProfile(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody AdminProfileUpdateRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "관리자 정보가 수정되었습니다.",
+                "profile", adminService.updateAdminProfile(authorizationHeader, request)
+        );
     }
 }

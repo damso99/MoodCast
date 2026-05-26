@@ -16,6 +16,31 @@
   min-width: 0;
 }
 
+.searchControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.searchSelect {
+  min-height: 42px;
+  border: 1px solid rgba(102, 112, 133, 0.13);
+  border-radius: 13px;
+  padding: 0 34px 0 14px;
+  outline: 0;
+  color: #111827;
+  font-size: 0.88rem;
+  font-weight: 800;
+  background: #fff;
+  cursor: pointer;
+}
+
+.searchSelect:focus {
+  border-color: rgba(124, 77, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.12);
+}
+
 .primaryLinkButton {
   min-height: 42px;
   display: inline-flex;
@@ -106,17 +131,26 @@
 
 .userCell {
   display: grid;
-  gap: 4px;
+  gap: 5px;
+  min-width: 0;
 }
 
 .userCell strong {
+  overflow: hidden;
   color: #111827;
   font-size: 0.92rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .userCell span {
+  overflow: hidden;
   color: #667085;
   font-size: 0.78rem;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusBadge {
@@ -250,5 +284,10 @@
     align-items: stretch;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .searchControls {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

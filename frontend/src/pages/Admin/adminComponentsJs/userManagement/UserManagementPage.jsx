@@ -11,6 +11,7 @@ import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { useAuthStore } from "../../../../hooks/useAuthStore";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
 
 /* ==========================================================================
@@ -38,15 +39,23 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  *
  * members 상태 설명:
  * - members 테이블에서 조회한 전체 회원 목록을 기억하는 배열입니다.
- * - 지금은 "전체" 탭이 선택된 경우에만 이 배열을 테이블에 출력합니다.
+ * - "전체 / 일반 회원 / 관리자 회원" 탭에 맞춰 화면에서 필터링해서 출력합니다.
+ * - 정지 회원 탭은 정지 기준이 확정되지 않았으므로 아직 실제 필터링을 연결하지 않습니다.
+ *
+ * searchField / searchKeyword 상태 설명:
+ * - searchField는 이름, 닉네임, 이메일 중 어떤 기준으로 검색할지 기억합니다.
+ * - searchKeyword는 검색창에 입력한 실제 검색어를 기억합니다.
  * ========================================================================== */
 export function UserManagementPage() {
   const [selectedUserType, setSelectedUserType] = useState("전체");
+  const [searchField, setSearchField] = useState("name");
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [totalMemberCount, setTotalMemberCount] = useState(null);
   const [totalMemberCountError, setTotalMemberCountError] = useState(false);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState(false);
+  const { accessToken } = useAuthStore();
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
@@ -58,7 +67,17 @@ export function UserManagementPage() {
     "관리자 회원": "관리자 권한을 가진 계정 목록이 이 영역에 표시됩니다.",
   };
 
+  const searchPlaceholder = {
+    name: "이름으로 검색",
+    nickname: "닉네임으로 검색",
+    email: "이메일로 검색",
+  };
+
   useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
     /* ========================================================================
      * 전체 회원 수 조회
      * ------------------------------------------------------------------------
@@ -69,7 +88,11 @@ export function UserManagementPage() {
      * - 요청이 실패해도 화면 전체가 깨지지 않도록 숫자만 "-"로 유지합니다.
      * ======================================================================== */
     axios
-      .get(`${BACKSERVER}/admin/api/members/count`)
+      .get(`${BACKSERVER}/admin/api/members/count`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
       .then((res) => {
         const count = res.data?.totalMemberCount;
 
@@ -81,9 +104,13 @@ export function UserManagementPage() {
         setTotalMemberCount(null);
         setTotalMemberCountError(true);
       });
-  }, [BACKSERVER]);
+  }, [BACKSERVER, accessToken]);
 
   useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
     /* ========================================================================
      * 전체 회원 목록 조회
      * ------------------------------------------------------------------------
@@ -97,7 +124,11 @@ export function UserManagementPage() {
     setMembersError(false);
 
     axios
-      .get(`${BACKSERVER}/admin/api/members`)
+      .get(`${BACKSERVER}/admin/api/members`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
       .then((res) => {
         const nextMembers = Array.isArray(res.data?.members)
           ? res.data.members
@@ -113,9 +144,43 @@ export function UserManagementPage() {
       .finally(() => {
         setMembersLoading(false);
       });
-  }, [BACKSERVER]);
+  }, [BACKSERVER, accessToken]);
 
-  const visibleMembers = selectedUserType === "전체" ? members : [];
+  const tabFilteredMembers = members.filter((member) => {
+    if (selectedUserType === "일반 회원") {
+      return member.role === "USER";
+    }
+
+    if (selectedUserType === "관리자 회원") {
+      return ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"].includes(member.role);
+    }
+
+    if (selectedUserType === "정지 회원") {
+      return false;
+    }
+
+    return true;
+  });
+
+  const visibleMembers = tabFilteredMembers.filter((member) => {
+    const trimmedKeyword = searchKeyword.trim().toLowerCase();
+
+    if (!trimmedKeyword) {
+      return true;
+    }
+
+    const targetValue = String(member[searchField] || "").toLowerCase();
+
+    return targetValue.includes(trimmedKeyword);
+  });
+
+  const normalMemberCount = members.filter(
+    (member) => member.role === "USER",
+  ).length;
+
+  const adminMemberCount = members.filter((member) =>
+    ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"].includes(member.role),
+  ).length;
 
   const formatDate = (value) => {
     if (!value) {
@@ -173,7 +238,23 @@ export function UserManagementPage() {
             selectedLabel={selectedUserType}
             onSelect={setSelectedUserType}
           />
-          <SearchBar placeholder="이름, 아이디 검색" />
+          <div className={styles.searchControls}>
+            <select
+              className={styles.searchSelect}
+              value={searchField}
+              onChange={(event) => setSearchField(event.target.value)}
+              aria-label="회원 검색 기준"
+            >
+              <option value="name">이름</option>
+              <option value="nickname">닉네임</option>
+              <option value="email">이메일</option>
+            </select>
+            <SearchBar
+              placeholder={searchPlaceholder[searchField]}
+              value={searchKeyword}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+            />
+          </div>
         </div>
         <NavLink className={styles.primaryLinkButton} to="/admin/users/new">
           관리자 추가
@@ -191,6 +272,7 @@ export function UserManagementPage() {
         />
         <MetricCard
           label="일반 회원"
+          value={normalMemberCount.toLocaleString()}
           icon={<AccountCircleOutlinedIcon />}
           accent="blue"
         />
@@ -201,6 +283,7 @@ export function UserManagementPage() {
         />
         <MetricCard
           label="관리자 회원"
+          value={adminMemberCount.toLocaleString()}
           icon={<DashboardOutlinedIcon />}
           accent="pink"
         />
@@ -223,6 +306,9 @@ export function UserManagementPage() {
               <td>
                 <div className={styles.userCell}>
                   <strong>{member.name || "-"}</strong>
+                  <span>
+                    {member.nickname ? `@${member.nickname}` : "닉네임 없음"}
+                  </span>
                 </div>
               </td>
               <td>

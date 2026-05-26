@@ -163,6 +163,13 @@
   gap: 10px;
 }
 
+.formMessage {
+  margin: 0;
+  color: #633df2;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
 .formActions button {
   min-height: 42px;
   padding: 0 16px;
@@ -200,6 +207,12 @@
 
 .formActions button:active {
   transform: translateY(0) scale(0.98);
+}
+
+.formActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.64;
+  transform: none;
 }
 
 .formActions button:focus-visible {
