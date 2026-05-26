@@ -15,6 +15,31 @@ export function HomeFeedPage() {
     return content.replace(/<[^>]+>/g, '').trim();
   };
 
+  const formatTime = (dateString) => {
+    if (!dateString) return '방금';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return '방금';
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays < 7) return `${diffDays}일 전`;
+    
+    // 한국 시간대(Asia/Seoul)로 포맷팅
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Seoul'
+    }).format(date);
+  };
+
   useEffect(() => {
     setLoading(true);
     axios.get(`${BACKSERVER}/posts`)
@@ -22,10 +47,10 @@ export function HomeFeedPage() {
         const items = response.data?.results || [];
         setPosts(items.map((item) => ({
           id: item.postId,
-          title: item.title, // 제목 추가
+          title: item.title,
           author: item.author,
           avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',
-          time: item.createdAt,
+          time: formatTime(item.createdAt),
           text: normalizeContent(item.content),
           emotionId: item.emotionId,
           commentsList: [],

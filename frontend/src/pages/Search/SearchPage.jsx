@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
@@ -13,7 +13,8 @@ import styles from './SearchPage.module.css';
 export function SearchPage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
   const [activeTab, setActiveTab] = useState('posts');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -78,10 +79,66 @@ export function SearchPage() {
       });
   };
 
+  const normalizeContent = (content) => {
+    if (!content) return '';
+    return content.replace(/<[^>]+>/g, '').trim();
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '방금';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return '방금';
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays < 7) return `${diffDays}일 전`;
+    
+    // 한국 시간대(Asia/Seoul)로 포맷팅
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Seoul'
+    }).format(date);
+  };
+
+  const transformPostData = (item) => {
+    const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
+    return {
+      id: item.postId,
+      title: item.title,
+      author: authorName,
+      avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      time: formatTime(item.createdAt),
+      text: normalizeContent(item.content),
+      emotionId: item.emotionId,
+      commentsList: [],
+      likes: 0,
+      vibes: 0,
+      previewComment: null,
+      postId: item.postId,
+    };
+  };
+
   const content = (
     <section className={styles.wrap}>
       <label className={styles.searchField}>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="게시글, 사용자, 해시태그 검색" />
+        <input 
+          value={query} 
+          onChange={(event) => {
+            const newQuery = event.target.value;
+            setQuery(newQuery);
+            navigate(`/app/search?q=${encodeURIComponent(newQuery)}`);
+          }} 
+          placeholder="게시글, 사용자, 해시태그 검색" 
+        />
       </label>
       <div className={styles.tabs}>
         {['posts', 'users', 'hashtags'].map((tab) => (
@@ -93,8 +150,8 @@ export function SearchPage() {
       
       {query.trim() !== '' && activeTab === 'posts' && (
         <div className={styles.searchCondition}>
-          <span>🔍 검색 조건: <strong>{query}</strong></span>
-          {query.startsWith('#') && <span className={styles.badge}>해시태그 검색</span>}
+          <span>🔍 검색 조건: <strong>{decodeURIComponent(query)}</strong></span>
+          {query.startsWith('%23') && <span className={styles.badge}>해시태그 검색</span>}
         </div>
       )}
       
@@ -187,7 +244,7 @@ export function SearchPage() {
               return (
                 <FeedCard 
                   key={item.postId} 
-                  post={item}
+                  post={transformPostData(item)}
                 />
               );
             }

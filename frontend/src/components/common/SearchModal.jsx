@@ -64,6 +64,54 @@ export function SearchModal({ open, onClose }) {
       });
   };
 
+  const normalizeContent = (content) => {
+    if (!content) return '';
+    return content.replace(/<[^>]+>/g, '').trim();
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return '방금';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return '방금';
+    if (diffMins < 60) return `${diffMins}분 전`;
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    if (diffDays < 7) return `${diffDays}일 전`;
+    
+    // 한국 시간대(Asia/Seoul)로 포맷팅
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Seoul'
+    }).format(date);
+  };
+
+  const transformPostData = (item) => {
+    const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
+    return {
+      id: item.postId,
+      title: item.title,
+      author: authorName,
+      avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      time: formatTime(item.createdAt),
+      text: normalizeContent(item.content),
+      emotionId: item.emotionId,
+      commentsList: [],
+      likes: 0,
+      vibes: 0,
+      previewComment: null,
+      postId: item.postId,
+    };
+  };
+
   // 검색어가 변경될 때마다 백엔드 API를 호출하여 검색 결과를 가져옵니다.
   useEffect(() => {
     if (!open) return;
@@ -119,7 +167,17 @@ export function SearchModal({ open, onClose }) {
 
         <label className={styles.searchField}>
           <SearchOutlinedIcon />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="검색어를 입력하세요" />
+          <input 
+            value={query} 
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && query.trim() !== '') {
+                onClose();
+                navigate(`/app/search?q=${encodeURIComponent(query)}`);
+              }
+            }}
+            placeholder="검색어를 입력하세요" 
+          />
         </label>
 
         <div className={styles.tabs}>
@@ -216,8 +274,8 @@ export function SearchModal({ open, onClose }) {
                     className={styles.item}
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
-                      setActiveTab('posts');
-                      setQuery(`#${item.hashtag}`);
+                      onClose(); // 모달 닫기
+                      navigate(`/app/search?q=%23${item.hashtag}`); // 해시태그 검색 페이지로 이동
                     }}
                   >
                     <strong>#{item.hashtag}</strong>
@@ -227,10 +285,17 @@ export function SearchModal({ open, onClose }) {
               }
               // 게시글 검색 결과 (기본값)
               return (
-                <FeedCard 
-                  key={item.postId}
-                  post={item}
-                />
+                <div 
+                  key={item.postId} 
+                  onClick={() => {
+                    onClose();
+                    navigate(`/app/search?q=${encodeURIComponent(query)}`);
+                  }}
+                >
+                  <FeedCard 
+                    post={transformPostData(item)}
+                  />
+                </div>
               );
             })
           ) : (

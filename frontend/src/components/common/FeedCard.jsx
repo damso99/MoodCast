@@ -84,6 +84,11 @@ export function FeedCard({ post, compact = false }) {
 
   const postId = post.id ?? post.postId;
 
+  const handleCardClick = () => {
+    const postId = post.id ?? post.postId;
+    navigate(`/app/post/${postId}`);
+  };
+
   const handleEdit = () => {
     setMenuOpen(false);
     navigate(`/app/post/edit/${postId}`);
@@ -105,8 +110,8 @@ export function FeedCard({ post, compact = false }) {
 
   return (
     <>
-      <article className={`${styles.card} ${compact ? styles.compact : ''}`}>
-        <div className={styles.head}>
+      <article className={`${styles.card} ${compact ? styles.compact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
+        <div className={styles.head} onClick={(e) => e.stopPropagation()}>
           <div className={styles.avatar}>{post.avatar}</div>
           <div className={styles.meta}>
             <strong>{post.author}</strong>
