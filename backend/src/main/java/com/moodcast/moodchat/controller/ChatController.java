@@ -2,7 +2,9 @@ package com.moodcast.moodchat.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
+import com.moodcast.moodchat.dto.ChatMessageDto;
 import com.moodcast.moodchat.service.ChatService;
 import com.moodcast.moodchat.vo.ChatVo;
 import com.moodcast.moodchat.vo.ChatThreadVo;
@@ -17,6 +19,9 @@ public class ChatController {
 
     @Autowired
     private ChatService chatService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/messages")
     public ResponseEntity<?> messages(
@@ -45,6 +50,14 @@ public class ChatController {
         @RequestParam Long partnerId
     ) {
         int updatedCount = chatService.markMessagesAsRead(memberId, partnerId);
+        if (updatedCount > 0) {
+            ChatMessageDto readReceipt = new ChatMessageDto();
+            readReceipt.setSenderId(partnerId.intValue());
+            readReceipt.setReceiverId(memberId.intValue());
+            readReceipt.setIsRead(1);
+            readReceipt.setEventType("READ_RECEIPT");
+            messagingTemplate.convertAndSend("/sub/chat/" + partnerId, readReceipt);
+        }
         return ResponseEntity.ok(updatedCount);
     }
 }

@@ -8,6 +8,9 @@ import { ReportManagementPage } from "./adminComponentsJs/reportManagement/Repor
 import { StatisticsDashboardPage } from "./adminComponentsJs/statisticsDashboard/StatisticsDashboardPage";
 import { UserManagementPage } from "./adminComponentsJs/userManagement/UserManagementPage";
 import { pageTitles } from "./adminComponentsJs/common/adminConfig";
+import { useAuthStore } from "../../hooks/useAuthStore";
+
+const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
 
 /* ==========================================================================
  * 관리자 페이지 라우팅 파일
@@ -25,6 +28,21 @@ import { pageTitles } from "./adminComponentsJs/common/adminConfig";
  * 어느 파일을 열어야 하는지 훨씬 찾기 쉬워집니다.
  * ========================================================================== */
 export function AdminRoutes() {
+  const { isLoggedIn, accessToken, member } = useAuthStore();
+  const memberRole = member?.role;
+
+  if (!isLoggedIn || !accessToken) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  if (!member) {
+    return null;
+  }
+
+  if (!ADMIN_ROLES.includes(memberRole)) {
+    return <Navigate to="/app/feed" replace />;
+  }
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />

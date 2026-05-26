@@ -64,7 +64,7 @@
 
 .searchForm {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(160px, 0.8fr) auto;
+  grid-template-columns: minmax(118px, 144px) minmax(260px, 1fr) auto;
   gap: 12px;
   align-items: end;
   margin-bottom: 16px;
@@ -78,7 +78,8 @@
   font-weight: 900;
 }
 
-.searchForm input {
+.searchForm input,
+.searchForm select {
   min-height: 44px;
   width: 100%;
   border: 1px solid rgba(102, 112, 133, 0.16);
@@ -87,6 +88,11 @@
   outline: 0;
   color: #111827;
   background: #fff;
+}
+
+.searchForm select {
+  cursor: pointer;
+  padding: 0 10px;
 }
 
 .searchForm button {
@@ -116,6 +122,52 @@
 .searchForm button:focus-visible {
   outline: 3px solid rgba(124, 77, 255, 0.28);
   outline-offset: 2px;
+}
+
+.searchForm button:disabled,
+.formActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
+}
+
+.errorText {
+  margin: 0 0 14px;
+  color: #ef4444;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.successText {
+  margin: 0 0 14px;
+  color: #009966;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.memberNickname {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.selectMemberLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #633df2;
+  font-size: 0.86rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.selectMemberLabel input {
+  width: 16px;
+  height: 16px;
+  accent-color: #7c4dff;
 }
 
 .adminForm label {
@@ -238,6 +290,11 @@
 
 @media (max-width: 760px) {
   .searchForm {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(108px, 128px) minmax(0, 1fr);
+  }
+
+  .searchForm button {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }

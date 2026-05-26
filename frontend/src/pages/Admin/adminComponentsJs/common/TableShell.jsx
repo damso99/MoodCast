@@ -11,14 +11,15 @@ import styles from "../../adminComponentsCss/common/TableShell.module.css";
  * - title: 표 위에 보이는 제목입니다.
  * - columns: 표의 헤더 이름 배열입니다. 예: ['사용자', '상태', '가입일']
  * - children: tbody 안에 들어갈 실제 행입니다.
+ * - className: 특정 페이지에서만 추가 스타일을 적용하고 싶을 때 사용하는 선택 값입니다.
  *
  * children을 받는 이유:
  * - 페이지마다 표의 행 내용이 달라질 수 있기 때문입니다.
  * - 지금은 데이터가 없어서 EmptyTableRow만 넣지만, 나중에는 map으로 실제 행을 만들 수 있습니다.
  * ========================================================================== */
-export function TableShell({ title, columns, children }) {
+export function TableShell({ title, columns, children, className = "" }) {
   return (
-    <section className={styles.panel}>
+    <section className={`${styles.panel} ${className}`}>
       <div className={styles.panelHead}>
         <h2>{title}</h2>
       </div>
@@ -52,10 +53,7 @@ export function EmptyTableRow({ colSpan, label }) {
   return (
     <tr>
       <td colSpan={colSpan}>
-        <EmptyState
-          title={label}
-          description="현재는 더미데이터 없이 화면 구조만 준비되어 있습니다."
-        />
+        <EmptyState title={label} />
       </td>
     </tr>
   );

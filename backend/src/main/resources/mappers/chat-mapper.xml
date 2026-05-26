@@ -34,7 +34,10 @@
         ) t
         join members m
           on m.member_id = t.partner_member_id
-        order by t.last_message_at desc, t.partner_member_id desc
+        order by
+            case when t.unread_count > 0 then 0 else 1 end,
+            t.last_message_at desc,
+            t.partner_member_id desc
     </select>
 
     <select id="selectChatMessages" resultType="com.moodcast.moodchat.vo.ChatVo">

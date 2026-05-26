@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
@@ -9,6 +11,7 @@ import { DesktopShell } from "../../components/layout/DesktopShell";
 import { MobileShell } from "../../components/layout/MobileShell";
 import { useAuthStore } from "../../hooks/useAuthStore";
 import { useRealtimeChat } from "../../hooks/useRealtimeChat";
+import { notifyChatUnreadChanged } from "../../hooks/useUnreadChatCount";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { useSearchParams } from "react-router-dom";
 import styles from "./MoodChatPage.module.css";
@@ -48,15 +51,18 @@ function normalizeIncomingMessage(message, currentUserId) {
     receiverId: Number(message?.receiverId),
     createdAt: message?.createdAt ?? new Date().toISOString(),
     isRead: message?.isRead ?? 0,
+    eventType: message?.eventType ?? "CHAT_MESSAGE",
   };
 }
 
-function ChatBody({ desktop }) {
+function ChatBody({ desktop, onRoomOpenChange }) {
   const { member } = useAuthStore();
   const [searchParams] = useSearchParams();
   const currentMemberId = useMemo(() => {
     const memberId = Number(member?.memberId);
-    return Number.isFinite(memberId) && memberId > 0 ? memberId : DEFAULT_CURRENT_USER_ID;
+    return Number.isFinite(memberId) && memberId > 0
+      ? memberId
+      : DEFAULT_CURRENT_USER_ID;
   }, [member?.memberId]);
   const initialPartnerId = useMemo(() => {
     const partnerId = Number(searchParams.get("partnerId"));
@@ -64,6 +70,7 @@ function ChatBody({ desktop }) {
   }, [searchParams]);
   const initialPartnerName = searchParams.get("partnerName") || "";
   const messageListRef = useRef(null);
+  const messageInputRef = useRef(null);
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [isRoomOpen, setIsRoomOpen] = useState(false);
@@ -72,9 +79,26 @@ function ChatBody({ desktop }) {
   const [isLoadingThreads, setIsLoadingThreads] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
   const handleIncomingMessage = (incomingMessage) => {
-    const normalizedMessage = normalizeIncomingMessage(incomingMessage, currentMemberId);
+    if (incomingMessage?.eventType === "READ_RECEIPT") {
+      const readerId = Number(incomingMessage.receiverId);
+
+      setMessages((previousMessages) =>
+        previousMessages.map((item) =>
+          item.senderId === currentMemberId && item.receiverId === readerId
+            ? { ...item, isRead: 1 }
+            : item,
+        ),
+      );
+      return;
+    }
+
+    const normalizedMessage = normalizeIncomingMessage(
+      incomingMessage,
+      currentMemberId,
+    );
     const incomingPartnerId =
       normalizedMessage.senderId === currentMemberId
         ? normalizedMessage.receiverId
@@ -82,7 +106,8 @@ function ChatBody({ desktop }) {
     const isActiveThreadMessage =
       activeThread &&
       Number(activeThread.partnerMemberId) === Number(incomingPartnerId) &&
-      (normalizedMessage.senderId === currentMemberId || normalizedMessage.receiverId === currentMemberId);
+      (normalizedMessage.senderId === currentMemberId ||
+        normalizedMessage.receiverId === currentMemberId);
 
     setMessages((previousMessages) => {
       if (previousMessages.some((item) => item.id === normalizedMessage.id)) {
@@ -96,7 +121,10 @@ function ChatBody({ desktop }) {
       return [...previousMessages, normalizedMessage];
     });
 
-    if (isActiveThreadMessage && normalizedMessage.receiverId === currentMemberId) {
+    if (
+      isActiveThreadMessage &&
+      normalizedMessage.receiverId === currentMemberId
+    ) {
       markMessagesAsRead(incomingPartnerId).then(loadThreads);
       return;
     }
@@ -104,7 +132,10 @@ function ChatBody({ desktop }) {
     loadThreads();
   };
 
-  const { connected: isChatConnected, sendMessage } = useRealtimeChat(currentMemberId, handleIncomingMessage);
+  const { connected: isChatConnected, sendMessage } = useRealtimeChat(
+    currentMemberId,
+    handleIncomingMessage,
+  );
 
   const markMessagesAsRead = async (partnerId) => {
     if (!currentMemberId || !partnerId) {
@@ -126,6 +157,7 @@ function ChatBody({ desktop }) {
             : thread,
         ),
       );
+      notifyChatUnreadChanged();
     } catch (requestError) {
       console.error("메시지 읽음 처리 실패", requestError);
     }
@@ -173,7 +205,9 @@ function ChatBody({ desktop }) {
         },
       });
       const list = Array.isArray(response.data) ? response.data : [];
-      setMessages(list.map((item) => normalizeIncomingMessage(item, currentMemberId)));
+      setMessages(
+        list.map((item) => normalizeIncomingMessage(item, currentMemberId)),
+      );
       await loadThreads();
     } catch (requestError) {
       console.error("메시지 조회 실패", requestError);
@@ -190,7 +224,17 @@ function ChatBody({ desktop }) {
   }, [currentMemberId]);
 
   useEffect(() => {
-    if (!currentMemberId || !initialPartnerId) {
+    if (!initialPartnerId) {
+      setActiveThread(null);
+      setIsRoomOpen(false);
+      setMessages([]);
+      setMessage("");
+      setError("");
+      setShowScrollBottomButton(false);
+      return;
+    }
+
+    if (!currentMemberId) {
       return;
     }
 
@@ -207,24 +251,59 @@ function ChatBody({ desktop }) {
     setActiveThread(partnerThread);
     setIsRoomOpen(true);
     setMessage("");
+    setShowScrollBottomButton(false);
     loadMessages(partnerThread);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMemberId, initialPartnerId, initialPartnerName]);
 
-  useEffect(() => {
+  const updateScrollBottomButton = () => {
     const messageListElement = messageListRef.current;
 
     if (!messageListElement) {
       return;
     }
 
-    messageListElement.scrollTop = messageListElement.scrollHeight;
+    const bottomGap =
+      messageListElement.scrollHeight -
+      messageListElement.scrollTop -
+      messageListElement.clientHeight;
+    setShowScrollBottomButton(bottomGap > 24);
+  };
+
+  const scrollToMessageBottom = (behavior = "smooth") => {
+    const messageListElement = messageListRef.current;
+
+    if (!messageListElement) {
+      return;
+    }
+
+    messageListElement.scrollTo({
+      top: messageListElement.scrollHeight,
+      behavior,
+    });
+    setShowScrollBottomButton(false);
+  };
+
+  useEffect(() => {
+    if (!isRoomOpen) {
+      setShowScrollBottomButton(false);
+      return;
+    }
+
+    if (!showScrollBottomButton) {
+      requestAnimationFrame(() => scrollToMessageBottom("auto"));
+      return;
+    }
+
+    requestAnimationFrame(updateScrollBottomButton);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isRoomOpen, activeThread]);
 
   const openThread = (thread) => {
     setActiveThread(thread);
     setIsRoomOpen(true);
     setMessage("");
+    setShowScrollBottomButton(false);
     loadMessages(thread);
   };
 
@@ -234,17 +313,22 @@ function ChatBody({ desktop }) {
     setMessages([]);
     setMessage("");
     setError("");
+    setShowScrollBottomButton(false);
   };
 
   const handleSend = async () => {
     const trimmedMessage = message.trim();
 
-    if (!trimmedMessage || !activeThread || !currentMemberId) {
+    if (!trimmedMessage || !activeThread || !currentMemberId || isSending) {
       return;
     }
 
     setIsSending(true);
     setError("");
+    setMessage("");
+    requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+    });
 
     try {
       const isPublished = sendMessage({
@@ -264,13 +348,15 @@ function ChatBody({ desktop }) {
         await loadMessages(activeThread);
       }
 
-      setMessage("");
       await loadThreads();
     } catch (requestError) {
       console.error("메시지 전송 실패", requestError);
       setError("메시지 전송에 실패했습니다.");
     } finally {
       setIsSending(false);
+      requestAnimationFrame(() => {
+        messageInputRef.current?.focus();
+      });
     }
   };
 
@@ -278,12 +364,19 @@ function ChatBody({ desktop }) {
     event.preventDefault();
     await handleSend();
   };
-  const partnerName = activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
+
+  useEffect(() => {
+    onRoomOpenChange?.(isRoomOpen);
+  }, [isRoomOpen, onRoomOpenChange]);
+  const partnerName =
+    activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
   const partnerInitial = partnerName.charAt(0).toUpperCase();
 
   const threadList = (
     <div className={styles.threadList}>
-      {isLoadingThreads ? <p className={styles.statusText}>채팅 리스트를 불러오는 중입니다.</p> : null}
+      {isLoadingThreads ? (
+        <p className={styles.statusText}>채팅 리스트를 불러오는 중입니다.</p>
+      ) : null}
       {!isLoadingThreads && threads.length === 0 ? (
         <p className={styles.emptyState}>대화 중인 채팅방이 없습니다.</p>
       ) : null}
@@ -295,12 +388,24 @@ function ChatBody({ desktop }) {
           onClick={() => openThread(thread)}
         >
           <div className={styles.threadContent}>
-            <strong>{thread.partnerNickname || thread.partnerName || `회원 ${thread.partnerMemberId}`}</strong>
-            <p className={styles.threadPreview}>{thread.lastMessage || "메시지가 없습니다."}</p>
+            <strong>
+              {thread.partnerNickname ||
+                thread.partnerName ||
+                `회원 ${thread.partnerMemberId}`}
+            </strong>
+            <p className={styles.threadPreview}>
+              {thread.lastMessage || "메시지가 없습니다."}
+            </p>
           </div>
           <div className={styles.threadMeta}>
-            <span>{thread.lastMessageAt ? formatMessageTime(thread.lastMessageAt) : ""}</span>
-            {thread.unreadCount > 0 ? <b className={styles.unreadBadge}>{thread.unreadCount}</b> : null}
+            <span>
+              {thread.lastMessageAt
+                ? formatMessageTime(thread.lastMessageAt)
+                : ""}
+            </span>
+            {thread.unreadCount > 0 ? (
+              <b className={styles.unreadBadge}>{thread.unreadCount}</b>
+            ) : null}
           </div>
         </button>
       ))}
@@ -308,50 +413,74 @@ function ChatBody({ desktop }) {
   );
 
   const messageList = (
-    <div ref={messageListRef} className={styles.messages} aria-live="polite">
-      {isLoadingMessages ? <p className={styles.statusText}>메시지를 불러오는 중입니다.</p> : null}
+    <div
+      ref={messageListRef}
+      className={styles.messages}
+      aria-live="polite"
+      onScroll={updateScrollBottomButton}
+    >
+      {isLoadingMessages ? (
+        <p className={styles.statusText}>메시지를 불러오는 중입니다.</p>
+      ) : null}
       {error ? <p className={styles.errorText}>{error}</p> : null}
       {!isLoadingMessages && messages.length === 0 ? (
-        <p className={styles.emptyState}>아직 메시지가 없습니다. 대화를 시작해보세요.</p>
+        <p className={styles.emptyState}>
+          아직 메시지가 없습니다. 대화를 시작해보세요.
+        </p>
       ) : null}
-      {messages.map((item) => (
-        <div
-          key={item.id}
-          className={`${styles.messageRow} ${item.sender === "me" ? styles.me : styles.them}`}
-        >
-          {item.sender === "them" ? (
-            <div className={styles.messageAvatar}>{partnerInitial}</div>
-          ) : null}
-          <div className={`${styles.messageItem} ${item.sender === "me" ? styles.me : styles.them}`}>
-          {item.sender === "them" ? (
-            <span className={styles.senderLabel}>
-              {partnerName}
-            </span>
-          ) : null}
-          <div className={styles.bubbleWrap}>
-            <div className={styles.bubble}>
-              <p>{item.text}</p>
+      {messages.map((item) => {
+        const isUnreadByReceiver =
+          item.sender === "me" && Number(item.isRead) !== 1;
+
+        return (
+          <div
+            key={item.id}
+            className={`${styles.messageRow} ${item.sender === "me" ? styles.me : styles.them}`}
+          >
+            {item.sender === "them" ? (
+              <div className={styles.messageAvatar}>{partnerInitial}</div>
+            ) : null}
+            <div
+              className={`${styles.messageItem} ${item.sender === "me" ? styles.me : styles.them}`}
+            >
+              {item.sender === "them" ? (
+                <span className={styles.senderLabel}>{partnerName}</span>
+              ) : null}
+              <div className={styles.bubbleWrap}>
+                <div className={styles.bubbleLine}>
+                  {isUnreadByReceiver ? (
+                    <span className={styles.unreadMarker}>1</span>
+                  ) : null}
+                  <div className={styles.bubble}>
+                    <p>{item.text}</p>
+                  </div>
+                </div>
+                <span className={styles.messageTime}>{item.time}</span>
+              </div>
             </div>
-            <span className={styles.messageTime}>{item.time}</span>
           </div>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
   const composer = (
     <form className={styles.composer} onSubmit={handleSubmit}>
-      <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+      <label
+        className={styles.addButton}
+        aria-label="이미지 추가"
+        title="이미지 추가"
+      >
         <AddRoundedIcon />
         <input type="file" accept="image/*" />
       </label>
       <div className={styles.inputShell}>
         <input
+          ref={messageInputRef}
           placeholder="메시지를 입력하세요..."
           value={message}
           onChange={(event) => setMessage(event.target.value)}
-          disabled={isSending || !activeThread}
+          disabled={!activeThread}
         />
         <button
           type="button"
@@ -378,10 +507,18 @@ function ChatBody({ desktop }) {
   const chatRoom = (
     <div className={styles.room}>
       <div className={styles.roomHeader}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={handleExitRoom}
+          aria-label="채팅방 나가기"
+        >
+          <ArrowBackRoundedIcon />
+        </button>
         <div className={styles.headerAvatar}>{partnerInitial}</div>
         <div className={styles.roomTitle}>
           <strong>{partnerName}</strong>
-          <span>{isChatConnected ? "지금, 실시간으로 연결 중" : "연결을 준비하는 중"}</span>
+          <span>{isChatConnected ? "활동중일걸?" : "아닌가?"}</span>
         </div>
         <div className={styles.headerActions}>
           <button type="button" aria-label="전화">
@@ -391,11 +528,19 @@ function ChatBody({ desktop }) {
             <MoreVertRoundedIcon />
           </button>
         </div>
-        <button type="button" className={styles.backButton} onClick={handleExitRoom}>
-          나가기
-        </button>
       </div>
       {messageList}
+      {showScrollBottomButton ? (
+        <button
+          type="button"
+          className={styles.scrollBottomButton}
+          aria-label="최신 메시지로 이동"
+          title="최신 메시지로 이동"
+          onClick={() => scrollToMessageBottom()}
+        >
+          <KeyboardArrowDownRoundedIcon />
+        </button>
+      ) : null}
       {composer}
     </div>
   );
@@ -404,12 +549,12 @@ function ChatBody({ desktop }) {
     return (
       <section className={styles.mobileChat}>
         {!isRoomOpen ? (
-          <>
+          <div className={styles.mobileListView}>
             <div className={styles.threadHeader}>
               <strong>채팅 리스트</strong>
             </div>
             {threadList}
-          </>
+          </div>
         ) : (
           chatRoom
         )}
@@ -439,11 +584,17 @@ function ChatBody({ desktop }) {
 
 export function MoodChatPage() {
   const desktop = useIsDesktop();
+  const [mobileRoomOpen, setMobileRoomOpen] = useState(false);
 
   if (!desktop) {
     return (
-      <MobileShell title="Mood Chat" hideSearch>
-        <ChatBody desktop={false} />
+      <MobileShell
+        title="Mood Chat"
+        hideSearch
+        fixedContent
+        hideBottomNav={mobileRoomOpen}
+      >
+        <ChatBody desktop={false} onRoomOpenChange={setMobileRoomOpen} />
       </MobileShell>
     );
   }
