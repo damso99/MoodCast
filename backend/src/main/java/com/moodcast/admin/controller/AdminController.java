@@ -3,6 +3,8 @@ package com.moodcast.admin.controller;
 import com.moodcast.admin.service.AdminService;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
+import com.moodcast.admin.vo.AdminMemberDetail;
+import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
@@ -84,19 +86,85 @@ public class AdminController {
     }
 
     /* ==========================================================================
-     * 관리자 승급 대상 회원 검색 API
+     * 회원 상세 정보 조회 API
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
+     * 사용자 관리 페이지에서 "회원 정보 전체 보기" 버튼을 눌렀을 때 사용하는 API입니다.
      *
      * 요청 주소:
-     * - GET /admin/api/members/search?searchType=email&keyword=test@example.com
-     * - GET /admin/api/members/search?searchType=name&keyword=문건우
+     * - GET /admin/api/members/{memberId}
+     *
+     * 응답 기준:
+     * - members 테이블에 저장된 개인정보 관련 값을 반환합니다.
+     * - password_hash는 절대 반환하지 않습니다.
+     * ========================================================================== */
+    @GetMapping("/members/{memberId}")
+    public AdminMemberDetail getMemberDetail(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return adminService.getMemberDetail(authorizationHeader, memberId);
+    }
+
+    /* ==========================================================================
+     * 회원 정지 처리 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 일시 정지 또는 영구 정지를 확정했을 때 호출됩니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/suspend
+     *
+     * 요청 body 예시:
+     * - { "suspendType": "TEMPORARY", "suspendDays": 7 }
+     * - { "suspendType": "TEMPORARY", "suspendedUntil": "2026-06-08" }
+     * - { "suspendType": "PERMANENT" }
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/suspend")
+    public Map<String, Object> suspendMember(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId,
+            @RequestBody AdminMemberSuspendRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "회원 정지 처리가 완료되었습니다.",
+                "member", adminService.suspendMember(authorizationHeader, memberId, request)
+        );
+    }
+
+    /* ==========================================================================
+     * 회원 정지 해제 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 정지된 회원의 "정지 해제" 버튼을 눌렀을 때 호출합니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/restore
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/restore")
+    public Map<String, Object> restoreSuspendedMember(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "회원 정지 해제가 완료되었습니다.",
+                "member", adminService.restoreSuspendedMember(authorizationHeader, memberId)
+        );
+    }
+
+    /* ==========================================================================
+     * 관리자 권한 관리 대상 회원 검색 API
+     * --------------------------------------------------------------------------
+     * 관리자 권한 관리 페이지에서 기존 회원을 이메일 또는 실명으로 검색할 때 사용합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members/admin-promotion/search?searchType=email&keyword=test@example.com
+     * - GET /admin/api/members/admin-promotion/search?searchType=name&keyword=문건우
      *
      * searchType 값:
      * - email: members.email 기준 검색
      * - name: members.name 기준 검색
      * ========================================================================== */
-    @GetMapping("/members/search")
+    @GetMapping("/members/admin-promotion/search")
     public Map<String, List<AdminMember>> searchMembersForAdminPromotion(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam(defaultValue = "email") String searchType,
@@ -111,12 +179,13 @@ public class AdminController {
     /* ==========================================================================
      * 회원 관리자 등급 변경 API
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 선택한 ACTIVE 일반 회원을 관리자 등급으로 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 관리자 등급으로 변경합니다.
      *
      * 요청 주소:
      * - PUT /admin/api/members/{memberId}/role
      *
      * 요청 body:
+     * - { "role": "USER" }
      * - { "role": "NORMAL_ADMIN" }
      * - { "role": "SUPER_ADMIN" }
      * ========================================================================== */

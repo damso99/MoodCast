@@ -3,6 +3,8 @@ package com.moodcast.admin.service;
 import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
+import com.moodcast.admin.vo.AdminMemberDetail;
+import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.member.dto.login.LoginMemberResponse;
@@ -15,6 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
 import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /* ==========================================================================
  * 관리자 페이지 공통 서비스
@@ -69,6 +73,26 @@ public class AdminService {
         return loginMember;
     }
 
+    /*
+     * 슈퍼 관리자 권한 확인
+     * --------------------------------------------------------------------------
+     * 관리자 추가와 관리자 권한 변경처럼 높은 권한이 필요한 작업에서만 사용합니다.
+     *
+     * 처리 흐름:
+     * 1. validateAdmin()으로 로그인 여부와 관리자 권한 여부를 먼저 확인합니다.
+     * 2. role이 SUPER_ADMIN인지 한 번 더 확인합니다.
+     * 3. 일반 관리자라면 403 FORBIDDEN으로 요청을 막습니다.
+     */
+    private LoginMemberResponse validateSuperAdmin(String authorizationHeader) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+
+        if (!"SUPER_ADMIN".equals(loginMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 권한이 필요합니다.");
+        }
+
+        return loginMember;
+    }
+
     /* ==========================================================================
      * 전체 회원 수 조회
      * --------------------------------------------------------------------------
@@ -97,9 +121,176 @@ public class AdminService {
     }
 
     /* ==========================================================================
-     * 관리자 승급 대상 회원 검색
+     * 회원 상세 정보 조회
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 "이메일" 또는 "실명" 기준으로 기존 회원을 찾습니다.
+     * 사용자 관리 페이지에서 "회원 정보 전체 보기" 버튼을 눌렀을 때 호출됩니다.
+     *
+     * 처리 흐름:
+     * 1. 요청자가 관리자 권한을 가진 사용자인지 먼저 확인합니다.
+     * 2. memberId가 비어 있으면 잘못된 요청으로 처리합니다.
+     * 3. DAO를 통해 members 테이블의 상세 정보를 조회합니다.
+     * 4. 조회 결과가 없으면 404 NOT_FOUND로 응답합니다.
+     *
+     * 보안 기준:
+     * - password_hash는 VO와 SQL에서 제외되어 있어 응답에 포함되지 않습니다.
+     * ========================================================================== */
+    public AdminMemberDetail getMemberDetail(String authorizationHeader, Long memberId) {
+        validateAdmin(authorizationHeader);
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("조회할 회원을 선택해주세요.");
+        }
+
+        AdminMemberDetail memberDetail = adminDao.selectMemberDetail(memberId);
+
+        if (memberDetail == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "회원 정보를 찾을 수 없습니다.");
+        }
+
+        return memberDetail;
+    }
+
+    /* ==========================================================================
+     * 회원 정지 처리
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 "일시 정지" 또는 "영구 정지"를 확정했을 때 실행됩니다.
+     *
+     * 처리 흐름:
+     * 1. 요청자가 관리자 권한인지 확인합니다.
+     * 2. 정지 대상 회원이 존재하는지 확인합니다.
+     * 3. 정지 유형에 따라 suspended_until 값을 계산합니다.
+     *    - TEMPORARY: 미래 날짜 저장
+     *    - PERMANENT: null 저장
+     * 4. members.status를 SUSPENDED로 변경합니다.
+     * 5. admin_action_logs에 관리자 작업 기록을 남깁니다.
+     *
+     * warning_count 안내 문구는 프론트에서 보여주지만,
+     * 실제 정지 처리는 백엔드에서 한 번 더 권한과 대상 존재 여부를 확인합니다.
+     * ========================================================================== */
+    @Transactional
+    public AdminMemberDetail suspendMember(
+            String authorizationHeader,
+            Long memberId,
+            AdminMemberSuspendRequest request
+    ) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("정지할 회원을 선택해주세요.");
+        }
+
+        if (request == null) {
+            throw new IllegalArgumentException("정지 정보를 입력해주세요.");
+        }
+
+        AdminMemberDetail targetMember = adminDao.selectMemberDetail(memberId);
+
+        if (targetMember == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "정지할 회원 정보를 찾을 수 없습니다.");
+        }
+
+        LocalDateTime suspendedUntil = calculateSuspendedUntil(request);
+        int updated = adminDao.suspendMember(memberId, suspendedUntil);
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회원 정지 처리에 실패했습니다.");
+        }
+
+        String actionDetail = buildSuspendActionDetail(request.getSuspendType(), suspendedUntil);
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "SUSPEND",
+                "USER",
+                memberId,
+                actionDetail
+        );
+
+        return adminDao.selectMemberDetail(memberId);
+    }
+
+    private LocalDateTime calculateSuspendedUntil(AdminMemberSuspendRequest request) {
+        String suspendType = request.getSuspendType();
+
+        if ("PERMANENT".equals(suspendType)) {
+            return null;
+        }
+
+        if (!"TEMPORARY".equals(suspendType)) {
+            throw new IllegalArgumentException("정지 유형을 올바르게 선택해주세요.");
+        }
+
+        if (request.getSuspendedUntil() != null && !request.getSuspendedUntil().trim().isEmpty()) {
+            LocalDateTime customSuspendedUntil = LocalDate.parse(request.getSuspendedUntil().trim()).atTime(23, 59, 59);
+
+            if (!customSuspendedUntil.isAfter(LocalDateTime.now())) {
+                throw new IllegalArgumentException("정지 해제일은 현재보다 이후 날짜로 선택해주세요.");
+            }
+
+            return customSuspendedUntil;
+        }
+
+        Integer suspendDays = request.getSuspendDays();
+
+        if (suspendDays == null || suspendDays <= 0) {
+            throw new IllegalArgumentException("정지 기간을 선택해주세요.");
+        }
+
+        return LocalDateTime.now().plusDays(suspendDays);
+    }
+
+    private String buildSuspendActionDetail(String suspendType, LocalDateTime suspendedUntil) {
+        if ("PERMANENT".equals(suspendType)) {
+            return "회원 영구 정지";
+        }
+
+        return "회원 일시 정지, 해제 예정일: " + suspendedUntil;
+    }
+
+    /* ==========================================================================
+     * 회원 정지 해제 처리
+     * --------------------------------------------------------------------------
+     * 정지 상태인 회원을 다시 ACTIVE 상태로 되돌립니다.
+     *
+     * 처리 기준:
+     * - 정지 이력은 사라지면 안 되므로 suspension_count는 변경하지 않습니다.
+     * - suspended_until만 null로 비우고 status를 ACTIVE로 변경합니다.
+     * - admin_action_logs에는 RESTORE 작업을 append-only 방식으로 추가합니다.
+     * ========================================================================== */
+    @Transactional
+    public AdminMemberDetail restoreSuspendedMember(String authorizationHeader, Long memberId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("정지 해제할 회원을 선택해주세요.");
+        }
+
+        AdminMemberDetail targetMember = adminDao.selectMemberDetail(memberId);
+
+        if (targetMember == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "정지 해제할 회원 정보를 찾을 수 없습니다.");
+        }
+
+        int updated = adminDao.restoreSuspendedMember(memberId);
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "정지 상태인 회원만 정지 해제할 수 있습니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "RESTORE",
+                "USER",
+                memberId,
+                "회원 정지 해제"
+        );
+
+        return adminDao.selectMemberDetail(memberId);
+    }
+
+    /* ==========================================================================
+     * 관리자 권한 관리 대상 회원 검색
+     * --------------------------------------------------------------------------
+     * 관리자 권한 관리 페이지에서 "이메일" 또는 "실명" 기준으로 기존 회원을 찾습니다.
      *
      * searchType 설명:
      * - "email"이면 members.email 컬럼에서 검색합니다.
@@ -107,36 +298,32 @@ public class AdminService {
      *
      * keyword 설명:
      * - 검색창에 입력한 실제 검색어입니다.
-     * - 비어 있는 검색어로 전체 회원이 한 번에 조회되지 않도록 빈 배열을 반환합니다.
+     * - 비어 있는 검색어면 전체 권한 관리 대상 회원을 조회합니다.
      * ========================================================================== */
     public List<AdminMember> searchMembersForAdminPromotion(
             String authorizationHeader,
             String searchType,
             String keyword
     ) {
-        validateAdmin(authorizationHeader);
-
-        if (keyword == null || keyword.trim().isEmpty()) {
-            return Collections.emptyList();
-        }
+        validateSuperAdmin(authorizationHeader);
 
         String normalizedSearchType =
                 "name".equals(searchType) || "nickname".equals(searchType)
                         ? searchType
                         : "email";
-        String normalizedKeyword = keyword.trim();
+        String normalizedKeyword = keyword == null ? "" : keyword.trim();
 
         return adminDao.searchMembersForAdminPromotion(normalizedSearchType, normalizedKeyword);
     }
 
     /* ==========================================================================
-     * 일반 회원을 관리자 등급으로 변경
+     * 회원 관리자 등급 변경
      * --------------------------------------------------------------------------
-     * 관리자 추가 페이지에서 선택한 ACTIVE 일반 회원의 role을 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원의 role을 변경합니다.
      *
      * 처리 규칙:
-     * - 변경 가능한 role은 NORMAL_ADMIN, SUPER_ADMIN 두 가지입니다.
-     * - SQL에서도 ACTIVE 상태와 일반 회원 role 조건을 다시 확인합니다.
+     * - 변경 가능한 role은 USER, NORMAL_ADMIN, SUPER_ADMIN 세 가지입니다.
+     * - SQL에서도 ACTIVE 상태와 변경 가능한 role 조건을 다시 확인합니다.
      * - 조건에 맞지 않으면 400 BAD_REQUEST로 실패 처리합니다.
      * ========================================================================== */
     @Transactional
@@ -145,10 +332,10 @@ public class AdminService {
             Long memberId,
             String role
     ) {
-        validateAdmin(authorizationHeader);
+        LoginMemberResponse loginMember = validateSuperAdmin(authorizationHeader);
 
         if (memberId == null) {
-            throw new IllegalArgumentException("관리자로 승급할 회원을 선택해주세요.");
+            throw new IllegalArgumentException("관리자 등급을 변경할 회원을 선택해주세요.");
         }
 
         String normalizedRole = normalizeAdminRole(role);
@@ -157,9 +344,17 @@ public class AdminService {
         if (updated != 1) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "ACTIVE 상태의 일반 회원만 관리자로 승급할 수 있습니다."
+                    "ACTIVE 상태의 회원만 관리자 등급을 변경할 수 있습니다."
             );
         }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "UPDATE_ADMIN_ROLE",
+                "USER",
+                memberId,
+                "회원 관리자 등급 변경: " + normalizedRole
+        );
     }
 
     private String normalizeAdminRole(String role) {
@@ -169,6 +364,10 @@ public class AdminService {
 
         if ("NORMAL_ADMIN".equals(role)) {
             return "NORMAL_ADMIN";
+        }
+
+        if ("USER".equals(role)) {
+            return "USER";
         }
 
         throw new IllegalArgumentException("관리자 등급을 올바르게 선택해주세요.");
