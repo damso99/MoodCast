@@ -10,6 +10,7 @@ import FlagIcon from '@mui/icons-material/Flag';
 import { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
@@ -65,7 +66,8 @@ function MoodVisual({ emotionId }) {
 
 export function FeedCard({ post, compact = false }) {
   const navigate = useNavigate();
-  const { member } = useAuthStore();
+  const { member, accessToken } = useAuthStore();
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   
   // member.nickname으로 비교 (post.author는 nickname 값)
   const currentUser = member?.nickname || '';
@@ -78,11 +80,14 @@ export function FeedCard({ post, compact = false }) {
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const moreButtonRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     if (!menuOpen) return;
     const handleClickOutside = (e) => {
-      if (moreButtonRef.current && !moreButtonRef.current.contains(e.target)) {
+      const clickedMoreButton = moreButtonRef.current && moreButtonRef.current.contains(e.target);
+      const clickedMenu = menuRef.current && menuRef.current.contains(e.target);
+      if (!clickedMoreButton && !clickedMenu) {
         setMenuOpen(false);
       }
     };
@@ -102,6 +107,7 @@ export function FeedCard({ post, compact = false }) {
   };
 
   const toggleMenu = () => {
+    console.log('메뉴 토글됨. 현재 상태:', menuOpen, 'isOwner:', isOwner);
     if (!menuOpen && moreButtonRef.current) {
       const rect = moreButtonRef.current.getBoundingClientRect();
       setMenuPos({
@@ -120,6 +126,7 @@ export function FeedCard({ post, compact = false }) {
   };
 
   const handleEdit = () => {
+    console.log('수정 버튼 클릭됨. postId:', postId);
     setMenuOpen(false);
     navigate(`/app/post/edit/${postId}`);
   };
@@ -156,9 +163,26 @@ export function FeedCard({ post, compact = false }) {
     setDeleteModalOpen(false);
   };
 
-  const confirmDelete = () => {
-    console.log('Delete post', postId);
-    setDeleteModalOpen(false);
+  const confirmDelete = async () => {
+    try {
+      setDeleteModalOpen(false);
+      // 백엔드에 DELETE 요청 전송
+      const response = await axios.delete(
+        `${BACKSERVER}/posts/${postId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          withCredentials: true,
+        }
+      );
+      console.log('✅ 게시물 삭제 성공:', response.data);
+      // 삭제 후 피드 새로고침 필요 (부모 컴포넌트에 callback으로 알려야 함)
+      window.location.reload(); // 임시로 페이지 새로고침
+    } catch (err) {
+      console.error('❌ 게시물 삭제 실패:', err);
+      alert('게시물 삭제에 실패했습니다.');
+    }
   };
 
   return (
@@ -190,21 +214,21 @@ export function FeedCard({ post, compact = false }) {
             >
               <MoreHorizIcon />
             </button>
-            {/* SNS처럼 자연스럽게 떠오르는 메뉴 - Portal로 body에 렌더링하여 overflow 문제 해결 */}
-            {menuOpen && ReactDOM.createPortal(
+            {/* SNS처럼 자연스럽게 떠오르는 메뉴 */}
+            {menuOpen && (
               <div 
+                ref={menuRef}
                 className={styles.moreMenu} 
                 style={{ top: menuPos.top, right: menuPos.right }}
-                onClick={(e) => e.stopPropagation()}
               >
                 {/* 작성자만 수정/삭제 가능 */}
                 {isOwner && (
                   <>
-                    <button type="button" className={styles.menuItem} onClick={handleEdit}>
+                    <button type="button" className={styles.menuItem} onClick={(e) => { console.log('수정 클릭'); handleEdit(); }}>
                       <EditIcon className={styles.menuIcon} />
                       수정
                     </button>
-                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={handleDelete}>
+                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => { console.log('삭제 클릭'); handleDelete(); }}>
                       <DeleteOutlineIcon className={styles.menuIcon} />
                       삭제
                     </button>
@@ -213,23 +237,22 @@ export function FeedCard({ post, compact = false }) {
                 {/* 작성자 아닐 때만 저장/신고 가능 */}
                 {!isOwner && (
                   <>
-                    <button type="button" className={styles.menuItem} onClick={handleSave}>
+                    <button type="button" className={styles.menuItem} onClick={(e) => { console.log('저장 클릭'); handleSave(); }}>
                       <BookmarkBorderIcon className={styles.menuIcon} />
                       저장
                     </button>
-                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={handleReport}>
+                    <button type="button" className={`${styles.menuItem} ${styles.menuItemDanger}`} onClick={(e) => { console.log('신고 클릭'); handleReport(); }}>
                       <FlagIcon className={styles.menuIcon} />
                       신고
                     </button>
                   </>
                 )}
                 {/* 모든 사용자가 사용 가능 */}
-                <button type="button" className={styles.menuItem} onClick={handleShare}>
+                <button type="button" className={styles.menuItem} onClick={(e) => { console.log('공유 클릭'); handleShare(); }}>
                   <ShareIcon className={styles.menuIcon} />
                   공유
                 </button>
-              </div>,
-              document.body
+              </div>
             )}
           </div>
         </div>

@@ -47,6 +47,51 @@
         )
     </insert>
 
+    <select id="selectPostById" parameterType="long" resultType="com.moodcast.post.vo.PostDetail">
+        select
+            p.post_id as postId,
+            p.member_id as memberId,
+            coalesce(m.nickname, m.name) as author,
+            p.title as title,
+            p.content as content,
+            p.emotion_id as emotionId,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce((
+                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                from post_hashtag ph
+                         join hashtag h on ph.hashtag_id = h.hashtag_id
+                where ph.post_id = p.post_id
+            ), '') as tags
+        from post_tbl p
+                 join members m on p.member_id = m.member_id
+        where p.post_id = #{postId}
+          and p.deleted_yn = 'N'
+        limit 1
+    </select>
+
+    <update id="updatePost" parameterType="com.moodcast.post.vo.Post">
+        update post_tbl
+        set
+            title = #{title},
+            content = #{content},
+            emotion_id = #{emotionId},
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where post_id = #{postId}
+          and deleted_yn = 'N'
+    </update>
+
+    <delete id="deletePostHashtagsByPostId" parameterType="long">
+        delete from post_hashtag
+        where post_id = #{postId}
+    </delete>
+
+    <update id="softDeletePost" parameterType="long">
+        update post_tbl
+        set deleted_yn = 'Y',
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where post_id = #{postId}
+    </update>
+
     <select id="selectRecentPosts" resultType="com.moodcast.post.vo.PostSummary">
         select
             p.post_id as postId,

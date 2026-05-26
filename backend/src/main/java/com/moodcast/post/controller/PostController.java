@@ -2,13 +2,17 @@ package com.moodcast.post.controller;
 
 import com.moodcast.post.dto.CreatePostRequest;
 import com.moodcast.post.service.PostService;
+import com.moodcast.post.vo.PostDetail;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,6 +60,42 @@ public class PostController {
                 Map.of(
                         "success", true,
                         "results", postService.getRecentPosts()
+                )
+        );
+    }
+
+    @GetMapping("/{postId}")
+    public ResponseEntity<?> getPostById(@PathVariable Long postId) {
+        PostDetail post = postService.getPostById(postId);
+        return ResponseEntity.ok(post);
+    }
+
+    @PutMapping("/{postId}")
+    public ResponseEntity<?> updatePost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId,
+            @RequestBody CreatePostRequest request
+    ) {
+        PostDetail updatedPost = postService.updatePost(authorizationHeader, postId, request);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "게시물이 수정되었습니다.",
+                        "post", updatedPost
+                )
+        );
+    }
+
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<?> deletePost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        postService.deletePost(authorizationHeader, postId);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "게시물이 삭제되었습니다."
                 )
         );
     }

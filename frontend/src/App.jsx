@@ -6,7 +6,7 @@ import { SavedPage } from './pages/Saved/SavedPage';
 import { MoodChatPage } from './pages/MoodChat/MoodChatPage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
 import { ProfileEditPage } from './pages/Profile/ProfileEditPage';
-import { PostEditPage } from './pages/PostEdit/PostEditPage';
+import { EditPostPage } from './pages/PostEdit/EditPostPage';
 import { FollowersPage } from './pages/Follow/FollowersPage';
 import { FollowingPage } from './pages/Follow/FollowingPage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
@@ -38,7 +38,7 @@ function AppRoutes() {
       <Route path="/app/profile" element={<ProfilePage />} />
       <Route path="/app/profile-mobile" element={<ProfilePage />} />
       <Route path="/app/profile/edit" element={<ProfileEditPage />} />
-      <Route path="/app/post/edit/:postId" element={<PostEditPage />} />
+      <Route path="/app/post/edit/:postId" element={<EditPostPage />} />
       <Route path="/app/followers" element={<FollowersPage />} />
       <Route path="/app/followers/:memberId" element={<FollowersPage />} />
       <Route path="/app/following" element={<FollowingPage />} />
