@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
-import { feedPosts, profileHighlights } from '../../data/moodcastData';
+import { profileHighlights } from '../../data/moodcastData';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {
@@ -15,6 +15,8 @@ export function ProfilePage() {
   const { handle } = useParams(); // URL 파라미터 :handle (memberId)
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [followInfo, setFollowInfo] = useState({ 
     following: false, 
     followerCount: 0, 
@@ -73,6 +75,31 @@ export function ProfilePage() {
         setLoading(false);
       });
   }, [targetId, BACKSERVER, fetchFollowStatus]);
+
+  useEffect(() => {
+    if (!targetId) {
+      setPosts([]);
+      setPostsLoading(false);
+      return;
+    }
+
+    setPostsLoading(true);
+    axios.get(`${BACKSERVER}/posts`, { params: { memberId: targetId } })
+      .then(res => {
+        if (res.data.success) {
+          setPosts(res.data.results || []);
+        } else {
+          setPosts([]);
+        }
+      })
+      .catch(err => {
+        console.error('프로필 게시물 조회 실패:', err);
+        setPosts([]);
+      })
+      .finally(() => {
+        setPostsLoading(false);
+      });
+  }, [targetId, BACKSERVER]);
 
   const isOwnProfile = currentMember && String(currentMember.memberId) === String(targetId);
 
@@ -226,9 +253,15 @@ export function ProfilePage() {
           )}
         </div>
         <div className={styles.postList}>
-          {feedPosts.map((post) => (
-            <FeedCard key={post.id} post={post} compact />
-          ))}
+          {postsLoading ? (
+            <div className={styles.emptyState}>게시물을 불러오는 중입니다...</div>
+          ) : posts.length > 0 ? (
+            posts.map((post) => (
+              <FeedCard key={post.postId} post={post} compact />
+            ))
+          ) : (
+            <div className={styles.emptyState}>작성한 게시물이 없습니다.</div>
+          )}
         </div>
       </section>
     </section>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodcast.post.dao.PostDao">
+
+    <insert id="insertPost" parameterType="com.moodcast.post.vo.Post" useGeneratedKeys="true" keyProperty="postId">
+        insert into post_tbl (
+            member_id,
+            title,
+            content,
+            visibility,
+            emotion_id,
+            created_at,
+            deleted_yn
+        ) values (
+            #{memberId},
+            #{title},
+            #{content},
+            #{visibility},
+            #{emotionId},
+            now(6),
+            'N'
+        )
+    </insert>
+
+    <select id="findHashtagIdByText" parameterType="string" resultType="long">
+        select hashtag_id
+        from hashtag
+        where hashtag = #{hashtag}
+        limit 1
+    </select>
+
+    <insert id="insertHashtag" parameterType="com.moodcast.post.vo.Hashtag" useGeneratedKeys="true" keyProperty="hashtagId">
+        insert into hashtag (
+            hashtag
+        ) values (
+            #{hashtag}
+        )
+    </insert>
+
+    <insert id="insertPostHashtag" parameterType="map">
+        insert into post_hashtag (
+            post_id,
+            hashtag_id
+        ) values (
+            #{postId},
+            #{hashtagId}
+        )
+    </insert>
+
+    <select id="selectRecentPosts" resultType="com.moodcast.post.vo.PostSummary">
+        select
+            p.post_id as postId,
+            coalesce(m.nickname, m.name) as author,
+            p.title as title,
+            p.content as content,
+            p.emotion_id as emotionId,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt
+        from post_tbl p
+                 join members m on p.member_id = m.member_id
+        where p.deleted_yn = 'N'
+        order by p.created_at desc
+        limit 50
+    </select>
+
+    <select id="selectPostsByMember" parameterType="long" resultType="com.moodcast.post.vo.PostSummary">
+        select
+            p.post_id as postId,
+            coalesce(m.nickname, m.name) as author,
+            p.title as title,
+            p.content as content,
+            p.emotion_id as emotionId,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt
+        from post_tbl p
+                 join members m on p.member_id = m.member_id
+        where p.deleted_yn = 'N'
+          and p.member_id = #{memberId}
+        order by p.created_at desc
+        limit 50
+    </select>
+
+</mapper>

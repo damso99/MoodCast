@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { FeedCard } from './FeedCard';
 import styles from './SearchModal.module.css';
 
 // SearchModal은 화면에 떠서 사용자가 검색어를 입력하면
@@ -210,7 +211,15 @@ export function SearchModal({ open, onClose }) {
               // 해시태그 검색 탭일 때의 리스트 아이템 렌더링
               if (activeTab === 'hashtags') {
                 return (
-                  <article key={item.hashtagId} className={styles.item}>
+                  <article
+                    key={item.hashtagId}
+                    className={styles.item}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      setActiveTab('posts');
+                      setQuery(`#${item.hashtag}`);
+                    }}
+                  >
                     <strong>#{item.hashtag}</strong>
                     <p>{item.postCount ?? 0}개의 게시물</p>
                   </article>
@@ -218,10 +227,10 @@ export function SearchModal({ open, onClose }) {
               }
               // 게시글 검색 결과 (기본값)
               return (
-                <article key={item.postId} className={styles.item}>
-                  <strong>{item.authorName || item.authorNickname}</strong>
-                  <p>{item.text}</p>
-                </article>
+                <FeedCard 
+                  key={item.postId}
+                  post={item}
+                />
               );
             })
           ) : (

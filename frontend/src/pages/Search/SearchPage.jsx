@@ -5,6 +5,7 @@ import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useAuthStore } from '../../hooks/useAuthStore';
+import { FeedCard } from '../../components/common/FeedCard';
 import styles from './SearchPage.module.css';
 
 // SearchPage는 검색 페이지 화면 전체를 담당합니다.
@@ -89,6 +90,14 @@ export function SearchPage() {
           </button>
         ))}
       </div>
+      
+      {query.trim() !== '' && activeTab === 'posts' && (
+        <div className={styles.searchCondition}>
+          <span>🔍 검색 조건: <strong>{query}</strong></span>
+          {query.startsWith('#') && <span className={styles.badge}>해시태그 검색</span>}
+        </div>
+      )}
+      
       <div className={styles.list}>
         {query.trim() === '' ? (
           <article className={styles.item}>
@@ -160,18 +169,28 @@ export function SearchPage() {
             }
             if (activeTab === 'hashtags') {
               return (
-                <article key={item.hashtagId} className={styles.item}>
+                <article
+                  key={item.hashtagId}
+                  className={styles.item}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setActiveTab('posts');
+                    setQuery(`#${item.hashtag}`);
+                  }}
+                >
                   <strong>#{item.hashtag}</strong>
                   <p>{item.postCount ?? 0}개의 게시물</p>
                 </article>
               );
             }
-            return (
-              <article key={item.postId} className={styles.item}>
-                <strong>{item.authorName || item.authorNickname}</strong>
-                <p>{item.text}</p>
-              </article>
-            );
+            if (activeTab === 'posts') {
+              return (
+                <FeedCard 
+                  key={item.postId} 
+                  post={item}
+                />
+              );
+            }
           })
         ) : (
           <article className={styles.item}>

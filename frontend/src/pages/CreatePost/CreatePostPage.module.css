@@ -267,3 +267,82 @@
   padding: 12px 14px;
   border-radius: 16px;
 }
+
+/* 해시태그 관련 스타일 */
+.tagContainer {
+  margin-bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background-color: #f0f0f0;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tagChipButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.tagHelpText {
+  color: #666;
+  margin-top: 6px;
+  display: block;
+  font-size: 12px;
+}
+/* 감정 선택 스타일 */
+.emotionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 12px;
+}
+
+.emotionButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  border: 2px solid #e6e8f3;
+  border-radius: 14px;
+  background: #fcfdff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.emotionButton:hover {
+  border-color: #d0d5e0;
+  background: #f5f7fc;
+}
+
+.emotionSelected {
+  border-width: 2px;
+}
+
+.emotionEmoji {
+  font-size: 28px;
+}
+
+.emotionName {
+  font-size: 12px;
+  color: #475569;
+}
