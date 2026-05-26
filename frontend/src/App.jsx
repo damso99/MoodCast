@@ -23,6 +23,7 @@ import { useAuthStore } from './stores/useAuthStore';
 function AppRoutes() {
   const desktop = useIsDesktop();
   const { accessToken, setAuthData, clearAuthData } = useAuthStore();
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
@@ -34,7 +35,7 @@ function AppRoutes() {
     }
 
     axios
-      .get(`${import.meta.env.VITE_BACKSERVER}/auth/me`, {
+      .get(`${BACKSERVER}/auth/me`, {
         headers: {
           Authorization: "Bearer " + accessToken,
         },
