@@ -87,6 +87,11 @@
   backdrop-filter: blur(18px);
 }
 
+.filterMenuLeft {
+  left: 0;
+  right: auto;
+}
+
 .filterMenuItem {
   width: 100%;
   display: flex;

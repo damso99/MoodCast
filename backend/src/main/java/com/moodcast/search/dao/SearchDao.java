@@ -6,6 +6,7 @@ import com.moodcast.search.vo.SearchUserResult;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
@@ -17,4 +18,6 @@ public interface SearchDao {
     List<SearchUserResult> searchUsers(@Param("query") String query, @Param("loginId") Long loginId);
 
     List<SearchHashtagResult> searchHashtags(String query);
+
+    List<SearchHashtagResult> selectTrendingHashtags(@Param("from") LocalDateTime from, @Param("limit") Integer limit);
 }

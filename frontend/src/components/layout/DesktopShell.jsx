@@ -6,14 +6,6 @@ import { TopUtilityIcons } from './TopUtilityIcons';
 import { RightRail } from './RightRail';
 import { SearchModal } from '../common/SearchModal';
 
-const TRENDING_TAGS = [
-  { name: '#감정기록', count: '12.5K 게시물' },
-  { name: '#일상', count: '8.2K 게시물' },
-  { name: '#공감', count: '5.7K 게시물' },
-  { name: '#사진', count: '4.3K 게시물' },
-  { name: '#마음챙김', count: '3.1K 게시물' },
-];
-
 let cachedPosts = null;
 let cachedPostsPromise = null;
 
@@ -92,7 +84,7 @@ function DesktopShell({ children }) {
         <div className={styles.right}>
           <TopUtilityIcons onSearch={handleSearchOpen} />
           <div className={styles.rightScrollArea}>
-            <RightRail posts={posts} trendingTags={TRENDING_TAGS} isLoading={loadingPosts && !posts.length} />
+            <RightRail posts={posts} isLoading={loadingPosts && !posts.length} />
           </div>
         </div>
       </aside>
