@@ -234,14 +234,14 @@ public class LoginService {
 
         // 감정 공감률 계산: 내가 쓴 게시물에 대한 좋아요 비율임
         // 좋아요, 댓글, 저장을 모두 반응으로 보고, 그중 좋아요 비율을 퍼센트로 계산함
-        long likes = authDao.countPostLikes(targetMemberId);
-        long comments = authDao.countPostComments(targetMemberId);
-        long saves = authDao.countPostSaves(targetMemberId);
+        long likes = loginDao.countPostLikes(targetMemberId);
+        long comments = loginDao.countPostComments(targetMemberId);
+        long saves = loginDao.countPostSaves(targetMemberId);
         long totalReactions = likes + comments + saves;
         int emotionEmpathyRate = totalReactions == 0 ? 0 : (int) Math.round((double) likes * 100 / totalReactions);
 
         // 주간 반응 계산: 최근 7일간 내 게시물에 달린 좋아요/댓글/저장 수 합임
-        long weeklyReactions = authDao.countWeeklyPostReactions(targetMemberId);
+        long weeklyReactions = loginDao.countWeeklyPostReactions(targetMemberId);
 
         return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount, emotionEmpathyRate, weeklyReactions);
     }

@@ -3,7 +3,7 @@ import { DesktopShell } from '../../components/layout/DesktopShell';
 import { ComposerCard } from '../../components/common/ComposerCard';
 import { FeedCard } from '../../components/common/FeedCard';
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './HomeFeedPage.module.css';
 
 export function HomeFeedPage() {
@@ -74,8 +74,8 @@ export function HomeFeedPage() {
         const items = response.data?.results || [];
         setPosts(items.map((item) => ({
           id: item.postId,
-          memberId: item.memberId,
-          profileLink: item.memberId ? `/app/user/${item.memberId}` : null,
+          memberId: item.memberId ?? item.member_id,
+          profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
           title: item.title,
           author: item.author,
           avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',

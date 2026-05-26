@@ -13,7 +13,7 @@ import { useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import styles from './FeedCard.module.css';

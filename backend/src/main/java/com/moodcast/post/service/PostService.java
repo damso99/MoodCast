@@ -97,7 +97,7 @@ public class PostService {
 
     private Long getViewerId(String authorizationHeader) {
         try {
-            return authService.getMemberIdFromHeaderOptional(authorizationHeader);
+            return loginService.getMemberIdFromHeaderOptional(authorizationHeader);
         } catch (Exception ignored) {
             return null;
         }
@@ -146,7 +146,7 @@ public class PostService {
             throw new IllegalArgumentException("댓글을 입력해주세요.");
         }
 
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         CommentSummary comment = new CommentSummary();
@@ -169,7 +169,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
 
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         boolean alreadyLiked = postDao.selectPostLikeByPostAndMember(postId, memberId) > 0;
@@ -193,7 +193,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
 
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         boolean alreadySaved = postDao.selectSavedPostByPostAndMember(postId, memberId) > 0;
@@ -228,7 +228,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 정보를 입력해주세요.");
         }
 
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
         PostDetail currentPost = getPostById(postId, null);
         if (!currentPost.getMemberId().equals(loginMember.getMemberId())) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 수정할 수 있습니다.");
@@ -280,7 +280,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 ID가 필요합니다.");
         }
 
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMember(authorizationHeader);
         PostDetail currentPost = getPostById(postId, null);
         if (!currentPost.getMemberId().equals(loginMember.getMemberId())) {
             throw new IllegalArgumentException("본인이 작성한 게시물만 삭제할 수 있습니다.");

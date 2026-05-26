@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { FeedCard } from '../../components/common/FeedCard';
 import styles from './SavedPage.module.css';

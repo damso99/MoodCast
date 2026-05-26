@@ -100,6 +100,7 @@
     <select id="selectRecentPosts" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
         select
             p.post_id as postId,
+            p.member_id as memberId,
             coalesce(m.nickname, m.name) as author,
             p.title as title,
             p.content as content,
@@ -119,6 +120,7 @@
     <select id="selectPostsByMember" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
         select
             p.post_id as postId,
+            p.member_id as memberId,
             coalesce(m.nickname, m.name) as author,
             p.title as title,
             p.content as content,

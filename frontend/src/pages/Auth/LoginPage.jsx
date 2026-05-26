@@ -20,6 +20,7 @@ export const LoginPage = () => {
     type: "",
     message: "",
   });
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   const showToast = (type, message) => {
     setToast({
@@ -64,7 +65,7 @@ export const LoginPage = () => {
 
     axios
       .post(
-        `${import.meta.env.VITE_BACKSERVER}/auth/login`,
+        `${BACKSERVER}/auth/login`,
         {
           email: member.email,
           password: member.password,

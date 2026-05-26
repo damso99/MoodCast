@@ -12,6 +12,7 @@ export function ProfilePage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
   const { handle } = useParams(); // URL 파라미터 :handle (memberId)
+  const sanitizedHandle = handle === 'undefined' || handle === 'null' ? null : handle;
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
@@ -30,7 +31,7 @@ export function ProfilePage() {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 실제 조회할 ID 결정 (파라미터 없으면 내 ID)
-  const targetId = handle || currentMember?.memberId;
+  const targetId = sanitizedHandle || currentMember?.memberId;
 
   // 팔로우 상태 및 카운트 조회 함수
   const fetchFollowStatus = useCallback(() => {
@@ -165,6 +166,9 @@ export function ProfilePage() {
     const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
     return {
       id: item.postId,
+      postId: item.postId,
+      memberId: item.memberId ?? item.member_id,
+      profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
       title: item.title,
       author: authorName,
       avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',

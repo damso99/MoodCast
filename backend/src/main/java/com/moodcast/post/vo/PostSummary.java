@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class PostSummary {
     private Long postId;
+    private Long memberId;
     private String author;
     private String title;
     private String content;

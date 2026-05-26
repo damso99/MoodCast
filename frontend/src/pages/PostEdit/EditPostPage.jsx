@@ -4,7 +4,7 @@ import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './EditPostPage.module.css';
 
 const EMOTIONS = [
