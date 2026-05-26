@@ -12,4 +12,9 @@ public class PostDetail {
     private Long emotionId;
     private String createdAt;
     private String tags;
+    private Long likes;
+    private Long comments;
+    private Long saves;
+    private Boolean likedByMe;
+    private Boolean savedByMe;
 }

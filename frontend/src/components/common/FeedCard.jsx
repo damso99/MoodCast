@@ -1,7 +1,9 @@
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -76,9 +78,13 @@ export function FeedCard({ post, compact = false }) {
   const [selectedPost, setSelectedPost] = useState(null);
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [comments, setComments] = useState(post.commentsList ?? []);
+  const [commentCount, setCommentCount] = useState(post.comments ?? post.commentsCount ?? post.commentsList?.length ?? 0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [likesCount, setLikesCount] = useState(post.likes ?? 0);
+  const [liked, setLiked] = useState(post.likedByMe ?? false);
+  const [saved, setSaved] = useState(post.savedByMe ?? false);
   const moreButtonRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -94,10 +100,32 @@ export function FeedCard({ post, compact = false }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
-  const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
 
-  const openCommentModal = () => {
+  useEffect(() => {
+    setComments(post.commentsList ?? []);
+    setCommentCount(post.comments ?? post.commentsCount ?? post.commentsList?.length ?? 0);
+    setLikesCount(post.likes ?? 0);
+    setLiked(Boolean(post.likedByMe));
+    setSaved(Boolean(post.savedByMe));
+  }, [post]);
+
+  const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail;
+  const cardText = post.text ?? post.content ?? post.body ?? '';
+  const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
+
+  const fetchComments = async (postId) => {
+    try {
+      const response = await axios.get(`${BACKSERVER}/posts/${postId}/comments`);
+      setComments(response.data?.results || []);
+    } catch (error) {
+      console.error('댓글을 불러오는 중 오류가 발생했습니다.', error);
+    }
+  };
+
+  const openCommentModal = async (event) => {
+    event?.stopPropagation();
     setSelectedPost(post);
+    await fetchComments(postId);
     setIsCommentModalOpen(true);
   };
 
@@ -106,8 +134,8 @@ export function FeedCard({ post, compact = false }) {
     setIsCommentModalOpen(false);
   };
 
-  const toggleMenu = () => {
-    console.log('메뉴 토글됨. 현재 상태:', menuOpen, 'isOwner:', isOwner);
+  const toggleMenu = (event) => {
+    event?.stopPropagation();
     if (!menuOpen && moreButtonRef.current) {
       const rect = moreButtonRef.current.getBoundingClientRect();
       setMenuPos({
@@ -125,20 +153,22 @@ export function FeedCard({ post, compact = false }) {
     navigate(`/app/post/${postId}`);
   };
 
-  const handleEdit = () => {
+  const handleEdit = (event) => {
+    event.stopPropagation();
     console.log('수정 버튼 클릭됨. postId:', postId);
     setMenuOpen(false);
     navigate(`/app/post/edit/${postId}`);
   };
 
-  const handleDelete = () => {
+  const handleDelete = (event) => {
+    event.stopPropagation();
     setMenuOpen(false);
     setDeleteModalOpen(true);
   };
 
-  const handleShare = () => {
+  const handleShare = (event) => {
+    event.stopPropagation();
     setMenuOpen(false);
-    // 공유 기능 구현
     if (navigator.share) {
       navigator.share({
         title: post.title || '게시물',
@@ -149,12 +179,35 @@ export function FeedCard({ post, compact = false }) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async (event) => {
+    event.stopPropagation();
     setMenuOpen(false);
-    console.log('Save post', postId);
+    if (!accessToken) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${BACKSERVER}/posts/${postId}/saves`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      setSaved(response.data.saved);
+      console.log('✅ 게시물 저장 상태 변경:', response.data);
+      alert(response.data.saved ? '게시물을 저장했습니다.' : '저장한 게시물을 취소했습니다.');
+    } catch (err) {
+      console.error('❌ 게시물 저장 실패:', err);
+      alert('게시물 저장에 실패했습니다.');
+    }
   };
 
-  const handleReport = () => {
+  const handleReport = (event) => {
+    event.stopPropagation();
     setMenuOpen(false);
     console.log('Report post', postId);
   };
@@ -166,22 +219,74 @@ export function FeedCard({ post, compact = false }) {
   const confirmDelete = async () => {
     try {
       setDeleteModalOpen(false);
-      // 백엔드에 DELETE 요청 전송
       const response = await axios.delete(
         `${BACKSERVER}/posts/${postId}`,
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-          withCredentials: true,
         }
       );
       console.log('✅ 게시물 삭제 성공:', response.data);
-      // 삭제 후 피드 새로고침 필요 (부모 컴포넌트에 callback으로 알려야 함)
-      window.location.reload(); // 임시로 페이지 새로고침
+      window.location.reload();
     } catch (err) {
       console.error('❌ 게시물 삭제 실패:', err);
       alert('게시물 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleLike = async (event) => {
+    event.stopPropagation();
+    if (!accessToken) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `${BACKSERVER}/posts/${postId}/likes`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      setLiked(response.data.liked);
+      if (typeof response.data.likes === 'number') {
+        setLikesCount(response.data.likes);
+      }
+    } catch (err) {
+      console.error('좋아요 요청 실패:', err);
+      alert('좋아요 처리에 실패했습니다.');
+    }
+  };
+
+  const handleCommentSubmit = async (content) => {
+    if (!accessToken) {
+      alert('로그인이 필요합니다.');
+      return null;
+    }
+
+    try {
+      const response = await axios.post(
+        `${BACKSERVER}/posts/${postId}/comments`,
+        { content },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const nextComment = response.data.comment;
+      setComments((prev) => [...prev, nextComment]);
+      setCommentCount((prev) => prev + 1);
+      return nextComment;
+    } catch (err) {
+      console.error('댓글 등록 실패:', err);
+      alert('댓글 등록에 실패했습니다.');
+      return null;
     }
   };
 
@@ -193,7 +298,7 @@ export function FeedCard({ post, compact = false }) {
           <div className={styles.meta}>
             <strong>{post.author}</strong>
             <div className={styles.metaRow}>
-              <span>{post.time}</span>
+              <span>{timeLabel}</span>
               {post.emotionId && (
                 <span className={styles.emotion}>
                   <span className={styles.emotionEmoji}>{EMOTIONS[post.emotionId]?.emoji || EMOTIONS[3].emoji}</span>
@@ -258,7 +363,7 @@ export function FeedCard({ post, compact = false }) {
         </div>
 
         {post.title && <p className={styles.title}>{post.title}</p>}
-        <p className={styles.text}>{post.text}</p>
+        <p className={styles.text}>{cardText}</p>
         {imageSrc && (
           <div className={styles.postImageWrap}>
             <img className={styles.postImage} src={imageSrc} alt={post.imageAlt ?? post.author} />
@@ -280,20 +385,36 @@ export function FeedCard({ post, compact = false }) {
         ) : null}
 
         <div className={styles.actions}>
-          <span className={styles.reaction}>
-            <FavoriteIcon className={styles.heart} />
-            {post.likes}
-          </span>
+          <button
+            type="button"
+            className={`${styles.reaction} ${liked ? styles.activeReaction : ''}`}
+            onClick={handleLike}
+            aria-pressed={liked}
+            aria-label={liked ? '좋아요 취소' : '좋아요'}
+          >
+            {liked ? (
+              <FavoriteIcon className={styles.heart} />
+            ) : (
+              <FavoriteBorderIcon className={styles.heart} />
+            )}
+            {likesCount}
+          </button>
           <button type="button" className={styles.reactionButton} onClick={openCommentModal}>
             <ChatBubbleOutlineIcon />
-            {comments.length}
+            {commentCount}
           </button>
           <span className={styles.reaction}>
             <AutoAwesomeOutlinedIcon />
             {post.vibes}
           </span>
-          <button type="button" className={styles.bookmark} aria-label="저장">
-            <BookmarkBorderIcon />
+          <button
+            type="button"
+            className={`${styles.bookmark} ${saved ? styles.activeBookmark : ''}`}
+            aria-pressed={saved}
+            aria-label={saved ? '저장 취소' : '저장'}
+            onClick={handleSave}
+          >
+            {saved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
           </button>
         </div>
 
@@ -311,7 +432,7 @@ export function FeedCard({ post, compact = false }) {
         post={selectedPost}
         comments={comments}
         onClose={closeCommentModal}
-        onSubmit={(nextComment) => setComments((prev) => [...prev, nextComment])}
+        onSubmit={handleCommentSubmit}
       />
       <DeleteConfirmModal
         open={deleteModalOpen}

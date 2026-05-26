@@ -1,5 +1,6 @@
 package com.moodcast.post.dao;
 
+import com.moodcast.post.vo.CommentSummary;
 import com.moodcast.post.vo.Hashtag;
 import com.moodcast.post.vo.PostDetail;
 import com.moodcast.post.vo.Post;
@@ -19,7 +20,7 @@ public interface PostDao {
 
     int insertPostHashtag(@Param("postId") Long postId, @Param("hashtagId") Long hashtagId);
 
-    PostDetail selectPostById(@Param("postId") Long postId);
+    PostDetail selectPostById(@Param("postId") Long postId, @Param("viewerId") Long viewerId);
 
     int updatePost(Post post);
 
@@ -27,7 +28,25 @@ public interface PostDao {
 
     int softDeletePost(@Param("postId") Long postId);
 
-    List<PostSummary> selectRecentPosts();
+    List<PostSummary> selectRecentPosts(@Param("viewerId") Long viewerId);
 
-    List<PostSummary> selectPostsByMember(@Param("memberId") Long memberId);
+    List<PostSummary> selectPostsByMember(@Param("memberId") Long memberId, @Param("viewerId") Long viewerId);
+
+    List<CommentSummary> selectCommentsByPostId(@Param("postId") Long postId);
+
+    int insertComment(CommentSummary comment);
+
+    int selectPostLikeByPostAndMember(@Param("postId") Long postId, @Param("memberId") Long memberId);
+
+    int insertPostLike(@Param("postId") Long postId, @Param("memberId") Long memberId);
+
+    int deletePostLike(@Param("postId") Long postId, @Param("memberId") Long memberId);
+
+    int selectSavedPostByPostAndMember(@Param("postId") Long postId, @Param("memberId") Long memberId);
+
+    int insertSavedPost(@Param("postId") Long postId, @Param("memberId") Long memberId);
+
+    int deleteSavedPost(@Param("postId") Long postId, @Param("memberId") Long memberId);
+
+    List<PostSummary> selectSavedPostsByMember(@Param("memberId") Long memberId, @Param("viewerId") Long viewerId);
 }

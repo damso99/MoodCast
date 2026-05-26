@@ -324,11 +324,36 @@
 }
 
 .reaction,
-.reactionButton {
+.reactionButton,
+.bookmark {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.9rem;
+  border: 0;
+  background: transparent;
+  color: #667085;
+  padding: 0;
+  border-radius: 0;
+  cursor: pointer;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.reaction:hover,
+.reactionButton:hover,
+.bookmark:hover {
+  color: #111827;
+}
+
+.activeReaction {
+  color: #e74c3c;
+  background: transparent;
+  transform: none;
+}
+
+.activeBookmark {
+  color: #3b82f6;
+  background: transparent;
 }
 
 .heart {
@@ -336,17 +361,11 @@
 }
 
 .reactionButton {
-  border: 0;
-  background: transparent;
-  color: #667085;
-  padding: 0;
+  padding: 8px 10px;
 }
 
 .bookmark {
   margin-left: auto;
-  border: 0;
-  background: transparent;
-  color: #667085;
 }
 
 .attachmentArea {

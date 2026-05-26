@@ -1,7 +1,9 @@
 package com.moodcast.post.controller;
 
+import com.moodcast.post.dto.CreateCommentRequest;
 import com.moodcast.post.dto.CreatePostRequest;
 import com.moodcast.post.service.PostService;
+import com.moodcast.post.vo.CommentSummary;
 import com.moodcast.post.vo.PostDetail;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -46,12 +48,15 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getRecentPosts(@RequestParam(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<?> getRecentPosts(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(value = "memberId", required = false) Long memberId
+    ) {
         if (memberId != null) {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "results", postService.getPostsByMember(memberId)
+                            "results", postService.getPostsByMember(memberId, authorizationHeader)
                     )
             );
         }
@@ -59,15 +64,71 @@ public class PostController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "results", postService.getRecentPosts()
+                        "results", postService.getRecentPosts(authorizationHeader)
                 )
         );
     }
 
     @GetMapping("/{postId}")
-    public ResponseEntity<?> getPostById(@PathVariable Long postId) {
-        PostDetail post = postService.getPostById(postId);
+    public ResponseEntity<?> getPostById(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        PostDetail post = postService.getPostById(postId, authorizationHeader);
         return ResponseEntity.ok(post);
+    }
+
+    @GetMapping("/{postId}/comments")
+    public ResponseEntity<?> getComments(@PathVariable Long postId) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "results", postService.getComments(postId)
+                )
+        );
+    }
+
+    @PostMapping("/{postId}/comments")
+    public ResponseEntity<?> createComment(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId,
+            @RequestBody CreateCommentRequest request
+    ) {
+        CommentSummary comment = postService.addComment(authorizationHeader, postId, request);
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "comment", comment
+                )
+        );
+    }
+
+    @PostMapping("/{postId}/likes")
+    public ResponseEntity<?> toggleLike(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return ResponseEntity.ok(postService.toggleLike(authorizationHeader, postId));
+    }
+
+    @PostMapping("/{postId}/saves")
+    public ResponseEntity<?> toggleSave(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return ResponseEntity.ok(postService.toggleSave(authorizationHeader, postId));
+    }
+
+    @GetMapping("/saved")
+    public ResponseEntity<?> getSavedPosts(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "results", postService.getSavedPosts(authorizationHeader)
+                )
+        );
     }
 
     @PutMapping("/{postId}")

@@ -26,6 +26,7 @@ export function CreatePostPage() {
   const [tagList, setTagList] = useState([]); // 배열로 관리
   const [tagInput, setTagInput] = useState(''); // 현재 입력 중인 값
   const [selectedEmotion, setSelectedEmotion] = useState(null); // 선택된 감정
+  const [emotionError, setEmotionError] = useState('');
   const [saving, setSaving] = useState(false);
   const { accessToken: token } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
@@ -116,6 +117,12 @@ export function CreatePostPage() {
       return;
     }
 
+    if (!selectedEmotion) {
+      setEmotionError('오늘의 감정을 꼭 선택해주세요.');
+      return;
+    }
+
+    setEmotionError('');
     setSaving(true);
     try {
       // tagList를 공백으로 구분된 문자열로 변환 (예: "#감성 #기록 #무드")
@@ -125,7 +132,7 @@ export function CreatePostPage() {
         title: title.trim(),
         content,
         tags: tagsString,
-        emotionId: selectedEmotion?.id || null, // 선택된 감정 ID
+        emotionId: selectedEmotion.id, // 선택된 감정 ID
       };
       
       console.log('📤 게시물 요청 데이터:', requestData);
@@ -186,7 +193,10 @@ export function CreatePostPage() {
                 key={emotion.id}
                 type="button"
                 className={`${styles.emotionButton} ${selectedEmotion?.id === emotion.id ? styles.emotionSelected : ''}`}
-                onClick={() => setSelectedEmotion(emotion)}
+                onClick={() => {
+                  setSelectedEmotion(emotion);
+                  setEmotionError('');
+                }}
                 style={selectedEmotion?.id === emotion.id ? { borderColor: emotion.color, backgroundColor: emotion.color + '20' } : {}}
               >
                 <span className={styles.emotionEmoji}>{emotion.emoji}</span>
@@ -194,6 +204,7 @@ export function CreatePostPage() {
               </button>
             ))}
           </div>
+          {emotionError ? <p className={styles.fieldError}>{emotionError}</p> : null}
         </div>
 
         <div className={styles.field}>
@@ -258,7 +269,7 @@ export function CreatePostPage() {
           </small>
         </div>
 
-        <button type="button" className={styles.submitButton} onClick={handleSubmit}>
+        <button type="button" className={styles.submitButton} onClick={handleSubmit} disabled={saving || !selectedEmotion}>
           게시하기
         </button>
         {saving ? <div className={styles.message}>게시물을 저장하는 중입니다...</div> : null}

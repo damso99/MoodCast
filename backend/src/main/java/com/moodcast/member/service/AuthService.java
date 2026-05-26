@@ -152,6 +152,21 @@ public class AuthService {
         return toLoginMemberResponse(member);
     }
 
+    public Long getMemberIdFromHeaderOptional(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return null;
+        }
+        String accessToken = authHeader.substring(7).trim();
+        if (accessToken.isEmpty()) {
+            return null;
+        }
+        try {
+            return jwtService.getMemberIdFromAccessToken(accessToken);
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
     @Transactional
     public LoginMemberResponse updateProfile(String authorizationHeader, UpdateProfileRequest request) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {

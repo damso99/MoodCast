@@ -44,17 +44,15 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
 
   if (!open || !post) return null;
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const value = comment.trim();
     if (!value) return;
-    onSubmit({
-      id: Date.now(),
-      author: 'Me',
-      time: '방금',
-      text: value,
-    });
-    setComment('');
+
+    const nextComment = await onSubmit(value);
+    if (nextComment) {
+      setComment('');
+    }
   };
 
   return createPortal(
@@ -105,15 +103,15 @@ export function CommentModal({ open, post, comments, onClose, onSubmit }) {
             <div className={styles.list}>
               {comments.length ? (
                 comments.map((item) => (
-                  <article key={item.id} className={styles.item}>
+                  <article key={item.commentId ?? item.id} className={styles.item}>
                     <div className={styles.meta}>
-                      <div className={styles.commentAvatar}>{item.author[0]}</div>
+                      <div className={styles.commentAvatar}>{item.author?.[0] ?? '?'}</div>
                       <div>
                         <strong>{item.author}</strong>
-                        <p>{item.time}</p>
+                        <p>{item.time ?? item.createdAt}</p>
                       </div>
                     </div>
-                    <p>{item.text}</p>
+                    <p>{item.text ?? item.content}</p>
                   </article>
                 ))
               ) : (

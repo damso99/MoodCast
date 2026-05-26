@@ -142,9 +142,10 @@ export function SearchPage() {
       time: formatTime(item.createdAt),
       text: normalizeContent(item.content),
       emotionId: item.emotionId,
-      commentsList: [],
-      likes: 0,
-      vibes: 0,
+      comments: item.comments ?? item.commentsCount ?? 0,
+      commentsList: item.commentsList ?? [],
+      likes: item.likes ?? 0,
+      vibes: item.vibes ?? 0,
       previewComment: null,
       postId: item.postId,
     };

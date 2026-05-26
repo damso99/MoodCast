@@ -10,4 +10,8 @@ public class PostSummary {
     private String content;
     private Long emotionId;
     private String createdAt;
+    private Long likes;
+    private Long comments;
+    private Boolean likedByMe;
+    private Boolean savedByMe;
 }
