@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import { AdminLayout } from "../common/AdminLayout";
@@ -9,53 +9,45 @@ import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.module.css";
 
 /* ==========================================================================
- * 관리자 추가 페이지
+ * 관리자 권한 관리 페이지
  * --------------------------------------------------------------------------
- * 새 관리자 계정을 직접 생성하는 화면이 아니라,
- * 이미 회원가입을 완료한 일반 회원을 관리자 권한으로 승급시키는 화면입니다.
+ * 새 계정을 만드는 화면이 아니라, 이미 가입된 회원의 관리자 권한을
+ * 부여하거나 해제하는 화면입니다.
  *
- * 담당 기능:
+ * 해당 기능:
  * - 이름, 닉네임, 이메일 기준으로 회원 검색
- * - ACTIVE 상태이면서 일반 회원인 대상만 검색 결과로 표시
- * - 검색 결과에서 승급 대상 회원 선택
- * - 일반 관리자 / 슈퍼 관리자 중 하나를 선택해 등급 변경
+ * - ACTIVE 상태인 일반 회원과 관리자 회원을 검색 결과로 표시
+ * - 검색 결과에서 권한을 변경할 회원 선택
+ * - 일반 회원 / 일반 관리자 / 슈퍼 관리자 중 하나를 선택해 등급 변경
  *
- * searchType 상태 설명:
- * - 검색 기준을 기억합니다.
- * - name: members.name 기준 검색
- * - nickname: members.nickname 기준 검색
- * - email: members.email 기준 검색
+ * 큰 흐름:
+ * 1. 슈퍼 관리자가 이름/닉네임/이메일 중 하나를 선택해서 회원을 검색합니다.
+ * 2. 검색 결과 중 권한을 변경할 회원을 선택합니다.
+ * 3. 일반 회원, 일반 관리자, 슈퍼 관리자 중 등급을 고릅니다.
+ * 4. 백엔드 API로 role 변경 요청을 보냅니다.
  *
- * searchKeyword 상태 설명:
- * - 검색창에 입력한 실제 검색어입니다.
- * - 검색 버튼을 누르면 백엔드 API에 전달됩니다.
- *
- * selectedMemberId 상태 설명:
- * - 검색 결과 중 어떤 회원을 관리자 승급 대상으로 선택했는지 기억합니다.
- *
- * selectedRole 상태 설명:
- * - 선택한 회원에게 부여할 관리자 등급입니다.
- * - NORMAL_ADMIN 또는 SUPER_ADMIN 값이 백엔드로 전달됩니다.
  * ========================================================================== */
 export function AdminCreatePage() {
-  const [searchType, setSearchType] = useState("name"); // 현재 선택된 검색 기준입니다.
-  const [searchKeyword, setSearchKeyword] = useState(""); // 사용자가 입력한 검색어입니다.
-  const [searched, setSearched] = useState(false); // 검색 버튼을 한 번이라도 눌렀는지 확인합니다.
-  const [searchLoading, setSearchLoading] = useState(false); // 검색 요청 진행 여부입니다.
-  const [promoteLoading, setPromoteLoading] = useState(false); // 관리자 등급 변경 요청 진행 여부입니다.
-  const [searchError, setSearchError] = useState(""); // 검색 또는 승급 실패 메시지입니다.
-  const [successMessage, setSuccessMessage] = useState(""); // 승급 성공 메시지입니다.
-  const [members, setMembers] = useState([]); // 검색 결과 회원 목록입니다.
-  const [selectedMemberId, setSelectedMemberId] = useState(null); // 선택된 회원의 memberId입니다.
-  const [selectedRole, setSelectedRole] = useState("NORMAL_ADMIN"); // 선택된 관리자 등급입니다.
+  const [searchType, setSearchType] = useState("name"); // 현재 선택한 검색 기준입니다. name, nickname, email 중 하나입니다.
+  const [searchKeyword, setSearchKeyword] = useState(""); // 검색 input에 사용자가 입력한 검색어입니다.
+  const [searched, setSearched] = useState(false); // 검색 버튼을 한 번이라도 눌렀는지 기억해서 빈 상태 문구를 다르게 보여줍니다.
+  const [searchLoading, setSearchLoading] = useState(false); // 회원 검색 API 호출 중인지 표시합니다.
+  const [promoteLoading, setPromoteLoading] = useState(false); // 관리자 권한 변경 API 호출 중인지 표시합니다.
+  const [searchError, setSearchError] = useState(""); // 검색 또는 권한 변경 실패 메시지를 저장합니다.
+  const [successMessage, setSuccessMessage] = useState(""); // 권한 변경 성공 메시지를 저장합니다.
+  const [members, setMembers] = useState([]); // 검색 결과로 받은 회원 목록입니다.
+  const [selectedMemberId, setSelectedMemberId] = useState(null); // 라디오 버튼으로 선택한 권한 변경 대상 회원 id입니다.
+  const [selectedRole, setSelectedRole] = useState("NORMAL_ADMIN"); // 선택한 관리자 등급입니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 JWT 토큰입니다.
 
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080"; // 백엔드 서버 주소입니다.
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   const roleDescription =
-    selectedRole === "SUPER_ADMIN"
-      ? "슈퍼 관리자는 관리자 추가, 관리자 삭제 기능까지 사용할 수 있습니다."
-      : "일반 관리자는 관리자 추가와 삭제를 제외한 관리자 기능을 사용할 수 있습니다.";
+    selectedRole === "USER"
+      ? "일반 회원은 관리자 페이지에 접근할 수 없습니다."
+      : selectedRole === "SUPER_ADMIN"
+        ? "슈퍼 관리자는 관리자 권한 부여와 해제까지 사용할 수 있습니다."
+        : "일반 관리자는 관리자 권한 관리를 제외한 관리자 기능을 사용할 수 있습니다.";
 
   const searchPlaceholder = {
     name: "회원 이름",
@@ -79,32 +71,15 @@ export function AdminCreatePage() {
     return role || "-";
   };
 
-  const formatDate = (value) => {
-    return formatKoreanDate(value);
-  };
-
   const getSelectedMemberName = () => {
     const selectedMember = members.find(
-      (member) => member.memberId === selectedMemberId
+      (memberItem) => memberItem.memberId === selectedMemberId,
     );
 
     return selectedMember?.name || "선택한 회원";
   };
 
-  const handleSearchSubmit = (event) => {
-    event.preventDefault(); // form 제출 시 화면이 새로고침되는 기본 동작을 막습니다.
-
-    const trimmedKeyword = searchKeyword.trim(); // 검색어 앞뒤 공백을 제거합니다.
-
-    if (!trimmedKeyword) {
-      setSearched(true);
-      setMembers([]);
-      setSelectedMemberId(null);
-      setSuccessMessage("");
-      setSearchError("검색어를 입력해주세요.");
-      return;
-    }
-
+  const fetchMembers = (keyword = searchKeyword) => {
     if (!accessToken) {
       setSearched(true);
       setMembers([]);
@@ -114,6 +89,8 @@ export function AdminCreatePage() {
       return;
     }
 
+    const trimmedKeyword = keyword.trim(); // 검색어가 비어 있으면 전체 권한 관리 대상 회원을 조회합니다.
+
     setSearched(true);
     setSearchLoading(true);
     setSearchError("");
@@ -121,13 +98,13 @@ export function AdminCreatePage() {
     setSelectedMemberId(null);
 
     axios
-      .get(`${BACKSERVER}/admin/api/members/search`, {
+      .get(`${BACKSERVER}/admin/api/members/admin-promotion/search`, {
         headers: {
-          Authorization: `Bearer ${accessToken}`, // 백엔드에서 관리자 권한을 확인할 수 있도록 보냅니다.
+          Authorization: `Bearer ${accessToken}`, // 백엔드에서 관리자 권한을 확인할 수 있도록 토큰을 보냅니다.
         },
         params: {
           searchType, // name, nickname, email 중 현재 선택한 검색 기준입니다.
-          keyword: trimmedKeyword, // 사용자가 입력한 검색어입니다.
+          keyword: trimmedKeyword, // 검색어가 비어 있으면 백엔드에서 전체 권한 관리 대상 회원을 조회합니다.
         },
       })
       .then((res) => {
@@ -147,14 +124,51 @@ export function AdminCreatePage() {
       });
   };
 
+  useEffect(() => {
+    fetchMembers("");
+    // 최초 진입 시 전체 회원을 한 번만 조회하기 위한 effect입니다.
+    // searchType 변경마다 자동 조회하면 사용자가 입력 중인 검색 흐름과 충돌할 수 있어 의존성은 로그인 정보와 서버 주소만 둡니다.
+  }, [BACKSERVER, accessToken]);
+
+  const resetSelection = () => {
+    setSelectedMemberId(null); // 선택된 회원을 비웁니다.
+    setSelectedRole("NORMAL_ADMIN"); // 권한 선택은 기본값인 일반 관리자로 되돌립니다.
+    setSearchError(""); // 이전 오류 메시지를 지웁니다.
+    setSuccessMessage(""); // 이전 성공 메시지를 지웁니다.
+  };
+
+  const handleSearchTypeChange = (event) => {
+    setSearchType(event.target.value); // 사용자가 선택한 검색 기준을 저장합니다.
+    setSearchKeyword(""); // 기준이 바뀌면 이전 검색어가 헷갈리지 않도록 비웁니다.
+    setSearchError(""); // 이전 오류 메시지를 지웁니다.
+    setSuccessMessage(""); // 이전 성공 메시지를 지웁니다.
+  };
+
+  const handleSearchSubmit = (event) => {
+    event.preventDefault(); // form submit 시 페이지가 새로고침되는 기본 동작을 막습니다.
+    fetchMembers();
+  };
+
   const handlePromoteMember = () => {
     if (!selectedMemberId) {
-      setSearchError("관리자로 승급할 회원을 먼저 선택해주세요.");
+      setSearchError("권한을 변경할 회원을 먼저 선택해주세요.");
       return;
     }
 
     if (!accessToken) {
       setSearchError("로그인 정보가 없어 관리자 등급을 변경할 수 없습니다.");
+      return;
+    }
+
+    const selectedName = getSelectedMemberName();
+    const selectedRoleLabel = getRoleLabel(selectedRole);
+    const confirmMessage =
+      selectedRole === "USER"
+        ? `${selectedName} 회원을 일반 회원으로 강등시키시겠습니까?`
+        : `${selectedName} 회원을 ${selectedRoleLabel}로 변경하시겠습니까?`;
+    const confirmed = window.confirm(confirmMessage);
+
+    if (!confirmed) {
       return;
     }
 
@@ -166,20 +180,24 @@ export function AdminCreatePage() {
       .put(
         `${BACKSERVER}/admin/api/members/${selectedMemberId}/role`,
         {
-          role: selectedRole, // NORMAL_ADMIN 또는 SUPER_ADMIN 값입니다.
+          role: selectedRole, // USER, NORMAL_ADMIN, SUPER_ADMIN 중 선택한 값입니다.
         },
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       )
       .then(() => {
-        const selectedName = getSelectedMemberName();
-
-        setSuccessMessage(`${selectedName} 회원의 관리자 등급이 변경되었습니다.`);
+        setSuccessMessage(
+          `${selectedName} 회원의 권한이 변경되었습니다.`,
+        );
         setMembers((prevMembers) =>
-          prevMembers.filter((member) => member.memberId !== selectedMemberId)
+          prevMembers.map((memberItem) =>
+            memberItem.memberId === selectedMemberId
+              ? { ...memberItem, role: selectedRole }
+              : memberItem,
+          ),
         );
         setSelectedMemberId(null);
         setSelectedRole("NORMAL_ADMIN");
@@ -195,8 +213,8 @@ export function AdminCreatePage() {
 
   return (
     <AdminLayout
-      title="관리자 추가"
-      description="가입된 회원을 검색한 뒤 관리자 권한으로 승급하세요."
+      title="관리자 권한 관리"
+      description="가입된 회원을 검색한 뒤 관리자 권한을 부여하거나 해제하세요."
     >
       <section className={`${styles.panel} ${styles.formPanel}`}>
         <div className={styles.panelHead}>
@@ -211,12 +229,7 @@ export function AdminCreatePage() {
             검색 기준
             <select
               value={searchType}
-              onChange={(event) => {
-                setSearchType(event.target.value); // 선택한 검색 기준을 저장합니다.
-                setSearchKeyword(""); // 기준이 바뀌면 이전 검색어를 비웁니다.
-                setSearchError(""); // 이전 오류 메시지도 지웁니다.
-                setSuccessMessage(""); // 이전 성공 메시지도 지웁니다.
-              }}
+              onChange={handleSearchTypeChange}
             >
               <option value="name">이름</option>
               <option value="nickname">닉네임</option>
@@ -249,13 +262,13 @@ export function AdminCreatePage() {
         {!searched && (
           <EmptyState
             title="검색 전"
-            description="이름, 닉네임, 이메일로 ACTIVE 상태의 일반 회원을 검색할 수 있습니다."
+            description="이름, 닉네임, 이메일로 ACTIVE 상태의 일반 회원과 관리자 회원을 검색할 수 있습니다."
           />
         )}
       </section>
 
       <TableShell
-        title="승급 대상 선택"
+        title="권한 변경 대상 선택"
         columns={["회원", "이메일", "현재 권한", "가입일", "선택"]}
       >
         {searched && !searchLoading && members.length === 0 && (
@@ -264,24 +277,24 @@ export function AdminCreatePage() {
 
         {searchLoading && <EmptyTableRow colSpan={5} label="회원 검색 중" />}
 
-        {members.map((member) => (
-          <tr key={member.memberId}>
+        {members.map((memberItem) => (
+          <tr key={memberItem.memberId}>
             <td>
-              <strong>{member.name || "-"}</strong>
+              <strong>{memberItem.name || "-"}</strong>
               <span className={styles.memberNickname}>
-                {member.nickname ? `@${member.nickname}` : "닉네임 없음"}
+                {memberItem.nickname ? `@${memberItem.nickname}` : "닉네임 없음"}
               </span>
             </td>
-            <td>{member.email || "-"}</td>
-            <td>{getRoleLabel(member.role)}</td>
-            <td>{formatDate(member.createdAt)}</td>
+            <td>{memberItem.email || "-"}</td>
+            <td>{getRoleLabel(memberItem.role)}</td>
+            <td>{formatKoreanDate(memberItem.createdAt)}</td>
             <td>
               <label className={styles.selectMemberLabel}>
                 <input
                   type="radio"
                   name="selectedMember"
-                  checked={selectedMemberId === member.memberId}
-                  onChange={() => setSelectedMemberId(member.memberId)}
+                  checked={selectedMemberId === memberItem.memberId}
+                  onChange={() => setSelectedMemberId(memberItem.memberId)}
                 />
                 선택
               </label>
@@ -298,6 +311,15 @@ export function AdminCreatePage() {
         <form className={styles.adminForm}>
           <fieldset>
             <legend>관리자 등급</legend>
+            <label>
+              <input
+                type="radio"
+                name="adminRole"
+                checked={selectedRole === "USER"}
+                onChange={() => setSelectedRole("USER")}
+              />
+              일반 회원
+            </label>
             <label>
               <input
                 type="radio"
@@ -320,23 +342,17 @@ export function AdminCreatePage() {
 
           <div className={styles.roleGuide}>
             <strong>
-              {selectedRole === "SUPER_ADMIN"
-                ? "슈퍼 관리자 권한"
-                : "일반 관리자 권한"}
+              {selectedRole === "USER"
+                ? "일반 회원 권한"
+                : selectedRole === "SUPER_ADMIN"
+                  ? "슈퍼 관리자 권한"
+                  : "일반 관리자 권한"}
             </strong>
             <p>{roleDescription}</p>
           </div>
 
           <div className={styles.formActions}>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedMemberId(null);
-                setSelectedRole("NORMAL_ADMIN");
-                setSearchError("");
-                setSuccessMessage("");
-              }}
-            >
+            <button type="button" onClick={resetSelection}>
               선택 초기화
             </button>
             <button

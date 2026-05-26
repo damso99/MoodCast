@@ -35,6 +35,13 @@
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <result property="role" column="role"/>
+        <result property="lastLoginAt" column="last_login_at"/>
+        <result property="reportCount" column="report_count"/>
+        <result property="postCount" column="post_count"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="suspendedUntil" column="suspended_until"/>
+        <result property="suspensionCount" column="suspension_count"/>
+        <result property="warningCount" column="warning_count"/>
     </resultMap>
 
     <!--
@@ -46,6 +53,31 @@
         <result property="nickname" column="nickname"/>
         <result property="phone" column="phone"/>
         <result property="profileImageUrl" column="profile_image_url"/>
+    </resultMap>
+
+    <!--
+      회원 정보 전체 보기 결과를 AdminMemberDetail VO에 연결합니다.
+
+      보안상 password_hash는 resultMap에도 없고 아래 select 구문에도 없습니다.
+      따라서 프론트엔드 응답으로 비밀번호 관련 값이 내려가지 않습니다.
+    -->
+    <resultMap id="adminMemberDetailMap" type="com.moodcast.admin.vo.AdminMemberDetail">
+        <id property="memberId" column="member_id"/>
+        <result property="email" column="email"/>
+        <result property="name" column="name"/>
+        <result property="nickname" column="nickname"/>
+        <result property="phone" column="phone"/>
+        <result property="emailVerified" column="email_verified"/>
+        <result property="phoneVerified" column="phone_verified"/>
+        <result property="role" column="role"/>
+        <result property="status" column="status"/>
+        <result property="lastLoginAt" column="last_login_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="deletedAt" column="deleted_at"/>
+        <result property="suspendedUntil" column="suspended_until"/>
+        <result property="suspensionCount" column="suspension_count"/>
+        <result property="warningCount" column="warning_count"/>
     </resultMap>
 
     <!--
@@ -76,20 +108,62 @@
             email,
             status,
             created_at,
-            role
+            role,
+            last_login_at,
+            suspended_until,
+            coalesce(suspension_count, 0) as suspension_count,
+            coalesce(warning_count, 0) as warning_count,
+            0 as report_count,
+            (select count(*)
+             from post_tbl p
+             where p.member_id = members.member_id
+               and p.deleted_yn = 'N') as post_count,
+            (select count(*)
+             from comment_tbl c
+             where c.member_id = members.member_id
+               and c.deleted_yn = 'N') as comment_count
         from members
         order by created_at desc
     </select>
 
     <!--
-      관리자 추가 페이지의 회원 검색입니다.
+      회원 정보 전체 보기 단건 조회입니다.
+
+      개인정보 관련 필드는 보여주되 password_hash는 절대 조회하지 않습니다.
+    -->
+    <select id="selectMemberDetail" resultMap="adminMemberDetailMap">
+        select
+            member_id,
+            email,
+            name,
+            nickname,
+            phone,
+            email_verified,
+            phone_verified,
+            role,
+            status,
+            last_login_at,
+            created_at,
+            updated_at,
+            deleted_at,
+            suspended_until,
+            coalesce(suspension_count, 0) as suspension_count,
+            coalesce(warning_count, 0) as warning_count
+        from members
+        where member_id = #{memberId}
+        limit 1
+    </select>
+
+    <!--
+      관리자 권한 관리 페이지의 회원 검색입니다.
 
       searchType 값에 따라 검색 대상 컬럼을 바꿉니다.
       - email: 이메일 검색
       - name: 실명 검색
 
-      limit 20을 둔 이유:
-      - 검색어가 짧을 때 너무 많은 회원이 한 번에 화면에 나오지 않도록 제한합니다.
+      limit 100을 둔 이유:
+      - 검색어가 비어 있을 때도 전체 권한 관리 대상 회원을 조회하되,
+        한 번에 너무 많은 회원이 화면에 나오지 않도록 제한합니다.
     -->
     <select id="searchMembersForAdminPromotion" resultMap="adminMemberMap">
         select
@@ -99,11 +173,26 @@
             email,
             status,
             created_at,
-            role
+            role,
+            last_login_at,
+            suspended_until,
+            coalesce(suspension_count, 0) as suspension_count,
+            coalesce(warning_count, 0) as warning_count,
+            0 as report_count,
+            (select count(*)
+             from post_tbl p
+             where p.member_id = members.member_id
+               and p.deleted_yn = 'N') as post_count,
+            (select count(*)
+             from comment_tbl c
+             where c.member_id = members.member_id
+               and c.deleted_yn = 'N') as comment_count
         from members
         where status = 'ACTIVE'
-          and role in ('USER', 'MEMBER')
+          and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
           and (
+            #{keyword} = ''
+            or
             <choose>
                 <when test="searchType == 'name'">
                     name like concat('%', #{keyword}, '%')
@@ -117,15 +206,15 @@
             </choose>
           )
         order by created_at desc
-        limit 20
+        limit 100
     </select>
 
     <!--
-      관리자 추가 페이지에서 선택한 회원의 role을 관리자 등급으로 변경합니다.
+      관리자 권한 관리 페이지에서 선택한 회원의 role을 변경합니다.
 
       조건을 엄격하게 둔 이유:
-      - ACTIVE 상태가 아닌 회원은 승급 대상이 아닙니다.
-      - 이미 관리자인 회원을 다시 승급하지 않도록 일반 회원 role만 허용합니다.
+      - ACTIVE 상태가 아닌 회원은 권한 변경 대상이 아닙니다.
+      - 지정된 회원/관리자 role만 변경 대상에 포함합니다.
     -->
     <update id="updateMemberRoleForAdminPromotion">
         update members
@@ -133,8 +222,68 @@
             updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
           and status = 'ACTIVE'
-          and role in ('USER', 'MEMBER')
+          and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
     </update>
+
+    <!--
+      회원 정지 처리입니다.
+
+      처리 기준:
+      - suspended_until 값이 있으면 기간 정지입니다.
+      - suspended_until 값이 null이면 영구 정지입니다.
+      - suspension_count는 누적 정지 횟수라서 정지할 때마다 1씩 증가시킵니다.
+    -->
+    <update id="suspendMember">
+        update members
+        set status = 'SUSPENDED',
+            suspended_until = #{suspendedUntil},
+            suspension_count = coalesce(suspension_count, 0) + 1,
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where member_id = #{memberId}
+          and deleted_at is null
+    </update>
+
+    <!--
+      회원 정지 해제 처리입니다.
+
+      정지 해제 시:
+      - status는 ACTIVE로 되돌립니다.
+      - suspended_until은 null로 비워 더 이상 정지 상태가 아니게 만듭니다.
+      - suspension_count는 누적 이력이므로 줄이거나 초기화하지 않습니다.
+    -->
+    <update id="restoreSuspendedMember">
+        update members
+        set status = 'ACTIVE',
+            suspended_until = null,
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where member_id = #{memberId}
+          and status = 'SUSPENDED'
+          and deleted_at is null
+    </update>
+
+    <!--
+      관리자 작업 로그 추가입니다.
+
+      admin_action_logs는 append-only 정책이므로 회원 정지 작업이 발생할 때마다
+      새 로그를 한 줄 추가합니다.
+    -->
+    <insert id="insertAdminActionLog">
+        insert into admin_action_logs (
+            admin_id,
+            action_type,
+            target_type,
+            target_id,
+            created_at,
+            action_detail
+        ) values (
+            #{adminId},
+            #{actionType},
+            #{targetType},
+            #{targetId},
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
+            #{actionDetail}
+        )
+    </insert>
 
     <!--
       관리자 대시보드 요약 조회입니다.

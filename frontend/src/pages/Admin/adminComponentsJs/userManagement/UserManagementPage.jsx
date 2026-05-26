@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import axios from "axios";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -11,6 +11,7 @@ import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { UserManagementDrawer } from "./UserManagementDrawer";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
@@ -25,7 +26,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * - 이름/아이디 검색창
  * - 회원 상태 요약 카드
  * - 사용자 목록 테이블
- * - 관리자 추가 페이지로 이동하는 버튼
+ * - 관리자 권한 관리 페이지로 이동하는 버튼
  * - 권한 변경 로그 영역
  *
  * selectedUserType 상태 설명:
@@ -41,24 +42,34 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * members 상태 설명:
  * - members 테이블에서 조회한 전체 회원 목록을 기억하는 배열입니다.
  * - "전체 / 일반 회원 / 관리자 회원" 탭에 맞춰 화면에서 필터링해서 출력합니다.
- * - 정지 회원 탭은 정지 기준이 확정되지 않았으므로 아직 실제 필터링을 연결하지 않습니다.
+ * - 정지 회원 탭은 status가 SUSPENDED인 회원만 보여줍니다.
  *
  * searchField / searchKeyword 상태 설명:
  * - searchField는 이름, 닉네임, 이메일 중 어떤 기준으로 검색할지 기억합니다.
  * - searchKeyword는 검색창에 입력한 실제 검색어를 기억합니다.
+ *
+ * selectedManagedMember 상태 설명:
+ * - 전체 목록에서 "관리" 버튼을 누른 회원 정보를 기억합니다.
+ * - 값이 있으면 오른쪽에 회원 관리 패널을 열고, 값이 null이면 패널을 닫습니다.
+ * - 지금 패널은 현재 목록 API에서 받은 기본 회원 정보로 구성되어 있습니다.
+ *   신고 횟수, 게시글 수, 댓글 수처럼 아직 별도 API가 없는 값은 안전한 기본값을 표시합니다.
  * ========================================================================== */
 export function UserManagementPage() {
   const [selectedUserType, setSelectedUserType] = useState("전체");
   const [searchField, setSearchField] = useState("name");
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalMemberCount, setTotalMemberCount] = useState(null);
   const [totalMemberCountError, setTotalMemberCountError] = useState(false);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState(false);
+  const [selectedManagedMember, setSelectedManagedMember] = useState(null);
   const { accessToken } = useAuthStore();
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const MEMBERS_PER_PAGE = 10; // 한 페이지에 보여줄 회원 수입니다.
+  const PAGE_BUTTON_COUNT = 10; // 페이지 번호 버튼은 1~10처럼 최대 10개씩 보여줍니다.
 
   const userTypeDescriptions = {
     전체: "전체 회원 목록이 이 영역에 표시됩니다.",
@@ -157,7 +168,7 @@ export function UserManagementPage() {
     }
 
     if (selectedUserType === "정지 회원") {
-      return false;
+      return member.status === "SUSPENDED";
     }
 
     return true;
@@ -175,8 +186,44 @@ export function UserManagementPage() {
     return targetValue.includes(trimmedKeyword);
   });
 
+  const totalPageCount = Math.max(
+    1,
+    Math.ceil(visibleMembers.length / MEMBERS_PER_PAGE),
+  );
+  const pageStartIndex = (currentPage - 1) * MEMBERS_PER_PAGE;
+  const paginatedMembers = visibleMembers.slice(
+    pageStartIndex,
+    pageStartIndex + MEMBERS_PER_PAGE,
+  );
+  const pageGroupStart =
+    Math.floor((currentPage - 1) / PAGE_BUTTON_COUNT) * PAGE_BUTTON_COUNT + 1;
+  const pageGroupEnd = Math.min(
+    pageGroupStart + PAGE_BUTTON_COUNT - 1,
+    totalPageCount,
+  );
+  const pageNumbers = Array.from(
+    { length: pageGroupEnd - pageGroupStart + 1 },
+    (_, index) => pageGroupStart + index,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedUserType, searchField, searchKeyword]);
+
+  useEffect(() => {
+    if (currentPage > totalPageCount) {
+      setCurrentPage(totalPageCount);
+    }
+  }, [currentPage, totalPageCount]);
+
   const normalMemberCount = members.filter(
     (member) => member.role === "USER",
+  ).length;
+
+  // members 목록 중 status가 SUSPENDED인 회원만 세어서 "정지 회원" 카드에 표시합니다.
+  // 백엔드에서 이미 회원 목록을 받아오고 있으므로, 별도 API를 만들지 않고 현재 화면 데이터 기준으로 계산합니다.
+  const suspendedMemberCount = members.filter(
+    (member) => member.status === "SUSPENDED",
   ).length;
 
   const adminMemberCount = members.filter((member) =>
@@ -203,12 +250,36 @@ export function UserManagementPage() {
     return status || "-";
   };
 
+  const isSuspendedMember = (member) => {
+    return member?.status === "SUSPENDED";
+  };
+
+  const isPermanentSuspension = (member) => {
+    return isSuspendedMember(member) && !member?.suspendedUntil;
+  };
+
+  const isTemporarySuspension = (member) => {
+    return isSuspendedMember(member) && Boolean(member?.suspendedUntil);
+  };
+
+  const getMemberStatusLabel = (member) => {
+    if (isPermanentSuspension(member)) {
+      return "영구 정지";
+    }
+
+    if (isTemporarySuspension(member)) {
+      return "일시 정지";
+    }
+
+    return getStatusLabel(member?.status);
+  };
+
   const getRoleLabel = (role) => {
     if (role === "USER") {
       return "일반 회원";
     }
 
-    if (role === "ADMIN") {
+    if (role === "ADMIN" || role === "NORMAL_ADMIN") {
       return "관리자";
     }
 
@@ -217,6 +288,19 @@ export function UserManagementPage() {
     }
 
     return role || "-";
+  };
+
+  const handleMemberUpdated = (updatedMember) => {
+    setMembers((prevMembers) =>
+      prevMembers.map((member) =>
+        member.memberId === updatedMember.memberId
+          ? { ...member, ...updatedMember }
+          : member,
+      ),
+    );
+    setSelectedManagedMember((prevMember) =>
+      prevMember ? { ...prevMember, ...updatedMember } : prevMember,
+    );
   };
 
   return (
@@ -250,7 +334,7 @@ export function UserManagementPage() {
           </div>
         </div>
         <NavLink className={styles.primaryLinkButton} to="/admin/users/new">
-          관리자 추가
+          관리자 권한 관리
         </NavLink>
       </section>
 
@@ -271,6 +355,7 @@ export function UserManagementPage() {
         />
         <MetricCard
           label="정지 회원"
+          value={suspendedMemberCount.toLocaleString()}
           icon={<GppMaybeOutlinedIcon />}
           accent="orange"
         />
@@ -286,15 +371,62 @@ export function UserManagementPage() {
         title={`${selectedUserType} 목록`}
         columns={["사용자", "이메일", "상태", "가입일", "권한", "작업"]}
         className={styles.userTable}
+        footer={
+          visibleMembers.length > 0 ? (
+            <nav
+              className={styles.pagination}
+              aria-label="회원 목록 페이지 이동"
+            >
+              <div className={styles.paginationButtons}>
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.max(1, page - 1))
+                  }
+                >
+                  이전
+                </button>
+                {pageNumbers.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    className={
+                      pageNumber === currentPage ? styles.activePage : ""
+                    }
+                    aria-current={
+                      pageNumber === currentPage ? "page" : undefined
+                    }
+                    onClick={() => setCurrentPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPageCount}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.min(totalPageCount, page + 1))
+                  }
+                >
+                  다음
+                </button>
+              </div>
+            </nav>
+          ) : null
+        }
       >
         {membersLoading ? (
           <EmptyTableRow colSpan={6} label="회원 목록을 불러오는 중입니다." />
         ) : membersError ? (
           <EmptyTableRow colSpan={6} label="회원 목록 조회 실패" />
         ) : visibleMembers.length === 0 ? (
-          <EmptyTableRow colSpan={6} label={`${selectedUserType} 데이터 없음`} />
+          <EmptyTableRow
+            colSpan={6}
+            label={`${selectedUserType} 데이터 없음`}
+          />
         ) : (
-          visibleMembers.map((member) => (
+          paginatedMembers.map((member) => (
             <tr key={member.memberId}>
               <td>
                 <div className={styles.userCell}>
@@ -311,15 +443,19 @@ export function UserManagementPage() {
                 <span
                   className={`${styles.statusBadge} ${
                     member.status === "SUSPENDED" ? styles.warningBadge : ""
-                  }`}
+                  } ${isPermanentSuspension(member) ? styles.permanentStatusBadge : ""}`}
                 >
-                  {getStatusLabel(member.status)}
+                  {getMemberStatusLabel(member)}
                 </span>
               </td>
               <td>{formatDate(member.createdAt)}</td>
               <td>{getRoleLabel(member.role)}</td>
               <td>
-                <button type="button" className={styles.tableActionButton}>
+                <button
+                  type="button"
+                  className={styles.tableActionButton}
+                  onClick={() => setSelectedManagedMember(member)}
+                >
                   관리
                 </button>
               </td>
@@ -334,10 +470,10 @@ export function UserManagementPage() {
           <p>{userTypeDescriptions[selectedUserType]}</p>
         </article>
         <article className={styles.infoBox}>
-          <strong>관리자 추가 정보</strong>
+          <strong>관리자 권한 관리 정보</strong>
           <p>
-            관리자 추가 버튼을 누르면 가입된 회원을 이메일 또는 이름으로 검색한
-            뒤 관리자 권한으로 승급하는 화면으로 이동합니다.
+            관리자 권한 관리 버튼을 누르면 가입된 회원을 이메일 또는 이름으로
+            검색한 뒤 관리자 권한을 부여하거나 해제하는 화면으로 이동합니다.
           </p>
         </article>
       </section>
@@ -351,6 +487,13 @@ export function UserManagementPage() {
           description="권한 변경 이력이 생기면 최신순으로 표시됩니다."
         />
       </section>
+
+      {/* 회원 관리 우측 패널: 관리 버튼을 누른 회원의 상세 정보와 정지/해제 작업을 담당합니다. */}
+      <UserManagementDrawer
+        selectedManagedMember={selectedManagedMember}
+        onClose={() => setSelectedManagedMember(null)}
+        onMemberUpdated={handleMemberUpdated}
+      />
     </AdminLayout>
   );
 }
