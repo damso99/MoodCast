@@ -4,6 +4,7 @@ public class SearchHashtagResult {
     private Long hashtagId;
     private String hashtag;
     private Long postCount;
+    private Long useCount;
 
     public Long getHashtagId() {
         return hashtagId;
@@ -27,5 +28,13 @@ public class SearchHashtagResult {
 
     public void setPostCount(Long postCount) {
         this.postCount = postCount;
+    }
+
+    public Long getUseCount() {
+        return useCount;
+    }
+
+    public void setUseCount(Long useCount) {
+        this.useCount = useCount;
     }
 }
