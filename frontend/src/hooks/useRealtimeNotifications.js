@@ -24,6 +24,10 @@ export function useRealtimeNotifications(memberId) {
       client.subscribe(`/sub/notifications/${memberId}`, (frame) => {
         try {
           const payload = JSON.parse(frame.body);
+          if (payload?.eventType !== 'CHAT_NOTIFICATION') {
+            return;
+          }
+
           const notificationId = `${payload.eventType || 'notification'}-${payload.chatId || Date.now()}`;
 
           setNotifications((prevNotifications) => {
@@ -38,7 +42,7 @@ export function useRealtimeNotifications(memberId) {
             return nextNotifications.slice(0, 20);
           });
         } catch (error) {
-          console.error('알림 메시지 파싱 실패', error);
+          console.error('채팅 알림 메시지 수신 실패', error);
         }
       });
     };
@@ -48,7 +52,7 @@ export function useRealtimeNotifications(memberId) {
     };
 
     client.onStompError = (frame) => {
-      console.error('알림 STOMP 오류', frame.headers?.message || frame.body);
+      console.error('채팅 알림 STOMP 오류', frame.headers?.message || frame.body);
     };
 
     client.activate();
