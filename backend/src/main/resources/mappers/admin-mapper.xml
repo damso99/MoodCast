@@ -154,7 +154,7 @@
     <update id="updateMemberRoleForAdminPromotion">
         update members
         set role = #{role},
-            updated_at = now(6)
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
           and status = 'ACTIVE'
           and role in ('USER', 'MEMBER')
@@ -210,7 +210,7 @@
         set name = #{name},
             nickname = #{nickname},
             phone = #{phone},
-            updated_at = now(6)
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
     </update>
 </mapper>

@@ -61,7 +61,7 @@
 
     <update id="updateVerifiedAt">
         update auth_codes
-        set verified_at = now(6),
+        set verified_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
             attempt_count = 0
         where auth_code_id = #{authCodeId}
     </update>
@@ -114,7 +114,7 @@
         and purpose = 'SIGNUP'
         and verified_at is not null
         and used_at is null
-        and verified_at >= date_sub(now(6), interval 10 minute)
+        and verified_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 10 minute)
     </select>
 
 
@@ -126,7 +126,7 @@
           and purpose = 'SIGNUP'
           and verified_at is not null
           and used_at is null
-          and verified_at >= date_sub(now(6), interval 10 minute)
+          and verified_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 10 minute)
     </select>
 
     <insert id="insertMember" useGeneratedKeys="true" keyProperty="memberId">
@@ -159,18 +159,18 @@
             #{memberId},
             #{termsId},
             #{agreed},
-            case when #{agreed} = 1 then now(6) else null end
+            case when #{agreed} = 1 then CONVERT_TZ(NOW(6), '+00:00', '+09:00') else null end
         )
     </insert>
 
     <update id="updateAuthCodeUsed">
         update auth_codes
-        set used_at = now(6)
+        set used_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where target_type = #{targetType}
           and target_value = #{targetValue}
           and purpose = #{purpose}
           and verified_at is not null
           and used_at is null
-          and verified_at >= date_sub(now(6), interval 10 minute)
+          and verified_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 10 minute)
     </update>
 </mapper>

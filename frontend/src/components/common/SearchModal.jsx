@@ -4,6 +4,8 @@ import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../hooks/useAuthStore';
+import { FeedCard } from './FeedCard';
 import styles from './SearchModal.module.css';
 
 // SearchModal은 화면에 떠서 사용자가 검색어를 입력하면
@@ -16,6 +18,7 @@ export function SearchModal({ open, onClose }) {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   // 백엔드 서버 주소를 여기에서 설정합니다.
   // 개발 환경에서는 VITE_BACKSERVER 환경 변수를 사용하고,
   // 없으면 로컬 백엔드 주소를 기본값으로 사용합니다.
@@ -40,6 +43,98 @@ export function SearchModal({ open, onClose }) {
     setActiveTab('posts');
   }, [open]);
 
+  const toggleFollow = (memberId) => {
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    if (!effectiveToken) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    axios.post(`${BACKSERVER}/auth/follow/${memberId}`, {}, {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    })
+      .then((res) => {
+        const newStatus = res.data.following;
+        setResults((prev) => prev.map((item) =>
+          item.memberId === memberId ? { ...item, following: newStatus } : item
+        ));
+      })
+      .catch(() => {
+        alert('팔로우 변경에 실패했습니다. 다시 시도해주세요.');
+      });
+  };
+
+  const normalizeContent = (content) => {
+    if (!content) return '';
+    // HTML 태그 제거
+    let text = content.replace(/<[^>]+>/g, '').trim();
+    // HTML 엔티티 디코딩
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
+  const formatTime = (dateString) => {
+    // 시간 정보가 없으면 '방금'이라고 표시함
+    if (!dateString) return '방금';
+    
+    // 서버에서 받은 시간 문자열을 JavaScript Date 객체로 변환함
+    const date = new Date(dateString);
+    // 현재 시간을 Date 객체로 가져옴
+    const now = new Date();
+    
+    // 현재 시간과 게시글 작성 시간의 차이를 계산함
+    // getTime()은 1970년 1월 1일 00:00:00부터 지난 밀리초를 반환함
+    const diffMs = now.getTime() - date.getTime();
+    
+    // 밀리초 차이를 분으로 변환함 (1분 = 60000밀리초)
+    const diffMins = Math.floor(diffMs / 60000);
+    // 밀리초 차이를 시간으로 변환함 (1시간 = 3600000밀리초)
+    const diffHours = Math.floor(diffMs / 3600000);
+    // 밀리초 차이를 일로 변환함 (1일 = 86400000밀리초)
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // 1분 이내면 '방금'으로 표시함
+    if (diffMins < 1) return '방금';
+    // 1분 이상 60분 미만이면 '~분 전'으로 표시함
+    if (diffMins < 60) return `${diffMins}분 전`;
+    // 1시간 이상 24시간 미만이면 '~시간 전'으로 표시함
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    // 1일 이상 7일 미만이면 '~일 전'으로 표시함
+    if (diffDays < 7) return `${diffDays}일 전`;
+    
+    // 7일 이상 지나면 정확한 날짜와 시간을 표시함
+    // Intl.DateTimeFormat은 다양한 언어와 지역에 맞게 날짜를 포맷팅함
+    // timeZone: 'Asia/Seoul'로 설정하여 한국 시간대로 표시함
+    // (예: 2026.05.26 13:45)
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',           // 연도를 숫자로 표시함 (예: 2026)
+      month: '2-digit',          // 월을 2자리 숫자로 표시함 (예: 05)
+      day: '2-digit',            // 일을 2자리 숫자로 표시함 (예: 26)
+      hour: '2-digit',           // 시간을 2자리 숫자로 표시함 (예: 13)
+      minute: '2-digit',         // 분을 2자리 숫자로 표시함 (예: 45)
+      timeZone: 'Asia/Seoul'     // 한국 시간대(UTC+9)로 설정함
+    }).format(date);
+  };
+
+  const transformPostData = (item) => {
+    const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
+    return {
+      id: item.postId,
+      title: item.title,
+      author: authorName,
+      avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      time: formatTime(item.createdAt),
+      text: normalizeContent(item.content),
+      emotionId: item.emotionId,
+      commentsList: [],
+      likes: 0,
+      vibes: 0,
+      previewComment: null,
+      postId: item.postId,
+    };
+  };
+
   // 검색어가 변경될 때마다 백엔드 API를 호출하여 검색 결과를 가져옵니다.
   useEffect(() => {
     if (!open) return;
@@ -54,11 +149,17 @@ export function SearchModal({ open, onClose }) {
     setLoading(true);
     setError(null);
 
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const config = effectiveToken ? {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    } : {};
+
     axios
       .get(`${BACKSERVER}/search/${activeTab}`, {
         params: {
           q: normalized,
         },
+        ...config,
       })
       .then((response) => {
         setResults(response.data?.results || []);
@@ -70,7 +171,7 @@ export function SearchModal({ open, onClose }) {
       .finally(() => {
         setLoading(false);
       });
-  }, [activeTab, query, open]);
+  }, [activeTab, query, open, token]);
 
   if (!open) return null;
 
@@ -89,7 +190,17 @@ export function SearchModal({ open, onClose }) {
 
         <label className={styles.searchField}>
           <SearchOutlinedIcon />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="검색어를 입력하세요" />
+          <input 
+            value={query} 
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && query.trim() !== '') {
+                onClose();
+                navigate(`/app/search?q=${encodeURIComponent(query)}`);
+              }
+            }}
+            placeholder="검색어를 입력하세요" 
+          />
         </label>
 
         <div className={styles.tabs}>
@@ -155,12 +266,25 @@ export function SearchModal({ open, onClose }) {
                           (item.nickname || item.name || '?').charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div>
+                      <div style={{ flex: 1 }}>
                         <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
                         <span style={{ fontSize: '12px', color: '#888' }}>
                           @{item.email ? item.email.split('@')[0] : item.memberId}
                         </span>
                       </div>
+                      {isLoggedIn && currentMember?.memberId !== item.memberId && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleFollow(item.memberId);
+                          }}
+                          className={item.following ? styles.unfollowButton : styles.followButton}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          {item.following ? '언팔로우' : '팔로우'}
+                        </button>
+                      )}
                     </div>
                   </article>
                 );
@@ -168,7 +292,15 @@ export function SearchModal({ open, onClose }) {
               // 해시태그 검색 탭일 때의 리스트 아이템 렌더링
               if (activeTab === 'hashtags') {
                 return (
-                  <article key={item.hashtagId} className={styles.item}>
+                  <article
+                    key={item.hashtagId}
+                    className={styles.item}
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => {
+                      onClose(); // 모달 닫기
+                      navigate(`/app/search?q=%23${item.hashtag}`); // 해시태그 검색 페이지로 이동
+                    }}
+                  >
                     <strong>#{item.hashtag}</strong>
                     <p>{item.postCount ?? 0}개의 게시물</p>
                   </article>
@@ -176,10 +308,17 @@ export function SearchModal({ open, onClose }) {
               }
               // 게시글 검색 결과 (기본값)
               return (
-                <article key={item.postId} className={styles.item}>
-                  <strong>{item.authorName || item.authorNickname}</strong>
-                  <p>{item.text}</p>
-                </article>
+                <div 
+                  key={item.postId} 
+                  onClick={() => {
+                    onClose();
+                    navigate(`/app/search?q=${encodeURIComponent(query)}`);
+                  }}
+                >
+                  <FeedCard 
+                    post={transformPostData(item)}
+                  />
+                </div>
               );
             })
           ) : (

@@ -2,10 +2,14 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import MoodOutlinedIcon from '@mui/icons-material/MoodOutlined';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../hooks/useAuthStore';
 import styles from './ComposerCard.module.css';
 
 export function ComposerCard() {
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuthStore();
+
+  if (!isLoggedIn) return null;
 
   return (
     <article className={styles.card} onClick={() => navigate('/app/write')} role="presentation">

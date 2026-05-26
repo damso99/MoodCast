@@ -23,18 +23,20 @@
     </select>
 
     <!-- 사용자 검색: 이름 또는 닉네임으로 사용자 목록을 검색합니다. -->
-    <select id="searchUsers" parameterType="string" resultType="com.moodcast.search.vo.SearchUserResult">
+    <select id="searchUsers" parameterType="map" resultType="com.moodcast.search.vo.SearchUserResult">
         select
-            member_id as memberId,
-            name,
-            nickname,
-            email,
-            profile_image_url as profileImageUrl
-        from members
-        where lower(name) like concat('%', lower(#{query}), '%')
-           or lower(nickname) like concat('%', lower(#{query}), '%')
-           or lower(email) like concat('%', lower(#{query}), '%')
-        order by name asc
+            m.member_id as memberId,
+            m.name,
+            m.nickname,
+            m.email,
+            m.profile_image_url as profileImageUrl,
+            CASE WHEN f.follower_member_id IS NOT NULL THEN 1 ELSE 0 END as following
+        from members m
+        left join follow_tbl f on f.follower_member_id = #{loginId} and f.following_member_id = m.member_id
+        where lower(m.name) like concat('%', lower(#{query}), '%')
+           or lower(m.nickname) like concat('%', lower(#{query}), '%')
+           or lower(m.email) like concat('%', lower(#{query}), '%')
+        order by m.name asc
         limit 50
     </select>
 

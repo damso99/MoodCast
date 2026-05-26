@@ -50,7 +50,7 @@
 
     <update id="updateLastLoginAt">
         update members
-        set last_login_at = now(6)
+        set last_login_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
     </update>
 
@@ -58,7 +58,7 @@
         update members
         set nickname = #{nickname},
             bio = #{bio},
-            updated_at = now(6)
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
     </update>
 
@@ -71,7 +71,7 @@
     <insert id="follow">
         INSERT INTO follow_tbl (follower_member_id, following_member_id)
         VALUES (#{followerId}, #{followingId})
-        ON DUPLICATE KEY UPDATE created_at = now()
+        ON DUPLICATE KEY UPDATE created_at = CONVERT_TZ(NOW(), '+00:00', '+09:00')
     </insert>
 
     <delete id="unfollow">

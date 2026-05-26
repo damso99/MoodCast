@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../hooks/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
-import { feedPosts, profileHighlights } from '../../data/moodcastData';
+import { profileHighlights } from '../../data/moodcastData';
 import styles from './ProfilePage.module.css';
 
 export function ProfilePage() {
@@ -15,6 +15,8 @@ export function ProfilePage() {
   const { handle } = useParams(); // URL 파라미터 :handle (memberId)
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
   const [followInfo, setFollowInfo] = useState({ 
     following: false, 
     followerCount: 0, 
@@ -23,7 +25,7 @@ export function ProfilePage() {
     savedCount: 0
   });
   
-  const { member: currentMember, accessToken: token } = useAuthStore();
+  const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 실제 조회할 ID 결정 (파라미터 없으면 내 ID)
@@ -74,7 +76,103 @@ export function ProfilePage() {
       });
   }, [targetId, BACKSERVER, fetchFollowStatus]);
 
+  useEffect(() => {
+    if (!targetId) {
+      setPosts([]);
+      setPostsLoading(false);
+      return;
+    }
+
+    setPostsLoading(true);
+    axios.get(`${BACKSERVER}/posts`, { params: { memberId: targetId } })
+      .then(res => {
+        if (res.data.success) {
+          setPosts(res.data.results || []);
+        } else {
+          setPosts([]);
+        }
+      })
+      .catch(err => {
+        console.error('프로필 게시물 조회 실패:', err);
+        setPosts([]);
+      })
+      .finally(() => {
+        setPostsLoading(false);
+      });
+  }, [targetId, BACKSERVER]);
+
   const isOwnProfile = currentMember && String(currentMember.memberId) === String(targetId);
+
+  const normalizeContent = (content) => {
+    if (!content) return '';
+    // HTML 태그 제거
+    let text = content.replace(/<[^>]+>/g, '').trim();
+    // HTML 엔티티 디코딩
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
+  const formatTime = (dateString) => {
+    // 시간 정보가 없으면 '방금'이라고 표시함
+    if (!dateString) return '방금';
+    
+    // 서버에서 받은 시간 문자열을 JavaScript Date 객체로 변환함
+    const date = new Date(dateString);
+    // 현재 시간을 Date 객체로 가져옴
+    const now = new Date();
+    
+    // 현재 시간과 게시글 작성 시간의 차이를 계산함
+    // getTime()은 1970년 1월 1일 00:00:00부터 지난 밀리초를 반환함
+    const diffMs = now.getTime() - date.getTime();
+    
+    // 밀리초 차이를 분으로 변환함 (1분 = 60000밀리초)
+    const diffMins = Math.floor(diffMs / 60000);
+    // 밀리초 차이를 시간으로 변환함 (1시간 = 3600000밀리초)
+    const diffHours = Math.floor(diffMs / 3600000);
+    // 밀리초 차이를 일로 변환함 (1일 = 86400000밀리초)
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    // 1분 이내면 '방금'으로 표시함
+    if (diffMins < 1) return '방금';
+    // 1분 이상 60분 미만이면 '~분 전'으로 표시함
+    if (diffMins < 60) return `${diffMins}분 전`;
+    // 1시간 이상 24시간 미만이면 '~시간 전'으로 표시함
+    if (diffHours < 24) return `${diffHours}시간 전`;
+    // 1일 이상 7일 미만이면 '~일 전'으로 표시함
+    if (diffDays < 7) return `${diffDays}일 전`;
+    
+    // 7일 이상 지나면 정확한 날짜와 시간을 표시함
+    // Intl.DateTimeFormat은 다양한 언어와 지역에 맞게 날짜를 포맷팅함
+    // timeZone: 'Asia/Seoul'로 설정하여 한국 시간대로 표시함
+    // (예: 2026.05.26 13:45)
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',           // 연도를 숫자로 표시함 (예: 2026)
+      month: '2-digit',          // 월을 2자리 숫자로 표시함 (예: 05)
+      day: '2-digit',            // 일을 2자리 숫자로 표시함 (예: 26)
+      hour: '2-digit',           // 시간을 2자리 숫자로 표시함 (예: 13)
+      minute: '2-digit',         // 분을 2자리 숫자로 표시함 (예: 45)
+      timeZone: 'Asia/Seoul'     // 한국 시간대(UTC+9)로 설정함
+    }).format(date);
+  };
+
+  const transformPostData = (item) => {
+    const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
+    return {
+      id: item.postId,
+      title: item.title,
+      author: authorName,
+      avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      time: formatTime(item.createdAt),
+      text: normalizeContent(item.content),
+      emotionId: item.emotionId,
+      commentsList: [],
+      likes: 0,
+      vibes: 0,
+      previewComment: null,
+      postId: item.postId,
+    };
+  };
 
   // 팔로우 처리 함수
   const handleFollowToggle = () => {
@@ -156,7 +254,7 @@ export function ProfilePage() {
           >
             프로필 편집
           </button>
-        ) : (
+        ) : isLoggedIn ? (
           <div className={styles.actionsRich}>
             <button 
               type="button" 
@@ -167,7 +265,7 @@ export function ProfilePage() {
             </button>
             <button type="button" className={styles.chatBtn} onClick={handleChatClick}>채팅하기</button>
           </div>
-        )}
+        ) : null}
       </article>
 
       {/* 통계 섹션 - 실제 데이터 적용 */}
@@ -226,9 +324,15 @@ export function ProfilePage() {
           )}
         </div>
         <div className={styles.postList}>
-          {feedPosts.map((post) => (
-            <FeedCard key={post.id} post={post} compact />
-          ))}
+          {postsLoading ? (
+            <div className={styles.emptyState}>게시물을 불러오는 중입니다...</div>
+          ) : posts.length > 0 ? (
+            posts.map((post) => (
+              <FeedCard key={post.postId} post={transformPostData(post)} compact />
+            ))
+          ) : (
+            <div className={styles.emptyState}>작성한 게시물이 없습니다.</div>
+          )}
         </div>
       </section>
     </section>

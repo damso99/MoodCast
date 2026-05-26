@@ -4,6 +4,7 @@ import com.moodcast.search.vo.SearchHashtagResult;
 import com.moodcast.search.vo.SearchPostResult;
 import com.moodcast.search.vo.SearchUserResult;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -13,7 +14,7 @@ public interface SearchDao {
     // 여기에 선언된 메서드 이름과 매퍼의 id가 매칭되어 SQL을 실행합니다.
     List<SearchPostResult> searchPosts(String query);
 
-    List<SearchUserResult> searchUsers(String query);
+    List<SearchUserResult> searchUsers(@Param("query") String query, @Param("loginId") Long loginId);
 
     List<SearchHashtagResult> searchHashtags(String query);
 }

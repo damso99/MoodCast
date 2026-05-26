@@ -1,9 +1,11 @@
 package com.moodcast.search.service;
 
+import com.moodcast.member.service.JwtService;
 import com.moodcast.search.dao.SearchDao;
 import com.moodcast.search.vo.SearchHashtagResult;
 import com.moodcast.search.vo.SearchPostResult;
 import com.moodcast.search.vo.SearchUserResult;
+import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +17,9 @@ public class SearchService {
     @Autowired
     private SearchDao searchDao;
 
+    @Autowired
+    private JwtService jwtService;
+
     // 검색어가 없으면 빈 리스트를 반환하고, 있으면 DAO를 통해 DB에서 검색합니다.
     public List<SearchPostResult> searchPosts(String query) {
         if (query == null || query.trim().isEmpty()) {
@@ -23,11 +28,22 @@ public class SearchService {
         return searchDao.searchPosts(query.trim());
     }
 
-    public List<SearchUserResult> searchUsers(String query) {
+    public List<SearchUserResult> searchUsers(String query, String authHeader) {
         if (query == null || query.trim().isEmpty()) {
             return Collections.emptyList();
         }
-        return searchDao.searchUsers(query.trim());
+
+        Long loginId = 0L;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7).trim();
+                loginId = jwtService.getMemberIdFromAccessToken(token);
+            } catch (JwtException | IllegalArgumentException ignored) {
+                loginId = 0L;
+            }
+        }
+
+        return searchDao.searchUsers(query.trim(), loginId);
     }
 
     public List<SearchHashtagResult> searchHashtags(String query) {

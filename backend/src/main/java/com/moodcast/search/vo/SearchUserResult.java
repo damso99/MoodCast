@@ -6,6 +6,7 @@ public class SearchUserResult {
     private String nickname;
     private String email;
     private String profileImageUrl;
+    private boolean following;
 
     public Long getMemberId() {
         return memberId;
@@ -45,5 +46,13 @@ public class SearchUserResult {
 
     public void setProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public boolean isFollowing() {
+        return following;
+    }
+
+    public void setFollowing(boolean following) {
+        this.following = following;
     }
 }

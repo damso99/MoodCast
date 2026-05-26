@@ -222,6 +222,15 @@
   gap: 16px;
 }
 
+.emptyState {
+  padding: 28px 0;
+  text-align: center;
+  color: #667085;
+  background: #f8f9ff;
+  border: 1px solid #e4e7f7;
+  border-radius: 18px;
+}
+
 @media (max-width: 768px) {
   .hero {
     grid-template-columns: 1fr;

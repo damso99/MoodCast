@@ -4,6 +4,7 @@ import com.moodcast.search.service.SearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,11 +33,14 @@ public class SearchController {
     }
 
     @GetMapping("/users")
-    public ResponseEntity<?> searchUsers(@RequestParam(value = "q", required = false) String query) {
+    public ResponseEntity<?> searchUsers(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "results", searchService.searchUsers(query)
+                        "results", searchService.searchUsers(query, authHeader)
                 )
         );
     }
