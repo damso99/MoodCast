@@ -11,7 +11,7 @@ import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
-import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
 

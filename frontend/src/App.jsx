@@ -16,9 +16,38 @@ import { ProfileSetupPage } from './pages/ProfileSetup/ProfileSetupPage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { AdminRoutes } from './pages/Admin/AdminPages';
 import { SignupPage } from './pages/Auth/SignupPage';
+import { useEffect } from 'react';
+import axios from 'axios';
+import { useAuthStore } from './stores/useAuthStore';
 
 function AppRoutes() {
   const desktop = useIsDesktop();
+  const { accessToken, setAuthData, clearAuthData } = useAuthStore();
+
+  /*
+    새로고침 후 sessionStorage에 남아있는 accessToken이
+    서버 기준으로도 유효한지 확인한다.
+  */
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    axios
+      .get(`${import.meta.env.VITE_BACKSERVER}/auth/me`, {
+        headers: {
+          Authorization: "Bearer " + accessToken,
+        },
+      })
+      .then((res) => {
+        const loginMember = res.data.member || res.data;
+        setAuthData(accessToken, loginMember);
+      })
+      .catch((err) => {
+        console.log("로그인 상태 확인 실패", err);
+        clearAuthData();
+      });
+  }, [accessToken, setAuthData, clearAuthData]);
 
   return (
     <Routes>

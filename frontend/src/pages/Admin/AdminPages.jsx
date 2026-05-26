@@ -8,7 +8,7 @@ import { ReportManagementPage } from "./adminComponentsJs/reportManagement/Repor
 import { StatisticsDashboardPage } from "./adminComponentsJs/statisticsDashboard/StatisticsDashboardPage";
 import { UserManagementPage } from "./adminComponentsJs/userManagement/UserManagementPage";
 import { pageTitles } from "./adminComponentsJs/common/adminConfig";
-import { useAuthStore } from "../../hooks/useAuthStore";
+import { useAuthStore } from "../../stores/useAuthStore";
 
 const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
 

@@ -4,7 +4,7 @@ import axios from "axios";
 import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { EmptyTableRow, TableShell } from "../common/TableShell";
-import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.module.css";
 
