@@ -219,8 +219,6 @@ export function FeedCard({ post, compact = false }) {
         }
       );
       setSaved(response.data.saved);
-      console.log('✅ 게시물 저장 상태 변경:', response.data);
-      alert(response.data.saved ? '게시물을 저장했습니다.' : '저장한 게시물을 취소했습니다.');
     } catch (err) {
       console.error('❌ 게시물 저장 실패:', err);
       alert('게시물 저장에 실패했습니다.');
