@@ -12,13 +12,9 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-
 @Controller
 @RequiredArgsConstructor
 public class ChatStompController {
-
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatService chatService;
     private final AuthDao authDao;
@@ -36,14 +32,12 @@ public class ChatStompController {
 
         int senderId = request.getSenderId();
         int receiverId = request.getReceiverId();
-        String createdAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
         ChatVo chatVo = new ChatVo();
         chatVo.setSenderId(senderId);
         chatVo.setReceiverId(receiverId);
         chatVo.setContent(content);
         chatVo.setIsRead(request.getIsRead() != null ? request.getIsRead() : 0);
-        chatVo.setCreatedAt(createdAt);
 
         ChatVo savedChat = chatService.insertChat(chatVo);
         Member sender = authDao.findMemberById((long) senderId);

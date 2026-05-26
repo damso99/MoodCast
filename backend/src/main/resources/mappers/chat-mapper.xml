@@ -64,6 +64,7 @@
             receiver_id,
             content,
             is_read,
+            created_at,
             deleted_yn
         )
         VALUES (
@@ -71,6 +72,7 @@
                    #{receiverId},
                    #{content},
                    COALESCE(#{isRead}, 0),
+                   #{createdAt},
                    0
                )
     </insert>
