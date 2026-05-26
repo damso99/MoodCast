@@ -34,4 +34,9 @@ public class AdminMember {
     private String status;
     private LocalDateTime createdAt;
     private String role;
+
+    private LocalDateTime lastLoginAt;
+    private Long reportCount;
+    private Long postCount;
+    private Long commentCount;
 }

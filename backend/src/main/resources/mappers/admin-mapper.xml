@@ -35,6 +35,10 @@
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <result property="role" column="role"/>
+        <result property="lastLoginAt" column="last_login_at"/>
+        <result property="reportCount" column="report_count"/>
+        <result property="postCount" column="post_count"/>
+        <result property="commentCount" column="comment_count"/>
     </resultMap>
 
     <!--
@@ -76,7 +80,17 @@
             email,
             status,
             created_at,
-            role
+            role,
+            last_login_at,
+            0 as report_count,
+            (select count(*)
+             from post_tbl p
+             where p.member_id = members.member_id
+               and p.deleted_yn = 'N') as post_count,
+            (select count(*)
+             from comment_tbl c
+             where c.member_id = members.member_id
+               and c.deleted_yn = 'N') as comment_count
         from members
         order by created_at desc
     </select>
@@ -99,7 +113,17 @@
             email,
             status,
             created_at,
-            role
+            role,
+            last_login_at,
+            0 as report_count,
+            (select count(*)
+             from post_tbl p
+             where p.member_id = members.member_id
+               and p.deleted_yn = 'N') as post_count,
+            (select count(*)
+             from comment_tbl c
+             where c.member_id = members.member_id
+               and c.deleted_yn = 'N') as comment_count
         from members
         where status = 'ACTIVE'
           and role in ('USER', 'MEMBER')

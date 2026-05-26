@@ -5,6 +5,11 @@ import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import PauseCircleOutlineOutlinedIcon from "@mui/icons-material/PauseCircleOutlineOutlined";
 import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { EmptyTableRow, TableShell } from "../common/TableShell";
@@ -46,6 +51,12 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * searchField / searchKeyword 상태 설명:
  * - searchField는 이름, 닉네임, 이메일 중 어떤 기준으로 검색할지 기억합니다.
  * - searchKeyword는 검색창에 입력한 실제 검색어를 기억합니다.
+ *
+ * selectedManagedMember 상태 설명:
+ * - 전체 목록에서 "관리" 버튼을 누른 회원 정보를 기억합니다.
+ * - 값이 있으면 오른쪽에 회원 관리 패널을 열고, 값이 null이면 패널을 닫습니다.
+ * - 지금 패널은 현재 목록 API에서 받은 기본 회원 정보로 구성되어 있습니다.
+ *   신고 횟수, 게시글 수, 댓글 수처럼 아직 별도 API가 없는 값은 안전한 기본값을 표시합니다.
  * ========================================================================== */
 export function UserManagementPage() {
   const [selectedUserType, setSelectedUserType] = useState("전체");
@@ -56,6 +67,7 @@ export function UserManagementPage() {
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState(false);
+  const [selectedManagedMember, setSelectedManagedMember] = useState(null);
   const { accessToken } = useAuthStore();
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
@@ -219,6 +231,14 @@ export function UserManagementPage() {
     return role || "-";
   };
 
+  const getLastLoginLabel = (member) => {
+    return formatDate(member?.lastLoginAt) || "기록 없음";
+  };
+
+  const getLoginMethodLabel = (member) => {
+    return member?.passwordHash === null ? "소셜 로그인" : "이메일 / 비밀번호";
+  };
+
   return (
     <AdminLayout
       title="사용자 관리"
@@ -319,7 +339,11 @@ export function UserManagementPage() {
               <td>{formatDate(member.createdAt)}</td>
               <td>{getRoleLabel(member.role)}</td>
               <td>
-                <button type="button" className={styles.tableActionButton}>
+                <button
+                  type="button"
+                  className={styles.tableActionButton}
+                  onClick={() => setSelectedManagedMember(member)}
+                >
                   관리
                 </button>
               </td>
@@ -351,6 +375,127 @@ export function UserManagementPage() {
           description="권한 변경 이력이 생기면 최신순으로 표시됩니다."
         />
       </section>
+
+      {selectedManagedMember && (
+        <div className={styles.memberDrawerLayer}>
+          <button
+            type="button"
+            className={styles.memberDrawerDim}
+            aria-label="회원 관리 패널 닫기"
+            onClick={() => setSelectedManagedMember(null)}
+          />
+
+          <aside
+            className={styles.memberDrawer}
+            aria-label={`${selectedManagedMember.name || "회원"} 관리 패널`}
+          >
+            <header className={styles.memberDrawerHeader}>
+              <h2>회원 관리</h2>
+              <button
+                type="button"
+                className={styles.drawerCloseButton}
+                aria-label="회원 관리 패널 닫기"
+                onClick={() => setSelectedManagedMember(null)}
+              >
+                <CloseOutlinedIcon fontSize="small" />
+              </button>
+            </header>
+
+            <section className={styles.memberSummary}>
+              <div className={styles.memberAvatar}>
+                <AccountCircleOutlinedIcon />
+              </div>
+              <div className={styles.memberSummaryText}>
+                <div className={styles.memberNameLine}>
+                  <strong>{selectedManagedMember.name || "-"}</strong>
+                  <span className={styles.normalStatusBadge}>
+                    {getStatusLabel(selectedManagedMember.status)}
+                  </span>
+                </div>
+                <p>
+                  {selectedManagedMember.nickname
+                    ? `@${selectedManagedMember.nickname}`
+                    : "닉네임 없음"}
+                </p>
+                <small>
+                  {getRoleLabel(selectedManagedMember.role)} <span>|</span> 가입일{" "}
+                  {formatDate(selectedManagedMember.createdAt)}
+                </small>
+              </div>
+            </section>
+
+            <section className={styles.drawerCard}>
+              <h3>제재 관리</h3>
+              <div className={styles.sanctionGrid}>
+                <button type="button" className={styles.temporarySanctionButton}>
+                  <PauseCircleOutlineOutlinedIcon />
+                  <strong>일시 정지</strong>
+                  <span>특정 기간 동안 활동 제한</span>
+                </button>
+                <button type="button" className={styles.permanentSanctionButton}>
+                  <LockOutlinedIcon />
+                  <strong>영구 정지</strong>
+                  <span>계정 영구 이용 제한</span>
+                </button>
+              </div>
+            </section>
+
+            <section className={styles.drawerCard}>
+              <div className={styles.drawerCardHead}>
+                <h3>회원 정보</h3>
+                <button
+                  type="button"
+                  className={styles.copyButton}
+                  aria-label="회원 이메일 복사"
+                  onClick={() =>
+                    navigator.clipboard?.writeText(selectedManagedMember.email || "")
+                  }
+                >
+                  <ContentCopyOutlinedIcon fontSize="small" />
+                </button>
+              </div>
+              <dl className={styles.memberInfoList}>
+                <div>
+                  <dt>이메일</dt>
+                  <dd>{selectedManagedMember.email || "-"}</dd>
+                </div>
+                <div>
+                  <dt>최근 로그인</dt>
+                  <dd>{getLastLoginLabel(selectedManagedMember)}</dd>
+                </div>
+                <div>
+                  <dt>가입일</dt>
+                  <dd>{formatDate(selectedManagedMember.createdAt)}</dd>
+                </div>
+                <div>
+                  <dt>신고 횟수</dt>
+                  <dd>{selectedManagedMember.reportCount ?? 0}회</dd>
+                </div>
+                <div>
+                  <dt>게시글 수</dt>
+                  <dd>{selectedManagedMember.postCount ?? 0}개</dd>
+                </div>
+                <div>
+                  <dt>댓글 수</dt>
+                  <dd>{selectedManagedMember.commentCount ?? 0}개</dd>
+                </div>
+                <div>
+                  <dt>로그인 방식</dt>
+                  <dd>{getLoginMethodLabel(selectedManagedMember)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section className={styles.drawerCard}>
+              <h3>제재 이력</h3>
+              <div className={styles.emptySanctionHistory}>
+                <DescriptionOutlinedIcon />
+                <strong>제재 이력이 없습니다.</strong>
+              </div>
+            </section>
+          </aside>
+        </div>
+      )}
     </AdminLayout>
   );
 }
