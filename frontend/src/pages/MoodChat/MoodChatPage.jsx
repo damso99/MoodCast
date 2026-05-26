@@ -19,6 +19,7 @@ import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
+const DEBUG_CHAT_ROOM = true;
 
 function normalizeIncomingMessage(message, currentUserId) {
   const senderId = Number(message?.senderId);
@@ -65,6 +66,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [isSending, setIsSending] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!DEBUG_CHAT_ROOM) {
+      return;
+    }
+
+    console.log("[MoodChat] messages state", messages);
+  }, [messages]);
+
   const handleIncomingMessage = (incomingMessage) => {
     if (incomingMessage?.eventType === "READ_RECEIPT") {
       const readerId = Number(incomingMessage.receiverId);
@@ -160,7 +170,9 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       const response = await axios.get(`${API_BASE}/chat/threads`, {
         params: { memberId: currentMemberId },
       });
-      setThreads(Array.isArray(response.data) ? response.data : []);
+      const nextThreads = Array.isArray(response.data) ? response.data : [];
+
+      setThreads(nextThreads);
     } catch (requestError) {
       console.error("채팅 리스트 조회 실패", requestError);
       setThreads([]);
@@ -189,6 +201,29 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         },
       });
       const list = Array.isArray(response.data) ? response.data : [];
+
+      if (DEBUG_CHAT_ROOM) {
+        console.log("[MoodChat] loadMessages response", response.data);
+        console.log("[MoodChat] room pair", {
+          currentMemberId,
+          partnerMemberId: partnerThread.partnerMemberId,
+          totalCount: list.length,
+        });
+        console.table(
+          list.map((item) => ({
+            chatId: item.chatId,
+            senderId: item.senderId,
+            receiverId: item.receiverId,
+            matchesRoom:
+              (Number(item.senderId) === Number(currentMemberId) &&
+                Number(item.receiverId) === Number(partnerThread.partnerMemberId)) ||
+              (Number(item.senderId) === Number(partnerThread.partnerMemberId) &&
+                Number(item.receiverId) === Number(currentMemberId)),
+          })),
+        );
+        console.table(list);
+      }
+
       setMessages(
         list.map((item) => normalizeIncomingMessage(item, currentMemberId)),
       );
@@ -284,6 +319,10 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   }, [messages, isRoomOpen, activeThread]);
 
   const openThread = (thread) => {
+    if (DEBUG_CHAT_ROOM) {
+      console.log("[MoodChat] openThread", thread);
+    }
+
     setActiveThread(thread);
     setIsRoomOpen(true);
     setMessage("");
