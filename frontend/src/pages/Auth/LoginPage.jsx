@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuthStore } from "../../hooks/useAuthStore";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
 
 export const LoginPage = () => {
@@ -20,8 +20,6 @@ export const LoginPage = () => {
     type: "",
     message: "",
   });
-
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   const showToast = (type, message) => {
     setToast({
@@ -64,12 +62,9 @@ export const LoginPage = () => {
 
     setIsLoading(true);
 
-    console.log("로그인 요청 데이터:", member);
-    console.log("서버 주소:", BACKSERVER);
-
     axios
       .post(
-        `${BACKSERVER}/auth/login`,
+        `${import.meta.env.VITE_BACKSERVER}/auth/login`,
         {
           email: member.email,
           password: member.password,
@@ -80,13 +75,13 @@ export const LoginPage = () => {
         },
       )
       .then((res) => {
+        console.log(res.data);
         setAuthData(res.data.accessToken, res.data.member);
         setMember({
           email: "",
           password: "",
           remember: false,
         });
-        showToast("success", res.data.message || "로그인되었습니다.");
         navigate("/app/feed");
       })
       .catch((err) => {

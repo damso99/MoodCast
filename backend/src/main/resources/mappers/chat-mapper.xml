@@ -26,6 +26,8 @@
             from chat_tbl
             where (sender_id = #{memberId} or receiver_id = #{memberId})
               and deleted_yn = 0
+              and not (sender_id = #{memberId} and sender_deleted_yn = 1)
+              and not (receiver_id = #{memberId} and receiver_deleted_yn = 1)
             group by
                 case
                     when sender_id = #{memberId} then receiver_id
@@ -51,12 +53,29 @@
             deleted_yn as deletedYn
         from chat_tbl
         where deleted_yn = 0
+          and not (sender_id = #{memberId} and sender_deleted_yn = 1)
+          and not (receiver_id = #{memberId} and receiver_deleted_yn = 1)
           and (
             (sender_id = #{memberId} and receiver_id = #{partnerId})
             or
             (sender_id = #{partnerId} and receiver_id = #{memberId})
           )
         order by created_at asc, chat_id asc
+    </select>
+    <select id="selectChatMessageById" resultType="com.moodcast.moodchat.vo.ChatVo">
+        select
+            chat_id as chatId,
+            sender_id as senderId,
+            receiver_id as receiverId,
+            content,
+            is_read as isRead,
+            date_format(created_at, '%Y-%m-%dT%H:%i:%s') as createdAt,
+            deleted_yn as deletedYn,
+            sender_deleted_yn as senderDeletedYn,
+            receiver_deleted_yn as receiverDeletedYn
+        from chat_tbl
+        where chat_id = #{chatId}
+        limit 1
     </select>
     <insert id="insertChat" parameterType="com.moodcast.moodchat.vo.ChatVo" useGeneratedKeys="true" keyProperty="chatId">
         INSERT INTO chat_tbl (
@@ -65,7 +84,9 @@
             content,
             is_read,
             created_at,
-            deleted_yn
+            deleted_yn,
+            sender_deleted_yn,
+            receiver_deleted_yn
         )
         VALUES (
                    #{senderId},
@@ -73,6 +94,8 @@
                    #{content},
                    COALESCE(#{isRead}, 0),
                    #{createdAt},
+                   0,
+                   0,
                    0
                )
     </insert>
@@ -83,6 +106,38 @@
         where receiver_id = #{memberId}
           and sender_id = #{partnerId}
           and is_read = 0
+          and deleted_yn = 0
+    </update>
+
+    <update id="deleteChatMessageGlobally">
+        update chat_tbl
+        set deleted_yn = 1,
+            sender_deleted_yn = 1,
+            receiver_deleted_yn = 1
+        where chat_id = #{chatId}
+    </update>
+
+    <update id="deleteChatMessageForSender">
+        update chat_tbl
+        set sender_deleted_yn = 1,
+            deleted_yn = case
+                when receiver_deleted_yn = 1 then 1
+                else deleted_yn
+            end
+        where chat_id = #{chatId}
+          and sender_id = #{memberId}
+          and deleted_yn = 0
+    </update>
+
+    <update id="deleteChatMessageForReceiver">
+        update chat_tbl
+        set receiver_deleted_yn = 1,
+            deleted_yn = case
+                when sender_deleted_yn = 1 then 1
+                else deleted_yn
+            end
+        where chat_id = #{chatId}
+          and receiver_id = #{memberId}
           and deleted_yn = 0
     </update>
 </mapper>

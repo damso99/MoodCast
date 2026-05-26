@@ -9,14 +9,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@CrossOrigin("*")
 @RequestMapping(value="signup")
 public class SignupController {
     @Autowired
     private SignupService signupService;
 
     // =======================================================================================
-    // SignupController의 예외는 moodcast.common.exception의 SignupExceptionHandler가 잡음
+    // SignupController의 예외는 moodcast.common.exception의 MemberExceptionHandler가 잡음
     // 그래서 정상 응답만 직접 처리함, 예외는 작성X
     // 400, 500 예외
 

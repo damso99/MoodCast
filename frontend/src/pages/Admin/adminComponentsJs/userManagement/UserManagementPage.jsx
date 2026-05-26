@@ -12,7 +12,7 @@ import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { UserManagementDrawer } from "./UserManagementDrawer";
-import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
 
@@ -373,12 +373,17 @@ export function UserManagementPage() {
         className={styles.userTable}
         footer={
           visibleMembers.length > 0 ? (
-            <nav className={styles.pagination} aria-label="회원 목록 페이지 이동">
+            <nav
+              className={styles.pagination}
+              aria-label="회원 목록 페이지 이동"
+            >
               <div className={styles.paginationButtons}>
                 <button
                   type="button"
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.max(1, page - 1))
+                  }
                 >
                   이전
                 </button>
@@ -401,9 +406,7 @@ export function UserManagementPage() {
                   type="button"
                   disabled={currentPage === totalPageCount}
                   onClick={() =>
-                    setCurrentPage((page) =>
-                      Math.min(totalPageCount, page + 1),
-                    )
+                    setCurrentPage((page) => Math.min(totalPageCount, page + 1))
                   }
                 >
                   다음
@@ -418,7 +421,10 @@ export function UserManagementPage() {
         ) : membersError ? (
           <EmptyTableRow colSpan={6} label="회원 목록 조회 실패" />
         ) : visibleMembers.length === 0 ? (
-          <EmptyTableRow colSpan={6} label={`${selectedUserType} 데이터 없음`} />
+          <EmptyTableRow
+            colSpan={6}
+            label={`${selectedUserType} 데이터 없음`}
+          />
         ) : (
           paginatedMembers.map((member) => (
             <tr key={member.memberId}>
@@ -491,4 +497,3 @@ export function UserManagementPage() {
     </AdminLayout>
   );
 }
-

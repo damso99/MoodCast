@@ -2,7 +2,7 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import MoodOutlinedIcon from '@mui/icons-material/MoodOutlined';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './ComposerCard.module.css';
 
 export function ComposerCard() {

@@ -1,6 +1,5 @@
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import { useState } from 'react';
@@ -175,10 +174,6 @@ export function FeedCard({ post, compact = false }) {
             <ChatBubbleOutlineIcon />
             {comments.length}
           </button>
-          <span className={styles.reaction}>
-            <AutoAwesomeOutlinedIcon />
-            {post.vibes}
-          </span>
           <button type="button" className={styles.bookmark} aria-label="저장">
             <BookmarkBorderIcon />
           </button>

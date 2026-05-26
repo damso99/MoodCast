@@ -60,4 +60,33 @@ public class ChatController {
         }
         return ResponseEntity.ok(updatedCount);
     }
+
+    @PostMapping("/messages/delete")
+    public ResponseEntity<?> deleteMessage(
+        @RequestParam Long chatId,
+        @RequestParam Long memberId
+    ) {
+        ChatVo deletedChat = chatService.deleteChatMessage(chatId, memberId);
+        if (deletedChat == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        ChatMessageDto deleteMessage = new ChatMessageDto();
+        deleteMessage.setChatId(deletedChat.getChatId());
+        deleteMessage.setSenderId(deletedChat.getSenderId());
+        deleteMessage.setReceiverId(deletedChat.getReceiverId());
+        deleteMessage.setEventType("CHAT_DELETE");
+        deleteMessage.setIsRead(deletedChat.getIsRead());
+
+        if (deletedChat.getIsRead() == 0) {
+            messagingTemplate.convertAndSend("/sub/chat/" + deletedChat.getSenderId(), deleteMessage);
+            messagingTemplate.convertAndSend("/sub/chat/" + deletedChat.getReceiverId(), deleteMessage);
+        } else if (deletedChat.getSenderId() == memberId.intValue()) {
+            messagingTemplate.convertAndSend("/sub/chat/" + memberId, deleteMessage);
+        } else {
+            messagingTemplate.convertAndSend("/sub/chat/" + memberId, deleteMessage);
+        }
+
+        return ResponseEntity.ok(deletedChat);
+    }
 }

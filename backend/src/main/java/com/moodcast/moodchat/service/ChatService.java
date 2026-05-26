@@ -43,4 +43,45 @@ public class ChatService {
     public int markMessagesAsRead(Long memberId, Long partnerId) {
         return chatDao.updateMessagesRead(memberId, partnerId);
     }
+
+    public ChatVo deleteChatMessage(Long chatId, Long memberId) {
+        if (chatId == null || memberId == null) {
+            return null;
+        }
+
+        ChatVo chat = chatDao.selectChatMessageById(chatId);
+        if (chat == null) {
+            return null;
+        }
+
+        boolean isSender = chat.getSenderId() == memberId.intValue();
+        boolean isReceiver = chat.getReceiverId() == memberId.intValue();
+        if (!isSender && !isReceiver) {
+            return null;
+        }
+
+        if (chat.getIsRead() == 0) {
+            chatDao.deleteChatMessageGlobally(chatId);
+            chat.setDeletedYn(1);
+            chat.setSenderDeletedYn(1);
+            chat.setReceiverDeletedYn(1);
+            return chat;
+        }
+
+        if (isSender) {
+            chatDao.deleteChatMessageForSender(chatId, memberId);
+            chat.setSenderDeletedYn(1);
+            if (chat.getReceiverDeletedYn() == 1) {
+                chat.setDeletedYn(1);
+            }
+            return chat;
+        }
+
+        chatDao.deleteChatMessageForReceiver(chatId, memberId);
+        chat.setReceiverDeletedYn(1);
+        if (chat.getSenderDeletedYn() == 1) {
+            chat.setDeletedYn(1);
+        }
+        return chat;
+    }
 }

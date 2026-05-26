@@ -1,5 +1,6 @@
 package com.moodcast.common.exception;
 
+import com.moodcast.member.controller.LoginController;
 import com.moodcast.member.controller.SignupController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -9,11 +10,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
-// SignupController에서 발생한 예외만 여기서 잡음
-@RestControllerAdvice(assignableTypes = SignupController.class)
-public class SignupExceptionHandler {
+// SignupController와 LoginController에서 발생한 예외를 함께 처리한다.
+@RestControllerAdvice(assignableTypes = {
+        SignupController.class,
+        LoginController.class
+})
+public class MemberExceptionHandler {
 
-    // 사용자 입력문제 예외 400
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(
@@ -24,7 +27,6 @@ public class SignupExceptionHandler {
         );
     }
 
-    // 서버 처리 문제 500
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<?> handleIllegalStateException(IllegalStateException e) {
         return ResponseEntity.internalServerError().body(
@@ -35,7 +37,6 @@ public class SignupExceptionHandler {
         );
     }
 
-    // 요청 body가 잘못됐거나 필수 파라미터가 빠진 경우 400
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class
@@ -49,7 +50,6 @@ public class SignupExceptionHandler {
         );
     }
 
-    // 약관 조회 중 DB 에러
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleException(Exception e) {
         return ResponseEntity.internalServerError().body(

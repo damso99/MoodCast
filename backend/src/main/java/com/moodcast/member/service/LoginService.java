@@ -1,6 +1,6 @@
 package com.moodcast.member.service;
 
-import com.moodcast.member.dao.AuthDao;
+import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
 import com.moodcast.member.dto.follow.FollowResponse;
@@ -16,12 +16,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.regex.Pattern;
 
 @Service
-public class AuthService {
+public class LoginService {
     @Autowired
-    private AuthDao authDao;
+    private LoginDao loginDao;
+
+    @Autowired
+    private MemberValidationService memberValidationService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -29,38 +31,24 @@ public class AuthService {
     @Autowired
     private JwtService jwtService;
 
-    private static final Pattern EMAIL_PATTERN =
-            Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
-
-    private String normalizeEmail(String email) {
-        if (email == null) {
-            throw new IllegalArgumentException("이메일을 입력해주세요.");
-        }
-
-        email = email.trim().toLowerCase();
-
-        if (email.isEmpty()) {
-            throw new IllegalArgumentException("이메일을 입력해주세요.");
-        }
-
-        if (!EMAIL_PATTERN.matcher(email).matches()) {
-            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
-        }
-
-        return email;
-    }
-
+    // 비밀번호 null, 빈값 체크
     private String checkPasswordInput(String password) {
         if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("비밀번호를 입력해주세요.");
+            throw new IllegalArgumentException("비밀번호를 입력해주세요");
         }
 
         return password;
     }
 
+    // 회원이 로그인 가능한 상태인지 체크
+    // 인증 미완료, 탈퇴, 정지 체크
     private void checkLoginAllowed(Member member) {
-        if (!"ACTIVE".equals(member.getStatus()) || member.getDeletedAt() != null) {
-            throw new IllegalArgumentException("로그인할 수 없는 계정입니다.");
+        if ("SUSPENDED".equals(member.getStatus())) {
+            throw new IllegalArgumentException("정지된 계정입니다.");
+        }
+
+        if ("WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null) {
+            throw new IllegalArgumentException("탈퇴한 계정입니다.");
         }
 
         if (!Integer.valueOf(1).equals(member.getEmailVerified())) {
@@ -90,62 +78,68 @@ public class AuthService {
             throw new IllegalArgumentException("로그인 정보를 입력해주세요.");
         }
 
-        String email = normalizeEmail(request.getEmail());
+        String email = memberValidationService.normalizeEmail(request.getEmail());
         String password = checkPasswordInput(request.getPassword());
 
-        Member member = authDao.findMemberByEmail(email);
+        Member member = loginDao.findMemberByEmail(email);
+        String passwordHash = loginDao.findPasswordHashByEmail(email);
 
-        if (member == null || member.getPasswordHash() == null) {
+        if (member == null || passwordHash == null || passwordHash.trim().isEmpty()) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
-        boolean matches = passwordEncoder.matches(password, member.getPasswordHash());
+        boolean matches = passwordEncoder.matches(password, passwordHash);
         if (!matches) {
             throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
         }
 
         checkLoginAllowed(member);
 
-        int result = authDao.updateLastLoginAt(member.getMemberId());
-        if (result != 1) {
+        int result = loginDao.updateLastLoginAt(member.getMemberId());
+        if (result <= 0) {
             throw new IllegalStateException("로그인 처리에 실패했습니다.");
         }
 
         String accessToken = jwtService.createAccessToken(member);
         String refreshToken = jwtService.createRefreshToken(member);
+        LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
-        return new LoginResult(accessToken, refreshToken, toLoginMemberResponse(member));
+        LoginResult loginResult = new LoginResult(
+                accessToken,
+                refreshToken,
+                loginMemberResponse
+        );
+
+        return loginResult;
     }
 
-    public LoginMemberResponse getLoginMember(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+    public LoginMemberResponse getLoginMember(String accessToken) {
+        if (accessToken == null || accessToken.trim().isEmpty()) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        String accessToken = authorizationHeader.substring(7).trim();
+        Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
+        Member member = loginDao.findMemberById(memberId);
 
-        if (accessToken.isEmpty()) {
+        if (member == null) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        try {
-            Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
-            Member member = authDao.findMemberById(memberId);
+        checkLoginAllowed(member);
 
-            if (member == null) {
-                throw new IllegalArgumentException("로그인 정보를 찾을 수 없습니다.");
-            }
+        LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
 
-            checkLoginAllowed(member);
+        return loginMemberResponse;
+    }
 
-            return toLoginMemberResponse(member);
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("로그인이 만료되었습니다. 다시 로그인해주세요.");
-        }
+    public LoginMemberResponse getLoginMemberByHeader(String authorizationHeader) {
+        String accessToken = extractAccessToken(authorizationHeader);
+
+        return getLoginMember(accessToken);
     }
 
     public LoginMemberResponse getMemberById(Long memberId) {
-        Member member = authDao.findMemberById(memberId);
+        Member member = loginDao.findMemberById(memberId);
         if (member == null) {
             throw new IllegalArgumentException("사용자를 찾을 수 없습니다.");
         }
@@ -169,7 +163,7 @@ public class AuthService {
 
         try {
             Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
-            Member member = authDao.findMemberById(memberId);
+            Member member = loginDao.findMemberById(memberId);
 
             if (member == null) {
                 throw new IllegalArgumentException("로그인 정보를 찾을 수 없습니다.");
@@ -177,9 +171,9 @@ public class AuthService {
 
             checkLoginAllowed(member);
 
-            authDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio());
+            loginDao.updateMemberProfile(memberId, request.getNickname().trim(), request.getBio());
 
-            Member updated = authDao.findMemberById(memberId);
+            Member updated = loginDao.findMemberById(memberId);
             if (updated == null) {
                 throw new IllegalStateException("프로필 정보를 불러올 수 없습니다.");
             }
@@ -197,12 +191,12 @@ public class AuthService {
             throw new IllegalArgumentException("자기 자신을 팔로우할 수 없습니다.");
         }
 
-        boolean isFollowing = authDao.isFollowing(followerId, followingId) > 0;
+        boolean isFollowing = loginDao.isFollowing(followerId, followingId) > 0;
         if (isFollowing) {
-            authDao.unfollow(followerId, followingId);
+            loginDao.unfollow(followerId, followingId);
             return new FollowResponse(true, "팔로우가 취소되었습니다.", false);
         } else {
-            authDao.follow(followerId, followingId);
+            loginDao.follow(followerId, followingId);
             return new FollowResponse(true, "팔로우되었습니다.", true);
         }
     }
@@ -215,13 +209,13 @@ public class AuthService {
 
         boolean following = false;
         if (currentMemberId > 0 && !currentMemberId.equals(targetMemberId)) {
-            following = authDao.isFollowing(currentMemberId, targetMemberId) > 0;
+            following = loginDao.isFollowing(currentMemberId, targetMemberId) > 0;
         }
 
-        long followerCount = authDao.countFollowers(targetMemberId);
-        long followingCount = authDao.countFollowing(targetMemberId);
-        long postCount = authDao.countPosts(targetMemberId);
-        long savedCount = authDao.countSavedPosts(targetMemberId);
+        long followerCount = loginDao.countFollowers(targetMemberId);
+        long followingCount = loginDao.countFollowing(targetMemberId);
+        long postCount = loginDao.countPosts(targetMemberId);
+        long savedCount = loginDao.countSavedPosts(targetMemberId);
 
         return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount);
     }
@@ -238,7 +232,7 @@ public class AuthService {
         } else {
             System.out.println("DEBUG: getFollowerList - NO AUTH HEADER RECEIVED");
         }
-        return authDao.getFollowerList(targetId, loginId);
+        return loginDao.getFollowerList(targetId, loginId);
     }
 
     public List<FollowItemResponse> getFollowingList(String authHeader, Long targetId) {
@@ -253,14 +247,26 @@ public class AuthService {
         } else {
             System.out.println("DEBUG: getFollowingList - NO AUTH HEADER RECEIVED");
         }
-        return authDao.getFollowingList(targetId, loginId);
+        return loginDao.getFollowingList(targetId, loginId);
     }
 
     private Long getMemberIdFromHeader(String authHeader) {
+        String token = extractAccessToken(authHeader);
+
+        return jwtService.getMemberIdFromAccessToken(token);
+    }
+
+    private String extractAccessToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new IllegalArgumentException("로그인이 필요합니다.");
         }
+
         String token = authHeader.substring(7).trim();
-        return jwtService.getMemberIdFromAccessToken(token);
+
+        if (token.isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        return token;
     }
 }

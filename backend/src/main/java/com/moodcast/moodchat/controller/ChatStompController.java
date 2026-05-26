@@ -1,6 +1,6 @@
 package com.moodcast.moodchat.controller;
 
-import com.moodcast.member.dao.AuthDao;
+import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.vo.Member;
 import com.moodcast.moodchat.dto.ChatMessageDto;
 import com.moodcast.moodchat.dto.ChatSendRequestDto;
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Controller;
 public class ChatStompController {
     private final SimpMessagingTemplate messagingTemplate;
     private final ChatService chatService;
-    private final AuthDao authDao;
+    private final LoginDao loginDao;
 
     @MessageMapping("/chat/send")
     public void sendMessage(@Payload ChatSendRequestDto request) {
@@ -40,7 +40,7 @@ public class ChatStompController {
         chatVo.setIsRead(request.getIsRead() != null ? request.getIsRead() : 0);
 
         ChatVo savedChat = chatService.insertChat(chatVo);
-        Member sender = authDao.findMemberById((long) senderId);
+        Member sender = loginDao.findMemberById((long) senderId);
 
         ChatMessageDto chatMessage = buildChatMessage(savedChat, sender, "CHAT_MESSAGE");
         messagingTemplate.convertAndSend("/sub/chat/" + receiverId, chatMessage);

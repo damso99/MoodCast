@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
@@ -6,7 +6,7 @@ import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNone
 import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './TopUtilityIcons.module.css';
 
 const defaultAvatarSrc =
@@ -26,7 +26,7 @@ const defaultAvatarSrc =
     </svg>
   `);
 
-export function TopUtilityIcons({ onSearch }) {
+function TopUtilityIconsBase({ onSearch }) {
   const navigate = useNavigate();
   const { isLoggedIn, member, clearAuthData } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -132,3 +132,5 @@ export function TopUtilityIcons({ onSearch }) {
     </div>
   );
 }
+
+export const TopUtilityIcons = memo(TopUtilityIconsBase);

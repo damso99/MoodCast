@@ -11,4 +11,6 @@ public class ChatVo {
     private int isRead;
     private String createdAt;
     private int deletedYn;
+    private int senderDeletedYn;
+    private int receiverDeletedYn;
 }
