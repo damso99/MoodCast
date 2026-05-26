@@ -3,6 +3,8 @@ package com.moodcast.admin.controller;
 import com.moodcast.admin.service.AdminService;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
+import com.moodcast.admin.vo.AdminMemberDetail;
+import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
@@ -81,6 +83,72 @@ public class AdminController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         return Map.of("members", adminService.getMembers(authorizationHeader));
+    }
+
+    /* ==========================================================================
+     * 회원 상세 정보 조회 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지에서 "회원 정보 전체 보기" 버튼을 눌렀을 때 사용하는 API입니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/members/{memberId}
+     *
+     * 응답 기준:
+     * - members 테이블에 저장된 개인정보 관련 값을 반환합니다.
+     * - password_hash는 절대 반환하지 않습니다.
+     * ========================================================================== */
+    @GetMapping("/members/{memberId}")
+    public AdminMemberDetail getMemberDetail(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return adminService.getMemberDetail(authorizationHeader, memberId);
+    }
+
+    /* ==========================================================================
+     * 회원 정지 처리 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 일시 정지 또는 영구 정지를 확정했을 때 호출됩니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/suspend
+     *
+     * 요청 body 예시:
+     * - { "suspendType": "TEMPORARY", "suspendDays": 7 }
+     * - { "suspendType": "TEMPORARY", "suspendedUntil": "2026-06-08" }
+     * - { "suspendType": "PERMANENT" }
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/suspend")
+    public Map<String, Object> suspendMember(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId,
+            @RequestBody AdminMemberSuspendRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "회원 정지 처리가 완료되었습니다.",
+                "member", adminService.suspendMember(authorizationHeader, memberId, request)
+        );
+    }
+
+    /* ==========================================================================
+     * 회원 정지 해제 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 패널에서 정지된 회원의 "정지 해제" 버튼을 눌렀을 때 호출합니다.
+     *
+     * 요청 주소:
+     * - PUT /admin/api/members/{memberId}/restore
+     * ========================================================================== */
+    @PutMapping("/members/{memberId}/restore")
+    public Map<String, Object> restoreSuspendedMember(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "회원 정지 해제가 완료되었습니다.",
+                "member", adminService.restoreSuspendedMember(authorizationHeader, memberId)
+        );
     }
 
     /* ==========================================================================

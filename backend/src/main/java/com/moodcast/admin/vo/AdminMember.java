@@ -39,4 +39,7 @@ public class AdminMember {
     private Long reportCount;
     private Long postCount;
     private Long commentCount;
+    private LocalDateTime suspendedUntil;
+    private Long suspensionCount;
+    private Long warningCount;
 }
