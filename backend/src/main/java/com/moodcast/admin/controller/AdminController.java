@@ -8,6 +8,7 @@ import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
+import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -83,6 +84,24 @@ public class AdminController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         return Map.of("members", adminService.getMembers(authorizationHeader));
+    }
+
+    /* ==========================================================================
+     * 사용자 관리 하단 요약 조회 API
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지 하단 영역에 필요한 정보를 한 번에 조회합니다.
+     *
+     * 응답에 포함되는 값:
+     * - 전체/일반/관리자/정지 회원 수
+     * - 가장 최근 가입 회원 1명
+     * - 가장 최근 제재 회원 1명
+     * - 최근 권한 변경/정지/해제 로그
+     * ========================================================================== */
+    @GetMapping("/members/management-summary")
+    public AdminUserManagementSummary getUserManagementSummary(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return adminService.getUserManagementSummary(authorizationHeader);
     }
 
     /* ==========================================================================

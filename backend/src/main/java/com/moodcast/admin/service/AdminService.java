@@ -2,11 +2,13 @@ package com.moodcast.admin.service;
 
 import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
+import com.moodcast.admin.vo.AdminActionLogView;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
+import com.moodcast.admin.vo.AdminUserManagementSummary;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +120,35 @@ public class AdminService {
     public List<AdminMember> getMembers(String authorizationHeader) {
         validateAdmin(authorizationHeader);
         return adminDao.selectMembers();
+    }
+
+    /* ==========================================================================
+     * 사용자 관리 하단 요약 조회
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지 하단의 회원 비율, 최근 가입 회원, 최근 제재 회원,
+     * 권한/제재 로그를 한 번에 조회합니다.
+     *
+     * 초보자 설명:
+     * - Controller는 요청만 받고, Service가 어떤 DAO를 조합할지 결정합니다.
+     * - count 조회, 최근 회원 조회, 로그 조회는 SQL이 서로 다르기 때문에
+     *   DAO 메서드를 나눠 호출한 뒤 하나의 응답 객체에 담습니다.
+     * ========================================================================== */
+    public AdminUserManagementSummary getUserManagementSummary(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+
+        AdminUserManagementSummary summary = adminDao.selectUserManagementSummaryCounts();
+
+        if (summary == null) {
+            summary = new AdminUserManagementSummary();
+        }
+
+        summary.setLatestJoinedMember(adminDao.selectLatestJoinedMember());
+        summary.setLatestSanctionedMember(adminDao.selectLatestSanctionedMember());
+
+        List<AdminActionLogView> actionLogs = adminDao.selectRecentAdminActionLogs();
+        summary.setActionLogs(actionLogs == null ? Collections.emptyList() : actionLogs);
+
+        return summary;
     }
 
     /* ==========================================================================

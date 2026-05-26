@@ -1,9 +1,12 @@
 package com.moodcast.admin.dao;
 
+import com.moodcast.admin.vo.AdminActionLogView;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminProfile;
+import com.moodcast.admin.vo.AdminRecentMember;
+import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -32,6 +35,18 @@ public interface AdminDao {
 
     /* members 테이블에 있는 전체 회원 목록을 조회합니다. */
     List<AdminMember> selectMembers();
+
+    /* 사용자 관리 하단의 전체/일반/관리자/정지 회원 수를 한 번에 조회합니다. */
+    AdminUserManagementSummary selectUserManagementSummaryCounts();
+
+    /* 사용자 관리 하단 카드에 표시할 가장 최근 가입 회원 1명을 조회합니다. */
+    AdminRecentMember selectLatestJoinedMember();
+
+    /* 사용자 관리 하단 카드에 표시할 가장 최근 제재 회원 1명을 조회합니다. */
+    AdminRecentMember selectLatestSanctionedMember();
+
+    /* 사용자 관리 하단에 표시할 최근 권한 변경/제재 로그를 조회합니다. */
+    List<AdminActionLogView> selectRecentAdminActionLogs();
 
     /* 회원 정보 전체 보기에서 사용할 단건 상세 정보를 조회합니다. */
     AdminMemberDetail selectMemberDetail(@Param("memberId") Long memberId);
