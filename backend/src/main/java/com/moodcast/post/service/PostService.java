@@ -1,7 +1,7 @@
 package com.moodcast.post.service;
 
 import com.moodcast.member.dto.login.LoginMemberResponse;
-import com.moodcast.member.service.AuthService;
+import com.moodcast.member.service.LoginService;
 import com.moodcast.post.dao.PostDao;
 import com.moodcast.post.dto.CreateCommentRequest;
 import com.moodcast.post.dto.CreatePostRequest;
@@ -27,7 +27,7 @@ public class PostService {
     private PostDao postDao;
 
     @Autowired
-    private AuthService authService;
+    private LoginService loginService;
 
     @Transactional
     public Long createPost(String authorizationHeader, CreatePostRequest request) {
@@ -35,7 +35,7 @@ public class PostService {
             throw new IllegalArgumentException("게시물 정보를 입력해주세요.");
         }
 
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         Long memberId = loginMember.getMemberId();
 
         String title = request.getTitle() != null ? request.getTitle().trim() : null;

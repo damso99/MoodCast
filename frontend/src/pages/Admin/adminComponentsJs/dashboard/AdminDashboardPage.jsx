@@ -10,7 +10,7 @@ import { EmptyState } from "../common/EmptyState";
 import { MetricCard } from "../common/MetricCard";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { adminNavItems } from "../common/adminConfig";
-import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/dashboard/AdminDashboardPage.module.css";
 
 /* ==========================================================================

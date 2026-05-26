@@ -6,10 +6,12 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -66,14 +68,22 @@ public class JwtService {
     }
 
     public Long getMemberIdFromAccessToken(String accessToken) {
-        Claims claims = parseToken(accessToken);
-        String tokenType = claims.get("type", String.class);
-
-        if (!"ACCESS".equals(tokenType)) {
-            throw new JwtException("Access Token이 아닙니다.");
+        if (accessToken == null || accessToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
         }
 
-        return Long.parseLong(claims.getSubject());
+        try {
+            Claims claims = parseToken(accessToken);
+            String tokenType = claims.get("type", String.class);
+
+            if (!"ACCESS".equals(tokenType)) {
+                throw new IllegalArgumentException("로그인이 필요합니다.");
+            }
+
+            return Long.parseLong(claims.getSubject());
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
     }
 
     private Claims parseToken(String token) {
@@ -91,5 +101,27 @@ public class JwtService {
 
     public long getRefreshTokenMaxAgeSeconds() {
         return refreshTokenExpireDays * 24 * 60 * 60;
+    }
+
+    public ResponseCookie createRefreshCookie(String refreshToken) {
+        return ResponseCookie
+                .from(refreshCookieName, refreshToken)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ofSeconds(getRefreshTokenMaxAgeSeconds()))
+                .build();
+    }
+
+    public ResponseCookie createDeleteRefreshCookie() {
+        return ResponseCookie
+                .from(refreshCookieName, "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
     }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { AdminLayout } from "../common/AdminLayout";
-import { useAuthStore } from "../../../../hooks/useAuthStore";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/userManagement/AdminProfilePage.module.css";
 
 /* ==========================================================================

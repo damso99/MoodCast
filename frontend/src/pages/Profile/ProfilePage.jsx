@@ -4,7 +4,7 @@ import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
 import styles from './ProfilePage.module.css';
 

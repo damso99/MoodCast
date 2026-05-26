@@ -9,7 +9,7 @@ import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
 import { DesktopShell } from "../../components/layout/DesktopShell";
 import { MobileShell } from "../../components/layout/MobileShell";
-import { useAuthStore } from "../../hooks/useAuthStore";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { useRealtimeChat } from "../../hooks/useRealtimeChat";
 import { notifyChatUnreadChanged } from "../../hooks/useUnreadChatCount";
 import { useIsDesktop } from "../../hooks/useViewportWidth";

@@ -5,7 +5,7 @@ import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutline
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { Logo } from '../common/Logo';
-import { useAuthStore } from '../../hooks/useAuthStore'; // Auth 정보 가져오기
+import { useAuthStore } from '../../stores/useAuthStore'; // Auth 정보 가져오기
 import { useUnreadChatCount } from '../../hooks/useUnreadChatCount';
 import styles from './Sidebar.module.css';
 

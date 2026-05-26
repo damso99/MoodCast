@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { useAuthStore } from '../../hooks/useAuthStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './FollowPage.module.css';
 
 export function FollowingPage() {

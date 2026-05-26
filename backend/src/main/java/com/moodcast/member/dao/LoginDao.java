@@ -5,8 +5,10 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 @Mapper
-public interface AuthDao {
+public interface LoginDao {
     Member findMemberByEmail(@Param("email") String email);
+
+    String findPasswordHashByEmail(@Param("email") String email);
 
     Member findMemberById(@Param("memberId") Long memberId);
 

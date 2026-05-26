@@ -6,7 +6,7 @@ import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.member.dto.login.LoginMemberResponse;
-import com.moodcast.member.service.AuthService;
+import com.moodcast.member.service.LoginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -36,8 +36,8 @@ public class AdminService {
     @Autowired // 나중에 DB 조회가 필요할 때 사용할 DAO를 연결합니다.
     private AdminDao adminDao;
 
-    @Autowired // 기존 로그인 토큰 검증 로직을 재사용하기 위해 AuthService를 연결합니다.
-    private AuthService authService;
+    @Autowired // 기존 로그인 토큰 검증 로직을 재사용하기 위해 LoginService를 연결합니다.
+    private LoginService loginService;
 
     /* ==========================================================================
      * 관리자 권한 확인
@@ -54,7 +54,7 @@ public class AdminService {
      * - 현재 DB가 ADMIN을 쓰더라도, NORMAL_ADMIN 데이터가 있어도 막히지 않게 하기 위함입니다.
      * ========================================================================== */
     private LoginMemberResponse validateAdmin(String authorizationHeader) {
-        LoginMemberResponse loginMember = authService.getLoginMember(authorizationHeader);
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         String role = loginMember.getRole();
 
         boolean isAdmin =
