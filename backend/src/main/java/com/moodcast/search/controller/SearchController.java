@@ -46,11 +46,24 @@ public class SearchController {
     }
 
     @GetMapping("/hashtags")
-    public ResponseEntity<?> searchHashtags(@RequestParam(value = "q", required = false) String query) {
+    public ResponseEntity<?> searchHashtags(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "range", required = false, defaultValue = "all") String range
+    ) {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "results", searchService.searchHashtags(query)
+                        "results", searchService.searchHashtags(query, range)
+                )
+        );
+    }
+
+    @GetMapping("/hashtags/trending")
+    public ResponseEntity<?> getTrendingHashtags(@RequestParam(value = "range", required = false, defaultValue = "all") String range) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "results", searchService.getTrendingHashtags(range)
                 )
         );
     }

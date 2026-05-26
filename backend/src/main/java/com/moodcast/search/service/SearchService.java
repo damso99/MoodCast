@@ -9,11 +9,15 @@ import io.jsonwebtoken.JwtException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 
 @Service
 public class SearchService {
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+
     @Autowired
     private SearchDao searchDao;
 
@@ -46,10 +50,29 @@ public class SearchService {
         return searchDao.searchUsers(query.trim(), loginId);
     }
 
-    public List<SearchHashtagResult> searchHashtags(String query) {
-        if (query == null || query.trim().isEmpty()) {
-            return Collections.emptyList();
+    public List<SearchHashtagResult> searchHashtags(String query, String range) {
+        if (query != null && !query.trim().isEmpty()) {
+            return searchDao.searchHashtags(query.trim());
         }
-        return searchDao.searchHashtags(query.trim());
+        return getTrendingHashtags(range);
+    }
+
+    public List<SearchHashtagResult> getTrendingHashtags(String range) {
+        LocalDateTime from = resolveRangeFrom(range);
+        return searchDao.selectTrendingHashtags(from);
+    }
+
+    private LocalDateTime resolveRangeFrom(String range) {
+        if (range == null || range.isBlank() || "all".equalsIgnoreCase(range)) {
+            return null;
+        }
+
+        LocalDateTime now = LocalDateTime.now(KOREA_ZONE);
+        return switch (range.toLowerCase()) {
+            case "day" -> now.minusDays(1);
+            case "week" -> now.minusWeeks(1);
+            case "month" -> now.minusMonths(1);
+            default -> null;
+        };
     }
 }

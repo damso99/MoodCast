@@ -54,4 +54,32 @@
         limit 50
     </select>
 
+    <select id="selectTrendingHashtags" parameterType="map" resultType="com.moodcast.search.vo.SearchHashtagResult">
+        <choose>
+            <when test="from == null">
+                select
+                    h.hashtag_id as hashtagId,
+                    h.hashtag,
+                    h.use_count as useCount
+                from hashtag h
+                order by h.use_count desc, h.hashtag asc
+                limit 5
+            </when>
+            <otherwise>
+                select
+                    h.hashtag_id as hashtagId,
+                    h.hashtag,
+                    count(ph.post_hashtag_id) as useCount
+                from hashtag h
+                         join post_hashtag ph on h.hashtag_id = ph.hashtag_id
+                         join post_tbl p on p.post_id = ph.post_id
+                where p.deleted_yn = 'N'
+                  and p.created_at &gt;= #{from}
+                group by h.hashtag_id, h.hashtag
+                order by useCount desc, h.hashtag asc
+                limit 5
+            </otherwise>
+        </choose>
+    </select>
+
 </mapper>
