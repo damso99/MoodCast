@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
-import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
-import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
-import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
-import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
-import { useAuthState } from '../../hooks/useAuthState';
-import styles from './TopUtilityIcons.module.css';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
+import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
+import LoginOutlinedIcon from "@mui/icons-material/LoginOutlined";
+import { useAuthStore } from "../../stores/useAuthStore";
+import styles from "./TopUtilityIcons.module.css";
+import axios from "axios";
 
 const avatarSrc =
-  'data:image/svg+xml;utf8,' +
+  "data:image/svg+xml;utf8," +
   encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
       <defs>
@@ -27,24 +28,53 @@ const avatarSrc =
 
 export function TopUtilityIcons({ onSearch }) {
   const navigate = useNavigate();
-  const { isLoggedIn, setIsLoggedIn } = useAuthState();
+  const { isLoggedIn, clearAuthData } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    axios
+      .post(
+        `${import.meta.env.VITE_BACKSERVER}/auth/logout`,
+        {},
+        {
+          withCredentials: true,
+        },
+      )
+      .then((res) => {
+        console.log("로그아웃 성공", res.data);
+        clearAuthData();
+        navigate("/auth/login");
+      })
+      .catch((err) => {
+        console.log("로그아웃 실패", err);
+      });
+  };
 
   return (
     <div className={styles.wrap}>
-      <button type="button" className={styles.search} onClick={onSearch} aria-label="검색">
+      <button
+        type="button"
+        className={styles.search}
+        onClick={onSearch}
+        aria-label="검색"
+      >
         <SearchOutlinedIcon />
       </button>
       <button type="button" className={styles.bell} aria-label="알림">
         <NotificationsNoneOutlinedIcon />
         <span />
       </button>
-      <button type="button" className={styles.profile} aria-label="프로필" onClick={() => setMenuOpen((value) => !value)}>
+      <button
+        type="button"
+        className={styles.profile}
+        aria-label="프로필"
+        onClick={() => setMenuOpen((value) => !value)}
+      >
         <img src={avatarSrc} alt="" />
       </button>
       {menuOpen ? (
         <div className={styles.menu}>
-          <button type="button" onClick={() => navigate('/app/profile')}>
+          <button type="button" onClick={() => navigate("/app/profile")}>
             <AccountCircleOutlinedIcon />
             프로필 보기
           </button>
@@ -52,15 +82,14 @@ export function TopUtilityIcons({ onSearch }) {
             type="button"
             onClick={() => {
               if (isLoggedIn) {
-                setIsLoggedIn(false);
-                navigate('/auth/login');
+                handleLogout();
                 return;
               }
-              navigate('/auth/login');
+              navigate("/auth/login");
             }}
           >
             {isLoggedIn ? <LogoutOutlinedIcon /> : <LoginOutlinedIcon />}
-            {isLoggedIn ? '로그아웃' : '로그인'}
+            {isLoggedIn ? "로그아웃" : "로그인"}
           </button>
         </div>
       ) : null}

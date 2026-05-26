@@ -11,4 +11,6 @@ public interface LoginDao {
     int updateLastLoginAt(Long memberId);
 
     String findPasswordHashByEmail(String email);
+
+    Member findMemberById(Long memberId);
 }

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthState } from "../../hooks/useAuthState";
+import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
 import axios from "axios";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { setIsLoggedIn } = useAuthState();
+  const { setAuthData } = useAuthStore();
 
   const [member, setMember] = useState({
     email: "",
@@ -76,7 +76,7 @@ export const LoginPage = () => {
       )
       .then((res) => {
         console.log(res.data);
-        setIsLoggedIn(true);
+        setAuthData(res.data.accessToken, res.data.member);
         setMember({
           email: "",
           password: "",

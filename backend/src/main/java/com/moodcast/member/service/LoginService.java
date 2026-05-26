@@ -106,4 +106,20 @@ public class LoginService {
 
         return loginResult;
     }
+
+    public LoginMemberResponse getLoginMember(String accessToken) {
+        Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
+
+        Member member = loginDao.findMemberById(memberId);
+
+        if (member == null) {
+           throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        checkLoginAllowed(member);
+
+        LoginMemberResponse loginMemberResponse = toLoginMemberResponse(member);
+
+        return loginMemberResponse;
+    }
 }

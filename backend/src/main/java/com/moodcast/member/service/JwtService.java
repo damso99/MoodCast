@@ -1,6 +1,9 @@
 package com.moodcast.member.service;
 
+import com.fasterxml.jackson.databind.exc.IgnoredPropertyException;
 import com.moodcast.member.vo.Member;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -84,6 +87,50 @@ public class JwtService {
                 .maxAge(Duration.ofSeconds(getRefreshTokenMaxAgeSeconds())) // 쿠키 수명 설정
                 .build(); // 위 세팅으로 조립
     }
+
+    // 로그아웃 시 브라우저의 refresh token cookie를 삭제하는 쿠키
+    public ResponseCookie createDeleteRefreshCookie() {
+        return ResponseCookie
+                .from(refreshCookieName, "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+
+    // 토큰 검증, memberId 반환
+    // 예외처리
+    public Long getMemberIdFromAccessToken(String accessToken) {
+        if (accessToken == null || accessToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(accessToken)
+                    .getPayload();
+
+            String tokenType = claims.get("type", String.class);
+
+            if (!"ACCESS".equals(tokenType)) {
+                throw new IllegalArgumentException("로그인이 필요합니다.");
+            }
+
+            String memberIdText = claims.getSubject();
+
+            return Long.parseLong(memberIdText);
+        } catch (JwtException e) {  // 만료, 서명 오류, 토큰형식오류
+            // 유저에게 자세한 토큰 오류를 보여줄 필요가 없음 모두 "로그인이 필요합니다." 메시지로 통일
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+    }
+
 
 
 
