@@ -176,6 +176,72 @@
         order by created_at desc
     </select>
 
+    <select id="selectUserManagementSummaryCounts" resultMap="adminUserManagementSummaryMap">
+        select
+            count(*) as total_member_count,
+            coalesce(sum(case when role in ('USER', 'MEMBER') then 1 else 0 end), 0) as normal_member_count,
+            coalesce(sum(case when role in ('ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN') then 1 else 0 end), 0) as admin_member_count,
+            coalesce(sum(case when status = 'SUSPENDED' then 1 else 0 end), 0) as suspended_member_count
+        from members
+    </select>
+
+    <select id="selectLatestJoinedMember" resultMap="adminRecentMemberMap">
+        select
+            member_id,
+            name,
+            nickname,
+            email,
+            status,
+            role,
+            created_at,
+            null as action_type,
+            null as action_detail
+        from members
+        order by created_at desc
+        limit 1
+    </select>
+
+    <select id="selectLatestSanctionedMember" resultMap="adminRecentMemberMap">
+        select
+            coalesce(target.member_id, log.target_id) as member_id,
+            target.name,
+            target.nickname,
+            target.email,
+            target.status,
+            target.role,
+            log.created_at,
+            log.action_type,
+            log.action_detail
+        from admin_action_logs log
+        left join members target on target.member_id = log.target_id
+        where log.target_type = 'USER'
+          and log.action_type = 'SUSPEND'
+        order by log.created_at desc, log.log_id desc
+        limit 1
+    </select>
+
+    <select id="selectRecentAdminActionLogs" resultMap="adminActionLogViewMap">
+        select
+            log.log_id,
+            log.admin_id,
+            admin_member.name as admin_name,
+            admin_member.nickname as admin_nickname,
+            log.action_type,
+            log.target_type,
+            log.target_id,
+            target_member.name as target_name,
+            target_member.nickname as target_nickname,
+            target_member.email as target_email,
+            log.created_at,
+            log.action_detail
+        from admin_action_logs log
+        left join members admin_member on admin_member.member_id = log.admin_id
+        left join members target_member on target_member.member_id = log.target_id
+        where log.action_type in ('UPDATE_ADMIN_ROLE', 'SUSPEND', 'RESTORE')
+        order by log.created_at desc, log.log_id desc
+        limit 10
+    </select>
+
     <!--
       콘텐츠 관리 게시글 목록 조회입니다.
 
