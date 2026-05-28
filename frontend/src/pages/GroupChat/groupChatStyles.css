@@ -233,12 +233,19 @@
 .group-chat-headerAvatar {
   display: grid;
   place-items: center;
+  box-sizing: border-box;
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  padding: 0;
+  border: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  overflow: hidden;
+  appearance: none;
   background: linear-gradient(135deg, #e1f7f3, #f2e6ff);
   color: #111827;
   font-weight: 800;
+  line-height: 0;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
 }
 
@@ -333,20 +340,30 @@
 .group-chat-messageAvatar {
   display: grid;
   place-items: center;
+  box-sizing: border-box;
   width: 36px;
   height: 36px;
   padding: 0;
-  border-radius: 50%;
+  border: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
   overflow: hidden;
   flex: 0 0 36px;
+  appearance: none;
   background: linear-gradient(135deg, #e1f7f3, #f2e6ff);
+  line-height: 0;
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
 }
 
 .group-chat-messageAvatarImage {
+  display: block;
   width: 100%;
   height: 100%;
+  min-width: 100%;
+  min-height: 100%;
   object-fit: cover;
+  object-position: center center;
+  border-radius: inherit;
 }
 
 .group-chat-messageAvatarFallback {
