@@ -71,7 +71,9 @@ export function UserManagementPage() {
   const [selectedManagedMember, setSelectedManagedMember] = useState(null);
   const { accessToken } = useAuthStore();
 
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const BACKSERVER = (
+    import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
+  ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하고, 끝의 /는 제거합니다.
   const MEMBERS_PER_PAGE = 10; // 한 페이지에 보여줄 회원 수입니다.
   const PAGE_BUTTON_COUNT = 10; // 페이지 번호 버튼은 1~10처럼 최대 10개씩 보여줍니다.
 

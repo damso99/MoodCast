@@ -1,6 +1,7 @@
 package com.moodcast.admin.dao;
 
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
@@ -35,6 +36,9 @@ public interface AdminDao {
 
     /* members 테이블에 있는 전체 회원 목록을 조회합니다. */
     List<AdminMember> selectMembers();
+
+    /* 콘텐츠 관리 페이지에서 사용할 게시글 목록을 조회합니다. */
+    List<AdminContentPost> selectAdminContentPosts();
 
     /* 사용자 관리 하단의 전체/일반/관리자/정지 회원 수를 한 번에 조회합니다. */
     AdminUserManagementSummary selectUserManagementSummaryCounts();

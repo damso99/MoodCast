@@ -1,25 +1,30 @@
-﻿import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import { AdminLayout } from "../common/AdminLayout";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/contentManagement/ContentManagementPage.module.css";
 
 const contentTabs = ["게시글", "댓글", "이미지", "해시태그"];
 const statusFilters = ["전체", "공개", "숨김", "삭제"];
+const POSTS_PER_PAGE = 12; // 가로 3개 x 세로 4개로 한 페이지에 총 12개 게시글을 보여줍니다.
+const PAGE_BUTTON_COUNT = 10; // 사용자 관리 페이지와 같이 페이지 번호는 최대 10개씩 보여줍니다.
 
-const contentData = {
-  게시글: [],
-  댓글: [],
-  이미지: [],
-  해시태그: [],
-};
+const emotionFilters = [
+  { id: "all", label: "전체 감정" },
+  { id: 1, label: "행복" },
+  { id: 2, label: "슬픔" },
+  { id: 3, label: "차분함" },
+  { id: 4, label: "화남" },
+  { id: 5, label: "신나감" },
+  { id: 6, label: "무감정" },
+];
 
 const contentDescriptions = {
-  게시글:
-    "사용자 피드와 동일한 형태로 게시글을 확인하고 상태를 변경하거나 삭제할 수 있습니다.",
+  게시글: "게시글 제목 또는 작성자로 검색하고 감정별로 분류해 확인할 수 있습니다.",
   댓글: "댓글 내용을 원본 게시글 기준으로 확인하고 숨김/삭제 처리할 수 있습니다.",
-  이미지:
-    "첨부 이미지를 썸네일로 확인하고 연결된 게시글 기준으로 관리할 수 있습니다.",
+  이미지: "첨부 이미지를 썸네일로 확인하고 연결된 게시글 기준으로 관리할 수 있습니다.",
   해시태그: "해시태그 사용량과 상태를 확인하고 노출 여부를 관리할 수 있습니다.",
 };
 
@@ -35,24 +40,169 @@ const getStatusClassName = (status) => {
   return styles.statusDeleted;
 };
 
+const getPostStatus = (post) => {
+  if (post.deletedYn === "Y") {
+    return "삭제";
+  }
+
+  if (post.visibility && post.visibility !== "PUBLIC") {
+    return "숨김";
+  }
+
+  return "공개";
+};
+
+const getAuthorName = (post) => {
+  return post.authorNickname || post.authorName || "작성자 없음";
+};
+
+const getEmotionLabel = (emotionId) => {
+  return (
+    emotionFilters.find((emotionItem) => emotionItem.id === Number(emotionId))
+      ?.label || "기타"
+  );
+};
+
+const isInSelectedDateRange = (post, dateRange) => {
+  if (dateRange === "all") {
+    return true;
+  }
+
+  if (!post.createdAt) {
+    return false;
+  }
+
+  const createdDate = new Date(post.createdAt.replace(" ", "T"));
+
+  if (Number.isNaN(createdDate.getTime())) {
+    return true;
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - createdDate.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  if (dateRange === "today") {
+    return createdDate.toDateString() === now.toDateString();
+  }
+
+  return diffDays <= 7;
+};
+
 /* ==========================================================================
  * 콘텐츠 관리 페이지
  * --------------------------------------------------------------------------
- * 게시글, 댓글, 이미지, 해시태그를 피드형 카드 레이아웃으로 관리하는 화면입니다.
+ * 게시글, 댓글, 이미지, 해시태그를 관리하는 관리자 화면입니다.
  *
- * selectedContentType 상태 설명:
- * - 상단 탭에서 어떤 콘텐츠 유형을 선택했는지 저장합니다.
- * - 선택값에 따라 카드 목록과 안내 문구가 바뀝니다.
- *
- * 현재 데이터 상태:
- * - 더미데이터는 제거했습니다.
- * - 백엔드 API가 연결되기 전까지 각 탭은 빈 목록 상태로 표시됩니다.
- * - 실제 데이터가 들어오면 contentData 대신 API 응답값을 연결하면 됩니다.
+ * 이번 게시글 탭 처리 흐름:
+ * 1. 관리자 API로 게시글 목록을 불러옵니다.
+ * 2. 제목 또는 작성자 기준으로 검색합니다.
+ * 3. 상태, 작성 시간, 감정 필터를 적용합니다.
+ * 4. 한 페이지에 12개씩, 가로 3개 x 세로 4개 카드로 출력합니다.
+ * 5. 페이지 번호는 사용자 관리와 같은 방식으로 최대 10개씩 보여줍니다.
  * ========================================================================== */
 export function ContentManagementPage() {
-  const [selectedContentType, setSelectedContentType] = useState("게시글");
-  const [openedImagePost, setOpenedImagePost] = useState(null);
-  const selectedRows = contentData[selectedContentType];
+  const [selectedContentType, setSelectedContentType] = useState("게시글"); // 현재 선택된 콘텐츠 탭입니다.
+  const [selectedStatus, setSelectedStatus] = useState("전체"); // 공개/숨김/삭제 상태 필터입니다.
+  const [searchField, setSearchField] = useState("title"); // 제목 또는 작성자 중 어떤 기준으로 검색할지 저장합니다.
+  const [searchKeyword, setSearchKeyword] = useState(""); // 검색창에 입력된 실제 검색어입니다.
+  const [selectedEmotionId, setSelectedEmotionId] = useState("all"); // 감정 필터 선택값입니다.
+  const [dateRange, setDateRange] = useState("all"); // 작성 시간 필터 선택값입니다.
+  const [currentPage, setCurrentPage] = useState(1); // 현재 보고 있는 페이지 번호입니다.
+  const [posts, setPosts] = useState([]); // 백엔드에서 조회한 게시글 목록입니다.
+  const [postsLoading, setPostsLoading] = useState(false); // 게시글 목록 로딩 상태입니다.
+  const [postsError, setPostsError] = useState(false); // 게시글 목록 조회 실패 여부입니다.
+  const { accessToken } = useAuthStore(); // 관리자 API 호출에 사용할 로그인 토큰입니다.
+
+  const BACKSERVER = (
+    import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
+  ).replace(/\/$/, "");
+
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    setPostsLoading(true);
+    setPostsError(false);
+
+    axios
+      .get(`${BACKSERVER}/admin/api/content/posts`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      .then((res) => {
+        const nextPosts = Array.isArray(res.data?.posts) ? res.data.posts : [];
+
+        setPosts(nextPosts);
+      })
+      .catch((error) => {
+        console.log(error);
+        setPosts([]);
+        setPostsError(true);
+      })
+      .finally(() => {
+        setPostsLoading(false);
+      });
+  }, [BACKSERVER, accessToken]);
+
+  const filteredPosts = useMemo(() => {
+    const trimmedKeyword = searchKeyword.trim().toLowerCase();
+
+    return posts.filter((post) => {
+      const statusMatched =
+        selectedStatus === "전체" || getPostStatus(post) === selectedStatus;
+      const emotionMatched =
+        selectedEmotionId === "all" ||
+        Number(post.emotionId) === Number(selectedEmotionId);
+      const dateMatched = isInSelectedDateRange(post, dateRange);
+
+      if (!statusMatched || !emotionMatched || !dateMatched) {
+        return false;
+      }
+
+      if (!trimmedKeyword) {
+        return true;
+      }
+
+      const title = String(post.title || "").toLowerCase();
+      const author = String(getAuthorName(post)).toLowerCase();
+      const targetText = searchField === "author" ? author : title;
+
+      return targetText.includes(trimmedKeyword);
+    });
+  }, [dateRange, posts, searchField, searchKeyword, selectedEmotionId, selectedStatus]);
+
+  const totalPageCount = Math.max(
+    1,
+    Math.ceil(filteredPosts.length / POSTS_PER_PAGE),
+  );
+  const pageStartIndex = (currentPage - 1) * POSTS_PER_PAGE;
+  const paginatedPosts = filteredPosts.slice(
+    pageStartIndex,
+    pageStartIndex + POSTS_PER_PAGE,
+  );
+  const pageGroupStart =
+    Math.floor((currentPage - 1) / PAGE_BUTTON_COUNT) * PAGE_BUTTON_COUNT + 1;
+  const pageGroupEnd = Math.min(
+    pageGroupStart + PAGE_BUTTON_COUNT - 1,
+    totalPageCount,
+  );
+  const pageNumbers = Array.from(
+    { length: pageGroupEnd - pageGroupStart + 1 },
+    (_, index) => pageGroupStart + index,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [dateRange, searchField, searchKeyword, selectedContentType, selectedEmotionId, selectedStatus]);
+
+  useEffect(() => {
+    if (currentPage > totalPageCount) {
+      setCurrentPage(totalPageCount);
+    }
+  }, [currentPage, totalPageCount]);
 
   const renderActionButtons = (status) => (
     <div className={styles.cardActions}>
@@ -66,147 +216,84 @@ export function ContentManagementPage() {
     </div>
   );
 
-  const renderPostImages = (post) => {
-    const visibleImages = post.images.slice(0, 4);
-    const hiddenImageCount = Math.max(
-      post.images.length - visibleImages.length,
-      0,
-    );
-    const imageGridClassName =
-      post.images.length === 1 ? styles.singleImageGrid : styles.multiImageGrid;
+  const renderPostCard = (post) => {
+    const status = getPostStatus(post);
 
     return (
-      <button
-        className={`${styles.postImageGrid} ${imageGridClassName}`}
-        type="button"
-        onClick={() => setOpenedImagePost(post)}
-      >
-        {visibleImages.map((image, index) => {
-          const shouldShowMoreCount = index === 3 && hiddenImageCount > 0;
+      <article className={styles.contentCard} key={post.postId}>
+        <div className={styles.cardTopRow}>
+          <span className={styles.postId}>#{post.postId}</span>
+          <b className={`${styles.statusBadge} ${getStatusClassName(status)}`}>
+            {status}
+          </b>
+        </div>
 
-          return (
-            <span className={styles.postImageThumb} key={image.id}>
-              <img src={image.src} alt={image.alt} />
-              {shouldShowMoreCount ? <b>+{hiddenImageCount}</b> : null}
-            </span>
-          );
-        })}
-      </button>
+        <div className={styles.emotionPreview}>
+          <span>{getEmotionLabel(post.emotionId)}</span>
+        </div>
+
+        <div className={styles.feedBody}>
+          <div className={styles.authorRow}>
+            <div className={styles.avatar}>{getAuthorName(post)[0]}</div>
+            <div>
+              <strong>{getAuthorName(post)}</strong>
+              <span>{post.createdAt || "작성일 없음"}</span>
+            </div>
+          </div>
+
+          <h3>{post.title || "제목 없음"}</h3>
+          <p>{post.content || "본문 없음"}</p>
+        </div>
+
+        <div className={styles.statRow}>
+          <span>댓글 {post.commentCount ?? 0}</span>
+          <span>해시태그 {post.hashtagCount ?? 0}</span>
+          <span>감정 {getEmotionLabel(post.emotionId)}</span>
+        </div>
+
+        {renderActionButtons(status)}
+      </article>
     );
   };
 
-  const renderPostCard = (post) => (
-    <article className={styles.contentCard} key={post.id}>
-      <label className={styles.checkCell} aria-label={`${post.id} 선택`}>
-        <input type="checkbox" />
-      </label>
-
-      <div className={styles.feedBody}>
-        <div className={styles.authorRow}>
-          <div className={styles.avatar}>{post.author[0]}</div>
-          <div>
-            <strong>{post.author}</strong>
-            <span>
-              {post.handle} · {post.time}
-            </span>
-          </div>
-        </div>
-        <p>{post.text}</p>
-        <strong className={styles.tagText}>{post.tag}</strong>
-        <div className={styles.statRow}>
-          <span>좋아요 {post.stats.likes}</span>
-          <span>댓글 {post.stats.comments}</span>
-          <span>공감 {post.stats.empathy}</span>
-          <span>저장 {post.stats.saves}</span>
-        </div>
-      </div>
-
-      {renderPostImages(post)}
-
-      <aside className={styles.cardMeta}>
-        <strong>{post.id}</strong>
-        <span>
-          상태{" "}
-          <b
-            className={`${styles.statusBadge} ${getStatusClassName(post.status)}`}
-          >
-            {post.status}
-          </b>
-        </span>
-        <span>신고 {post.reports}건</span>
-        {renderActionButtons(post.status)}
-      </aside>
-    </article>
-  );
-
-  const renderSimpleCard = (item) => (
-    <article className={styles.contentCard} key={item.id}>
-      <label className={styles.checkCell} aria-label={`${item.id} 선택`}>
-        <input type="checkbox" />
-      </label>
-
-      <div className={styles.feedBody}>
-        <div className={styles.authorRow}>
-          <div className={styles.avatar}>
-            {(item.author ?? item.tagName)[0]}
-          </div>
-          <div>
-            <strong>{item.author ?? item.tagName}</strong>
-            <span>{item.handle ?? item.createdAt}</span>
-          </div>
-        </div>
-        <p>
-          {item.text ??
-            `${item.tagName} 태그가 사용된 게시글 ${item.postCount}개`}
-        </p>
-        <strong className={styles.tagText}>
-          {item.fileName ?? item.target ?? item.tagName}
-        </strong>
-        {item.fileName ? (
-          <span className={styles.subText}>연결 게시글: {item.target}</span>
-        ) : null}
-      </div>
-
-      {item.imageSrc ? (
-        <img
-          className={styles.postImage}
-          src={item.imageSrc}
-          alt="관리 이미지 썸네일"
-        />
-      ) : null}
-
-      <aside className={styles.cardMeta}>
-        <strong>{item.id}</strong>
-        {item.size ? <span>용량 {item.size}</span> : null}
-        <span>
-          상태{" "}
-          <b
-            className={`${styles.statusBadge} ${getStatusClassName(item.status)}`}
-          >
-            {item.status}
-          </b>
-        </span>
-        <span>신고 {item.reports}건</span>
-        {renderActionButtons(item.status)}
-      </aside>
-    </article>
-  );
-
   const renderContentCards = () => {
-    if (selectedRows.length === 0) {
+    if (selectedContentType !== "게시글") {
       return (
         <div className={styles.emptyFeed}>
           <strong>{selectedContentType} 데이터 없음</strong>
-          <span>백엔드에서 데이터를 받아오면 이 영역에 목록이 표시됩니다.</span>
+          <span>현재 작업은 게시글 조회 기능을 먼저 연결했습니다.</span>
         </div>
       );
     }
 
-    if (selectedContentType === "게시글") {
-      return selectedRows.map(renderPostCard);
+    if (postsLoading) {
+      return (
+        <div className={styles.emptyFeed}>
+          <strong>게시글 조회 중</strong>
+          <span>백엔드에서 게시글 목록을 불러오고 있습니다.</span>
+        </div>
+      );
     }
 
-    return selectedRows.map(renderSimpleCard);
+    if (postsError) {
+      return (
+        <div className={styles.emptyFeed}>
+          <strong>게시글 조회 실패</strong>
+          <span>백엔드 API 응답을 확인해주세요.</span>
+        </div>
+      );
+    }
+
+    if (filteredPosts.length === 0) {
+      return (
+        <div className={styles.emptyFeed}>
+          <strong>검색된 게시글 없음</strong>
+          <span>검색어 또는 필터 조건을 조정해주세요.</span>
+        </div>
+      );
+    }
+
+    return paginatedPosts.map(renderPostCard);
   };
 
   return (
@@ -220,7 +307,23 @@ export function ContentManagementPage() {
           selectedLabel={selectedContentType}
           onSelect={setSelectedContentType}
         />
-        <SearchBar placeholder="제목, 내용, 작성자 검색" />
+        <div className={styles.searchControls}>
+          <select
+            value={searchField}
+            onChange={(event) => setSearchField(event.target.value)}
+            aria-label="게시글 검색 기준"
+          >
+            <option value="title">제목</option>
+            <option value="author">작성자</option>
+          </select>
+          <SearchBar
+            placeholder={
+              searchField === "title" ? "제목으로 검색" : "작성자로 검색"
+            }
+            value={searchKeyword}
+            onChange={(event) => setSearchKeyword(event.target.value)}
+          />
+        </div>
       </section>
 
       <section className={styles.contentShell}>
@@ -228,18 +331,20 @@ export function ContentManagementPage() {
           <div className={styles.statusToolbar}>
             <div className={styles.statusPills}>
               {statusFilters.map((label) => (
-                <button key={label} type="button">
+                <button
+                  key={label}
+                  type="button"
+                  className={label === selectedStatus ? styles.activeStatus : ""}
+                  onClick={() => setSelectedStatus(label)}
+                >
                   {label}
                 </button>
               ))}
             </div>
             <div className={styles.viewTools}>
-              <select aria-label="정렬 방식" defaultValue="latest">
-                <option value="latest">최신순</option>
-                <option value="reports">신고 많은 순</option>
-              </select>
-              <button type="button">정렬</button>
-              <button type="button">보기</button>
+              <span>
+                총 {filteredPosts.length.toLocaleString()}개 / {currentPage}쪽
+              </span>
             </div>
           </div>
 
@@ -249,6 +354,44 @@ export function ContentManagementPage() {
           </section>
 
           <section className={styles.feedList}>{renderContentCards()}</section>
+
+          {selectedContentType === "게시글" && filteredPosts.length > 0 ? (
+            <nav className={styles.pagination} aria-label="게시글 목록 페이지 이동">
+              <div className={styles.paginationButtons}>
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                >
+                  이전
+                </button>
+                {pageNumbers.map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    type="button"
+                    className={
+                      pageNumber === currentPage ? styles.activePage : ""
+                    }
+                    aria-current={
+                      pageNumber === currentPage ? "page" : undefined
+                    }
+                    onClick={() => setCurrentPage(pageNumber)}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={currentPage === totalPageCount}
+                  onClick={() =>
+                    setCurrentPage((page) => Math.min(totalPageCount, page + 1))
+                  }
+                >
+                  다음
+                </button>
+              </div>
+            </nav>
+          ) : null}
         </main>
 
         <aside className={styles.sideRail}>
@@ -256,118 +399,54 @@ export function ContentManagementPage() {
             <h2>필터</h2>
             <label>
               작성 시간
-              <select defaultValue="all">
+              <select
+                value={dateRange}
+                onChange={(event) => setDateRange(event.target.value)}
+              >
                 <option value="all">전체 기간</option>
                 <option value="today">오늘</option>
                 <option value="week">최근 7일</option>
               </select>
             </label>
             <label>
-              신고 수
-              <select defaultValue="all">
-                <option value="all">전체</option>
-                <option value="reported">신고 있음</option>
-                <option value="high">신고 3건 이상</option>
+              감정
+              <select
+                value={selectedEmotionId}
+                onChange={(event) => setSelectedEmotionId(event.target.value)}
+              >
+                {emotionFilters.map((emotionItem) => (
+                  <option key={emotionItem.id} value={emotionItem.id}>
+                    {emotionItem.label}
+                  </option>
+                ))}
               </select>
             </label>
-            <label>
-              작성자
-              <input type="text" placeholder="작성자 검색" />
-            </label>
-            <div className={styles.checkGroup}>
-              <strong>상태</strong>
-              <label>
-                <input type="checkbox" defaultChecked />
-                <span className={styles.checkVisual} aria-hidden="true" />
-                <b
-                  className={`${styles.filterStatusBadge} ${styles.filterPublic}`}
-                >
-                  공개
-                </b>
-              </label>
-              <label>
-                <input type="checkbox" defaultChecked />
-                <span className={styles.checkVisual} aria-hidden="true" />
-                <b
-                  className={`${styles.filterStatusBadge} ${styles.filterHidden}`}
-                >
-                  숨김
-                </b>
-              </label>
-              <label>
-                <input type="checkbox" defaultChecked />
-                <span className={styles.checkVisual} aria-hidden="true" />
-                <b
-                  className={`${styles.filterStatusBadge} ${styles.filterDeleted}`}
-                >
-                  삭제
-                </b>
-              </label>
-            </div>
-            <button type="button">필터 초기화</button>
+            <button
+              type="button"
+              onClick={() => {
+                setDateRange("all");
+                setSelectedEmotionId("all");
+                setSelectedStatus("전체");
+                setSearchField("title");
+                setSearchKeyword("");
+              }}
+            >
+              필터 초기화
+            </button>
           </section>
 
           <section className={styles.bulkPanel}>
             <div className={styles.panelTitleRow}>
-              <h2>일괄 작업</h2>
-              <span>0개 선택됨</span>
+              <h2>게시글 관리 정보</h2>
+              <span>{posts.length.toLocaleString()}개 조회</span>
             </div>
-            <p>선택된 콘텐츠가 없습니다. 목록에서 콘텐츠를 선택해주세요.</p>
-            <div className={styles.bulkActions}>
-              <button type="button">숨김 처리</button>
-              <button type="button">삭제 처리</button>
-              <button type="button">복구</button>
-            </div>
-            <strong>
-              일괄 작업은 최대 50개까지 선택하여 처리할 수 있습니다.
-            </strong>
+            <p>
+              게시글은 12개씩 카드 형태로 표시됩니다. 검색과 감정 필터는 현재
+              조회된 게시글 목록 기준으로 즉시 적용됩니다.
+            </p>
           </section>
         </aside>
       </section>
-
-      {openedImagePost ? (
-        <div
-          className={styles.imageModalBackdrop}
-          role="presentation"
-          onClick={() => setOpenedImagePost(null)}
-        >
-          <section
-            className={styles.imageModal}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="content-image-modal-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className={styles.imageModalHead}>
-              <div>
-                <h2 id="content-image-modal-title">게시글 이미지 전체 보기</h2>
-                <span>
-                  {openedImagePost.id} · 이미지 {openedImagePost.images.length}
-                  장
-                </span>
-              </div>
-              <button type="button" onClick={() => setOpenedImagePost(null)}>
-                닫기
-              </button>
-            </div>
-
-            <div className={styles.imageModalGrid}>
-              {openedImagePost.images.map((image, index) => (
-                <figure key={image.id}>
-                  <img src={image.src} alt={image.alt} />
-                  <figcaption>{index + 1}</figcaption>
-                </figure>
-              ))}
-            </div>
-
-            <div className={styles.imageModalActions}>
-              <span>선택된 이미지 (0)</span>
-              <button type="button">숨김 처리</button>
-              <button type="button">삭제 처리</button>
-            </div>
-          </section>
-        </div>
-      ) : null}
     </AdminLayout>
   );
 }

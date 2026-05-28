@@ -3,6 +3,7 @@ package com.moodcast.admin.service;
 import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminMemberSuspendRequest;
@@ -123,6 +124,21 @@ public class AdminService {
     }
 
     /* ==========================================================================
+     * 콘텐츠 관리 게시글 목록 조회
+     * --------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리 페이지에서 게시글 카드 목록을 만들기 위한 데이터를 조회합니다.
+     *
+     * 초보자 설명:
+     * - 컨트롤러는 요청을 받고, 서비스는 관리자 권한 확인을 먼저 합니다.
+     * - 권한 확인이 끝나면 DAO를 통해 DB에서 게시글 목록을 가져옵니다.
+     * - 검색, 감정 필터, 페이지네이션은 화면 반응이 빠르도록 프론트에서 처리합니다.
+     * ========================================================================== */
+    public List<AdminContentPost> getAdminContentPosts(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        return adminDao.selectAdminContentPosts();
+    }
+
+    /* ==========================================================================
      * 사용자 관리 하단 요약 조회
      * --------------------------------------------------------------------------
      * 사용자 관리 페이지 하단의 회원 비율, 최근 가입 회원, 최근 제재 회원,
@@ -136,19 +152,137 @@ public class AdminService {
     public AdminUserManagementSummary getUserManagementSummary(String authorizationHeader) {
         validateAdmin(authorizationHeader);
 
-        AdminUserManagementSummary summary = adminDao.selectUserManagementSummaryCounts();
+        AdminUserManagementSummary summary = selectUserManagementSummaryCountsSafely();
+        summary.setLatestJoinedMember(selectLatestJoinedMemberSafely());
+        summary.setLatestSanctionedMember(selectLatestSanctionedMemberSafely());
+        summary.setActionLogs(selectRecentAdminActionLogsSafely());
+
+        return summary;
+    }
+
+    /*
+     * 사용자 관리 하단 요약 숫자를 안전하게 조회합니다.
+     *
+     * 초보자 설명:
+     * - 이 API는 화면 하단의 보조 정보라서, 특정 조회 하나가 실패해도
+     *   사용자 관리 페이지 전체가 500 에러로 멈추면 안 됩니다.
+     * - 회원 목록 API는 정상인데 요약 API만 실패하는 상황을 막기 위해
+     *   각 조회를 작은 단위로 나누고 실패 시 기본값을 내려줍니다.
+     */
+    private AdminUserManagementSummary selectUserManagementSummaryCountsSafely() {
+        AdminUserManagementSummary summary = null;
+
+        try {
+            summary = adminDao.selectUserManagementSummaryCounts();
+        } catch (RuntimeException e) {
+            summary = buildSummaryCountsFromMemberList();
+        }
 
         if (summary == null) {
             summary = new AdminUserManagementSummary();
         }
 
-        summary.setLatestJoinedMember(adminDao.selectLatestJoinedMember());
-        summary.setLatestSanctionedMember(adminDao.selectLatestSanctionedMember());
-
-        List<AdminActionLogView> actionLogs = adminDao.selectRecentAdminActionLogs();
-        summary.setActionLogs(actionLogs == null ? Collections.emptyList() : actionLogs);
+        summary.setTotalMemberCount(defaultLong(summary.getTotalMemberCount()));
+        summary.setNormalMemberCount(defaultLong(summary.getNormalMemberCount()));
+        summary.setAdminMemberCount(defaultLong(summary.getAdminMemberCount()));
+        summary.setSuspendedMemberCount(defaultLong(summary.getSuspendedMemberCount()));
+        summary.setActionLogs(Collections.emptyList());
 
         return summary;
+    }
+
+    /*
+     * 요약 count 전용 SQL이 실패했을 때 사용하는 예비 계산입니다.
+     *
+     * 초보자 설명:
+     * - 현재 회원 목록 API는 정상 동작하고 있으므로 같은 목록 데이터를 다시 가져와서
+     *   Java 코드에서 회원 수를 계산합니다.
+     * - DB count 쿼리 하나 때문에 화면 하단 전체가 실패하는 것을 막기 위한 안전장치입니다.
+     */
+    private AdminUserManagementSummary buildSummaryCountsFromMemberList() {
+        AdminUserManagementSummary summary = new AdminUserManagementSummary();
+
+        try {
+            List<AdminMember> members = adminDao.selectMembers();
+
+            long totalMemberCount = members == null ? 0L : members.size();
+            long normalMemberCount = 0L;
+            long adminMemberCount = 0L;
+            long suspendedMemberCount = 0L;
+
+            if (members != null) {
+                for (AdminMember member : members) {
+                    String role = member.getRole();
+                    String status = member.getStatus();
+
+                    if ("USER".equals(role) || "MEMBER".equals(role)) {
+                        normalMemberCount++;
+                    }
+
+                    if ("ADMIN".equals(role) || "NORMAL_ADMIN".equals(role) || "SUPER_ADMIN".equals(role)) {
+                        adminMemberCount++;
+                    }
+
+                    if ("SUSPENDED".equals(status)) {
+                        suspendedMemberCount++;
+                    }
+                }
+            }
+
+            summary.setTotalMemberCount(totalMemberCount);
+            summary.setNormalMemberCount(normalMemberCount);
+            summary.setAdminMemberCount(adminMemberCount);
+            summary.setSuspendedMemberCount(suspendedMemberCount);
+        } catch (RuntimeException e) {
+            summary.setTotalMemberCount(0L);
+            summary.setNormalMemberCount(0L);
+            summary.setAdminMemberCount(0L);
+            summary.setSuspendedMemberCount(0L);
+        }
+
+        return summary;
+    }
+
+    private Long defaultLong(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    /*
+     * 최근 가입 회원 조회가 실패해도 요약 API 전체가 실패하지 않도록 null을 반환합니다.
+     * 프론트에서는 null인 경우 "가입 정보 없음"처럼 안전한 문구를 표시합니다.
+     */
+    private com.moodcast.admin.vo.AdminRecentMember selectLatestJoinedMemberSafely() {
+        try {
+            return adminDao.selectLatestJoinedMember();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /*
+     * 최근 제재 회원 조회는 admin_action_logs를 함께 보기 때문에
+     * 데이터 형태가 예상과 다르면 실패할 수 있어 별도로 보호합니다.
+     */
+    private com.moodcast.admin.vo.AdminRecentMember selectLatestSanctionedMemberSafely() {
+        try {
+            return adminDao.selectLatestSanctionedMember();
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /*
+     * 최근 작업 로그 목록 조회 실패 시 빈 목록을 내려줍니다.
+     * 이렇게 하면 원형 그래프와 최근 가입 회원 정보는 계속 표시될 수 있습니다.
+     */
+    private List<AdminActionLogView> selectRecentAdminActionLogsSafely() {
+        try {
+            List<AdminActionLogView> actionLogs = adminDao.selectRecentAdminActionLogs();
+
+            return actionLogs == null ? Collections.emptyList() : actionLogs;
+        } catch (RuntimeException e) {
+            return Collections.emptyList();
+        }
     }
 
     /* ==========================================================================

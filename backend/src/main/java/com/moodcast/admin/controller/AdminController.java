@@ -1,6 +1,7 @@
 package com.moodcast.admin.controller;
 
 import com.moodcast.admin.service.AdminService;
+import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
@@ -84,6 +85,24 @@ public class AdminController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         return Map.of("members", adminService.getMembers(authorizationHeader));
+    }
+
+    /* ==========================================================================
+     * 콘텐츠 관리 게시글 목록 조회 API
+     * --------------------------------------------------------------------------
+     * 콘텐츠 관리 페이지에서 게시글 카드를 출력하기 위한 게시글 목록을 조회합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/content/posts
+     *
+     * 응답:
+     * - { "posts": [...] }
+     * ========================================================================== */
+    @GetMapping("/content/posts")
+    public Map<String, List<AdminContentPost>> getAdminContentPosts(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return Map.of("posts", adminService.getAdminContentPosts(authorizationHeader));
     }
 
     /* ==========================================================================
