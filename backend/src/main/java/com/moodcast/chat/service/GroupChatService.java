@@ -273,7 +273,8 @@ public class GroupChatService {
                 message.getContent(),
                 message.getCreatedAt(),
                 message.getReadCount(),
-                message.getUnreadCount()
+                message.getUnreadCount(),
+                null
         );
     }
 
