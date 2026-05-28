@@ -200,7 +200,7 @@ export function FeedCard({ post, compact = false }) {
   const imageSrc = imageSrcs[0] ?? null;
   const cardText = post.text ?? stripHtml(rawContent);
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
-  const postMemberId = post.memberId ?? post.member_id ?? post.authorId ?? post.author_id;
+  const postMemberId = post.memberId ?? post.member_id ?? post.authorId ?? post.author_id ?? post.userId ?? post.user_id;
   const profileLink = post.profileLink ?? (postMemberId ? `/app/user/${postMemberId}` : null);
   const profileImageUrl = post.profileImageUrl ?? post.profile_image_url ?? post.avatarUrl ?? post.avatar_url ??
     post.profileImage ?? post.imageUrl ?? post.image ?? post.photoUrl ?? post.photo ??

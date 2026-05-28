@@ -74,14 +74,15 @@ export function PostDetailPage() {
         const data = item;
         const authorName = data.author || data.nickname || '익명';
         const rawContent = data.content ?? data.body ?? '';
+        const memberId = data.memberId ?? data.member_id ?? data.authorId ?? data.author_id;
         setPost({
           id: data.postId,
           postId: data.postId,
-          memberId: data.memberId,
-          profileLink: data.memberId ? `/app/user/${data.memberId}` : null,
+          memberId,
+          profileLink: memberId ? `/app/user/${memberId}` : null,
           title: data.title,
           author: authorName,
-          profileImageUrl: data.profileImageUrl ?? data.profile_image_url ?? null,
+          profileImageUrl: data.profileImageUrl ?? data.profile_image_url ?? data.avatarUrl ?? data.avatar_url ?? data.profileImage ?? data.imageUrl ?? data.image ?? data.photoUrl ?? data.photo ?? data.pictureUrl ?? data.picture ?? data.image_url ?? data.photo_url ?? null,
           avatar: authorName.charAt(0).toUpperCase(),
           time: formatTime(data.createdAt),
           text: normalizeContent(rawContent),

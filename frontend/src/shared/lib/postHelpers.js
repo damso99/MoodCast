@@ -90,9 +90,14 @@ export function formatRelativeTime(dateString) {
  * @param {object} item - API에서 받은 게시물 데이터
  * @returns {object} 표준화된 게시물 데이터
  */
+export function resolveProfileImageUrl(item) {
+  return item?.profileImageUrl ?? item?.profile_image_url ?? item?.avatarUrl ?? item?.avatar_url ?? item?.profileImage ?? item?.imageUrl ?? item?.image ?? item?.photoUrl ?? item?.photo ?? item?.pictureUrl ?? item?.picture ?? item?.image_url ?? item?.photo_url ?? null;
+}
+
 export function normalizePostData(item) {
   const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
   const rawContent = item.content ?? item.body ?? item.text ?? '';
+  const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id ?? item.userId ?? item.user_id;
   
   return {
     // 기본 ID 필드
@@ -100,11 +105,11 @@ export function normalizePostData(item) {
     postId: item.postId,
     
     // 작성자 정보
-    memberId: item.memberId ?? item.member_id,
+    memberId,
     author: authorName,
     avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
-    profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
-    profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
+    profileLink: memberId ? `/app/user/${memberId}` : null,
+    profileImageUrl: resolveProfileImageUrl(item),
     
     // 게시물 내용
     title: item.title,
