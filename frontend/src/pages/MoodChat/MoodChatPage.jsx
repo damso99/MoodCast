@@ -182,6 +182,12 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [activeGroupRoom, setActiveGroupRoom] = useState(null);
   const [isThreadMenuOpen, setIsThreadMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!accessToken || !currentMemberId) {
+      navigate("/auth/login", { replace: true });
+    }
+  }, [accessToken, currentMemberId, navigate]);
+
   const handleIncomingMessage = (incomingMessage) => {
     if (incomingMessage?.eventType === "CHAT_DELETE") {
       const deletedChatId = Number(incomingMessage.chatId ?? incomingMessage.id);

@@ -111,6 +111,12 @@ export function SearchPage() {
     return textarea.value;
   };
 
+  const resolveUserAvatarUrl = (user) => {
+    return user?.profileImageUrl || user?.profile_image_url || user?.avatarUrl || user?.avatar_url ||
+      user?.profileImage || user?.avatar || user?.imageUrl || user?.image || user?.photoUrl || user?.photo ||
+      user?.pictureUrl || user?.picture || user?.image_url || user?.photo_url || null;
+  };
+
   const formatTime = (dateString) => {
     // 시간 정보가 없으면 '방금'이라고 표시함
     if (!dateString) return '방금';
@@ -154,6 +160,12 @@ export function SearchPage() {
     }).format(date);
   };
 
+  const resolveAvatarUrl = (item) => {
+    return item?.profileImageUrl || item?.profile_image_url || item?.avatarUrl || item?.avatar_url ||
+      item?.profileImage || item?.imageUrl || item?.image || item?.photoUrl || item?.photo ||
+      item?.pictureUrl || item?.picture || item?.image_url || item?.photo_url || null;
+  };
+
   const transformPostData = (item) => {
     const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
     return {
@@ -161,6 +173,7 @@ export function SearchPage() {
       title: item.title,
       author: authorName,
       avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      profileImageUrl: resolveAvatarUrl(item),
       time: formatTime(item.createdAt),
       text: normalizeContent(item.content),
       emotionId: item.emotionId,
@@ -249,6 +262,7 @@ export function SearchPage() {
         ) : results.length ? (
           results.map((item) => {
             if (activeTab === 'users') {
+              const avatarUrl = resolveUserAvatarUrl(item);
               return (
                 <article 
                   key={item.memberId} 
@@ -270,8 +284,8 @@ export function SearchPage() {
                       color: '#666',
                       overflow: 'hidden'
                     }}>
-                      {item.profileImageUrl ? (
-                        <img src={item.profileImageUrl} alt={item.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt={item.nickname || item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         (item.nickname || item.name || '?').charAt(0).toUpperCase()
                       )}

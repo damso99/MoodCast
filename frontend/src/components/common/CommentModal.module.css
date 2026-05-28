@@ -488,16 +488,108 @@
   .modal {
     width: 100%;
     max-width: 100%;
-    height: 100vh;
-    max-height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
     border-radius: 0;
   }
 
+  .header {
+    padding: 12px 14px;
+  }
+
+  .headerMeta strong {
+    font-size: 0.96rem;
+  }
+
+  .headerMeta p {
+    font-size: 0.8rem;
+  }
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .close {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  .postSection {
+    padding: 14px 14px 12px;
+  }
+
+  .postText {
+    font-size: 0.95rem;
+    line-height: 1.62;
+  }
+
   .postImageArea {
-    height: 60vh;
+    min-height: 180px;
+    max-height: 42vh;
   }
 
   .list {
     max-height: none;
+  }
+
+  .commentsSection {
+    padding: 0 14px 14px;
+  }
+
+  .item {
+    padding: 12px 12px 13px;
+  }
+
+  .commentMenuBtn {
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+  }
+
+  .commentMenu {
+    top: 36px;
+    min-width: 112px;
+  }
+
+  .commentText {
+    margin-top: 8px;
+    font-size: 0.94rem;
+  }
+
+  .replyActions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .replyBtn,
+  .toggleRepliesBtn {
+    min-height: 36px;
+    padding: 0 2px;
+  }
+
+  .replyComposer {
+    margin-top: 8px;
+  }
+
+  .replyInput,
+  .composer textarea {
+    font-size: 16px;
+  }
+
+  .composer {
+    padding: 12px 14px 14px;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .send {
+    min-height: 44px;
+    width: 100%;
+    justify-content: center;
   }
 }

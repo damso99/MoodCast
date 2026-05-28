@@ -486,3 +486,111 @@
     height: 226px;
   }
 }
+
+@media (max-width: 520px) {
+  .card {
+    padding: 14px 14px 12px;
+    border-radius: 18px;
+  }
+
+  .compact {
+    padding: 13px 14px 11px;
+  }
+
+  .head {
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+  .meta strong {
+    font-size: 0.94rem;
+  }
+
+  .meta span {
+    font-size: 0.8rem;
+  }
+
+  .metaRow {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .emotion {
+    padding: 2px 5px;
+  }
+
+  .more {
+    width: 44px;
+    height: 44px;
+    margin-right: -8px;
+    margin-top: -6px;
+  }
+
+  .moreMenu {
+    min-width: min(220px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
+    padding: 8px;
+  }
+
+  .menuItem {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+  }
+
+  .title {
+    margin: 12px 0 6px;
+    font-size: 0.98rem;
+  }
+
+  .text {
+    margin: 0 0 10px;
+    font-size: 0.94rem;
+    line-height: 1.6;
+  }
+
+  .postImageWrap {
+    min-height: 160px;
+    margin: 6px 0;
+  }
+
+  .actions {
+    margin-top: 14px;
+  }
+
+  .actionGroup {
+    width: 100%;
+    gap: 8px 12px;
+    justify-content: flex-start;
+  }
+
+  .reaction,
+  .reactionButton,
+  .bookmark {
+    min-height: 44px;
+    padding: 0 8px;
+  }
+
+  .actionIcon {
+    width: 1.05em;
+    height: 1.05em;
+  }
+
+  .reactionButton {
+    padding-inline: 10px;
+  }
+
+  .bookmark {
+    margin-left: 0;
+  }
+
+  .preview {
+    margin-top: 12px;
+    padding: 10px 12px;
+  }
+}
