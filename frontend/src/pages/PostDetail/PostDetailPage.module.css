@@ -57,18 +57,31 @@
 
 .modalBody {
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;        /* 스크롤 가능하게 변경 (hidden이면 댓글 영역이 잘림) */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.7) transparent;
+}
+
+.modalBody::-webkit-scrollbar {
+  width: 10px;
+}
+
+.modalBody::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modalBody::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(125, 110, 255, 0.65), rgba(74, 172, 255, 0.7));
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .page {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;  /* grid → flex column으로 변경, 댓글 영역 자동 높이 */
   gap: 18px;
   padding: 18px;
-  height: 100%;
-  overflow: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.7) transparent;
 }
 
 .page::-webkit-scrollbar {
@@ -103,8 +116,7 @@
 
 .commentPanel {
   width: 100%;
-  min-height: 0;
-  display: flex;
+  /* 댓글 컴포넌트가 자연스러운 높이를 가질 수 있도록 flex 제거 */
 }
 
 @media (max-width: 768px) {

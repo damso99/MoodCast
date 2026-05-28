@@ -1,5 +1,23 @@
 package com.moodcast.controller;
 
+/**
+ * ─────────────────────────────────────────────────────────────────
+ * FileUploadController — 이미지 관련 HTTP 요청을 받아주는 문지기 역할임
+ *
+ * Spring MVC에서 Controller는 "어떤 URL로 요청이 오면 어떤 메서드를 실행할지"
+ * 를 연결해주는 라우터 역할을 함. 실제 파일 처리 로직은 전부 FileUploadService에
+ * 위임하고, Controller는 최대한 얇게(thin) 유지하는 게 좋은 설계임.
+ *
+ * 📌 주요 엔드포인트 정리
+ *   POST   /upload                      — 이미지 파일을 S3에 업로드
+ *   DELETE /upload/{filename}           — S3에서 이미지 삭제
+ *   GET    /upload/view?key=...         — S3 이미지를 읽어서 브라우저에 전달
+ *   GET    /upload/uploads/**           — 예전 로컬 경로 호환용 (레거시)
+ *   POST   /upload/migrate-local        — 로컬 파일을 S3로 이관 (운영 도구)
+ *   POST   /upload/rewrite-s3-links     — DB에 남은 구버전 URL을 S3 URL로 교체 (운영 도구)
+ * ─────────────────────────────────────────────────────────────────
+ */
+
 import com.moodcast.service.FileUploadService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -18,6 +36,16 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+/**
+ * @RestController = @Controller + @ResponseBody
+ *   → 이 클래스의 모든 메서드 반환값이 자동으로 JSON으로 변환되어 응답됨
+ *
+ * @CrossOrigin = CORS 설정임
+ *   → 프론트(localhost:5173)에서 백엔드(localhost:8080)로 API를 호출할 때
+ *     브라우저가 "다른 출처라서 막겠다"고 하는 걸 허용해주는 설정임
+ *
+ * @RequestMapping("/upload") = 이 컨트롤러의 모든 엔드포인트는 /upload 로 시작함
+ */
 @RestController
 @CrossOrigin(
         origins = {"http://localhost:5173", "http://127.0.0.1:5173"},
@@ -27,14 +55,32 @@ import java.util.Map;
 )
 @RequestMapping("/upload")
 public class FileUploadController {
+
+    /**
+     * FileUploadService를 주입받아 사용함 (의존성 주입, DI).
+     * final로 선언하면 한 번 주입된 뒤 절대 바뀌지 않아서 안전함.
+     */
     private final FileUploadService fileUploadService;
 
-    // 업로드/삭제에 필요한 실제 처리는 Service가 맡도록 분리함
+    /**
+     * 생성자 주입 방식 — Spring이 이 클래스를 만들 때 자동으로 FileUploadService를 넣어줌.
+     * @Autowired 없이도 생성자가 하나면 Spring이 알아서 주입해줌.
+     */
     public FileUploadController(FileUploadService fileUploadService) {
         this.fileUploadService = fileUploadService;
     }
 
-    // 프론트에서 이미지를 보내면 S3 업로드 결과(url, filename, key)를 돌려주는 API임
+    /**
+     * [이미지 업로드 API] POST /upload
+     *
+     * 프론트에서 FormData로 파일을 보내면 S3에 저장하고 결과 URL을 돌려줌.
+     *
+     * @param file       프론트에서 보낸 이미지 파일 (multipart/form-data)
+     * @param folderType S3 버킷 내 저장할 폴더명 (기본값: "post-images").
+     *                   "user-images", "post-images" 등으로 구분해서 관리함
+     * @param request    HTTP 요청 객체 — 서버 주소(baseUrl)를 추출하는 데 사용함
+     * @return           { url, filename, key } 형태의 JSON
+     */
     @PostMapping
     public ResponseEntity<Map<String, String>> upload(
             @RequestParam("file") MultipartFile file,
@@ -44,7 +90,15 @@ public class FileUploadController {
         return ResponseEntity.ok(fileUploadService.uploadImage(file, folderType, baseUrl(request)));
     }
 
-    // 저장된 파일명을 받아 S3에서 삭제하는 API임
+    /**
+     * [이미지 삭제 API] DELETE /upload/{filename}
+     *
+     * S3에 저장된 파일을 삭제함. 게시글/프로필 삭제 시 연동해서 호출됨.
+     *
+     * @param filename   삭제할 파일명 (예: "abc123.jpg")
+     * @param folderType 어느 폴더에서 삭제할지 (기본값: "post-images")
+     * @return           { deleted: true/false } 형태의 JSON
+     */
     @DeleteMapping("/{filename}")
     public ResponseEntity<Map<String, Boolean>> delete(
             @PathVariable String filename,
@@ -53,24 +107,51 @@ public class FileUploadController {
         return ResponseEntity.ok(Map.of("deleted", fileUploadService.deleteImage(filename, folderType)));
     }
 
-    // 브라우저가 보는 주소는 이 엔드포인트임. 내부에서 S3 이미지를 직접 읽어서 내려줌
+    /**
+     * [이미지 조회 API] GET /upload/view?key=post-images/abc123.jpg
+     *
+     * S3에서 이미지 바이트를 직접 읽어 브라우저에 내려줌.
+     * S3 버킷이 퍼블릭이 아닐 때 이 엔드포인트를 통해 프록시처럼 사용할 수 있음.
+     *
+     * @param key  S3 객체 키 (URL 인코딩된 상태로 올 수 있어서 디코딩 처리함)
+     * @return     이미지 바이트 배열 (Content-Type: image/jpeg 등)
+     */
     @GetMapping("/view")
     public ResponseEntity<byte[]> view(@RequestParam String key) {
+        // URL 인코딩된 키를 원래 문자열로 복원함 (예: "%2F" → "/")
         String decodedKey = URLDecoder.decode(key, StandardCharsets.UTF_8);
         return fileUploadService.loadImage(decodedKey);
     }
 
-    // 예전 DB에 남아 있는 /uploads/... 주소도 같은 이미지로 열어줌
+    /**
+     * [레거시 URL 호환 API] GET /upload/uploads/파일명
+     *
+     * 예전에는 이미지를 서버 로컬 폴더(uploads/)에 저장하고
+     * /uploads/파일명 형태의 URL을 DB에 저장했었음.
+     * 이미지를 S3로 옮긴 뒤에도 기존 URL로 접근하면 이 엔드포인트가 받아서
+     * S3에서 찾아 내려줌 → 구버전 데이터도 정상 표시 가능함.
+     *
+     * (/** 와일드카드는 /uploads/a/b/c 같은 경로도 전부 매칭함)
+     */
     @GetMapping("/uploads/**")
     public ResponseEntity<byte[]> legacyUploads(HttpServletRequest request) {
+        // 전체 요청 경로에서 "/upload/" 뒤에 있는 키 부분만 뽑아냄
+        // 예: "/upload/uploads/abc.jpg" → "uploads/abc.jpg"
         String requestUri = request.getRequestURI();
         String prefix = request.getContextPath() + "/upload/";
         String key = requestUri.startsWith(prefix) ? requestUri.substring(prefix.length()) : requestUri;
         return fileUploadService.loadImage(key);
     }
 
-    // 예전 로컬 uploads 폴더에 남아 있는 파일을 S3로 옮기는 이관용 API임
-    // deleteAfterUpload=true 로 보내면 업로드 후 로컬 파일도 지움
+    /**
+     * [운영 도구] POST /upload/migrate-local?deleteAfterUpload=true
+     *
+     * EC2 서버의 로컬 uploads/ 폴더에 남아 있는 파일들을 S3로 이관함.
+     * 배포 환경 전환 시 한 번만 실행하면 되는 일회성 작업임.
+     *
+     * @param deleteAfterUpload true면 S3 업로드 성공 후 로컬 파일도 삭제함
+     * @return 이관 결과 (성공한 파일 목록, DB 업데이트 건수 등)
+     */
     @PostMapping("/migrate-local")
     public ResponseEntity<Map<String, Object>> migrateLocalUploads(
             @RequestParam(defaultValue = "false") boolean deleteAfterUpload,
@@ -79,11 +160,27 @@ public class FileUploadController {
         return ResponseEntity.ok(fileUploadService.migrateLocalUploadsAndDatabase(deleteAfterUpload));
     }
 
+    /**
+     * [운영 도구] POST /upload/rewrite-s3-links
+     *
+     * DB에 저장된 이미지 URL 중 구버전(localhost:8080/... 또는 /uploads/...) 형태를
+     * 올바른 S3 퍼블릭 URL로 일괄 교체함.
+     * rewrite 후 프론트에서 이미지가 정상적으로 표시되는지 확인하면 됨.
+     *
+     * @return 업데이트된 레코드 수 (members, posts, comments 각각)
+     */
     @PostMapping("/rewrite-s3-links")
     public ResponseEntity<Map<String, Object>> rewriteS3Links(HttpServletRequest request) {
         return ResponseEntity.ok(fileUploadService.rewriteImageUrlsToPublicS3Urls(baseUrl(request)));
     }
 
+    /**
+     * 현재 HTTP 요청에서 서버의 기본 URL을 조립하는 내부 헬퍼 메서드임.
+     * 예: "http://localhost:8080" 또는 "http://3.39.49.9:8080"
+     *
+     * @RequestMapping에서 반환되는 URL에 이 baseUrl을 붙여
+     * DB에 저장할 이미지 접근 주소를 만드는 데 사용함.
+     */
     private String baseUrl(HttpServletRequest request) {
         return request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort();
     }
