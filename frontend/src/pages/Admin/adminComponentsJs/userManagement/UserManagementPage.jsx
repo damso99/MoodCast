@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
@@ -70,7 +70,8 @@ export function UserManagementPage() {
     useState(false);
   const [managementSummaryError, setManagementSummaryError] = useState(false);
   const [selectedManagedMember, setSelectedManagedMember] = useState(null);
-  const { accessToken } = useAuthStore();
+  const { accessToken, member } = useAuthStore();
+  const navigate = useNavigate(); // 버튼 클릭 시 관리자 권한 관리 페이지로 이동시키기 위한 React Router 함수입니다.
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
@@ -82,6 +83,24 @@ export function UserManagementPage() {
     name: "이름으로 검색",
     nickname: "닉네임으로 검색",
     email: "이메일로 검색",
+  };
+
+  /*
+   * 관리자 권한 관리 버튼 클릭 처리
+   * --------------------------------------------------------------------------
+   * 초보자 설명:
+   * - NavLink를 그대로 쓰면 클릭하는 순간 바로 /admin/users/new로 이동합니다.
+   * - 일반 관리자는 이 페이지에 들어가면 안 되므로, 먼저 로그인한 관리자의 role을 확인합니다.
+   * - SUPER_ADMIN이면 이동하고, 아니면 alert만 보여준 뒤 이동하지 않습니다.
+   * - URL 직접 입력은 AdminPages.jsx의 라우트 보호에서 한 번 더 막습니다.
+   */
+  const handleAdminRoleManagementClick = () => {
+    if (member?.role !== "SUPER_ADMIN") {
+      alert("관리자 권한 관리는 슈퍼 관리자만 접근할 수 있습니다.");
+      return;
+    }
+
+    navigate("/admin/users/new");
   };
 
   const fetchManagementSummary = () => {
@@ -422,9 +441,13 @@ export function UserManagementPage() {
             />
           </div>
         </div>
-        <NavLink className={styles.primaryLinkButton} to="/admin/users/new">
+        <button
+          type="button"
+          className={styles.primaryLinkButton}
+          onClick={handleAdminRoleManagementClick}
+        >
           관리자 권한 관리
-        </NavLink>
+        </button>
       </section>
 
       <section className={styles.metricGrid}>
