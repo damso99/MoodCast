@@ -1,40 +1,59 @@
-import axios from 'axios';
-import { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import CloseIcon from '@mui/icons-material/Close';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { FeedCard } from '../../components/common/FeedCard';
-import { PostDetailComments } from '../../components/common/PostDetailComments';
-import styles from './PostDetailPage.module.css';
+import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+import CloseIcon from "@mui/icons-material/Close";
+import { useAuthStore } from "../../stores/useAuthStore";
+import { FeedCard } from "../../components/common/FeedCard";
+import { PostDetailComments } from "../../components/common/PostDetailComments";
+import styles from "./PostDetailPage.module.css";
 
 function normalizeContent(content) {
-  if (!content) return '';
-  const text = content.replace(/<[^>]+>/g, '').trim();
-  const textarea = document.createElement('textarea');
+  if (!content) return "";
+  const text = content.replace(/<[^>]+>/g, "").trim();
+  const textarea = document.createElement("textarea");
   textarea.innerHTML = text;
   return textarea.value;
 }
 
+function extractImageUrls(html) {
+  if (!html) return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+    return Array.from(doc.querySelectorAll("img"))
+      .map((img) => img.src)
+      .filter(Boolean);
+  } catch (error) {
+    const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
+    return Array.from(matches, (match) => match[1]).filter(Boolean);
+  }
+}
+
 function formatTime(dateString) {
-  if (!dateString) return '방금';
+  if (!dateString) return "방금";
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
-  if (diffMins < 1) return '방금';
+  if (diffMins < 1) return "방금";
   if (diffMins < 60) return `${diffMins}분 전`;
   if (diffHours < 24) return `${diffHours}시간 전`;
   if (diffDays < 7) return `${diffDays}일 전`;
-  return new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Seoul',
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
   }).format(date);
 }
 
@@ -48,16 +67,19 @@ export function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [commentCount, setCommentCount] = useState(0);
   const [commentsReady, setCommentsReady] = useState(false);
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
   const shouldAutoFocusComments = useMemo(
     () =>
-      searchParams.get('comments') === '1' ||
-      searchParams.get('comments') === 'open' ||
+      searchParams.get("comments") === "1" ||
+      searchParams.get("comments") === "open" ||
       Boolean(location.state?.openComments),
     [location.state?.openComments, searchParams],
   );
   const targetCommentId = useMemo(
-    () => location.state?.notificationCommentId || searchParams.get('commentId') || null,
+    () =>
+      location.state?.notificationCommentId ||
+      searchParams.get("commentId") ||
+      null,
     [location.state?.notificationCommentId, searchParams],
   );
 
@@ -77,19 +99,36 @@ export function PostDetailPage() {
         }
 
         const data = item;
-        const authorName = data.author || data.nickname || '사용자';
-        const nextPost = {
+        const authorName = data.author || data.nickname || "익명";
+        const rawContent = data.content ?? data.body ?? "";
+        const memberId =
+          data.memberId ?? data.member_id ?? data.authorId ?? data.author_id;
+        setPost({
           id: data.postId,
           postId: data.postId,
-          memberId: data.memberId,
-          profileLink: data.memberId ? `/app/user/${data.memberId}` : null,
+          memberId,
+          profileLink: memberId ? `/app/user/${memberId}` : null,
           title: data.title,
           author: authorName,
-          profileImageUrl: data.profileImageUrl ?? data.profile_image_url ?? null,
+          profileImageUrl:
+            data.profileImageUrl ??
+            data.profile_image_url ??
+            data.avatarUrl ??
+            data.avatar_url ??
+            data.profileImage ??
+            data.imageUrl ??
+            data.image ??
+            data.photoUrl ??
+            data.photo ??
+            data.pictureUrl ??
+            data.picture ??
+            data.image_url ??
+            data.photo_url ??
+            null,
           avatar: authorName.charAt(0).toUpperCase(),
           time: formatTime(data.createdAt),
-          text: normalizeContent(data.content),
-          content: data.content,
+          text: normalizeContent(rawContent),
+          content: rawContent,
           emotionId: data.emotionId,
           comments: data.comments ?? 0,
           commentsList: [],
@@ -97,16 +136,30 @@ export function PostDetailPage() {
           vibes: data.vibes ?? 0,
           likedByMe: data.likedByMe,
           savedByMe: data.savedByMe,
-          tags: data.tags ?? '',
-          imageSrc: data.imageSrc ?? data.image ?? data.cover ?? data.thumbnail,
+          tags: data.tags ?? "",
+          imageSrc:
+            data.imageSrc ??
+            data.image ??
+            data.cover ??
+            data.thumbnail ??
+            extractImageUrls(rawContent)[0],
+          imageSrcs: Array.from(
+            new Set([
+              ...(data.imageSrc ? [data.imageSrc] : []),
+              ...(data.image ? [data.image] : []),
+              ...(data.cover ? [data.cover] : []),
+              ...(data.thumbnail ? [data.thumbnail] : []),
+              ...extractImageUrls(rawContent),
+            ]),
+          ).filter(Boolean),
           imageAlt: data.imageAlt || data.author,
-        };
+        });
 
         setPost(nextPost);
         setCommentCount(nextPost.comments);
       })
       .catch((err) => {
-        console.error('게시물 상세 조회 실패:', err);
+        console.error("게시물 상세 조회 실패:", err);
         setPost(null);
       })
       .finally(() => setLoading(false));
@@ -121,9 +174,9 @@ export function PostDetailPage() {
     const timerId = window.setTimeout(() => {
       setCommentsReady(true);
       if (shouldAutoFocusComments) {
-        const anchor = document.getElementById('post-comments-anchor');
+        const anchor = document.getElementById("post-comments-anchor");
         if (anchor) {
-          anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          anchor.scrollIntoView({ behavior: "smooth", block: "start" });
         }
       }
     }, 150);
@@ -137,8 +190,8 @@ export function PostDetailPage() {
     const { body, documentElement } = document;
     const prevBodyOverflow = body.style.overflow;
     const prevHtmlOverflow = documentElement.style.overflow;
-    body.style.overflow = 'hidden';
-    documentElement.style.overflow = 'hidden';
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
 
     return () => {
       body.style.overflow = prevBodyOverflow;
@@ -147,13 +200,13 @@ export function PostDetailPage() {
   }, [post]);
 
   const closeDetail = () => {
-    navigate('/app/feed', { replace: true });
+    navigate("/app/feed", { replace: true });
   };
 
   const handleCommentButtonClick = () => {
-    const anchor = document.getElementById('post-comments-anchor');
+    const anchor = document.getElementById("post-comments-anchor");
     if (anchor) {
-      anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      anchor.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
@@ -217,7 +270,7 @@ export function PostDetailPage() {
         <header className={styles.modalHeader}>
           <div>
             <strong>게시물 상세보기</strong>
-            <p>{post?.author || '게시물'}</p>
+            <p>{post?.author || "게시물"}</p>
           </div>
           <button
             type="button"
@@ -232,9 +285,7 @@ export function PostDetailPage() {
           </button>
         </header>
 
-        <div className={styles.modalBody}>
-          {content}
-        </div>
+        <div className={styles.modalBody}>{content}</div>
       </section>
     </div>,
     document.body,
