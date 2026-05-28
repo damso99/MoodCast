@@ -1,12 +1,12 @@
 .wrap {
   display: grid;
-  gap: 18px;
+  gap: 24px;
 }
 
 .hero,
 .highlights,
 .recent {
-  padding: 22px;
+  padding: 24px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.28);
   border: 1px solid rgba(17, 24, 39, 0.085);
@@ -18,6 +18,14 @@
   grid-template-columns: auto 1fr auto;
   gap: 18px;
   align-items: center;
+}
+
+.heroContent {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-width: 0;
 }
 
 .avatar {
@@ -41,35 +49,40 @@
 
 .heroContent strong {
   display: block;
-  color: #111827;
-  font-size: 1.2rem;
+  color: #111111;
+  font-size: 1.125rem;
+  font-weight: 800;
 }
 
 .heroContent p {
-  margin: 8px 0 0;
-  color: #667085;
+  margin: 6px 0 0;
+  color: #555555;
+  font-size: 0.875rem;
+  font-weight: 400;
 }
 
 .handle {
   display: block;
   margin-top: 4px;
-  color: #98a2b3;
-  font-size: 0.9rem;
+  color: #888888;
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .editBtnRich {
   min-height: 44px;
   padding: 0 16px;
-  border: 0;
+  border: 1px solid #e2e8f0;
   border-radius: 14px;
-  background: linear-gradient(
-    135deg,
-    rgba(124, 77, 255, 0.12),
-    rgba(124, 77, 255, 0.06)
-  );
-  color: #7c4dff;
-  font-weight: 800;
+  background: rgba(255, 255, 255, 0.5);
+  color: #475569;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.editBtnRich:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
 }
 
 .actionsRich {
@@ -121,7 +134,7 @@
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
 .pill {
@@ -134,8 +147,8 @@
 }
 
 .statCard {
-  min-height: 90px;
-  padding: 18px 16px;
+  min-height: 96px;
+  padding: 14px 12px;
   border-radius: 20px;
   border: 1px solid rgba(17, 24, 39, 0.085);
   background: rgba(255, 255, 255, 0.28);
@@ -164,19 +177,21 @@
 
 .statCard strong {
   display: block;
-  color: #111827;
-  font-size: 1.2rem;
+  color: #111111;
+  font-size: 1.9rem;
+  font-weight: 900;
 }
 
 .statCard span {
-  color: #667085;
-  font-size: 0.9rem;
+  color: #444444;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .highlights {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
 .highlight {
@@ -185,14 +200,16 @@
 
 .highlight span {
   display: block;
-  color: #667085;
-  font-size: 0.85rem;
-  margin-bottom: 4px;
+  color: #444444;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+  font-weight: 600;
 }
 
 .highlight strong {
-  color: #111827;
-  font-size: 1.1rem;
+  color: #111111;
+  font-size: 1.45rem;
+  font-weight: 900;
 }
 
 .recent {
@@ -216,10 +233,10 @@
 .sectionHeader button {
   min-height: 40px;
   padding: 0 14px;
-  border: 0;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
-  background: rgba(124, 77, 255, 0.1);
-  color: #7c4dff;
+  background: rgba(255,255,255,0.5);
+  color: #475569;
   font-weight: 700;
   cursor: pointer;
 }
@@ -261,8 +278,8 @@
 /* 감정 통계 섹션 스타일 */
 .moodStatsContainer {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 260px;
-  gap: 32px;
+  grid-template-columns: 220px minmax(0, 1fr) 300px;
+  gap: 36px;
   align-items: center;
 }
 
@@ -328,21 +345,24 @@
 
 .moodLegend {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .moodStatsInfo {
   display: grid;
   gap: 14px;
-  padding: 10px 4px 10px 0;
+  padding: 10px 8px 10px 0;
 }
 
 .moodStatItem {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 16px 14px;
-  border-radius: 14px;
+  min-height: 112px;
+  padding: 18px 16px;
+  border-radius: 24px;
   background: rgba(0, 0, 0, 0.02);
   transition: all 0.2s ease;
 }
@@ -353,14 +373,14 @@
 
 .moodStatLabel {
   font-size: 0.66rem;
-  color: #98a2b3;
+  color: #667085;
   text-transform: uppercase;
   letter-spacing: 0.6px;
   font-weight: 700;
 }
 
 .moodStatValue {
-  font-size: 1.6rem;
+  font-size: 1.35rem;
   font-weight: 900;
   color: #111827;
   line-height: 1.2;
@@ -370,7 +390,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px;
+  padding: 8px 10px;
   border-radius: 10px;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -390,6 +410,11 @@
 
 .moodLegendInfo {
   flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .moodLegendLabel {
@@ -400,8 +425,10 @@
 
 .moodLegendValue {
   font-size: 0.8rem;
-  color: #475467;
-  margin-top: 2px;
+  color: #1f2937;
+  margin-top: 0;
+  text-align: right;
+  white-space: nowrap;
 }
 
 .moodEmptyState {
@@ -472,6 +499,10 @@
     gap: 10px;
     padding: 0;
   }
+
+  .moodStatItem {
+    min-height: 96px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -488,10 +519,12 @@
   }
 
   .moodStatItem {
+    min-height: 88px;
     padding: 14px 12px;
+    border-radius: 20px;
   }
 
   .moodStatValue {
-    font-size: 1.45rem;
+    font-size: 1.2rem;
   }
 }

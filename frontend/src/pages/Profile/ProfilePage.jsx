@@ -335,7 +335,7 @@ export function ProfilePage() {
       </article>
 
       {/* 통계 섹션 - MUI Grid로 개선 */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
         {[
           { label: '게시물', value: followInfo.postCount },
           { label: '저장됨', value: followInfo.savedCount },
@@ -354,7 +354,7 @@ export function ProfilePage() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minHeight: '100px',
+                minHeight: '108px',
                 background: 'rgba(255, 255, 255, 0.28)',
                 border: '1px solid rgba(17, 24, 39, 0.085)',
                 borderRadius: '16px',
@@ -367,11 +367,11 @@ export function ProfilePage() {
                 },
               }}
             >
-              <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
-                <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.6rem', lineHeight: 1 }}>
+              <CardContent sx={{ textAlign: 'center', padding: '16px 10px !important', width: '100%' }}>
+                <Typography sx={{ fontWeight: 900, color: '#111111', fontSize: '1.9rem', lineHeight: 1 }}>
                   {item.label === '저장됨' && !isOwnProfile ? '0' : item.value}
                 </Typography>
-                <Typography sx={{ color: '#667085', display: 'block', marginTop: '8px', fontWeight: 500, fontSize: '0.85rem' }}>
+                <Typography sx={{ color: '#444444', display: 'block', marginTop: '8px', fontWeight: 600, fontSize: '0.8rem' }}>
                   {item.label}
                 </Typography>
               </CardContent>
@@ -381,26 +381,26 @@ export function ProfilePage() {
       </Box>
 
       {/* 하이라이트 섹션 - 4개 개별 카드 */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '12px' }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '10px' }}>
         {/* 감정 공감률 */}
-        <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
-          <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
-            <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.6rem', lineHeight: 1 }}>
+        <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '108px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+          <CardContent sx={{ textAlign: 'center', padding: '16px 10px !important', width: '100%' }}>
+            <Typography sx={{ fontWeight: 900, color: '#111111', fontSize: '1.9rem', lineHeight: 1 }}>
               {followInfo.emotionEmpathyRate}%
             </Typography>
-            <Typography sx={{ color: '#667085', marginTop: '8px', fontWeight: 500, fontSize: '0.85rem' }}>
+            <Typography sx={{ color: '#444444', marginTop: '8px', fontWeight: 600, fontSize: '0.8rem' }}>
               감정 공감률
             </Typography>
           </CardContent>
         </Card>
 
         {/* 주간 반응 */}
-        <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
-          <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
-            <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.6rem', lineHeight: 1 }}>
+        <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '108px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+          <CardContent sx={{ textAlign: 'center', padding: '16px 10px !important', width: '100%' }}>
+            <Typography sx={{ fontWeight: 900, color: '#111111', fontSize: '1.9rem', lineHeight: 1 }}>
               {followInfo.weeklyReactions}
             </Typography>
-            <Typography sx={{ color: '#667085', marginTop: '8px', fontWeight: 500, fontSize: '0.85rem' }}>
+            <Typography sx={{ color: '#444444', marginTop: '8px', fontWeight: 600, fontSize: '0.8rem' }}>
               주간 반응
             </Typography>
           </CardContent>
@@ -409,14 +409,14 @@ export function ProfilePage() {
         {/* 활동 상태 */}
         {(() => {
           const activity = getActivityStatus();
-          const ActivityIcon = activity.text === '활발함' ? WhatshotIcon : activity.text === '활동중' ? DirectionsRunIcon : BedtimeIcon;
-          const iconColor = activity.text === '활발함' ? '#ff6d00' : activity.text === '활동중' ? '#7c4dff' : '#90a4ae';
           return (
-            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
-              <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
-                <ActivityIcon sx={{ fontSize: '2rem', color: iconColor }} />
-                <Typography sx={{ color: '#667085', marginTop: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
+            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '108px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+              <CardContent sx={{ textAlign: 'center', padding: '16px 10px !important', width: '100%' }}>
+                <Typography sx={{ fontWeight: 600, color: '#111111', fontSize: '1.5rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
                   {activity.text}
+                </Typography>
+                <Typography sx={{ color: '#555555', marginTop: '6px', fontWeight: 500, fontSize: '0.75rem' }}>
+                  활동 상태
                 </Typography>
               </CardContent>
             </Card>
@@ -426,13 +426,13 @@ export function ProfilePage() {
         {/* 인기 상태 */}
         {(() => {
           const popularity = getPopularityStatus();
-          const PopularityIcon = popularity.text === '인기' ? EmojiEventsIcon : popularity.text === '인기있음' ? GradeIcon : SeedlingIcon;
-          const iconColor = popularity.text === '인기' ? '#e65100' : popularity.text === '인기있음' ? '#f9a825' : '#43a047';
           return (
-            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
-              <CardContent sx={{ textAlign: 'center', padding: '20px 12px !important', width: '100%' }}>
-                <PopularityIcon sx={{ fontSize: '2rem', color: iconColor }} />
-                <Typography sx={{ color: '#667085', marginTop: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
+            <Card sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '108px', background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none' }}>
+              <CardContent sx={{ textAlign: 'center', padding: '16px 10px !important', width: '100%' }}>
+                <Typography sx={{ fontWeight: 600, color: '#111111', fontSize: '1.5rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                  NEW
+                </Typography>
+                <Typography sx={{ color: '#555555', marginTop: '6px', fontWeight: 500, fontSize: '0.75rem' }}>
                   {popularity.text}
                 </Typography>
               </CardContent>
@@ -442,7 +442,7 @@ export function ProfilePage() {
       </Box>
 
       {/* 감정 통계 섹션 */}
-      <Card sx={{ background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none', padding: { xs: '18px', md: '24px' } }}>
+      <Card sx={{ background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '24px', boxShadow: 'none', padding: { xs: '18px', md: '24px' } }}>
         <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.1rem', marginBottom: '16px' }}>
           전체 감정 분포
         </Typography>
@@ -461,10 +461,11 @@ export function ProfilePage() {
                   const radius = 80;
                   const centerX = 100;
                   const centerY = 100;
+                  const totalCount = orderedMoodStats.reduce((sum, stat) => sum + (stat.count || 0), 0);
                   
                   return orderedMoodStats.map((stat) => {
-                    const percent = stat.percentage / 100;
-                    const angle = percent * 360;
+                    const countRatio = totalCount > 0 ? stat.count / totalCount : 0;
+                    const angle = countRatio * 360;
                     const startAngle = currentAngle * (Math.PI / 180);
                     const endAngle = (currentAngle + angle) * (Math.PI / 180);
                     
@@ -496,12 +497,11 @@ export function ProfilePage() {
                         <path
                           d={pathData}
                           fill={emotion?.color || '#ccc'}
-                          stroke="rgba(255,255,255,0.95)"
-                          strokeWidth="2.2"
+                          stroke="rgba(255,255,255,1)"
+                          strokeWidth="2"
                           opacity={isHovered ? 1 : 0.85}
                           style={{
                             transition: 'all 0.25s ease',
-                            filter: isHovered ? 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                           }}
                         />
                       </g>
@@ -545,8 +545,8 @@ export function ProfilePage() {
                   >
                     <div className={styles.moodLegendColor} style={{ backgroundColor: emotion?.color }}></div>
                     <div className={styles.moodLegendInfo}>
-                      <div className={styles.moodLegendLabel}>{emotion?.label}</div>
-                      <div className={styles.moodLegendValue}>{stat.percentage}% ({stat.count})</div>
+                        <div className={styles.moodLegendLabel}>{emotion?.label}</div>
+                        <div className={styles.moodLegendValue}>{stat.percentage}% ({stat.count})</div>
                     </div>
                   </div>
                 );
