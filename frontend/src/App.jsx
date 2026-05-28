@@ -64,6 +64,7 @@ function AppRoutes() {
       <Route path="/app/saved" element={<SavedPage />} />
       <Route path="/app/mood-chat" element={<MoodChatPage />} />
       <Route path="/app/chat" element={<MoodChatPage />} />
+      <Route path="/app/group-chat" element={<Navigate to="/app/mood-chat" replace />} />
       {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
       <Route path="/app/profile" element={<ProfilePage />} />
       <Route path="/app/profile-mobile" element={<ProfilePage />} />

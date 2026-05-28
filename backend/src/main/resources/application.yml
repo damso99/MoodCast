@@ -18,6 +18,12 @@ spring:
     import: optional:file:.env[.properties]
   application:
     name: moodcast-backend
+  sql:
+    init:
+      mode: always
+      schema-locations:
+        - classpath:schema-posts.sql
+        - classpath:schema-group-chat.sql
   data:
     redis:
       host: ${REDIS_HOST}

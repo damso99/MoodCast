@@ -14,8 +14,16 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { useRealtimeChat } from "../../hooks/useRealtimeChat";
 import { notifyChatUnreadChanged } from "../../hooks/useUnreadChatCount";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { formatKoreanTime } from "../../shared/lib/dateTime";
+import { fetchChatInviteCandidates } from "../../shared/api/chatInviteApi";
+import { fetchGroupChatRooms } from "../../shared/api/groupChatApi";
+import {
+  createGroupChatRoom,
+  inviteGroupChatMembers,
+} from "../../shared/api/groupChatApi";
+import { ChatRoomCreateModal } from "./components/ChatRoomCreateModal";
+import { GroupRoomOverlay } from "./components/GroupRoomOverlay";
 import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
@@ -41,8 +49,82 @@ function normalizeIncomingMessage(message, currentUserId) {
   };
 }
 
+function normalizeGroupMessage(message) {
+  return {
+    messageId: message?.messageId ?? message?.id,
+    roomId: message?.roomId,
+    senderId: Number(message?.senderId),
+    senderName: message?.senderName || "회원",
+    profileImageUrl: message?.profileImageUrl || "",
+    content: message?.content || "",
+    createdAt: message?.createdAt ? formatKoreanTime(message.createdAt) : "",
+  };
+}
+
+function getMemberDisplayName(member) {
+  return member?.nickname || member?.name || `회원 ${member?.memberId}`;
+}
+
+function buildRoomName(selectedMembers) {
+  const names = selectedMembers.map(getMemberDisplayName).filter(Boolean);
+
+  if (names.length === 0) {
+    return "새 채팅방";
+  }
+
+  if (names.length === 1) {
+    return `${names[0]} 님과의 채팅`;
+  }
+
+  return `${names[0]} 외 ${names.length - 1}명`;
+}
+
+function normalizeDirectThread(thread) {
+  return {
+    roomType: "direct",
+    roomId: null,
+    threadKey: `direct-${thread?.partnerMemberId}`,
+    partnerMemberId: thread?.partnerMemberId,
+    partnerName: thread?.partnerName || "",
+    partnerNickname: thread?.partnerNickname || "",
+    partnerProfileImageUrl: thread?.partnerProfileImageUrl || "",
+    roomName: thread?.partnerNickname || thread?.partnerName || "",
+    roomDescription: "",
+    lastMessage: thread?.lastMessage || "",
+    lastMessageAt: thread?.lastMessageAt || "",
+    unreadCount: Number(thread?.unreadCount || 0),
+    memberCount: 2,
+  };
+}
+
+function normalizeGroupThread(thread) {
+  return {
+    roomType: "group",
+    roomId: thread?.roomId,
+    threadKey: `group-${thread?.roomId}`,
+    roomName: thread?.roomName || "그룹 채팅방",
+    roomDescription: thread?.roomDescription || "",
+    lastMessage: thread?.lastMessage || "",
+    lastMessageAt: thread?.lastMessageAt || "",
+    unreadCount: 0,
+    memberCount: Number(thread?.memberCount || 0),
+    createdBy: thread?.createdBy,
+  };
+}
+
+function getThreadSortValue(thread) {
+  const rawValue = thread?.lastMessageAt || thread?.createdAt || "";
+  if (!rawValue) {
+    return 0;
+  }
+
+  const parsedValue = Date.parse(String(rawValue).replace(" ", "T"));
+  return Number.isNaN(parsedValue) ? 0 : parsedValue;
+}
+
 function ChatBody({ desktop, onRoomOpenChange }) {
-  const { member } = useAuthStore();
+  const { member, accessToken } = useAuthStore();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const currentMemberId = useMemo(() => {
     const memberId = Number(member?.memberId);
@@ -67,6 +149,12 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [isSending, setIsSending] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteMode, setInviteMode] = useState("create");
+  const [inviteCandidates, setInviteCandidates] = useState([]);
+  const [selectedInviteIds, setSelectedInviteIds] = useState([]);
+  const [isLoadingInviteCandidates, setIsLoadingInviteCandidates] = useState(false);
+  const [activeGroupRoom, setActiveGroupRoom] = useState(null);
 
   useEffect(() => {
     if (!DEBUG_CHAT_ROOM) {
@@ -142,6 +230,88 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     handleIncomingMessage,
   );
 
+  const loadInviteCandidates = async () => {
+    if (!currentMemberId) {
+      setInviteCandidates([]);
+      return;
+    }
+
+    setIsLoadingInviteCandidates(true);
+
+    try {
+      const candidates = await fetchChatInviteCandidates(
+        currentMemberId,
+        accessToken || window.sessionStorage.getItem("moodcast-access-token"),
+      );
+      setInviteCandidates(candidates);
+    } catch (requestError) {
+      console.error("초대 대상 목록 조회 실패", requestError);
+      setInviteCandidates([]);
+    } finally {
+      setIsLoadingInviteCandidates(false);
+    }
+  };
+
+  const openCreateRoomModal = async () => {
+    setInviteMode("create");
+    setSelectedInviteIds([]);
+    setInviteModalOpen(true);
+    await loadInviteCandidates();
+  };
+
+  const openInviteRoomModal = async (room) => {
+    setInviteMode("invite");
+    setSelectedInviteIds([]);
+    setActiveGroupRoom(room);
+    setInviteModalOpen(true);
+    await loadInviteCandidates();
+  };
+
+  const toggleInviteMember = (memberItem) => {
+    const memberId = Number(memberItem?.memberId);
+    if (!Number.isFinite(memberId) || memberId <= 0) {
+      return;
+    }
+
+    setSelectedInviteIds((previousIds) =>
+      previousIds.includes(memberId)
+        ? previousIds.filter((id) => id !== memberId)
+        : [...previousIds, memberId],
+    );
+  };
+
+  const submitInviteSelection = async () => {
+    const selectedMembers = inviteCandidates.filter((item) =>
+      selectedInviteIds.includes(Number(item.memberId)),
+    );
+
+    if (selectedInviteIds.length === 0) {
+      return;
+    }
+
+    try {
+      if (inviteMode === "invite" && activeGroupRoom?.roomId) {
+        await inviteGroupChatMembers(activeGroupRoom.roomId, {
+          memberIds: selectedInviteIds,
+        });
+      } else {
+        const response = await createGroupChatRoom({
+          roomName: buildRoomName(selectedMembers),
+          roomDescription: "",
+          creatorId: currentMemberId,
+          memberIds: selectedInviteIds,
+        });
+        setActiveGroupRoom(response.data);
+      }
+
+      setInviteModalOpen(false);
+      setSelectedInviteIds([]);
+    } catch (requestError) {
+      console.error("채팅방 생성/초대 실패", requestError);
+      setError(requestError.response?.data?.message || "채팅방을 만들지 못했습니다.");
+    }
+  };
+
   const markMessagesAsRead = async (partnerId) => {
     if (!currentMemberId || !partnerId) {
       return;
@@ -178,10 +348,23 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setError("");
 
     try {
-      const response = await axios.get(`${API_BASE}/chat/threads`, {
-        params: { memberId: currentMemberId },
-      });
-      const nextThreads = Array.isArray(response.data) ? response.data : [];
+      const [directResponse, groupResponse] = await Promise.all([
+        axios.get(`${API_BASE}/chat/threads`, {
+          params: { memberId: currentMemberId },
+        }),
+        fetchGroupChatRooms(currentMemberId),
+      ]);
+
+      const directThreads = Array.isArray(directResponse.data)
+        ? directResponse.data.map(normalizeDirectThread)
+        : [];
+      const groupThreads = Array.isArray(groupResponse.data)
+        ? groupResponse.data.map(normalizeGroupThread)
+        : [];
+
+      const nextThreads = [...directThreads, ...groupThreads].sort(
+        (leftThread, rightThread) => getThreadSortValue(rightThread) - getThreadSortValue(leftThread),
+      );
 
       setThreads(nextThreads);
     } catch (requestError) {
@@ -341,6 +524,20 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     loadMessages(thread);
   };
 
+  const openGroupRoom = (thread) => {
+    if (!thread?.roomId) {
+      return;
+    }
+
+    setActiveGroupRoom(thread);
+    setIsRoomOpen(false);
+    setActiveThread(null);
+    setMessages([]);
+    setMessage("");
+    setShowScrollBottomButton(false);
+    setError("");
+  };
+
   const handleDeleteMessage = async (item) => {
     if (!currentMemberId || !item?.id) {
       return;
@@ -423,8 +620,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   };
 
   useEffect(() => {
-    onRoomOpenChange?.(isRoomOpen);
-  }, [isRoomOpen, onRoomOpenChange]);
+    onRoomOpenChange?.(isRoomOpen || Boolean(activeGroupRoom));
+  }, [isRoomOpen, activeGroupRoom, onRoomOpenChange]);
   const partnerName =
     activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
   const partnerInitial = partnerName.charAt(0).toUpperCase();
@@ -437,35 +634,47 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       {!isLoadingThreads && threads.length === 0 ? (
         <p className={styles.emptyState}>아직 대화 중인 채팅방이 없습니다.</p>
       ) : null}
-      {threads.map((thread) => (
-        <button
-          key={thread.partnerMemberId}
-          type="button"
-          className={`${styles.threadItem} ${activeThread?.partnerMemberId === thread.partnerMemberId ? styles.active : ""}`}
-          onClick={() => openThread(thread)}
-        >
-          <div className={styles.threadContent}>
-            <strong>
-              {thread.partnerNickname ||
-                thread.partnerName ||
-                `회원 ${thread.partnerMemberId}`}
-            </strong>
-            <p className={styles.threadPreview}>
-              {thread.lastMessage || "메시지가 없습니다."}
-            </p>
-          </div>
-          <div className={styles.threadMeta}>
-            <span>
-              {thread.lastMessageAt
-                ? formatKoreanTime(thread.lastMessageAt)
-                : ""}
-            </span>
-            {thread.unreadCount > 0 ? (
-              <b className={styles.unreadBadge}>{thread.unreadCount}</b>
-            ) : null}
-          </div>
-        </button>
-      ))}
+      {threads.map((thread) => {
+        const isGroupThread = thread.roomType === "group";
+        const isThreadActive = isGroupThread
+          ? activeGroupRoom?.roomId === thread.roomId
+          : activeThread?.partnerMemberId === thread.partnerMemberId;
+
+        return (
+          <button
+            key={thread.threadKey}
+            type="button"
+            className={`${styles.threadItem} ${isThreadActive ? styles.active : ""}`}
+            onClick={() =>
+              isGroupThread ? openGroupRoom(thread) : openThread(thread)
+            }
+          >
+            <div className={styles.threadContent}>
+              <strong>
+                {isGroupThread
+                  ? thread.roomName || "그룹 채팅방"
+                  : thread.partnerNickname ||
+                    thread.partnerName ||
+                    `회원 ${thread.partnerMemberId}`}
+              </strong>
+              <span className={styles.threadTypeLabel}>
+                {isGroupThread ? `그룹 · ${thread.memberCount || 0}명` : "1:1"}
+              </span>
+              <p className={styles.threadPreview}>
+                {thread.lastMessage || "메시지가 없습니다."}
+              </p>
+            </div>
+            <div className={styles.threadMeta}>
+              <span>
+                {thread.lastMessageAt ? formatKoreanTime(thread.lastMessageAt) : ""}
+              </span>
+              {thread.unreadCount > 0 ? (
+                <b className={styles.unreadBadge}>{thread.unreadCount}</b>
+              ) : null}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 
@@ -611,40 +820,98 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </div>
   );
 
+  const groupRoomOverlay = activeGroupRoom ? (
+    <GroupRoomOverlay
+      room={activeGroupRoom}
+      currentMember={member}
+      onClose={() => setActiveGroupRoom(null)}
+      onProfileClick={(memberId) => navigate(`/app/user/${memberId}`)}
+      onRoomUpdated={loadThreads}
+      onRequestInvite={async (room) => {
+        setActiveGroupRoom(room);
+        await openInviteRoomModal(room);
+      }}
+    />
+  ) : null;
+
+  const roomCreateModal = (
+    <ChatRoomCreateModal
+      open={inviteModalOpen}
+      mode={inviteMode}
+      members={inviteCandidates}
+      selectedIds={selectedInviteIds}
+      currentMemberId={currentMemberId}
+      currentRoomName={activeGroupRoom?.roomName || ""}
+      isLoading={isLoadingInviteCandidates}
+      onToggleMember={toggleInviteMember}
+      onClose={() => {
+        setInviteModalOpen(false);
+        setSelectedInviteIds([]);
+      }}
+      onSubmit={submitInviteSelection}
+    />
+  );
+
+  const createRoomButton = (
+    <button
+      type="button"
+      className={styles.createRoomButton}
+      aria-label="채팅방 만들기"
+      title="채팅방 만들기"
+      onClick={openCreateRoomModal}
+    >
+      <AddRoundedIcon />
+    </button>
+  );
+
   if (!desktop) {
     return (
-      <section className={styles.mobileChat}>
-        {!isRoomOpen ? (
-          <div className={styles.mobileListView}>
-            <div className={styles.threadHeader}>
-              <strong>채팅 리스트</strong>
-            </div>
-            {threadList}
-          </div>
-        ) : (
-          chatRoom
-        )}
-      </section>
+      <>
+        <div className={styles.chatCanvas}>
+          <section className={styles.mobileChat}>
+            {!isRoomOpen ? (
+              <div className={styles.mobileListView}>
+                <div className={styles.threadHeader}>
+                  <strong>채팅 리스트</strong>
+                </div>
+                {threadList}
+              </div>
+            ) : (
+              chatRoom
+            )}
+          </section>
+          {createRoomButton}
+        </div>
+        {roomCreateModal}
+        {groupRoomOverlay}
+      </>
     );
   }
 
   return (
-    <section className={styles.desktopChat}>
-      <div className={styles.hero}>
-        <strong>Mood Chat</strong>
-        <p>{isChatConnected ? "실시간 연결됨" : "연결을 시도하는 중입니다."}</p>
-      </div>
-      {!isRoomOpen ? (
-        <div className={styles.listView}>
-          <div className={styles.threadHeader}>
-            <strong>채팅 리스트</strong>
+    <>
+      <div className={styles.chatCanvas}>
+        <section className={styles.desktopChat}>
+          <div className={styles.hero}>
+            <strong>Mood Chat</strong>
+            <p>{isChatConnected ? "실시간 연결됨" : "연결을 시도하는 중입니다."}</p>
           </div>
-          {threadList}
-        </div>
-      ) : (
-        <div className={styles.roomView}>{chatRoom}</div>
-      )}
-    </section>
+          {!isRoomOpen ? (
+            <div className={styles.listView}>
+              <div className={styles.threadHeader}>
+                <strong>채팅 리스트</strong>
+              </div>
+              {threadList}
+            </div>
+          ) : (
+            <div className={styles.roomView}>{chatRoom}</div>
+          )}
+        </section>
+        {createRoomButton}
+      </div>
+      {roomCreateModal}
+      {groupRoomOverlay}
+    </>
   );
 }
 
