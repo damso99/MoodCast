@@ -565,20 +565,24 @@
 
   .actionGroup {
     width: 100%;
-    gap: 10px;
-    justify-content: space-between;
+    gap: 8px 12px;
+    justify-content: flex-start;
   }
 
   .reaction,
   .reactionButton,
   .bookmark {
     min-height: 44px;
-    padding: 0 6px;
+    padding: 0 8px;
   }
 
   .actionIcon {
     width: 1.05em;
     height: 1.05em;
+  }
+
+  .reactionButton {
+    padding-inline: 10px;
   }
 
   .bookmark {
