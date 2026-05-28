@@ -169,6 +169,12 @@ export function SearchModal({ open, onClose }) {
     return textarea.value;
   };
 
+  const resolveUserAvatarUrl = (user) => {
+    return user?.profileImageUrl || user?.profile_image_url || user?.avatarUrl || user?.avatar_url ||
+      user?.profileImage || user?.avatar || user?.imageUrl || user?.image || user?.photoUrl || user?.photo ||
+      user?.pictureUrl || user?.picture || user?.image_url || user?.photo_url || null;
+  };
+
   const formatTime = (dateString) => {
     // 시간 정보가 없으면 '방금'이라고 표시함
     if (!dateString) return '방금';
@@ -212,6 +218,12 @@ export function SearchModal({ open, onClose }) {
     }).format(date);
   };
 
+  const resolveAvatarUrl = (item) => {
+    return item?.profileImageUrl || item?.profile_image_url || item?.avatarUrl || item?.avatar_url ||
+      item?.profileImage || item?.imageUrl || item?.image || item?.photoUrl || item?.photo ||
+      item?.pictureUrl || item?.picture || item?.image_url || item?.photo_url || null;
+  };
+
   const transformPostData = (item) => {
     const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
     return {
@@ -219,6 +231,7 @@ export function SearchModal({ open, onClose }) {
       title: item.title,
       author: authorName,
       avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      profileImageUrl: resolveAvatarUrl(item),
       time: formatTime(item.createdAt),
       text: normalizeContent(item.content),
       emotionId: item.emotionId,
@@ -394,8 +407,8 @@ export function SearchModal({ open, onClose }) {
                       >
                         <div className={styles.userRow}>
                           <div className={styles.userAvatar}>
-                            {user.profileImageUrl ? (
-                              <img src={user.profileImageUrl} alt={user.nickname} />
+                            {resolveUserAvatarUrl(user) ? (
+                              <img src={resolveUserAvatarUrl(user)} alt={user.nickname || user.name} />
                             ) : (
                               (user.nickname || user.name || '?').charAt(0).toUpperCase()
                             )}
@@ -509,8 +522,8 @@ export function SearchModal({ open, onClose }) {
                   >
                     <div className={styles.userRow}>
                       <div className={styles.userAvatar}>
-                        {item.profileImageUrl ? (
-                          <img src={item.profileImageUrl} alt={item.nickname} />
+                        {resolveUserAvatarUrl(item) ? (
+                          <img src={resolveUserAvatarUrl(item)} alt={item.nickname || item.name} />
                         ) : (
                           (item.nickname || item.name || '?').charAt(0).toUpperCase()
                         )}

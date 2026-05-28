@@ -173,7 +173,9 @@ export function FeedCard({ post, compact = false }) {
   const cardText = post.text ?? stripHtml(rawContent);
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
   const profileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
-  const profileImageUrl = post.profileImageUrl ?? post.avatarUrl ?? null;
+  const profileImageUrl = post.profileImageUrl ?? post.profile_image_url ?? post.avatarUrl ?? post.avatar_url ??
+    post.profileImage ?? post.imageUrl ?? post.image ?? post.photoUrl ?? post.photo ??
+    post.pictureUrl ?? post.picture ?? post.image_url ?? post.photo_url ?? null;
   const profileInitial = post.author ? post.author.charAt(0).toUpperCase() : '?';
 
   const fetchComments = async (postId) => {

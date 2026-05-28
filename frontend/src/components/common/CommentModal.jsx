@@ -33,6 +33,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   const [replyText, setReplyText] = useState('');
   const [expandedReplies, setExpandedReplies] = useState({});  // 답글 펼침 여부
   const menuRef = useRef(null);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     if (open && post) {
@@ -170,12 +171,19 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (submittingRef.current) return;
+
     const value = comment.trim();
     if (!value) return;
 
-    const nextComment = await onSubmit(value);
-    if (nextComment) {
-      setComment('');
+    submittingRef.current = true;
+    try {
+      const nextComment = await onSubmit(value);
+      if (nextComment) {
+        setComment('');
+      }
+    } finally {
+      submittingRef.current = false;
     }
   };
 
@@ -396,7 +404,18 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
         </div>
 
         <form className={styles.composer} onSubmit={handleSubmit}>
-          <textarea value={comment} onChange={(event) => setComment(event.target.value)} placeholder="댓글을 입력해 주세요." />
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                handleSubmit(event);
+              }
+            }}
+            placeholder="댓글을 입력해 주세요."
+          />
           <div className={styles.footer}>
             <span>{comment.length}/200</span>
             <button type="submit" className={styles.send}>
