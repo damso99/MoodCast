@@ -21,7 +21,7 @@ function TopUtilityIconsBase({ onSearch }) {
   const profileBtnRef = useRef(null);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
-  const { notifications, unreadCount, clearNotifications } = useRealtimeNotifications(
+  const { notifications, unreadCount, removeNotification, clearNotifications } = useRealtimeNotifications(
     isLoggedIn ? member?.memberId : null,
   );
 
@@ -104,6 +104,8 @@ function TopUtilityIconsBase({ onSearch }) {
     if (!item) {
       return;
     }
+
+    removeNotification(item.id);
 
     if (item.postId) {
       const commentQuery = item.commentId ? `&commentId=${item.commentId}` : '';
