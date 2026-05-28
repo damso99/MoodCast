@@ -1003,23 +1003,23 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             <strong>Mood Chat</strong>
             <p>{isChatConnected ? "실시간 연결됨" : "연결을 시도하는 중입니다."}</p>
           </div>
-        {!isRoomOpen && !activeGroupRoom ? (
-          <div className={styles.listView}>
-            <div className={styles.threadHeader}>
-              <strong>채팅 리스트</strong>
+          {!isRoomOpen && !activeGroupRoom ? (
+            <div className={styles.listView}>
+              <div className={styles.threadHeader}>
+                <strong>채팅 리스트</strong>
+              </div>
+              {threadList}
             </div>
-            {threadList}
-          </div>
-        ) : activeGroupRoom ? (
-          <div className={styles.roomView}>{groupRoomPanel}</div>
-        ) : (
-          <div className={styles.roomView}>{chatRoom}</div>
-        )}
-      </section>
-      {showCreateRoomButton ? createRoomButton : null}
-    </div>
-    {roomCreateModal}
-  </>
+          ) : activeGroupRoom ? (
+            <div className={styles.roomView}>{groupRoomPanel}</div>
+          ) : (
+            <div className={styles.roomView}>{chatRoom}</div>
+          )}
+        </section>
+        {showCreateRoomButton ? createRoomButton : null}
+      </div>
+      {roomCreateModal}
+    </>
   );
 }
 
