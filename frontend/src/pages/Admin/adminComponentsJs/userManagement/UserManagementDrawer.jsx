@@ -11,41 +11,51 @@ import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
 
 /* ==========================================================================
- * 사용자 관리 우측 패널 컴포넌트
+ * 사용자 관리 오른쪽 패널 컴포넌트
  * --------------------------------------------------------------------------
- * 사용자 관리 목록에서 "관리" 버튼을 눌렀을 때 오른쪽에서 열리는 패널입니다.
+ * 사용자 관리 목록에서 "관리" 버튼을 눌렀을 때 오른쪽에서 열리는 상세 패널입니다.
  *
  * 담당 기능:
  * - 선택한 회원의 기본 정보 표시
- * - 일시 정지 / 영구 정지 / 정지 해제 버튼 표시
- * - 회원 정보 전체 보기 결과 표시
- * - 정지 확인 모달 표시
+ * - 회원 상세 정보 조회
+ * - 일시 정지 / 영구 정지 / 정지 해제 처리
+ * - 슈퍼 관리자 계정과 로그인한 관리자 본인 계정에 대한 제재 차단
  *
- * 분리 이유:
- * - UserManagementPage.jsx 안에 목록, 검색, 카드, 패널, 모달 코드가 모두 있으면
- *   한 파일이 너무 길어져서 유지보수가 어려워집니다.
- * - 이 컴포넌트는 "오른쪽 회원 관리 패널"만 담당하게 분리했습니다.
+ * 초보자 설명:
+ * - selectedManagedMember는 목록에서 선택한 회원입니다.
+ * - currentAdminMemberId는 현재 로그인한 관리자 본인의 memberId입니다.
+ * - 프론트에서 버튼을 비활성화해도 API를 직접 호출할 수 있으므로,
+ *   백엔드에서도 같은 규칙을 한 번 더 검사합니다.
  * ========================================================================== */
 export function UserManagementDrawer({
   selectedManagedMember,
+  currentAdminMemberId,
+  currentAdminRole,
   onClose,
   onMemberUpdated,
 }) {
-  const [memberDetail, setMemberDetail] = useState(null);
-  const [memberDetailLoading, setMemberDetailLoading] = useState(false);
-  const [memberDetailError, setMemberDetailError] = useState("");
-  const [suspendModalType, setSuspendModalType] = useState(null);
-  const [selectedSuspendDays, setSelectedSuspendDays] = useState(7);
-  const [customSuspendDate, setCustomSuspendDate] = useState("");
-  const [suspendLoading, setSuspendLoading] = useState(false);
-  const [suspendError, setSuspendError] = useState("");
-  const [actionMessage, setActionMessage] = useState("");
+  const [memberDetail, setMemberDetail] = useState(null); // "회원 정보 전체 보기" API 응답을 저장합니다.
+  const [memberDetailLoading, setMemberDetailLoading] = useState(false); // 상세 정보 조회 중인지 표시합니다.
+  const [memberDetailError, setMemberDetailError] = useState(""); // 상세 정보 조회 실패 메시지입니다.
+  const [suspendModalType, setSuspendModalType] = useState(null); // TEMPORARY 또는 PERMANENT 모달 종류입니다.
+  const [selectedSuspendDays, setSelectedSuspendDays] = useState(7); // 일시 정지 기간 라디오 값입니다.
+  const [customSuspendDate, setCustomSuspendDate] = useState(""); // 직접 선택한 정지 해제 날짜입니다.
+  const [suspendLoading, setSuspendLoading] = useState(false); // 정지/해제 API 호출 중인지 표시합니다.
+  const [suspendError, setSuspendError] = useState(""); // 정지/해제 실패 메시지입니다.
+  const [actionMessage, setActionMessage] = useState(""); // 정지/해제 성공 메시지입니다.
   const { accessToken } = useAuthStore();
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
-  ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하고, 끝의 /는 제거합니다.
+  ).replace(/\/$/, "");
 
+  /*
+   * 선택 회원이 바뀔 때 패널 내부 상태 초기화
+   * ------------------------------------------------------------------------
+   * 초보자 설명:
+   * - 이전 회원에서 열어둔 모달이나 에러 메시지가 다음 회원에게 남아 있으면 헷갈립니다.
+   * - 그래서 memberId가 바뀔 때마다 상세 정보, 모달, 메시지를 초기값으로 되돌립니다.
+   */
   useEffect(() => {
     setMemberDetail(null);
     setMemberDetailError("");
@@ -62,77 +72,44 @@ export function UserManagementDrawer({
     return null;
   }
 
-  const formatDate = (value) => {
-    return formatKoreanDate(value);
-  };
+  const isCurrentAdminSuperAdmin = currentAdminRole === "SUPER_ADMIN";
+  const isTargetSelf =
+    Number(selectedManagedMember.memberId) === Number(currentAdminMemberId);
+  const isTargetSuperAdmin = selectedManagedMember.role === "SUPER_ADMIN";
+  const isAdminBlockedTarget = isTargetSelf || isTargetSuperAdmin;
+  const blockReason = isTargetSelf
+    ? "본인 계정은 정지하거나 정지 해제할 수 없습니다."
+    : "슈퍼 관리자 계정은 정지하거나 정지 해제할 수 없습니다.";
+
+  const formatDate = (value) => formatKoreanDate(value);
 
   const getStatusLabel = (status) => {
-    if (status === "ACTIVE") {
-      return "정상";
-    }
-
-    if (status === "SUSPENDED") {
-      return "정지";
-    }
-
-    if (status === "DELETED") {
-      return "삭제";
-    }
-
+    if (status === "ACTIVE") return "정상";
+    if (status === "SUSPENDED") return "정지";
+    if (status === "DELETED") return "삭제";
     return status || "-";
   };
 
-  const isSuspendedMember = (member) => {
-    return member?.status === "SUSPENDED";
-  };
-
-  const isPermanentSuspension = (member) => {
-    return isSuspendedMember(member) && !member?.suspendedUntil;
-  };
-
-  const isTemporarySuspension = (member) => {
-    return isSuspendedMember(member) && Boolean(member?.suspendedUntil);
-  };
+  const isSuspendedMember = (member) => member?.status === "SUSPENDED";
+  const isPermanentSuspension = (member) =>
+    isSuspendedMember(member) && !member?.suspendedUntil;
+  const isTemporarySuspension = (member) =>
+    isSuspendedMember(member) && Boolean(member?.suspendedUntil);
 
   const getMemberStatusLabel = (member) => {
-    if (isPermanentSuspension(member)) {
-      return "영구 정지";
-    }
-
-    if (isTemporarySuspension(member)) {
-      return "일시 정지";
-    }
-
+    if (isPermanentSuspension(member)) return "영구 정지";
+    if (isTemporarySuspension(member)) return "일시 정지";
     return getStatusLabel(member?.status);
   };
 
   const getRoleLabel = (role) => {
-    if (role === "USER") {
-      return "일반 회원";
-    }
-
-    if (role === "ADMIN") {
-      return "관리자";
-    }
-
-    if (role === "SUPER_ADMIN") {
-      return "슈퍼 관리자";
-    }
-
+    if (role === "USER" || role === "MEMBER") return "일반 회원";
+    if (role === "ADMIN" || role === "NORMAL_ADMIN") return "관리자";
+    if (role === "SUPER_ADMIN") return "슈퍼 관리자";
     return role || "-";
   };
 
-  const getLastLoginLabel = (member) => {
-    return formatDate(member?.lastLoginAt) || "기록 없음";
-  };
-
-  const getLoginMethodLabel = (member) => {
-    return member?.passwordHash === null ? "소셜 로그인" : "이메일 / 비밀번호";
-  };
-
-  const getWarningCount = (member) => {
-    return Number(member?.warningCount ?? 0);
-  };
+  const getWarningCount = (member) => Number(member?.warningCount ?? 0);
 
   const getSuspendConfirmMessage = (member) => {
     const warningCount = getWarningCount(member);
@@ -144,18 +121,12 @@ export function UserManagementDrawer({
     return `해당 회원의 경고 횟수는 ${warningCount}회입니다. 경고 누적이 3회 미만이므로 무고한 제재가 되지 않도록 한 번 더 확인해주세요. 그래도 정지하시겠습니까?`;
   };
 
-  const getVerifiedLabel = (value) => {
-    return value === 1 ? "인증 완료" : "미인증";
-  };
-
-  const getEmptySafeText = (value) => {
-    return value === null || value === undefined || value === "" ? "-" : value;
-  };
+  const getVerifiedLabel = (value) => (value === 1 ? "인증 완료" : "미인증");
+  const getEmptySafeText = (value) =>
+    value === null || value === undefined || value === "" ? "-" : value;
 
   const handleMemberDetailClick = () => {
-    if (!accessToken) {
-      return;
-    }
+    if (!accessToken) return;
 
     setMemberDetailLoading(true);
     setMemberDetailError("");
@@ -180,6 +151,11 @@ export function UserManagementDrawer({
   };
 
   const openSuspendModal = (type) => {
+    if (isAdminBlockedTarget) {
+      setSuspendError(blockReason);
+      return;
+    }
+
     setSuspendModalType(type);
     setSelectedSuspendDays(7);
     setCustomSuspendDate("");
@@ -187,16 +163,15 @@ export function UserManagementDrawer({
   };
 
   const closeSuspendModal = () => {
-    if (suspendLoading) {
-      return;
-    }
+    if (suspendLoading) return;
 
     setSuspendModalType(null);
     setSuspendError("");
   };
 
   const handleSuspendConfirm = () => {
-    if (!accessToken) {
+    if (!accessToken || isAdminBlockedTarget) {
+      setSuspendError(blockReason);
       return;
     }
 
@@ -226,8 +201,8 @@ export function UserManagementDrawer({
         const updatedMember = res.data?.member;
         const resultText =
           suspendModalType === "PERMANENT"
-            ? "회원을 영구 정지했습니다."
-            : "회원을 일시 정지했습니다.";
+            ? "회원이 영구 정지되었습니다."
+            : "회원이 일시 정지되었습니다.";
 
         if (updatedMember) {
           onMemberUpdated(updatedMember);
@@ -241,7 +216,10 @@ export function UserManagementDrawer({
       })
       .catch((error) => {
         console.log(error);
-        setSuspendError("회원 정지 처리에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        setSuspendError(
+          error.response?.data?.message ||
+            "회원 정지 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        );
       })
       .finally(() => {
         setSuspendLoading(false);
@@ -249,7 +227,8 @@ export function UserManagementDrawer({
   };
 
   const handleRestoreConfirm = () => {
-    if (!accessToken) {
+    if (!accessToken || isAdminBlockedTarget) {
+      setSuspendError(blockReason);
       return;
     }
 
@@ -257,9 +236,7 @@ export function UserManagementDrawer({
       `${selectedManagedMember.name || "선택한 회원"} 회원의 정지를 해제하시겠습니까?`,
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setSuspendLoading(true);
     setSuspendError("");
@@ -288,7 +265,10 @@ export function UserManagementDrawer({
       })
       .catch((error) => {
         console.log(error);
-        setSuspendError("회원 정지 해제에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        setSuspendError(
+          error.response?.data?.message ||
+            "회원 정지 해제에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        );
       })
       .finally(() => {
         setSuspendLoading(false);
@@ -357,6 +337,16 @@ export function UserManagementDrawer({
           <p className={styles.actionMessage}>{actionMessage}</p>
         )}
 
+        {isAdminBlockedTarget && (
+          <p className={styles.detailErrorText}>{blockReason}</p>
+        )}
+
+        {!isCurrentAdminSuperAdmin && isTargetSuperAdmin && (
+          <p className={styles.detailErrorText}>
+            일반 관리자는 슈퍼 관리자 계정을 관리할 수 없습니다.
+          </p>
+        )}
+
         <section className={styles.drawerCard}>
           <h3>제재 관리</h3>
           <div className={styles.sanctionGrid}>
@@ -365,7 +355,7 @@ export function UserManagementDrawer({
                 type="button"
                 className={styles.restoreSanctionButton}
                 onClick={handleRestoreConfirm}
-                disabled={suspendLoading}
+                disabled={suspendLoading || isAdminBlockedTarget}
               >
                 <PauseCircleOutlineOutlinedIcon />
                 <strong>정지 해제</strong>
@@ -376,7 +366,10 @@ export function UserManagementDrawer({
                 type="button"
                 className={styles.temporarySanctionButton}
                 onClick={() => openSuspendModal("TEMPORARY")}
-                disabled={isPermanentSuspension(selectedManagedMember)}
+                disabled={
+                  isPermanentSuspension(selectedManagedMember) ||
+                  isAdminBlockedTarget
+                }
               >
                 <PauseCircleOutlineOutlinedIcon />
                 <strong>일시 정지</strong>
@@ -389,7 +382,7 @@ export function UserManagementDrawer({
                 type="button"
                 className={styles.restoreSanctionButton}
                 onClick={handleRestoreConfirm}
-                disabled={suspendLoading}
+                disabled={suspendLoading || isAdminBlockedTarget}
               >
                 <LockOutlinedIcon />
                 <strong>정지 해제</strong>
@@ -400,6 +393,7 @@ export function UserManagementDrawer({
                 type="button"
                 className={styles.permanentSanctionButton}
                 onClick={() => openSuspendModal("PERMANENT")}
+                disabled={isAdminBlockedTarget}
               >
                 <LockOutlinedIcon />
                 <strong>영구 정지</strong>
@@ -430,27 +424,19 @@ export function UserManagementDrawer({
             </div>
             <div>
               <dt>최근 로그인</dt>
-              <dd>{getLastLoginLabel(selectedManagedMember)}</dd>
+              <dd>{formatDate(selectedManagedMember.lastLoginAt) || "기록 없음"}</dd>
             </div>
             <div>
               <dt>가입일</dt>
               <dd>{formatDate(selectedManagedMember.createdAt)}</dd>
             </div>
             <div>
-              <dt>신고 횟수</dt>
-              <dd>{selectedManagedMember.reportCount ?? 0}회</dd>
+              <dt>경고 횟수</dt>
+              <dd>{getWarningCount(selectedManagedMember)}회</dd>
             </div>
             <div>
-              <dt>게시글 수</dt>
-              <dd>{selectedManagedMember.postCount ?? 0}개</dd>
-            </div>
-            <div>
-              <dt>댓글 수</dt>
-              <dd>{selectedManagedMember.commentCount ?? 0}개</dd>
-            </div>
-            <div>
-              <dt>로그인 방식</dt>
-              <dd>{getLoginMethodLabel(selectedManagedMember)}</dd>
+              <dt>누적 정지</dt>
+              <dd>{selectedManagedMember.suspensionCount ?? 0}회</dd>
             </div>
           </dl>
 
@@ -517,22 +503,6 @@ export function UserManagementDrawer({
                 <span>상태</span>
                 <strong>{getMemberStatusLabel(memberDetail)}</strong>
               </div>
-              <div>
-                <span>최근 로그인</span>
-                <strong>{formatDate(memberDetail.lastLoginAt) || "기록 없음"}</strong>
-              </div>
-              <div>
-                <span>가입일</span>
-                <strong>{formatDate(memberDetail.createdAt)}</strong>
-              </div>
-              <div>
-                <span>수정일</span>
-                <strong>{formatDate(memberDetail.updatedAt) || "-"}</strong>
-              </div>
-              <div>
-                <span>삭제일</span>
-                <strong>{formatDate(memberDetail.deletedAt) || "-"}</strong>
-              </div>
             </div>
           )}
         </section>
@@ -541,7 +511,7 @@ export function UserManagementDrawer({
           <h3>제재 이력</h3>
           <div className={styles.emptySanctionHistory}>
             <DescriptionOutlinedIcon />
-            <strong>제재 이력이 없습니다.</strong>
+            <strong>제재 이력은 추후 상세 API와 연결됩니다.</strong>
           </div>
         </section>
       </aside>

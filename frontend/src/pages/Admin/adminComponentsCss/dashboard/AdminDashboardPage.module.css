@@ -116,6 +116,196 @@
   outline-offset: 2px;
 }
 
+.textButton {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(124, 77, 255, 0.18);
+  border-radius: 8px;
+  color: #633df2;
+  font-size: 0.82rem;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.08);
+  cursor: pointer;
+}
+
+.barChart {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(102, 112, 133, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+}
+
+.barLabel {
+  color: #344054;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.barTrack {
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2f6;
+}
+
+.barFill {
+  display: block;
+  min-width: 4px;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+
+.barValue {
+  color: #111827;
+  font-size: 0.86rem;
+  text-align: right;
+}
+
+.activityList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activityItem {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px;
+  border: 1px solid rgba(102, 112, 133, 0.12);
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.activityBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 999px;
+  color: #633df2;
+  font-size: 0.75rem;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.1);
+}
+
+.activityBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.activityBody strong {
+  color: #111827;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.activityBody small {
+  color: #667085;
+  font-size: 0.76rem;
+}
+
+.activityModalLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.activityModalDim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 24, 39, 0.42);
+  cursor: pointer;
+}
+
+.activityModalPanel {
+  position: relative;
+  z-index: 1;
+  width: min(720px, 100%);
+  max-height: min(760px, 86vh);
+  overflow: auto;
+  padding: 18px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.22);
+}
+
+.activityModalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.activityModalHead h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.activityModalClose {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(102, 112, 133, 0.18);
+  border-radius: 8px;
+  color: #475467;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.modalPagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.modalPagination button {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(102, 112, 133, 0.18);
+  border-radius: 8px;
+  color: #344054;
+  font-weight: 800;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.modalPagination button:disabled {
+  color: #98a2b3;
+  cursor: not-allowed;
+  background: #f2f4f7;
+}
+
+.modalPagination span {
+  color: #475467;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
 @media (max-width: 1120px) {
   .metricGrid,
   .dashboardGrid {

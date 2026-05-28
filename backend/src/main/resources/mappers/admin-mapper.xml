@@ -136,6 +136,26 @@
         <result property="suspendedMemberCount" column="suspended_member_count"/>
     </resultMap>
 
+    <!-- 관리자 대시보드 감정별 활동 분포 그래프용 조회 결과입니다. -->
+    <resultMap id="adminEmotionActivityMap" type="com.moodcast.admin.vo.AdminEmotionActivity">
+        <id property="emotionId" column="emotion_id"/>
+        <result property="activityCount" column="activity_count"/>
+    </resultMap>
+
+    <!-- 관리자 대시보드 최근 활동 목록용 조회 결과입니다. -->
+    <resultMap id="adminRecentActivityMap" type="com.moodcast.admin.vo.AdminRecentActivity">
+        <result property="activityType" column="activity_type"/>
+        <result property="memberId" column="member_id"/>
+        <result property="memberName" column="member_name"/>
+        <result property="memberNickname" column="member_nickname"/>
+        <result property="memberEmail" column="member_email"/>
+        <result property="adminId" column="admin_id"/>
+        <result property="adminName" column="admin_name"/>
+        <result property="adminNickname" column="admin_nickname"/>
+        <result property="activityDetail" column="activity_detail"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
     <!--
       전체 회원 수 조회입니다.
 
@@ -566,6 +586,160 @@
             (select count(*)
              from post_tbl
              where deleted_yn = 'N') as post_count
+    </select>
+
+    <!--
+      관리자 대시보드 감정별 활동 분포 조회입니다.
+
+      초보자 설명:
+      - period가 day면 오늘 작성된 게시글만 집계합니다.
+      - period가 week면 오늘 포함 최근 7일 게시글을 집계합니다.
+      - period가 month면 오늘 포함 최근 1개월 게시글을 집계합니다.
+      - deleted_yn = 'N' 조건을 두어 삭제 처리된 게시글은 활동 수에서 제외합니다.
+    -->
+    <select id="selectDashboardEmotionActivity" resultMap="adminEmotionActivityMap">
+        select
+            p.emotion_id,
+            count(*) as activity_count
+        from post_tbl p
+        where p.deleted_yn = 'N'
+          and p.emotion_id is not null
+          and (
+            (#{period} = 'day'
+             and p.created_at &gt;= curdate()
+             and p.created_at &lt; date_add(curdate(), interval 1 day))
+            or
+            (#{period} = 'week'
+             and p.created_at &gt;= date_sub(curdate(), interval 6 day)
+             and p.created_at &lt; date_add(curdate(), interval 1 day))
+            or
+            (#{period} = 'month'
+             and p.created_at &gt;= date_sub(curdate(), interval 1 month)
+             and p.created_at &lt; date_add(curdate(), interval 1 day))
+          )
+        group by p.emotion_id
+        order by p.emotion_id
+    </select>
+
+    <!-- 관리자 대시보드 최근 활동 10개 조회입니다. -->
+    <select id="selectRecentDashboardActivities" resultMap="adminRecentActivityMap">
+        select *
+        from (
+            select
+                'JOINED' as activity_type,
+                m.member_id,
+                m.name as member_name,
+                m.nickname as member_nickname,
+                m.email as member_email,
+                null as admin_id,
+                null as admin_name,
+                null as admin_nickname,
+                '회원 가입' as activity_detail,
+                m.created_at
+            from members m
+            where m.created_at is not null
+
+            union all
+
+            select
+                'DELETED' as activity_type,
+                m.member_id,
+                m.name as member_name,
+                m.nickname as member_nickname,
+                m.email as member_email,
+                null as admin_id,
+                null as admin_name,
+                null as admin_nickname,
+                '회원 탈퇴' as activity_detail,
+                m.deleted_at as created_at
+            from members m
+            where m.deleted_at is not null
+
+            union all
+
+            select
+                case
+                    when log.action_type = 'SUSPEND' then 'SUSPENDED'
+                    else 'RESTORED'
+                end as activity_type,
+                coalesce(target_member.member_id, log.target_id) as member_id,
+                target_member.name as member_name,
+                target_member.nickname as member_nickname,
+                target_member.email as member_email,
+                log.admin_id,
+                admin_member.name as admin_name,
+                admin_member.nickname as admin_nickname,
+                log.action_detail,
+                log.created_at
+            from admin_action_logs log
+            left join members target_member on target_member.member_id = log.target_id
+            left join members admin_member on admin_member.member_id = log.admin_id
+            where log.target_type = 'USER'
+              and log.action_type in ('SUSPEND', 'RESTORE')
+        ) recent_activity
+        where created_at is not null
+        order by created_at desc
+        limit 10
+    </select>
+
+    <!-- 관리자 대시보드 전체 활동 보기 조회입니다. -->
+    <select id="selectAllDashboardActivities" resultMap="adminRecentActivityMap">
+        select *
+        from (
+            select
+                'JOINED' as activity_type,
+                m.member_id,
+                m.name as member_name,
+                m.nickname as member_nickname,
+                m.email as member_email,
+                null as admin_id,
+                null as admin_name,
+                null as admin_nickname,
+                '회원 가입' as activity_detail,
+                m.created_at
+            from members m
+            where m.created_at is not null
+
+            union all
+
+            select
+                'DELETED' as activity_type,
+                m.member_id,
+                m.name as member_name,
+                m.nickname as member_nickname,
+                m.email as member_email,
+                null as admin_id,
+                null as admin_name,
+                null as admin_nickname,
+                '회원 탈퇴' as activity_detail,
+                m.deleted_at as created_at
+            from members m
+            where m.deleted_at is not null
+
+            union all
+
+            select
+                case
+                    when log.action_type = 'SUSPEND' then 'SUSPENDED'
+                    else 'RESTORED'
+                end as activity_type,
+                coalesce(target_member.member_id, log.target_id) as member_id,
+                target_member.name as member_name,
+                target_member.nickname as member_nickname,
+                target_member.email as member_email,
+                log.admin_id,
+                admin_member.name as admin_name,
+                admin_member.nickname as admin_nickname,
+                log.action_detail,
+                log.created_at
+            from admin_action_logs log
+            left join members target_member on target_member.member_id = log.target_id
+            left join members admin_member on admin_member.member_id = log.admin_id
+            where log.target_type = 'USER'
+              and log.action_type in ('SUSPEND', 'RESTORE')
+        ) recent_activity
+        where created_at is not null
+        order by created_at desc
     </select>
 
     <!--

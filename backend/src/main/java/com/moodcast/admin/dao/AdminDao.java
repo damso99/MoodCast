@@ -3,9 +3,11 @@ package com.moodcast.admin.dao;
 import com.moodcast.admin.vo.AdminActionLogView;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
+import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminProfile;
+import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRecentMember;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.apache.ibatis.annotations.Mapper;
@@ -138,6 +140,15 @@ public interface AdminDao {
 
     /* 관리자 대시보드 상단 카드에 표시할 요약 숫자를 조회합니다. */
     AdminDashboardSummary selectDashboardSummary();
+
+    /* 관리자 대시보드의 감정별 게시글 활동 수를 일/주/월 단위로 조회합니다. */
+    List<AdminEmotionActivity> selectDashboardEmotionActivity(@Param("period") String period);
+
+    /* 관리자 대시보드의 최근 활동을 최신 10개만 조회합니다. */
+    List<AdminRecentActivity> selectRecentDashboardActivities();
+
+    /* 관리자 대시보드의 전체 활동 보기 팝업에서 사용할 모든 활동 로그를 조회합니다. */
+    List<AdminRecentActivity> selectAllDashboardActivities();
 
     /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
     AdminProfile selectAdminProfile(@Param("memberId") Long memberId);
