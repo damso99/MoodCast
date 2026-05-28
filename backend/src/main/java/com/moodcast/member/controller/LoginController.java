@@ -14,7 +14,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpRequest;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -138,23 +137,30 @@ public class LoginController {
     public ResponseEntity<?> refresh(HttpServletRequest request) {
         String refreshToken = null;
 
+        // npe 방어
         if (request.getCookies() != null) {
+            // 쿠키 하나씩 꺼내서 변수에 담기
             for (Cookie cookie : request.getCookies()) {
+                // 쿠키중에 리프레시 쿠키 이름 있으면
                 if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
+                    // 리프레시 토큰 꺼내서 담기
                     refreshToken = cookie.getValue();
                     break;
                 }
             }
         }
 
+        // 리프레시 토큰 찾았으니까 엑세스 토큰 재발급 요청
         LoginResult result = loginService.refreshAccessToken(refreshToken);
 
+        // dto에 담아서
         LoginResponse response = new LoginResponse(
                 true,
                 "토큰 재발급 성공",
                 result.getAccessToken(),
                 result.getMember()
         );
+        // 응답
         return ResponseEntity.ok(response);
     }
 }
