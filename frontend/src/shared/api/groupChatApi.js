@@ -24,10 +24,8 @@ export function leaveGroupChatRoom(roomId, memberId) {
   return axios.delete(`${API_BASE}/chat/rooms/${roomId}/members/${memberId}`);
 }
 
-export function markGroupChatRoomAsRead(roomId, memberId) {
-  return axios.post(`${API_BASE}/chat/rooms/${roomId}/read`, null, {
-    params: memberId ? { memberId } : undefined,
-  });
+export function updateGroupChatRoomRead(roomId, payload) {
+  return axios.patch(`${API_BASE}/chat/rooms/${roomId}/read`, payload);
 }
 
 export function deleteGroupChatMessage(roomId, messageId, memberId) {

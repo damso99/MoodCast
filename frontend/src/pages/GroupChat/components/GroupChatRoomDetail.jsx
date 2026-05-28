@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
@@ -7,6 +8,7 @@ import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
 import styles from "../../MoodChat/MoodChatPage.module.css";
 import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
+import { formatKoreanTime } from "../../../shared/lib/dateTime";
 
 function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
@@ -15,8 +17,17 @@ function getRoomTitle(activeRoom) {
 function getRoomSubtitle(activeRoom, connected) {
   const memberCount = Number(activeRoom?.memberCount || 0);
   const countText = memberCount > 0 ? `참여 인원 ${memberCount}명` : "참여 인원 정보 없음";
-  const connectionText = connected ? "실시간 연결됨" : "연결 끊김";
+  const connectionText = connected ? "실시간 연결됨" : "연결 대기";
   return `${countText} · ${connectionText}`;
+}
+
+function isNearBottom(element) {
+  if (!element) {
+    return true;
+  }
+
+  const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+  return distance < 80;
 }
 
 export function GroupChatRoomDetail({
@@ -35,16 +46,53 @@ export function GroupChatRoomDetail({
   onBack,
 }) {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const messagesRef = useRef(null);
+  const bottomRef = useRef(null);
+  const isUserNearBottomRef = useRef(true);
 
-  useEffect(() => {
-    const element = messagesRef.current;
+  const scrollToBottom = (behavior = "auto") => {
+    const element = bottomRef.current;
     if (!element) {
       return;
     }
 
-    element.scrollTop = element.scrollHeight;
-  }, [messages, activeRoom?.roomId]);
+    element.scrollIntoView({ behavior, block: "end" });
+  };
+
+  const handleMessagesScroll = () => {
+    const element = messagesRef.current;
+    const nearBottom = isNearBottom(element);
+    isUserNearBottomRef.current = nearBottom;
+    setShowScrollBottomButton(!nearBottom && messages.length > 0);
+  };
+
+  useLayoutEffect(() => {
+    setIsMoreMenuOpen(false);
+    isUserNearBottomRef.current = true;
+    setShowScrollBottomButton(false);
+
+    requestAnimationFrame(() => {
+      scrollToBottom("auto");
+    });
+  }, [activeRoom?.roomId]);
+
+  useEffect(() => {
+    if (!activeRoom?.roomId || messages.length === 0) {
+      setShowScrollBottomButton(false);
+      return;
+    }
+
+    if (isUserNearBottomRef.current) {
+      requestAnimationFrame(() => {
+        scrollToBottom("auto");
+      });
+      setShowScrollBottomButton(false);
+      return;
+    }
+
+    setShowScrollBottomButton(true);
+  }, [messages.length, activeRoom?.roomId]);
 
   if (!activeRoom) {
     return null;
@@ -61,7 +109,7 @@ export function GroupChatRoomDetail({
           type="button"
           className={styles.backButton}
           onClick={onBack}
-          aria-label="뒤로 가기"
+          aria-label="이전으로 가기"
         >
           <ArrowBackRoundedIcon />
         </button>
@@ -92,7 +140,7 @@ export function GroupChatRoomDetail({
                   borderRadius: "16px",
                   background: "rgba(255, 255, 255, 0.98)",
                   boxShadow: "0 18px 40px rgba(17, 24, 39, 0.14)",
-                  zIndex: 20,
+                  zIndex: 1000,
                   justifyItems: "stretch",
                 }}
               >
@@ -152,7 +200,7 @@ export function GroupChatRoomDetail({
         </div>
       </div>
 
-      <div ref={messagesRef} className={styles.messages} aria-live="polite">
+      <div ref={messagesRef} className={styles.messages} aria-live="polite" onScroll={handleMessagesScroll}>
         {messages.length === 0 ? <p className={styles.emptyState}>아직 메시지가 없습니다.</p> : null}
 
         {messages.map((item) => {
@@ -160,6 +208,7 @@ export function GroupChatRoomDetail({
           const senderName = item.senderName || "참여자";
           const senderInitial = senderName.charAt(0).toUpperCase();
           const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
+          const unreadCount = Number(item.unreadCount || 0);
 
           return (
             <div
@@ -204,20 +253,35 @@ export function GroupChatRoomDetail({
                     </button>
                   ) : null}
                   <div className={styles.bubbleLine}>
+                    {unreadCount > 0 ? <span className={styles.unreadMarker}>{unreadCount}</span> : null}
                     <div className={`${styles.bubble} ${isMine ? styles.me : styles.them}`}>
                       <p>{item.content}</p>
                     </div>
-                    {isMine && Number(item.readCount || 0) > 0 ? (
-                      <span className={styles.unreadMarker}>읽음 {item.readCount}</span>
-                    ) : null}
                   </div>
-                  <span className={styles.messageTime}>{item.createdAt}</span>
+                  <span className={styles.messageTime}>{item.time || formatKoreanTime(item.createdAt) || ""}</span>
                 </div>
               </div>
             </div>
           );
         })}
+        <div ref={bottomRef} />
       </div>
+
+      {showScrollBottomButton ? (
+        <button
+          type="button"
+          className={styles.scrollBottomButton}
+          onClick={() => {
+            isUserNearBottomRef.current = true;
+            setShowScrollBottomButton(false);
+            scrollToBottom("smooth");
+          }}
+          aria-label="최신 메시지로 이동"
+          title="최신 메시지로 이동"
+        >
+          <KeyboardArrowDownRoundedIcon />
+        </button>
+      ) : null}
 
       <form className={styles.composer} onSubmit={onSubmitMessage}>
         <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">

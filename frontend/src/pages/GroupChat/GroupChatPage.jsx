@@ -13,7 +13,7 @@ import {
   fetchGroupChatRooms,
   inviteGroupChatMembers,
   leaveGroupChatRoom,
-  markGroupChatRoomAsRead,
+  updateGroupChatRoomRead,
 } from "../../shared/api/groupChatApi";
 import { useGroupChatSocket } from "../../hooks/useGroupChatSocket";
 import { GroupChatRoomDetail } from "./components/GroupChatRoomDetail";
@@ -21,6 +21,7 @@ import { GroupChatRoomList } from "./components/GroupChatRoomList";
 import "./groupChatStyles.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+const DEBUG_GROUP_CHAT_TIME = true;
 
 function normalizeRoom(room) {
   return {
@@ -31,12 +32,32 @@ function normalizeRoom(room) {
     createdAt: room?.createdAt,
     memberCount: Number(room?.memberCount || 0),
     lastMessage: room?.lastMessage || "",
-    lastMessageAt: room?.lastMessageAt ? formatKoreanTime(room.lastMessageAt) : "",
+    lastMessageAt: room?.lastMessageAt || "",
     unreadCount: Number(room?.unreadCount || 0),
   };
 }
 
-function normalizeMessage(message) {
+function normalizeMessage(message, timeCache) {
+  const messageKey = message?.messageId ?? message?.id;
+  const cachedTime = timeCache?.get?.(messageKey);
+  const computedTime = message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : "");
+  const time = cachedTime || computedTime;
+
+  if (timeCache && time && !cachedTime) {
+    timeCache.set(messageKey, time);
+  }
+
+  if (DEBUG_GROUP_CHAT_TIME) {
+    console.log("[GroupChat][normalizeMessage]", {
+      messageKey,
+      rawCreatedAt: message?.createdAt,
+      rawTime: message?.time,
+      cachedTime,
+      computedTime,
+      displayTime: time,
+    });
+  }
+
   return {
     messageId: message?.messageId ?? message?.id,
     roomId: message?.roomId,
@@ -44,11 +65,24 @@ function normalizeMessage(message) {
     senderName: message?.senderName || "Member",
     profileImageUrl: message?.profileImageUrl || "",
     content: message?.content || "",
-    createdAt: message?.createdAt ? formatKoreanTime(message.createdAt) : "",
+    time,
+    createdAt: message?.createdAt || "",
     readCount: Number(message?.readCount || 0),
     unreadCount: Number(message?.unreadCount || 0),
     eventType: message?.eventType || "",
+    isPending: Boolean(message?.isPending),
   };
+}
+
+function getLatestConfirmedMessageId(messages) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const messageId = Number(messages[index]?.messageId);
+    if (Number.isFinite(messageId) && messageId > 0) {
+      return messageId;
+    }
+  }
+
+  return null;
 }
 
 function GroupChatBody({ desktop, onRoomOpenChange }) {
@@ -56,6 +90,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   const navigate = useNavigate();
   const currentMemberId = useMemo(() => Number(member?.memberId) || null, [member?.memberId]);
   const messageInputRef = useRef(null);
+  const groupMessageTimeCacheRef = useRef(new Map());
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -67,6 +102,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   const [isSending, setIsSending] = useState(false);
   const [mobileRoomOpen, setMobileRoomOpen] = useState(false);
   const [error, setError] = useState("");
+  const lastSentReadMessageIdRef = useRef(0);
 
   const refreshRooms = async () => {
     if (!currentMemberId) {
@@ -88,7 +124,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
-  const refreshMessages = async (roomId) => {
+  const refreshMessages = async (roomId, shouldMarkRead = true) => {
     if (!roomId) {
       setMessages([]);
       return;
@@ -97,8 +133,27 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     try {
       const response = await fetchGroupChatMessages(roomId, currentMemberId);
       const nextMessages = Array.isArray(response.data) ? response.data : [];
-      setMessages(nextMessages.map(normalizeMessage));
-      await markGroupChatRoomAsRead(roomId, currentMemberId);
+      if (DEBUG_GROUP_CHAT_TIME) {
+        console.table(
+          nextMessages.map((item) => ({
+            messageId: item?.messageId ?? item?.id,
+            createdAt: item?.createdAt,
+            time: item?.time,
+            senderId: item?.senderId,
+            content: item?.content,
+          })),
+        );
+      }
+      const normalizedMessages = nextMessages.map((item) =>
+        normalizeMessage(item, groupMessageTimeCacheRef.current),
+      );
+      setMessages(normalizedMessages);
+      if (shouldMarkRead) {
+        const lastMessageId = getLatestConfirmedMessageId(normalizedMessages);
+        if (lastMessageId) {
+          await syncRoomReadState(roomId, lastMessageId);
+        }
+      }
     } catch (requestError) {
       console.error("Group messages load failed", requestError);
       setMessages([]);
@@ -115,6 +170,10 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       return;
     }
 
+    if (DEBUG_GROUP_CHAT_TIME) {
+      console.log("[GroupChat][incomingPayload]", payload);
+    }
+
     if (payload?.eventType === "CHAT_DELETE") {
       const deletedMessageId = Number(payload?.messageId ?? payload?.id);
 
@@ -125,7 +184,11 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       return;
     }
 
-    const normalized = normalizeMessage(payload);
+    const normalized = normalizeMessage(payload, groupMessageTimeCacheRef.current);
+
+    if (DEBUG_GROUP_CHAT_TIME) {
+      console.log("[GroupChat][normalizedIncoming]", normalized);
+    }
 
     setRooms((previousRooms) =>
       previousRooms.map((room) =>
@@ -145,6 +208,19 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
 
     setMessages((previousMessages) => {
+      const pendingIndex = previousMessages.findIndex(
+        (message) =>
+          message.isPending &&
+          Number(message.senderId) === Number(normalized.senderId) &&
+          message.content === normalized.content,
+      );
+
+      if (pendingIndex >= 0) {
+        const nextMessages = [...previousMessages];
+        nextMessages[pendingIndex] = normalized;
+        return nextMessages;
+      }
+
       if (
         previousMessages.some(
           (message) => Number(message.messageId) === Number(normalized.messageId),
@@ -157,15 +233,68 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     });
 
     if (currentMemberId && Number(normalized.senderId) !== currentMemberId) {
-      markGroupChatRoomAsRead(normalized.roomId, currentMemberId).catch(() => {});
+      syncRoomReadState(normalized.roomId, normalized.messageId).catch(() => {});
     }
   };
 
-  const { connected, sendMessage } = useGroupChatSocket(
+  const syncRoomReadState = async (roomId, lastReadMessageId) => {
+    const numericLastReadMessageId = Number(lastReadMessageId);
+    if (
+      !roomId ||
+      !currentMemberId ||
+      !Number.isFinite(numericLastReadMessageId) ||
+      numericLastReadMessageId <= 0
+    ) {
+      return;
+    }
+
+    if (lastSentReadMessageIdRef.current >= numericLastReadMessageId) {
+      return;
+    }
+
+    lastSentReadMessageIdRef.current = numericLastReadMessageId;
+    const payload = {
+      memberId: currentMemberId,
+      lastReadMessageId: numericLastReadMessageId,
+    };
+
+    if (sendReadEvent(roomId, payload)) {
+      return;
+    }
+
+    try {
+      await updateGroupChatRoomRead(roomId, payload);
+    } catch (requestError) {
+      console.error("메시지 읽음 처리 실패", requestError);
+    }
+  };
+
+  const { connected, sendMessage, sendReadEvent } = useGroupChatSocket(
     currentMemberId,
     activeRoom?.roomId,
     handleIncomingMessage,
+    async (payload) => {
+      if (!payload || Number(payload.memberId) === Number(currentMemberId)) {
+        return;
+      }
+
+      await refreshMessages(payload.roomId, false);
+    },
   );
+
+  useEffect(() => {
+    if (!activeRoom?.roomId || !messages.length) {
+      return;
+    }
+
+    const lastMessageId = getLatestConfirmedMessageId(messages);
+    if (!lastMessageId) {
+      return;
+    }
+
+    syncRoomReadState(activeRoom.roomId, lastMessageId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoom?.roomId, messages.length]);
 
   const openRoom = async (room) => {
     if (!room?.roomId) {
@@ -176,6 +305,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     setMessages([]);
     setError("");
     setMobileRoomOpen(true);
+    lastSentReadMessageIdRef.current = 0;
     await refreshMessages(room.roomId);
   };
 
@@ -261,6 +391,22 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     setMessageValue("");
 
     try {
+      const pendingMessage = normalizeMessage({
+        messageId: `pending-${Date.now()}`,
+        roomId: activeRoom.roomId,
+        senderId: currentMemberId,
+        senderName: member?.nickname || member?.name || "나",
+        profileImageUrl: member?.profileImageUrl || "",
+        content: trimmedValue,
+        createdAt: new Date().toISOString(),
+        readCount: 0,
+        unreadCount: 0,
+        eventType: "",
+        isPending: true,
+      });
+
+      setMessages((previousMessages) => [...previousMessages, pendingMessage]);
+
       const published = sendMessage(activeRoom.roomId, {
         senderId: currentMemberId,
         content: trimmedValue,
@@ -272,13 +418,32 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
           content: trimmedValue,
         });
 
-        setMessages((previousMessages) => [
-          ...previousMessages,
-          normalizeMessage(response.data),
-        ]);
+        const savedMessage = normalizeMessage(response.data, groupMessageTimeCacheRef.current);
+        if (DEBUG_GROUP_CHAT_TIME) {
+          console.log("[GroupChat][savedMessageFallback]", response.data, savedMessage);
+        }
+        setMessages((previousMessages) => {
+          const pendingIndex = previousMessages.findIndex(
+            (message) =>
+              message.isPending &&
+              Number(message.senderId) === Number(savedMessage.senderId) &&
+              message.content === savedMessage.content,
+          );
+
+          if (pendingIndex >= 0) {
+            const nextMessages = [...previousMessages];
+            nextMessages[pendingIndex] = savedMessage;
+            return nextMessages;
+          }
+
+          return [...previousMessages, savedMessage];
+        });
       }
 
-      await markGroupChatRoomAsRead(activeRoom.roomId, currentMemberId).catch(() => {});
+      const lastMessageId = getLatestConfirmedMessageId(messages);
+      if (lastMessageId) {
+        await syncRoomReadState(activeRoom.roomId, lastMessageId);
+      }
       await refreshRooms();
     } catch (requestError) {
       console.error("Group message send failed", requestError);
@@ -325,7 +490,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   );
 
   const roomDetail = (
-    <GroupChatRoomDetail
+      <GroupChatRoomDetail
       activeRoom={activeRoom}
       messages={messages}
       connected={connected}
@@ -345,6 +510,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       onBack={() => {
         setActiveRoom(null);
         setMobileRoomOpen(false);
+        lastSentReadMessageIdRef.current = 0;
       }}
     />
   );

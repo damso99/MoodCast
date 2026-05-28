@@ -11,16 +11,62 @@ function parseMessage(frameBody) {
   }
 }
 
-export function useGroupChatSocket(memberId, activeRoomId, onMessage) {
+export function useGroupChatSocket(memberId, activeRoomId, onMessage, onRead) {
   const clientRef = useRef(null);
-  const subscriptionRef = useRef(null);
+  const messageSubscriptionRef = useRef(null);
+  const readSubscriptionRef = useRef(null);
   const activeRoomIdRef = useRef(activeRoomId);
   const onMessageRef = useRef(onMessage);
+  const onReadRef = useRef(onRead);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  useEffect(() => {
+    onReadRef.current = onRead;
+  }, [onRead]);
+
+  const clearSubscriptions = () => {
+    if (messageSubscriptionRef.current) {
+      messageSubscriptionRef.current.unsubscribe();
+      messageSubscriptionRef.current = null;
+    }
+
+    if (readSubscriptionRef.current) {
+      readSubscriptionRef.current.unsubscribe();
+      readSubscriptionRef.current = null;
+    }
+  };
+
+  const subscribeRoomTopics = (client, roomId) => {
+    if (!roomId) {
+      return;
+    }
+
+    clearSubscriptions();
+
+    messageSubscriptionRef.current = client.subscribe(
+      `/topic/chat/rooms/${roomId}`,
+      (frame) => {
+        const payload = parseMessage(frame.body);
+        if (payload) {
+          onMessageRef.current?.(payload);
+        }
+      },
+    );
+
+    readSubscriptionRef.current = client.subscribe(
+      `/topic/chat/rooms/${roomId}/read`,
+      (frame) => {
+        const payload = parseMessage(frame.body);
+        if (payload) {
+          onReadRef.current?.(payload);
+        }
+      },
+    );
+  };
 
   useEffect(() => {
     activeRoomIdRef.current = activeRoomId;
@@ -29,24 +75,7 @@ export function useGroupChatSocket(memberId, activeRoomId, onMessage) {
       return;
     }
 
-    if (subscriptionRef.current) {
-      subscriptionRef.current.unsubscribe();
-      subscriptionRef.current = null;
-    }
-
-    if (!activeRoomId) {
-      return;
-    }
-
-    subscriptionRef.current = clientRef.current.subscribe(
-      `/topic/chat/rooms/${activeRoomId}`,
-      (frame) => {
-        const payload = parseMessage(frame.body);
-        if (payload) {
-          onMessageRef.current?.(payload);
-        }
-      },
-    );
+    subscribeRoomTopics(clientRef.current, activeRoomId);
   }, [activeRoomId]);
 
   useEffect(() => {
@@ -65,20 +94,7 @@ export function useGroupChatSocket(memberId, activeRoomId, onMessage) {
 
     client.onConnect = () => {
       setConnected(true);
-
-      if (!activeRoomIdRef.current) {
-        return;
-      }
-
-      subscriptionRef.current = client.subscribe(
-        `/topic/chat/rooms/${activeRoomIdRef.current}`,
-        (frame) => {
-          const payload = parseMessage(frame.body);
-          if (payload) {
-            onMessageRef.current?.(payload);
-          }
-        },
-      );
+      subscribeRoomTopics(client, activeRoomIdRef.current);
     };
 
     client.onWebSocketClose = () => {
@@ -94,12 +110,7 @@ export function useGroupChatSocket(memberId, activeRoomId, onMessage) {
 
     return () => {
       setConnected(false);
-
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe();
-        subscriptionRef.current = null;
-      }
-
+      clearSubscriptions();
       clientRef.current = null;
       client.deactivate();
     };
@@ -118,8 +129,22 @@ export function useGroupChatSocket(memberId, activeRoomId, onMessage) {
     return true;
   };
 
+  const sendReadEvent = (roomId, payload) => {
+    if (!clientRef.current || !clientRef.current.connected || !roomId) {
+      return false;
+    }
+
+    clientRef.current.publish({
+      destination: `/app/chat/rooms/${roomId}/read`,
+      body: JSON.stringify(payload),
+    });
+
+    return true;
+  };
+
   return {
     connected,
     sendMessage,
+    sendReadEvent,
   };
 }

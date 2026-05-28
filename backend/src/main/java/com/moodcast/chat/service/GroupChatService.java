@@ -14,6 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -23,6 +26,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class GroupChatService {
+
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter CHAT_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     private final GroupChatMapper groupChatMapper;
 
@@ -78,21 +85,31 @@ public class GroupChatService {
             return List.of();
         }
 
-        if (memberId != null && memberId > 0) {
-            groupChatMapper.updateChatRoomMemberLastReadAt(roomId, memberId);
-        }
-
         List<ChatMessageVo> messages = groupChatMapper.selectChatMessagesByRoomId(roomId, memberId);
         return messages.stream().map(this::toMessageResponse).collect(Collectors.toList());
     }
 
     @Transactional
-    public void markRoomAsRead(Long roomId, Long memberId) {
-        if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0) {
+    public void markRoomAsRead(Long roomId, Long memberId, Long lastReadMessageId) {
+        if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0 || lastReadMessageId == null || lastReadMessageId <= 0) {
             return;
         }
 
-        groupChatMapper.updateChatRoomMemberLastReadAt(roomId, memberId);
+        groupChatMapper.updateLastReadMessageId(roomId, memberId, lastReadMessageId);
+    }
+
+    @Transactional
+    public void updateLastReadMessageId(Long roomId, int memberId, Long lastReadMessageId) {
+        if (roomId == null || roomId <= 0 || memberId <= 0 || lastReadMessageId == null || lastReadMessageId <= 0) {
+            return;
+        }
+
+        ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, (long) memberId);
+        if (activeMember == null) {
+            return;
+        }
+
+        groupChatMapper.updateLastReadMessageId(roomId, (long) memberId, lastReadMessageId);
     }
 
     @Transactional
@@ -162,6 +179,7 @@ public class GroupChatService {
         chatMessageVo.setRoomId(roomId);
         chatMessageVo.setSenderId(request.getSenderId());
         chatMessageVo.setContent(content);
+        chatMessageVo.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(CHAT_TIME_FORMATTER));
         chatMessageVo.setDeletedYn("N");
         groupChatMapper.insertChatMessage(chatMessageVo);
 

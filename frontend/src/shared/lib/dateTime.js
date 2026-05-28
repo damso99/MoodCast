@@ -10,35 +10,19 @@ function toValidDate(value) {
     return Number.isNaN(value.getTime()) ? null : value;
   }
 
-  if (typeof value === "string") {
-    const normalizedValue = value.trim();
-    const hasTimeZoneOffset = /([zZ]|[+-]\d{2}:?\d{2})$/.test(normalizedValue);
-    const localTimestampPattern =
-      /^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/;
-
-    if (localTimestampPattern.test(normalizedValue) && !hasTimeZoneOffset) {
-      const [datePart, timePart] = normalizedValue.split(/[T\s]/);
-      const [year, month, day] = datePart.split("-").map(Number);
-      const [hour, minute, secondWithMs] = timePart.split(":");
-      const [second, millisecond = "0"] = secondWithMs.split(".");
-
-      const kstDate = new Date(
-        Date.UTC(
-          year,
-          month - 1,
-          day,
-          Number(hour) - 9,
-          Number(minute),
-          Number(second),
-          Number(millisecond.padEnd(3, "0")),
-        ),
-      );
-
-      return Number.isNaN(kstDate.getTime()) ? null : kstDate;
-    }
+  const rawValue = String(value).trim();
+  if (!rawValue) {
+    return null;
   }
 
-  const date = new Date(value);
+  const hasTimeZone = /([zZ]|[+-]\d{2}:?\d{2})$/.test(rawValue);
+  const normalizedValue = hasTimeZone
+    ? rawValue
+    : rawValue.includes("T")
+      ? `${rawValue}+09:00`
+      : rawValue;
+
+  const date = new Date(normalizedValue);
 
   return Number.isNaN(date.getTime()) ? null : date;
 }
