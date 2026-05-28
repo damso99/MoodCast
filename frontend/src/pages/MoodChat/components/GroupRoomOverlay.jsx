@@ -11,8 +11,6 @@ import { formatKoreanTime } from "../../../shared/lib/dateTime";
 import { GroupChatRoomDetail } from "../../GroupChat/components/GroupChatRoomDetail";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-const DEBUG_GROUP_CHAT_TIME = true;
-
 function normalizeGroupMessage(message, timeCache) {
   const messageKey = message?.messageId ?? message?.id;
   const cachedTime = timeCache?.get?.(messageKey);
@@ -21,17 +19,6 @@ function normalizeGroupMessage(message, timeCache) {
 
   if (timeCache && time && !cachedTime) {
     timeCache.set(messageKey, time);
-  }
-
-  if (DEBUG_GROUP_CHAT_TIME) {
-    console.log("[GroupOverlay][normalizeGroupMessage]", {
-      messageKey,
-      rawCreatedAt: message?.createdAt,
-      rawTime: message?.time,
-      cachedTime,
-      computedTime,
-      displayTime: time,
-    });
   }
 
   return {
@@ -127,17 +114,6 @@ export function GroupRoomOverlay({
 
     try {
       const response = await fetchGroupChatMessages(roomId, currentMemberId);
-      if (DEBUG_GROUP_CHAT_TIME) {
-        console.table(
-          (Array.isArray(response.data) ? response.data : []).map((item) => ({
-            messageId: item?.messageId ?? item?.id,
-            createdAt: item?.createdAt,
-            time: item?.time,
-            senderId: item?.senderId,
-            content: item?.content,
-          })),
-        );
-      }
       const normalizedMessages = Array.isArray(response.data)
         ? response.data.map((item) => normalizeGroupMessage(item, groupMessageTimeCacheRef.current))
         : [];
@@ -190,15 +166,7 @@ export function GroupRoomOverlay({
       return;
     }
 
-    if (DEBUG_GROUP_CHAT_TIME) {
-      console.log("[GroupOverlay][incomingPayload]", incomingMessage);
-    }
-
     const normalized = normalizeGroupMessage(incomingMessage, groupMessageTimeCacheRef.current);
-
-    if (DEBUG_GROUP_CHAT_TIME) {
-      console.log("[GroupOverlay][normalizedIncoming]", normalized);
-    }
 
     setMessages((previousMessages) => {
       const pendingIndex = previousMessages.findIndex(
@@ -285,9 +253,6 @@ export function GroupRoomOverlay({
         });
 
         const savedMessage = normalizeGroupMessage(response.data, groupMessageTimeCacheRef.current);
-        if (DEBUG_GROUP_CHAT_TIME) {
-          console.log("[GroupOverlay][savedMessageFallback]", response.data, savedMessage);
-        }
         setMessages((previousMessages) => {
           const pendingIndex = previousMessages.findIndex(
             (item) =>

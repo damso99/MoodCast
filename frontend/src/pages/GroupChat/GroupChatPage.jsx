@@ -21,8 +21,6 @@ import { GroupChatRoomList } from "./components/GroupChatRoomList";
 import "./groupChatStyles.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-const DEBUG_GROUP_CHAT_TIME = true;
-
 function normalizeRoom(room) {
   return {
     roomId: room?.roomId,
@@ -45,17 +43,6 @@ function normalizeMessage(message, timeCache) {
 
   if (timeCache && time && !cachedTime) {
     timeCache.set(messageKey, time);
-  }
-
-  if (DEBUG_GROUP_CHAT_TIME) {
-    console.log("[GroupChat][normalizeMessage]", {
-      messageKey,
-      rawCreatedAt: message?.createdAt,
-      rawTime: message?.time,
-      cachedTime,
-      computedTime,
-      displayTime: time,
-    });
   }
 
   return {
@@ -134,7 +121,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
 
   const refreshRoomsAfterRead = () => {
     window.setTimeout(() => {
-      refreshRoomsAfterRead();
+      refreshRooms().catch(() => {});
     }, 150);
   };
 
@@ -147,17 +134,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     try {
       const response = await fetchGroupChatMessages(roomId, currentMemberId);
       const nextMessages = Array.isArray(response.data) ? response.data : [];
-      if (DEBUG_GROUP_CHAT_TIME) {
-        console.table(
-          nextMessages.map((item) => ({
-            messageId: item?.messageId ?? item?.id,
-            createdAt: item?.createdAt,
-            time: item?.time,
-            senderId: item?.senderId,
-            content: item?.content,
-          })),
-        );
-      }
       const normalizedMessages = nextMessages.map((item) =>
         normalizeMessage(item, groupMessageTimeCacheRef.current),
       );
@@ -184,10 +160,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       return;
     }
 
-    if (DEBUG_GROUP_CHAT_TIME) {
-      console.log("[GroupChat][incomingPayload]", payload);
-    }
-
     if (payload?.eventType === "CHAT_DELETE") {
       const deletedMessageId = Number(payload?.messageId ?? payload?.id);
 
@@ -199,10 +171,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
 
     const normalized = normalizeMessage(payload, groupMessageTimeCacheRef.current);
-
-    if (DEBUG_GROUP_CHAT_TIME) {
-      console.log("[GroupChat][normalizedIncoming]", normalized);
-    }
 
     setRooms((previousRooms) =>
       previousRooms.map((room) =>
@@ -435,9 +403,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
         });
 
         const savedMessage = normalizeMessage(response.data, groupMessageTimeCacheRef.current);
-        if (DEBUG_GROUP_CHAT_TIME) {
-          console.log("[GroupChat][savedMessageFallback]", response.data, savedMessage);
-        }
         setMessages((previousMessages) => {
           const pendingIndex = previousMessages.findIndex(
             (message) =>
