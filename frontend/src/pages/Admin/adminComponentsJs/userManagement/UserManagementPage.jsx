@@ -602,6 +602,8 @@ export function UserManagementPage() {
       {/* 회원 관리 우측 패널: 관리 버튼을 누른 회원의 상세 정보와 정지/해제 작업을 담당합니다. */}
       <UserManagementDrawer
         selectedManagedMember={selectedManagedMember}
+        currentAdminMemberId={member?.memberId}
+        currentAdminRole={member?.role}
         onClose={() => setSelectedManagedMember(null)}
         onMemberUpdated={handleMemberUpdated}
       />

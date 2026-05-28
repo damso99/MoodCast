@@ -96,7 +96,6 @@
 
 .summaryPanel,
 .filterPanel,
-.bulkPanel,
 .contentCard {
   border: 1px solid rgba(124, 77, 255, 0.1);
   border-radius: 18px;
@@ -109,16 +108,14 @@
 }
 
 .summaryPanel h2,
-.filterPanel h2,
-.bulkPanel h2 {
+.filterPanel h2 {
   margin: 0;
   color: #111827;
   font-size: 1rem;
   font-weight: 900;
 }
 
-.summaryPanel p,
-.bulkPanel p {
+.summaryPanel p {
   margin: 8px 0 0;
   color: #667085;
   font-size: 0.9rem;
@@ -127,9 +124,9 @@
 
 .feedList {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 12px;
-  min-width: 720px;
+  min-width: 780px;
 }
 
 .emptyFeed {
@@ -165,11 +162,33 @@
   padding: 16px;
 }
 
+.selectedCard {
+  border-color: rgba(124, 77, 255, 0.38);
+  box-shadow: 0 18px 44px rgba(124, 77, 255, 0.12);
+}
+
 .cardTopRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.cardSelectLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #475467;
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.cardSelectLabel input,
+.selectAllLabel input {
+  width: 15px;
+  height: 15px;
+  accent-color: #7c4dff;
 }
 
 .postId {
@@ -410,6 +429,57 @@
   background: #7c4dff;
 }
 
+.bulkActionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.selectAllLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #344054;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.bulkActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bulkActions span {
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.bulkActions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  color: #633df2;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.1);
+  cursor: pointer;
+}
+
+.bulkActions button:disabled {
+  color: #c3c8d1;
+  cursor: not-allowed;
+  background: #f6f7f9;
+}
+
 .sideRail {
   display: grid;
   gap: 14px;
@@ -417,8 +487,7 @@
   top: 22px;
 }
 
-.filterPanel,
-.bulkPanel {
+.filterPanel {
   display: grid;
   gap: 15px;
   padding: 18px;
@@ -495,7 +564,9 @@
   }
 
   .statusPills,
-  .cardActions {
+  .cardActions,
+  .bulkActionBar,
+  .bulkActions {
     align-items: stretch;
     flex-direction: column;
   }
