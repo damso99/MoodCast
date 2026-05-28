@@ -11,9 +11,11 @@
 
 .modal {
   width: min(760px, calc(100vw - 32px));
-  max-height: min(84vh, 780px);
-  overflow: auto;
-  padding: 20px;
+  height: min(84vh, 780px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 24px 20px;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 22px 60px rgba(17, 24, 39, 0.16);
@@ -52,9 +54,10 @@
   gap: 10px;
   min-height: 54px;
   margin-top: 18px;
-  padding: 0 16px;
+  padding: 0 14px 0 16px;
   border-radius: 18px;
   background: #f8f9ff;
+  position: relative;
 }
 
 .searchField input {
@@ -62,6 +65,33 @@
   outline: none;
   background: transparent;
   width: 100%;
+  padding-right: 36px;
+  color: #111827;
+}
+
+.searchField input::placeholder {
+  color: #98a2b3;
+}
+
+.clearButton {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.06);
+  color: #667085;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.clearButton:hover {
+  background: rgba(124, 77, 255, 0.12);
+  color: #7c4dff;
 }
 
 .tabs {
@@ -79,17 +109,43 @@
   background: #f3f4fb;
   color: #667085;
   font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .active {
-  background: rgba(124, 77, 255, 0.1) !important;
-  color: #7c4dff !important;
+  background: #7c4dff !important;
+  color: #fff !important;
+  box-shadow: 0 10px 18px rgba(124, 77, 255, 0.18);
 }
 
 .list {
+  flex: 1;
+  min-height: 0;
   display: grid;
   gap: 12px;
   margin-top: 16px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+.list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: rgba(124, 77, 255, 0.22);
+  border-radius: 999px;
+}
+
+.list::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 77, 255, 0.34);
 }
 
 .item {
@@ -138,14 +194,15 @@
 
 /* 인기 해시태그 섹션 스타일 */
 .trendingSection {
+  margin-top: 4px;
   margin-bottom: 20px;
 }
 
 .trendingTitle {
   font-size: 13px;
   font-weight: 600;
-  margin-bottom: 10px;
-  color: #333;
+  margin: 10px 0 12px;
+  color: #4b5563;
 }
 
 .trendingTags {
@@ -175,10 +232,76 @@
 .trendingLoading,
 .trendingEmpty {
   text-align: center;
-  padding: 12px 8px;
+  padding: 14px 12px;
   color: #aaa;
   font-size: 13px;
   margin: 8px 0 0;
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.userAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #999;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.userAvatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.userMeta strong {
+  display: block;
+}
+
+.userMeta span {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.3;
+}
+
+.userAction {
+  min-width: 86px;
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.selfBadge {
+  min-height: 32px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.1);
+  color: #7c4dff;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.searchField:focus-within {
+  box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.08);
 }
 
 @media (max-width: 1023px) {
@@ -189,6 +312,7 @@
 
   .modal {
     width: 100%;
+    height: 88vh;
     border-radius: 28px 28px 0 0;
     max-height: 88vh;
   }

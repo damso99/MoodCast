@@ -1,7 +1,7 @@
 import CloseIcon from '@mui/icons-material/Close';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -13,6 +13,7 @@ import styles from './SearchModal.module.css';
 // 검색 요청은 실제로 백엔드 서버의 검색 API를 호출합니다.
 export function SearchModal({ open, onClose }) {
   const navigate = useNavigate();
+  const inputRef = useRef(null);
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
   const [results, setResults] = useState([]);
@@ -30,27 +31,6 @@ export function SearchModal({ open, onClose }) {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
   // 트렌딩 태그 조회
-  useEffect(() => {
-    if (!open) return;
-    setLoadingTrending(true);
-    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
-    const config = effectiveToken ? {
-      headers: { Authorization: `Bearer ${effectiveToken}` }
-    } : {};
-    
-    axios
-      .get(`${BACKSERVER}/search/hashtags/trending`, config)
-      .then((response) => {
-        setTrendingTags(response.data?.results || []);
-      })
-      .catch((err) => {
-        console.error('트렌딩 태그 조회 실패:', err);
-        setTrendingTags([]);
-      })
-      .finally(() => setLoadingTrending(false));
-  }, [open, BACKSERVER, token]);
-
-  // 각 탭별 인기 데이터 조회 (검색어 없을 때)
   useEffect(() => {
     if (!open || query.trim() !== '') return;
     
@@ -111,6 +91,7 @@ export function SearchModal({ open, onClose }) {
     if (!open) return;
     setQuery('');
     setActiveTab('posts');
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
 
   const toggleFollow = (memberId) => {
@@ -258,9 +239,10 @@ export function SearchModal({ open, onClose }) {
           </button>
         </div>
 
-        <label className={styles.searchField}>
+        <div className={styles.searchField}>
           <SearchOutlinedIcon />
           <input 
+            ref={inputRef}
             value={query} 
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
@@ -270,17 +252,31 @@ export function SearchModal({ open, onClose }) {
               }
             }}
             placeholder="검색어를 입력하세요" 
+            aria-label="검색어 입력"
           />
-        </label>
+          {query.trim() && (
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => {
+                setQuery('');
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              aria-label="검색어 지우기"
+            >
+              <CloseIcon fontSize="small" />
+            </button>
+          )}
+        </div>
 
         <div className={styles.tabs}>
-          <button type="button" className={activeTab === 'posts' ? styles.active : ''} onClick={() => setActiveTab('posts')}>
+          <button type="button" className={activeTab === 'posts' ? styles.active : ''} onClick={() => setActiveTab('posts')} aria-pressed={activeTab === 'posts'}>
             게시글
           </button>
-          <button type="button" className={activeTab === 'users' ? styles.active : ''} onClick={() => setActiveTab('users')}>
+          <button type="button" className={activeTab === 'users' ? styles.active : ''} onClick={() => setActiveTab('users')} aria-pressed={activeTab === 'users'}>
             사용자
           </button>
-          <button type="button" className={activeTab === 'hashtags' ? styles.active : ''} onClick={() => setActiveTab('hashtags')}>
+          <button type="button" className={activeTab === 'hashtags' ? styles.active : ''} onClick={() => setActiveTab('hashtags')} aria-pressed={activeTab === 'hashtags'}>
             해시태그
           </button>
         </div>
@@ -329,45 +325,37 @@ export function SearchModal({ open, onClose }) {
                           navigate(`/app/user/${user.memberId}`);
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ 
-                            width: '32px', 
-                            height: '32px', 
-                            borderRadius: '50%', 
-                            backgroundColor: '#eee', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center',
-                            fontSize: '14px',
-                            fontWeight: 'bold',
-                            color: '#999',
-                            overflow: 'hidden'
-                          }}>
+                        <div className={styles.userRow}>
+                          <div className={styles.userAvatar}>
                             {user.profileImageUrl ? (
-                              <img src={user.profileImageUrl} alt={user.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              <img src={user.profileImageUrl} alt={user.nickname} />
                             ) : (
                               (user.nickname || user.name || '?').charAt(0).toUpperCase()
                             )}
                           </div>
-                          <div style={{ flex: 1 }}>
-                            <strong style={{ display: 'block' }}>{user.nickname || user.name}</strong>
-                            <span style={{ fontSize: '12px', color: '#888' }}>
+                          <div className={styles.userMeta}>
+                            <strong>{user.nickname || user.name}</strong>
+                            <span>
                               @{user.email ? user.email.split('@')[0] : user.memberId} · 팔로워 {user.followerCount ?? 0}명
                             </span>
                           </div>
-                          {isLoggedIn && currentMember?.memberId !== user.memberId && (
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                toggleFollow(user.memberId);
-                              }}
-                              className={user.following ? styles.unfollowButton : styles.followButton}
-                              style={{ whiteSpace: 'nowrap' }}
-                            >
-                              {user.following ? '언팔로우' : '팔로우'}
-                            </button>
-                          )}
+                          <div className={styles.userAction}>
+                            {currentMember?.memberId === user.memberId ? (
+                              <span className={styles.selfBadge}>내 계정</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleFollow(user.memberId);
+                                }}
+                                className={user.following ? styles.unfollowButton : styles.followButton}
+                                style={{ whiteSpace: 'nowrap' }}
+                              >
+                                {user.following ? '언팔로우' : '팔로우'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </article>
                     ))
@@ -430,45 +418,35 @@ export function SearchModal({ open, onClose }) {
                       navigate(`/app/user/${item.memberId}`); // 사용자의 고유 ID를 경로로 사용해 이동합니다.
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ 
-                        width: '32px', 
-                        height: '32px', 
-                        borderRadius: '50%', 
-                        backgroundColor: '#eee', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        color: '#999',
-                        overflow: 'hidden'
-                      }}>
+                    <div className={styles.userRow}>
+                      <div className={styles.userAvatar}>
                         {item.profileImageUrl ? (
-                          <img src={item.profileImageUrl} alt={item.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={item.profileImageUrl} alt={item.nickname} />
                         ) : (
                           (item.nickname || item.name || '?').charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
-                        <span style={{ fontSize: '12px', color: '#888' }}>
-                          @{item.email ? item.email.split('@')[0] : item.memberId}
-                        </span>
+                      <div className={styles.userMeta}>
+                        <strong>{item.nickname || item.name}</strong>
+                        <span>@{item.email ? item.email.split('@')[0] : item.memberId}</span>
                       </div>
-                      {isLoggedIn && currentMember?.memberId !== item.memberId && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleFollow(item.memberId);
-                          }}
-                          className={item.following ? styles.unfollowButton : styles.followButton}
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          {item.following ? '언팔로우' : '팔로우'}
-                        </button>
-                      )}
+                      <div className={styles.userAction}>
+                        {currentMember?.memberId === item.memberId ? (
+                          <span className={styles.selfBadge}>내 계정</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFollow(item.memberId);
+                            }}
+                            className={item.following ? styles.unfollowButton : styles.followButton}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {item.following ? '언팔로우' : '팔로우'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );
