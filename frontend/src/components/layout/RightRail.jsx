@@ -79,6 +79,22 @@ function RangeFilter({ label, value, onChange, align = 'right' }) {
   );
 }
 
+function formatTagCount(value) {
+  const count = Number(value);
+
+  if (Number.isNaN(count)) {
+    return '0';
+  }
+
+  if (count >= 1000) {
+    const divided = count / 1000;
+    const text = Number.isInteger(divided) ? String(divided) : divided.toFixed(1).replace(/\.0$/, '');
+    return `${text}k`;
+  }
+
+  return String(count);
+}
+
 function RightRailBase({ posts = [], isLoading = false }) {
   const [selectedMoodRange, setSelectedMoodRange] = useState('all');
   const [trendingTags, setTrendingTags] = useState([]);
@@ -136,7 +152,7 @@ function RightRailBase({ posts = [], isLoading = false }) {
         </div>
 
         {isLoading ? (
-          <div className={styles.loadingText}>게시물 감정 통계를 불러오는 중입니다.</div>
+          <div className={styles.loadingText}>게시글 감정 통계를 불러오는 중입니다.</div>
         ) : (
           <div className={styles.moodList}>
             {moodStats.map((item) => (
@@ -172,7 +188,7 @@ function RightRailBase({ posts = [], isLoading = false }) {
                   <span className={styles.rank}>{index + 1}</span>
                   <div>
                     <strong>#{tag.hashtag}</strong>
-                    <p>{tag.useCount}회 사용</p>
+                    <p>{formatTagCount(tag.useCount)}</p>
                   </div>
                 </div>
               ))}
@@ -184,7 +200,7 @@ function RightRailBase({ posts = [], isLoading = false }) {
                 onClick={() => setExpandedTags((prev) => !prev)}
                 disabled={loadingTags}
               >
-                {expandedTags ? '닫기' : '더보기'}
+                {expandedTags ? '접기' : '더보기'}
               </button>
             ) : null}
           </>

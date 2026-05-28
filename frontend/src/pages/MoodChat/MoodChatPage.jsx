@@ -5,7 +5,6 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
-import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
 import { DesktopShell } from "../../components/layout/DesktopShell";
@@ -77,6 +76,24 @@ function buildRoomName(selectedMembers) {
   }
 
   return `${names[0]} 외 ${names.length - 1}명`;
+}
+
+function buildDirectThread(memberItem) {
+  return {
+    roomType: "direct",
+    roomId: null,
+    threadKey: `direct-${memberItem?.memberId}`,
+    partnerMemberId: memberItem?.memberId,
+    partnerName: memberItem?.name || "",
+    partnerNickname: memberItem?.nickname || memberItem?.name || "",
+    partnerProfileImageUrl: memberItem?.profileImageUrl || "",
+    roomName: memberItem?.nickname || memberItem?.name || "",
+    roomDescription: "",
+    lastMessage: "",
+    lastMessageAt: "",
+    unreadCount: 0,
+    memberCount: 2,
+  };
 }
 
 function normalizeDirectThread(thread) {
@@ -155,6 +172,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [selectedInviteIds, setSelectedInviteIds] = useState([]);
   const [isLoadingInviteCandidates, setIsLoadingInviteCandidates] = useState(false);
   const [activeGroupRoom, setActiveGroupRoom] = useState(null);
+  const [isThreadMenuOpen, setIsThreadMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!DEBUG_CHAT_ROOM) {
@@ -294,6 +312,13 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         await inviteGroupChatMembers(activeGroupRoom.roomId, {
           memberIds: selectedInviteIds,
         });
+      } else if (inviteMode === "create" && selectedMembers.length === 1) {
+        const directThread = buildDirectThread(selectedMembers[0]);
+        setActiveGroupRoom(null);
+        setInviteModalOpen(false);
+        setSelectedInviteIds([]);
+        openThread(directThread);
+        return;
       } else {
         const response = await createGroupChatRoom({
           roomName: buildRoomName(selectedMembers),
@@ -517,10 +542,12 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       console.log("[MoodChat] openThread", thread);
     }
 
+    setActiveGroupRoom(null);
     setActiveThread(thread);
     setIsRoomOpen(true);
     setMessage("");
     setShowScrollBottomButton(false);
+    setIsThreadMenuOpen(false);
     loadMessages(thread);
   };
 
@@ -529,6 +556,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       return;
     }
 
+    setIsThreadMenuOpen(false);
     setActiveGroupRoom(thread);
     setIsRoomOpen(false);
     setActiveThread(null);
@@ -568,6 +596,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setMessage("");
     setError("");
     setShowScrollBottomButton(false);
+    setIsThreadMenuOpen(false);
+  };
+
+  const handleOpenPartnerProfile = () => {
+    if (!activeThread?.partnerMemberId) {
+      return;
+    }
+
+    navigate(`/app/user/${activeThread.partnerMemberId}`);
   };
 
   const handleSend = async () => {
@@ -796,12 +833,84 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           <span>{isChatConnected ? "실시간 연결됨" : "연결되지 않음"}</span>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" aria-label="전화">
-            <PhoneRoundedIcon />
-          </button>
-          <button type="button" aria-label="더보기">
-            <MoreVertRoundedIcon />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              aria-label="더보기"
+              onClick={() => setIsThreadMenuOpen((value) => !value)}
+            >
+              <MoreVertRoundedIcon />
+            </button>
+            {isThreadMenuOpen ? (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "46px",
+                  right: 0,
+                  display: "grid",
+                  gap: "8px",
+                  minWidth: "160px",
+                  padding: "10px",
+                  borderRadius: "16px",
+                  background: "rgba(255, 255, 255, 0.98)",
+                  boxShadow: "0 18px 40px rgba(17, 24, 39, 0.14)",
+                  zIndex: 1000,
+                  justifyItems: "stretch",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsThreadMenuOpen(false);
+                    handleOpenPartnerProfile();
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: "42px",
+                    padding: "0 14px",
+                    border: 0,
+                    borderRadius: "12px",
+                    background: "rgba(124, 77, 255, 0.1)",
+                    color: "#7c4dff",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    wordBreak: "keep-all",
+                    fontWeight: 600,
+                  }}
+                >
+                  상대 프로필 보기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsThreadMenuOpen(false);
+                    handleExitRoom();
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: "42px",
+                    padding: "0 14px",
+                    border: 0,
+                    borderRadius: "12px",
+                    background: "rgba(255, 106, 119, 0.1)",
+                    color: "#d92d20",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    wordBreak: "keep-all",
+                    fontWeight: 600,
+                  }}
+                >
+                  대화방 닫기
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
       {messageList}

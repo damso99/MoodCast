@@ -3,6 +3,7 @@ import axios from "axios";
 import { useGroupChatSocket } from "../../../hooks/useGroupChatSocket";
 import {
   fetchGroupChatMessages,
+  deleteGroupChatMessage,
   leaveGroupChatRoom,
   markGroupChatRoomAsRead,
 } from "../../../shared/api/groupChatApi";
@@ -22,6 +23,7 @@ function normalizeGroupMessage(message) {
     createdAt: formatKoreanTime(message?.createdAt) || message?.createdAt || "",
     readCount: Number(message?.readCount || 0),
     unreadCount: Number(message?.unreadCount || 0),
+    eventType: message?.eventType || "",
   };
 }
 
@@ -80,6 +82,18 @@ export function GroupRoomOverlay({
   }, [room?.roomId, currentMemberId]);
 
   const handleIncomingMessage = (incomingMessage) => {
+    if (incomingMessage?.eventType === "CHAT_DELETE") {
+      const deletedMessageId = Number(incomingMessage?.messageId ?? incomingMessage?.id);
+
+      setMessages((previousMessages) =>
+        previousMessages.filter(
+          (item) => Number(item.messageId) !== deletedMessageId,
+        ),
+      );
+      onRoomUpdated?.();
+      return;
+    }
+
     const normalized = normalizeGroupMessage(incomingMessage);
 
     setMessages((previousMessages) => {
@@ -151,6 +165,23 @@ export function GroupRoomOverlay({
     }
   };
 
+  const handleDeleteMessage = async (item) => {
+    if (!room?.roomId || !currentMemberId || !item?.messageId) {
+      return;
+    }
+
+    try {
+      await deleteGroupChatMessage(room.roomId, item.messageId, currentMemberId);
+      setMessages((previousMessages) =>
+        previousMessages.filter(
+          (message) => Number(message.messageId) !== Number(item.messageId),
+        ),
+      );
+    } catch (error) {
+      console.error("Group message delete failed", error);
+    }
+  };
+
   const handleLeave = async () => {
     if (!room?.roomId || !currentMemberId) {
       return;
@@ -191,6 +222,7 @@ export function GroupRoomOverlay({
         messageValue={message}
         onMessageChange={(event) => setMessage(event.target.value)}
         onSubmitMessage={handleSend}
+        onDeleteMessage={handleDeleteMessage}
         onLeaveRoom={handleLeave}
         onInviteMembers={() => onRequestInvite?.(room)}
         onProfileClick={onProfileClick}

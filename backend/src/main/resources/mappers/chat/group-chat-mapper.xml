@@ -224,6 +224,13 @@
         )
     </insert>
 
+    <update id="softDeleteChatMessage">
+        UPDATE chat_message
+        SET deleted_yn = 'Y'
+        WHERE message_id = #{messageId}
+          AND deleted_yn = 'N'
+    </update>
+
     <select id="selectChatMessageById" resultType="com.moodcast.chat.vo.ChatMessageVo">
         SELECT
             cm.message_id AS messageId,
@@ -234,6 +241,7 @@
             cm.content AS content,
             DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
             cm.deleted_yn AS deletedYn,
+            NULL AS eventType,
             (
                 SELECT COUNT(*)
                 FROM chat_room_member crm
@@ -269,6 +277,7 @@
             cm.content AS content,
             DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
             cm.deleted_yn AS deletedYn,
+            NULL AS eventType,
             (
                 SELECT COUNT(*)
                 FROM chat_room_member crm

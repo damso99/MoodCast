@@ -186,6 +186,8 @@
 }
 
 .roomHeader {
+  position: relative;
+  z-index: 30;
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
@@ -277,6 +279,8 @@
 .messages {
   --message-time-width: 58px;
   --message-avatar-space: 48px;
+  position: relative;
+  z-index: 1;
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;

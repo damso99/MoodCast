@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
 import styles from "../../MoodChat/MoodChatPage.module.css";
 import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 
 function getRoomTitle(activeRoom) {
-  return activeRoom?.roomName || "Group Chat";
+  return activeRoom?.roomName || "그룹 채팅방";
 }
 
 function getRoomSubtitle(activeRoom, connected) {
   const memberCount = Number(activeRoom?.memberCount || 0);
-  const countText = memberCount > 0 ? `Members ${memberCount}` : "No member info";
-  const connectionText = connected ? "Connected" : "Disconnected";
+  const countText = memberCount > 0 ? `참여 인원 ${memberCount}명` : "참여 인원 정보 없음";
+  const connectionText = connected ? "실시간 연결됨" : "연결 끊김";
   return `${countText} · ${connectionText}`;
 }
 
@@ -28,6 +28,7 @@ export function GroupChatRoomDetail({
   messageValue,
   onMessageChange,
   onSubmitMessage,
+  onDeleteMessage,
   onLeaveRoom,
   onInviteMembers,
   onProfileClick,
@@ -60,7 +61,7 @@ export function GroupChatRoomDetail({
           type="button"
           className={styles.backButton}
           onClick={onBack}
-          aria-label="Back"
+          aria-label="뒤로 가기"
         >
           <ArrowBackRoundedIcon />
         </button>
@@ -70,13 +71,10 @@ export function GroupChatRoomDetail({
           <span>{roomSubtitle}</span>
         </div>
         <div className={styles.headerActions}>
-          <button type="button" aria-label="Call">
-            <PhoneRoundedIcon />
-          </button>
           <div style={{ position: "relative" }}>
             <button
               type="button"
-              aria-label="More"
+              aria-label="더보기"
               onClick={() => setIsMoreMenuOpen((value) => !value)}
             >
               <MoreVertRoundedIcon />
@@ -89,12 +87,13 @@ export function GroupChatRoomDetail({
                   right: 0,
                   display: "grid",
                   gap: "8px",
-                  minWidth: "140px",
+                  minWidth: "160px",
                   padding: "10px",
                   borderRadius: "16px",
                   background: "rgba(255, 255, 255, 0.98)",
                   boxShadow: "0 18px 40px rgba(17, 24, 39, 0.14)",
                   zIndex: 20,
+                  justifyItems: "stretch",
                 }}
               >
                 <button
@@ -104,15 +103,23 @@ export function GroupChatRoomDetail({
                     onInviteMembers?.();
                   }}
                   style={{
-                    minHeight: "40px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: "42px",
+                    padding: "0 14px",
                     border: 0,
                     borderRadius: "12px",
                     background: "rgba(124, 77, 255, 0.1)",
                     color: "#7c4dff",
                     cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    wordBreak: "keep-all",
+                    fontWeight: 600,
                   }}
                 >
-                  Invite
+                  참여자 초대
                 </button>
                 <button
                   type="button"
@@ -121,15 +128,23 @@ export function GroupChatRoomDetail({
                     onLeaveRoom?.();
                   }}
                   style={{
-                    minHeight: "40px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: "42px",
+                    padding: "0 14px",
                     border: 0,
                     borderRadius: "12px",
                     background: "rgba(255, 106, 119, 0.1)",
                     color: "#d92d20",
                     cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    wordBreak: "keep-all",
+                    fontWeight: 600,
                   }}
                 >
-                  Leave
+                  채팅방 나가기
                 </button>
               </div>
             ) : null}
@@ -138,11 +153,11 @@ export function GroupChatRoomDetail({
       </div>
 
       <div ref={messagesRef} className={styles.messages} aria-live="polite">
-        {messages.length === 0 ? <p className={styles.emptyState}>No messages yet.</p> : null}
+        {messages.length === 0 ? <p className={styles.emptyState}>아직 메시지가 없습니다.</p> : null}
 
         {messages.map((item) => {
           const isMine = Number(item.senderId) === Number(currentMemberId);
-          const senderName = item.senderName || "Member";
+          const senderName = item.senderName || "참여자";
           const senderInitial = senderName.charAt(0).toUpperCase();
           const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
 
@@ -156,8 +171,8 @@ export function GroupChatRoomDetail({
                   type="button"
                   className={styles.messageAvatar}
                   onClick={() => onProfileClick?.(item.senderId)}
-                  aria-label={`${senderName} profile`}
-                  title={`${senderName} profile`}
+                  aria-label={`${senderName} 프로필 보기`}
+                  title={`${senderName} 프로필 보기`}
                 >
                   {profileImageUrl ? (
                     <img
@@ -177,12 +192,23 @@ export function GroupChatRoomDetail({
               <div className={`${styles.messageItem} ${isMine ? styles.me : styles.them}`}>
                 {!isMine ? <span className={styles.senderLabel}>{senderName}</span> : null}
                 <div className={styles.bubbleWrap}>
+                  {isMine ? (
+                    <button
+                      type="button"
+                      className={styles.deleteButton}
+                      aria-label="메시지 삭제"
+                      title="메시지 삭제"
+                      onClick={() => onDeleteMessage?.(item)}
+                    >
+                      <DeleteOutlineRoundedIcon />
+                    </button>
+                  ) : null}
                   <div className={styles.bubbleLine}>
                     <div className={`${styles.bubble} ${isMine ? styles.me : styles.them}`}>
                       <p>{item.content}</p>
                     </div>
                     {isMine && Number(item.readCount || 0) > 0 ? (
-                      <span className={styles.unreadMarker}>Read {item.readCount}</span>
+                      <span className={styles.unreadMarker}>읽음 {item.readCount}</span>
                     ) : null}
                   </div>
                   <span className={styles.messageTime}>{item.createdAt}</span>
@@ -194,14 +220,14 @@ export function GroupChatRoomDetail({
       </div>
 
       <form className={styles.composer} onSubmit={onSubmitMessage}>
-        <label className={styles.addButton} aria-label="Add image" title="Add image">
+        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
           <AddRoundedIcon />
           <input type="file" accept="image/*" />
         </label>
         <div className={styles.inputShell}>
           <input
             ref={messageInputRef}
-            placeholder="Type a message..."
+            placeholder="메시지를 입력하세요..."
             value={messageValue}
             onChange={onMessageChange}
             disabled={!activeRoom}
@@ -209,8 +235,8 @@ export function GroupChatRoomDetail({
           <button
             type="button"
             className={styles.emojiButton}
-            aria-label="Emoji"
-            title="Emoji"
+            aria-label="이모지"
+            title="이모지"
             disabled={!activeRoom}
           >
             <SentimentSatisfiedAltRoundedIcon />
@@ -219,8 +245,8 @@ export function GroupChatRoomDetail({
         <button
           type="submit"
           className={styles.sendButton}
-          aria-label="Send message"
-          title="Send message"
+          aria-label="메시지 보내기"
+          title="메시지 보내기"
           disabled={!activeRoom}
         >
           <SendRoundedIcon />

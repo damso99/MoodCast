@@ -66,6 +66,17 @@ public class GroupChatController {
         return ResponseEntity.ok(savedMessage);
     }
 
+    @DeleteMapping("/rooms/{roomId}/messages/{messageId}")
+    public ResponseEntity<Void> deleteMessage(
+            @PathVariable Long roomId,
+            @PathVariable Long messageId,
+            @RequestParam Long memberId
+    ) {
+        ChatRoomMessageResponseDto deletedMessage = groupChatService.deleteMessage(roomId, messageId, memberId);
+        messagingTemplate.convertAndSend("/topic/chat/rooms/" + roomId, deletedMessage);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/rooms/{roomId}/members")
     public ResponseEntity<List<ChatRoomMemberResponseDto>> getMembersByRoomId(@PathVariable Long roomId) {
         return ResponseEntity.ok(groupChatService.getMembersByRoomId(roomId));

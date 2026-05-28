@@ -34,5 +34,7 @@ public interface GroupChatMapper {
 
     ChatMessageVo selectChatMessageById(@Param("messageId") Long messageId);
 
+    int softDeleteChatMessage(@Param("messageId") Long messageId);
+
     List<ChatMessageVo> selectChatMessagesByRoomId(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 }

@@ -8,6 +8,7 @@ import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { formatKoreanTime } from "../../shared/lib/dateTime";
 import {
   createGroupChatRoom,
+  deleteGroupChatMessage,
   fetchGroupChatMessages,
   fetchGroupChatRooms,
   inviteGroupChatMembers,
@@ -46,6 +47,7 @@ function normalizeMessage(message) {
     createdAt: message?.createdAt ? formatKoreanTime(message.createdAt) : "",
     readCount: Number(message?.readCount || 0),
     unreadCount: Number(message?.unreadCount || 0),
+    eventType: message?.eventType || "",
   };
 }
 
@@ -110,6 +112,16 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
 
   const handleIncomingMessage = (payload) => {
     if (!payload) {
+      return;
+    }
+
+    if (payload?.eventType === "CHAT_DELETE") {
+      const deletedMessageId = Number(payload?.messageId ?? payload?.id);
+
+      setMessages((previousMessages) =>
+        previousMessages.filter((message) => Number(message.messageId) !== deletedMessageId),
+      );
+      refreshRooms();
       return;
     }
 
@@ -279,6 +291,19 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
+  const handleDeleteMessage = async (item) => {
+    if (!activeRoom?.roomId || !currentMemberId || !item?.messageId) {
+      return;
+    }
+
+    try {
+      await deleteGroupChatMessage(activeRoom.roomId, item.messageId, currentMemberId);
+    } catch (requestError) {
+      console.error("Group message delete failed", requestError);
+      setError(requestError.response?.data?.message || "메시지를 삭제하지 못했습니다.");
+    }
+  };
+
   useEffect(() => {
     onRoomOpenChange?.(mobileRoomOpen);
   }, [mobileRoomOpen, onRoomOpenChange]);
@@ -309,6 +334,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       messageValue={messageValue}
       onMessageChange={(event) => setMessageValue(event.target.value)}
       onSubmitMessage={handleSubmitMessage}
+      onDeleteMessage={handleDeleteMessage}
       onLeaveRoom={leaveRoomHandler}
       onInviteMembers={inviteMembers}
       onProfileClick={(memberId) => {

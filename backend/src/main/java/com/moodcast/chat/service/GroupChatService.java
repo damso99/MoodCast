@@ -169,6 +169,37 @@ public class GroupChatService {
         return toMessageResponse(savedMessage);
     }
 
+    @Transactional
+    public ChatRoomMessageResponseDto deleteMessage(Long roomId, Long messageId, Long memberId) {
+        if (roomId == null || roomId <= 0 || messageId == null || messageId <= 0 || memberId == null || memberId <= 0) {
+            throw new IllegalArgumentException("메시지 삭제 정보가 올바르지 않습니다.");
+        }
+
+        ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, memberId);
+        if (activeMember == null) {
+            throw new IllegalArgumentException("채팅방에 참여 중인 사용자만 메시지를 삭제할 수 있습니다.");
+        }
+
+        ChatMessageVo targetMessage = groupChatMapper.selectChatMessageById(messageId);
+        if (targetMessage == null || !roomId.equals(targetMessage.getRoomId())) {
+            throw new IllegalArgumentException("삭제할 메시지를 찾을 수 없습니다.");
+        }
+        if (!memberId.equals(targetMessage.getSenderId())) {
+            throw new IllegalArgumentException("본인이 보낸 메시지만 삭제할 수 있습니다.");
+        }
+
+        groupChatMapper.softDeleteChatMessage(messageId);
+
+        ChatRoomMessageResponseDto response = new ChatRoomMessageResponseDto();
+        response.setMessageId(messageId);
+        response.setRoomId(roomId);
+        response.setSenderId(memberId);
+        response.setSenderName(targetMessage.getSenderName());
+        response.setProfileImageUrl(targetMessage.getProfileImageUrl());
+        response.setEventType("CHAT_DELETE");
+        return response;
+    }
+
     @Transactional(readOnly = true)
     public List<ChatRoomMemberResponseDto> getMembersByRoomId(Long roomId) {
         if (roomId == null || roomId <= 0) {

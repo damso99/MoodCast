@@ -18,4 +18,5 @@ public class ChatMessageVo {
     private String deletedYn;
     private Integer readCount;
     private Integer unreadCount;
+    private String eventType;
 }

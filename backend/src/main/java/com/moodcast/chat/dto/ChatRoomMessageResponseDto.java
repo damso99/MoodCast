@@ -17,4 +17,5 @@ public class ChatRoomMessageResponseDto {
     private String createdAt;
     private Integer readCount;
     private Integer unreadCount;
+    private String eventType;
 }
