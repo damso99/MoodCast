@@ -40,6 +40,54 @@ public interface AdminDao {
     /* 콘텐츠 관리 페이지에서 사용할 게시글 목록을 조회합니다. */
     List<AdminContentPost> selectAdminContentPosts();
 
+    /*
+     * 관리자 콘텐츠 관리에서 게시글 작업 후 최신 상태를 다시 조회합니다.
+     * 프론트에서는 이 결과로 카드 한 장만 갱신할 수 있습니다.
+     */
+    AdminContentPost selectAdminContentPostById(@Param("postId") Long postId);
+
+    /*
+     * 게시글 숨김 처리입니다.
+     * post_tbl.visibility를 PRIVATE로 바꿔 일반 피드에서 공개 상태가 아니게 만듭니다.
+     */
+    int hideAdminContentPost(@Param("postId") Long postId);
+
+    /*
+     * 숨김 게시글 복구 처리입니다.
+     * post_tbl.visibility를 PUBLIC으로 되돌립니다.
+     */
+    int restoreHiddenAdminContentPost(@Param("postId") Long postId);
+
+    /*
+     * 게시글 삭제 처리입니다.
+     * 프로젝트 정책에 맞춰 처음 삭제는 post_tbl.deleted_yn을 Y로 바꾸는 soft delete입니다.
+     */
+    int softDeleteAdminContentPost(@Param("postId") Long postId);
+
+    /*
+     * 삭제 탭에서 사용하는 게시글 복구 처리입니다.
+     * post_tbl.deleted_yn을 N으로 되돌리고, 공개 상태도 PUBLIC으로 맞춥니다.
+     */
+    int restoreDeletedAdminContentPost(@Param("postId") Long postId);
+
+    /*
+     * 삭제 탭에서 사용하는 완전 삭제 전 연결 데이터 정리입니다.
+     * FK 제약 때문에 게시글 본문을 지우기 전에 댓글, 좋아요, 저장, 해시태그 연결을 먼저 정리합니다.
+     */
+    int deleteAdminPostComments(@Param("postId") Long postId);
+
+    int deleteAdminPostLikes(@Param("postId") Long postId);
+
+    int deleteAdminPostSaves(@Param("postId") Long postId);
+
+    int deleteAdminPostHashtags(@Param("postId") Long postId);
+
+    /*
+     * 삭제 탭에서 사용하는 게시글 완전 삭제입니다.
+     * 로그 테이블은 append-only 정책이므로 삭제하지 않습니다.
+     */
+    int hardDeleteAdminContentPost(@Param("postId") Long postId);
+
     /* 사용자 관리 하단의 전체/일반/관리자/정지 회원 수를 한 번에 조회합니다. */
     AdminUserManagementSummary selectUserManagementSummaryCounts();
 
@@ -51,6 +99,9 @@ public interface AdminDao {
 
     /* 사용자 관리 하단에 표시할 최근 권한 변경/제재 로그를 조회합니다. */
     List<AdminActionLogView> selectRecentAdminActionLogs();
+
+    /* 전체 로그 보기 팝업에서 사용할 권한 변경/제재 로그 전체 목록을 조회합니다. */
+    List<AdminActionLogView> selectAllAdminActionLogs();
 
     /* 회원 정보 전체 보기에서 사용할 단건 상세 정보를 조회합니다. */
     AdminMemberDetail selectMemberDetail(@Param("memberId") Long memberId);

@@ -6,12 +6,13 @@ import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import { AdminLayout } from "../common/AdminLayout";
-import { EmptyState } from "../common/EmptyState";
 import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { UserManagementActionLogs } from "./UserManagementActionLogs";
 import { UserManagementDrawer } from "./UserManagementDrawer";
+import { UserManagementSummaryCards } from "./UserManagementSummaryCards";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
@@ -27,13 +28,13 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * - 회원 상태 요약 카드
  * - 사용자 목록 테이블
  * - 관리자 권한 관리 페이지로 이동하는 버튼
- * - 권한 변경 로그 영역
+ * - 하단 요약 컴포넌트 연결
+ * - 권한 변경 로그 컴포넌트 연결
  *
- * selectedUserType 상태 설명:
- * - 사용자가 "전체 / 일반 회원 / 정지 회원 / 관리자 회원" 탭을 누르면
- *   어떤 탭이 선택됐는지 기억하는 값입니다.
- * - 지금은 백엔드 데이터가 없어서 실제 목록 필터링은 하지 않고,
- *   선택한 탭에 맞는 제목과 안내 문구만 바꿔서 UI 동작을 확인할 수 있게 했습니다.
+ * 초보자 설명:
+ * - 페이지 컴포넌트는 "데이터를 가져오고, 어떤 컴포넌트를 보여줄지 결정"하는 역할입니다.
+ * - 원형 그래프, 최근 회원 정보, 로그 목록처럼 화면 조각이 큰 UI는 별도 컴포넌트로 분리했습니다.
+ * - 이렇게 나누면 한 파일이 너무 길어지지 않고, 문제가 생긴 영역을 찾기 쉬워집니다.
  *
  * totalMemberCount 상태 설명:
  * - members 테이블에 저장된 전체 회원 수를 기억하는 값입니다.
@@ -112,7 +113,12 @@ export function UserManagementPage() {
         setManagementSummary(res.data || null);
       })
       .catch((error) => {
-        console.log(error);
+        console.error("[ADMIN_MANAGEMENT_SUMMARY_ERROR]", {
+          endpoint: `${BACKSERVER}/admin/api/members/management-summary`,
+          status: error.response?.status,
+          response: error.response?.data,
+          message: error.message,
+        });
         setManagementSummary(null);
         setManagementSummaryError(true);
       })
@@ -285,49 +291,32 @@ export function UserManagementPage() {
     ? managementSummary.actionLogs
     : [];
 
-  const getPercent = (count) => {
-    if (!summaryTotalMemberCount) {
-      return 0;
-    }
+  /* --------------------------------------------------------------------------
+   * 최근 가입 회원 fallback 계산
+   * --------------------------------------------------------------------------
+   * management-summary API가 실패하면 최근 가입 회원 API 데이터도 받을 수 없습니다.
+   * 그래도 회원 목록 API는 정상일 수 있으므로, members 배열에서 createdAt이 가장 최신인
+   * 회원 1명을 찾아 회원 관리 정보 컴포넌트에 넘깁니다.
+   * -------------------------------------------------------------------------- */
+  const fallbackLatestJoinedMember = [...members].sort((firstMember, secondMember) => {
+    return new Date(secondMember.createdAt || 0) - new Date(firstMember.createdAt || 0);
+  })[0];
 
-    return Math.round((count / summaryTotalMemberCount) * 100);
-  };
-
-  const memberRatioItems = [
-    {
-      label: "일반 회원",
-      count: normalMemberCount,
-      color: "#7c4dff",
-      percent: getPercent(normalMemberCount),
-    },
-    {
-      label: "관리자 회원",
-      count: adminMemberCount,
-      color: "#12b76a",
-      percent: getPercent(adminMemberCount),
-    },
-    {
-      label: "정지 회원",
-      count: suspendedMemberCount,
-      color: "#f04438",
-      percent: getPercent(suspendedMemberCount),
-    },
-  ];
-
-  const firstRatioEnd = memberRatioItems[0].percent;
-  const secondRatioEnd = firstRatioEnd + memberRatioItems[1].percent;
-  const thirdRatioEnd = Math.min(
-    100,
-    secondRatioEnd + memberRatioItems[2].percent,
-  );
-  const ratioChartStyle = {
-    background: `conic-gradient(
-      ${memberRatioItems[0].color} 0% ${firstRatioEnd}%,
-      ${memberRatioItems[1].color} ${firstRatioEnd}% ${secondRatioEnd}%,
-      ${memberRatioItems[2].color} ${secondRatioEnd}% ${thirdRatioEnd}%,
-      #eef2f6 ${thirdRatioEnd}% 100%
-    )`,
-  };
+  /* --------------------------------------------------------------------------
+   * 최근 제재 회원 fallback 계산
+   * --------------------------------------------------------------------------
+   * 정확한 최근 제재 회원은 admin_action_logs를 봐야 합니다.
+   * summary API가 실패한 경우에는 임시로 현재 회원 목록 중 SUSPENDED 상태인 회원을
+   * 하나 선택해 "제재 가능성이 있는 최근 회원" 정도로만 보여줍니다.
+   * -------------------------------------------------------------------------- */
+  const fallbackLatestSanctionedMember = [...members]
+    .filter((member) => member.status === "SUSPENDED")
+    .sort((firstMember, secondMember) => {
+      return (
+        new Date(secondMember.suspendedUntil || secondMember.createdAt || 0) -
+        new Date(firstMember.suspendedUntil || firstMember.createdAt || 0)
+      );
+    })[0];
 
   const formatDate = (value) => {
     return formatKoreanDate(value);
@@ -387,64 +376,6 @@ export function UserManagementPage() {
     }
 
     return role || "-";
-  };
-
-  const getActionLabel = (logItem) => {
-    if (logItem?.actionType === "SUSPEND") {
-      return "정지";
-    }
-
-    if (logItem?.actionType === "RESTORE") {
-      return "해제";
-    }
-
-    if (logItem?.actionType === "UPDATE_ADMIN_ROLE") {
-      return logItem?.actionDetail?.includes("USER") ? "강등" : "승급";
-    }
-
-    return logItem?.actionType || "작업";
-  };
-
-  const getMemberDisplayName = (memberItem, fallbackId) => {
-    if (!memberItem) {
-      return fallbackId ? `삭제된 회원 #${fallbackId}` : "회원 정보 없음";
-    }
-
-    if (memberItem.name) {
-      return memberItem.name;
-    }
-
-    if (memberItem.nickname) {
-      return `@${memberItem.nickname}`;
-    }
-
-    return memberItem.memberId
-      ? `삭제된 회원 #${memberItem.memberId}`
-      : "회원 정보 없음";
-  };
-
-  const getLogTargetName = (logItem) => {
-    if (logItem?.targetName) {
-      return logItem.targetName;
-    }
-
-    if (logItem?.targetNickname) {
-      return `@${logItem.targetNickname}`;
-    }
-
-    return logItem?.targetId ? `삭제된 회원 #${logItem.targetId}` : "대상 없음";
-  };
-
-  const getLogAdminName = (logItem) => {
-    if (logItem?.adminName) {
-      return logItem.adminName;
-    }
-
-    if (logItem?.adminNickname) {
-      return `@${logItem.adminNickname}`;
-    }
-
-    return logItem?.adminId ? `관리자 #${logItem.adminId}` : "관리자 정보 없음";
   };
 
   const handleMemberUpdated = (updatedMember) => {
@@ -622,113 +553,28 @@ export function UserManagementPage() {
         )}
       </TableShell>
 
-      <section className={styles.infoGrid}>
-        <article className={styles.infoBox}>
-          <strong>전체 회원 비율</strong>
-          {managementSummaryLoading ? (
-            <p>회원 비율을 불러오는 중입니다.</p>
-          ) : managementSummaryError ? (
-            <p>회원 비율 조회에 실패했습니다.</p>
-          ) : (
-            <div className={styles.ratioContent}>
-              <div className={styles.ratioChart} style={ratioChartStyle}>
-                <div className={styles.ratioChartCenter}>
-                  <span>전체</span>
-                  <strong>{summaryTotalMemberCount.toLocaleString()}</strong>
-                </div>
-              </div>
-              <ul className={styles.ratioLegend}>
-                {memberRatioItems.map((ratioItem) => (
-                  <li key={ratioItem.label}>
-                    <span
-                      className={styles.ratioDot}
-                      style={{ backgroundColor: ratioItem.color }}
-                    />
-                    <span>{ratioItem.label}</span>
-                    <strong>
-                      {ratioItem.count.toLocaleString()}명 · {ratioItem.percent}%
-                    </strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </article>
-        <article className={styles.infoBox}>
-          <strong>회원 관리 정보</strong>
-          {managementSummaryLoading ? (
-            <p>회원 관리 정보를 불러오는 중입니다.</p>
-          ) : managementSummaryError ? (
-            <p>회원 관리 정보 조회에 실패했습니다.</p>
-          ) : (
-            <div className={styles.memberInfoList}>
-              <div className={styles.memberInfoItem}>
-                <span>최근 가입 회원</span>
-                <strong>{getMemberDisplayName(latestJoinedMember)}</strong>
-                <small>
-                  {latestJoinedMember?.createdAt
-                    ? formatDate(latestJoinedMember.createdAt)
-                    : "가입 정보 없음"}
-                </small>
-              </div>
-              <div className={styles.memberInfoItem}>
-                <span>최근 제재 회원</span>
-                <strong>
-                  {getMemberDisplayName(
-                    latestSanctionedMember,
-                    latestSanctionedMember?.memberId,
-                  )}
-                </strong>
-                <small>
-                  {latestSanctionedMember?.createdAt
-                    ? `${formatDate(latestSanctionedMember.createdAt)} · ${latestSanctionedMember.actionDetail || "제재 기록"}`
-                    : "제재 기록 없음"}
-                </small>
-              </div>
-            </div>
-          )}
-        </article>
-      </section>
+      {/* 사용자 관리 하단 요약 카드: 전체 회원 비율과 최근 회원 정보를 담당합니다. */}
+      <UserManagementSummaryCards
+        isLoading={managementSummaryLoading}
+        hasError={managementSummaryError}
+        totalMemberCount={summaryTotalMemberCount}
+        normalMemberCount={normalMemberCount}
+        adminMemberCount={adminMemberCount}
+        suspendedMemberCount={suspendedMemberCount}
+        latestJoinedMember={latestJoinedMember || fallbackLatestJoinedMember}
+        latestSanctionedMember={
+          latestSanctionedMember || fallbackLatestSanctionedMember
+        }
+      />
 
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h2>권한 변경 로그</h2>
-        </div>
-        {managementSummaryLoading ? (
-          <EmptyState
-            title="로그 조회 중"
-            description="최근 권한 변경 및 제재 이력을 불러오고 있습니다."
-          />
-        ) : managementSummaryError ? (
-          <EmptyState
-            title="로그 조회 실패"
-            description="권한 변경 및 제재 이력을 불러오지 못했습니다."
-          />
-        ) : actionLogs.length === 0 ? (
-          <EmptyState
-            title="변경 내역 없음"
-            description="승급, 강등, 정지, 해제 이력이 생기면 최신순으로 표시됩니다."
-          />
-        ) : (
-          <div className={styles.actionLogList}>
-            {actionLogs.map((logItem) => (
-              <article className={styles.actionLogItem} key={logItem.logId}>
-                <span className={styles.actionLogBadge}>
-                  {getActionLabel(logItem)}
-                </span>
-                <div className={styles.actionLogBody}>
-                  <strong>{getLogTargetName(logItem)}</strong>
-                  <p>{logItem.actionDetail || "작업 상세 내용 없음"}</p>
-                  <small>
-                    작업 관리자: {getLogAdminName(logItem)} ·{" "}
-                    {formatDate(logItem.createdAt)}
-                  </small>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* 사용자 관리 하단 로그: 승급, 강등, 정지, 해제 이력을 담당합니다. */}
+      <UserManagementActionLogs
+        isLoading={managementSummaryLoading}
+        hasError={managementSummaryError}
+        actionLogs={actionLogs}
+        accessToken={accessToken}
+        backserver={BACKSERVER}
+      />
 
       {/* 회원 관리 우측 패널: 관리 버튼을 누른 회원의 상세 정보와 정지/해제 작업을 담당합니다. */}
       <UserManagementDrawer

@@ -14,6 +14,8 @@ import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -40,6 +42,8 @@ import java.time.LocalDateTime;
 @Service // Spring이 이 클래스를 서비스 객체로 등록하게 합니다.
 public class AdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminService.class);
+
     @Autowired // 나중에 DB 조회가 필요할 때 사용할 DAO를 연결합니다.
     private AdminDao adminDao;
 
@@ -61,6 +65,8 @@ public class AdminService {
      * - 현재 DB가 ADMIN을 쓰더라도, NORMAL_ADMIN 데이터가 있어도 막히지 않게 하기 위함입니다.
      * ========================================================================== */
     private LoginMemberResponse validateAdmin(String authorizationHeader) {
+        log.info("[ADMIN_API] validateAdmin start hasAuthorizationHeader={}", authorizationHeader != null && !authorizationHeader.isBlank());
+
         LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         String role = loginMember.getRole();
 
@@ -70,8 +76,11 @@ public class AdminService {
                         || "SUPER_ADMIN".equals(role);
 
         if (!isAdmin) {
+            log.warn("[ADMIN_API] validateAdmin forbidden memberId={} role={}", loginMember.getMemberId(), role);
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다.");
         }
+
+        log.info("[ADMIN_API] validateAdmin success memberId={} role={}", loginMember.getMemberId(), role);
 
         return loginMember;
     }
@@ -106,7 +115,11 @@ public class AdminService {
      * ========================================================================== */
     public Long getTotalMemberCount(String authorizationHeader) {
         validateAdmin(authorizationHeader);
-        return adminDao.selectTotalMemberCount();
+        log.info("[ADMIN_API] selectTotalMemberCount start");
+        Long totalMemberCount = adminDao.selectTotalMemberCount();
+        log.info("[ADMIN_API] selectTotalMemberCount success totalMemberCount={}", totalMemberCount);
+
+        return totalMemberCount;
     }
 
     /* ==========================================================================
@@ -120,7 +133,11 @@ public class AdminService {
      * ========================================================================== */
     public List<AdminMember> getMembers(String authorizationHeader) {
         validateAdmin(authorizationHeader);
-        return adminDao.selectMembers();
+        log.info("[ADMIN_API] selectMembers start");
+        List<AdminMember> members = adminDao.selectMembers();
+        log.info("[ADMIN_API] selectMembers success size={}", members == null ? 0 : members.size());
+
+        return members;
     }
 
     /* ==========================================================================
@@ -135,7 +152,176 @@ public class AdminService {
      * ========================================================================== */
     public List<AdminContentPost> getAdminContentPosts(String authorizationHeader) {
         validateAdmin(authorizationHeader);
-        return adminDao.selectAdminContentPosts();
+        log.info("[ADMIN_API] selectAdminContentPosts start");
+        List<AdminContentPost> posts = adminDao.selectAdminContentPosts();
+        log.info("[ADMIN_API] selectAdminContentPosts success size={}", posts == null ? 0 : posts.size());
+
+        return posts;
+    }
+
+    /*
+     * 관리자 콘텐츠 관리 게시글 숨김 처리
+     * --------------------------------------------------------------------------
+     * 초보자 설명:
+     * - 숨김은 삭제가 아니라 visibility 값을 PRIVATE로 바꾸는 작업입니다.
+     * - deleted_yn이 Y인 게시글은 이미 삭제 탭에 들어간 상태이므로 숨김 처리하지 않습니다.
+     * - 작업 후에는 selectAdminContentPostById로 최신 게시글 한 건을 다시 조회해 프론트에 돌려줍니다.
+     */
+    @Transactional
+    public AdminContentPost hideAdminContentPost(String authorizationHeader, Long postId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validatePostId(postId);
+
+        int updated = adminDao.hideAdminContentPost(postId);
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "숨김 처리할 수 있는 게시글이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "HIDE_POST",
+                "POST",
+                postId,
+                "게시글 숨김 처리"
+        );
+
+        return selectRequiredAdminContentPost(postId);
+    }
+
+    /*
+     * 관리자 콘텐츠 관리 게시글 숨김 복구
+     * --------------------------------------------------------------------------
+     * visibility를 PUBLIC으로 되돌려 공개 상태로 복구합니다.
+     */
+    @Transactional
+    public AdminContentPost restoreHiddenAdminContentPost(String authorizationHeader, Long postId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validatePostId(postId);
+
+        int updated = adminDao.restoreHiddenAdminContentPost(postId);
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "숨김 복구할 수 있는 게시글이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "RESTORE_POST_VISIBILITY",
+                "POST",
+                postId,
+                "게시글 숨김 복구"
+        );
+
+        return selectRequiredAdminContentPost(postId);
+    }
+
+    /*
+     * 관리자 콘텐츠 관리 게시글 삭제
+     * --------------------------------------------------------------------------
+     * 처음 삭제는 deleted_yn을 Y로 바꾸는 soft delete입니다.
+     * 이렇게 해야 삭제 탭에서 복구 또는 완전 삭제를 선택할 수 있습니다.
+     */
+    @Transactional
+    public AdminContentPost softDeleteAdminContentPost(String authorizationHeader, Long postId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validatePostId(postId);
+
+        int updated = adminDao.softDeleteAdminContentPost(postId);
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제 처리할 수 있는 게시글이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "DELETE_POST",
+                "POST",
+                postId,
+                "게시글 삭제 상태 전환"
+        );
+
+        return selectRequiredAdminContentPost(postId);
+    }
+
+    /*
+     * 삭제 탭 게시글 복구
+     * --------------------------------------------------------------------------
+     * deleted_yn을 N으로 되돌리고 visibility를 PUBLIC으로 맞춥니다.
+     */
+    @Transactional
+    public AdminContentPost restoreDeletedAdminContentPost(String authorizationHeader, Long postId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validatePostId(postId);
+
+        int updated = adminDao.restoreDeletedAdminContentPost(postId);
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "복구할 수 있는 삭제 게시글이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "RESTORE_DELETED_POST",
+                "POST",
+                postId,
+                "삭제 게시글 복구"
+        );
+
+        return selectRequiredAdminContentPost(postId);
+    }
+
+    /*
+     * 삭제 탭 게시글 완전 삭제
+     * --------------------------------------------------------------------------
+     * 삭제 상태(deleted_yn = Y)에 있는 게시글만 실제 DB에서 제거합니다.
+     * 댓글/좋아요/저장/해시태그 연결은 FK 제약 때문에 먼저 삭제합니다.
+     */
+    @Transactional
+    public void hardDeleteAdminContentPost(String authorizationHeader, Long postId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validatePostId(postId);
+
+        AdminContentPost post = selectRequiredAdminContentPost(postId);
+
+        if (!"Y".equals(post.getDeletedYn())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제 탭에 있는 게시글만 완전 삭제할 수 있습니다.");
+        }
+
+        adminDao.deleteAdminPostComments(postId);
+        adminDao.deleteAdminPostLikes(postId);
+        adminDao.deleteAdminPostSaves(postId);
+        adminDao.deleteAdminPostHashtags(postId);
+
+        int deleted = adminDao.hardDeleteAdminContentPost(postId);
+
+        if (deleted != 1) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "게시글 완전 삭제에 실패했습니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "HARD_DELETE_POST",
+                "POST",
+                postId,
+                "게시글 완전 삭제"
+        );
+    }
+
+    private void validatePostId(Long postId) {
+        if (postId == null) {
+            throw new IllegalArgumentException("게시글을 선택해주세요.");
+        }
+    }
+
+    private AdminContentPost selectRequiredAdminContentPost(Long postId) {
+        AdminContentPost post = adminDao.selectAdminContentPostById(postId);
+
+        if (post == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글 정보를 찾을 수 없습니다.");
+        }
+
+        return post;
     }
 
     /* ==========================================================================
@@ -151,11 +337,21 @@ public class AdminService {
      * ========================================================================== */
     public AdminUserManagementSummary getUserManagementSummary(String authorizationHeader) {
         validateAdmin(authorizationHeader);
+        log.info("[ADMIN_API] getUserManagementSummary start");
 
         AdminUserManagementSummary summary = selectUserManagementSummaryCountsSafely();
         summary.setLatestJoinedMember(selectLatestJoinedMemberSafely());
         summary.setLatestSanctionedMember(selectLatestSanctionedMemberSafely());
         summary.setActionLogs(selectRecentAdminActionLogsSafely());
+
+        log.info(
+                "[ADMIN_API] getUserManagementSummary success total={} normal={} admin={} suspended={} logs={}",
+                summary.getTotalMemberCount(),
+                summary.getNormalMemberCount(),
+                summary.getAdminMemberCount(),
+                summary.getSuspendedMemberCount(),
+                summary.getActionLogs() == null ? 0 : summary.getActionLogs().size()
+        );
 
         return summary;
     }
@@ -173,8 +369,10 @@ public class AdminService {
         AdminUserManagementSummary summary = null;
 
         try {
+            log.info("[ADMIN_API] selectUserManagementSummaryCounts start");
             summary = adminDao.selectUserManagementSummaryCounts();
         } catch (RuntimeException e) {
+            log.error("[ADMIN_API] selectUserManagementSummaryCounts failed. fallback to selectMembers", e);
             summary = buildSummaryCountsFromMemberList();
         }
 
@@ -203,6 +401,7 @@ public class AdminService {
         AdminUserManagementSummary summary = new AdminUserManagementSummary();
 
         try {
+            log.info("[ADMIN_API] buildSummaryCountsFromMemberList start");
             List<AdminMember> members = adminDao.selectMembers();
 
             long totalMemberCount = members == null ? 0L : members.size();
@@ -233,7 +432,15 @@ public class AdminService {
             summary.setNormalMemberCount(normalMemberCount);
             summary.setAdminMemberCount(adminMemberCount);
             summary.setSuspendedMemberCount(suspendedMemberCount);
+            log.info(
+                    "[ADMIN_API] buildSummaryCountsFromMemberList success total={} normal={} admin={} suspended={}",
+                    totalMemberCount,
+                    normalMemberCount,
+                    adminMemberCount,
+                    suspendedMemberCount
+            );
         } catch (RuntimeException e) {
+            log.error("[ADMIN_API] buildSummaryCountsFromMemberList failed", e);
             summary.setTotalMemberCount(0L);
             summary.setNormalMemberCount(0L);
             summary.setAdminMemberCount(0L);
@@ -253,8 +460,10 @@ public class AdminService {
      */
     private com.moodcast.admin.vo.AdminRecentMember selectLatestJoinedMemberSafely() {
         try {
+            log.info("[ADMIN_API] selectLatestJoinedMember start");
             return adminDao.selectLatestJoinedMember();
         } catch (RuntimeException e) {
+            log.error("[ADMIN_API] selectLatestJoinedMember failed", e);
             return null;
         }
     }
@@ -265,8 +474,10 @@ public class AdminService {
      */
     private com.moodcast.admin.vo.AdminRecentMember selectLatestSanctionedMemberSafely() {
         try {
+            log.info("[ADMIN_API] selectLatestSanctionedMember start");
             return adminDao.selectLatestSanctionedMember();
         } catch (RuntimeException e) {
+            log.error("[ADMIN_API] selectLatestSanctionedMember failed", e);
             return null;
         }
     }
@@ -277,12 +488,31 @@ public class AdminService {
      */
     private List<AdminActionLogView> selectRecentAdminActionLogsSafely() {
         try {
+            log.info("[ADMIN_API] selectRecentAdminActionLogs start");
             List<AdminActionLogView> actionLogs = adminDao.selectRecentAdminActionLogs();
+            log.info("[ADMIN_API] selectRecentAdminActionLogs success size={}", actionLogs == null ? 0 : actionLogs.size());
 
             return actionLogs == null ? Collections.emptyList() : actionLogs;
         } catch (RuntimeException e) {
+            log.error("[ADMIN_API] selectRecentAdminActionLogs failed", e);
             return Collections.emptyList();
         }
+    }
+
+    /*
+     * 전체 권한 변경 로그 조회
+     * --------------------------------------------------------------------------
+     * 사용자 관리 페이지의 "전체 로그 보기" 팝업에서 사용하는 목록입니다.
+     * 하단 요약 영역은 최근 10개만 보여주고, 전체 로그는 버튼을 눌렀을 때만 조회합니다.
+     */
+    public List<AdminActionLogView> getAllAdminActionLogs(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        log.info("[ADMIN_API] selectAllAdminActionLogs start");
+
+        List<AdminActionLogView> actionLogs = adminDao.selectAllAdminActionLogs();
+        log.info("[ADMIN_API] selectAllAdminActionLogs success size={}", actionLogs == null ? 0 : actionLogs.size());
+
+        return actionLogs == null ? Collections.emptyList() : actionLogs;
     }
 
     /* ==========================================================================
@@ -478,7 +708,15 @@ public class AdminService {
                         : "email";
         String normalizedKeyword = keyword == null ? "" : keyword.trim();
 
-        return adminDao.searchMembersForAdminPromotion(normalizedSearchType, normalizedKeyword);
+        log.info(
+                "[ADMIN_API] searchMembersForAdminPromotion start searchType={} keywordLength={}",
+                normalizedSearchType,
+                normalizedKeyword.length()
+        );
+        List<AdminMember> members = adminDao.searchMembersForAdminPromotion(normalizedSearchType, normalizedKeyword);
+        log.info("[ADMIN_API] searchMembersForAdminPromotion success size={}", members == null ? 0 : members.size());
+
+        return members;
     }
 
     /* ==========================================================================

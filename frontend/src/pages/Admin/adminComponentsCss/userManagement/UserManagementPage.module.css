@@ -105,6 +105,16 @@
   font-size: 0.88rem;
 }
 
+.summaryNotice {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #8a5a00;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+  background: rgba(255, 247, 205, 0.9);
+}
+
 .ratioContent {
   display: flex;
   align-items: center;
@@ -286,6 +296,36 @@
   white-space: nowrap;
 }
 
+.logModalLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.logModalDim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+}
+
+.logModalPanel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(124, 77, 255, 0.12);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
+}
+
 .panel {
   min-width: 0;
   padding: 18px;
@@ -308,6 +348,28 @@
   color: #111827;
   font-size: 1rem;
   font-weight: 900;
+}
+
+.secondaryActionButton {
+  min-height: 34px;
+  border: 1px solid rgba(124, 77, 255, 0.16);
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #633df2;
+  font-size: 0.8rem;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.08);
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.secondaryActionButton:hover {
+  background: rgba(124, 77, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.secondaryActionButton:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .userCell {

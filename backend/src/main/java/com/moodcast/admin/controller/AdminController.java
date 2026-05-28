@@ -1,6 +1,7 @@
 package com.moodcast.admin.controller;
 
 import com.moodcast.admin.service.AdminService;
+import com.moodcast.admin.vo.AdminActionLogView;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminMember;
@@ -11,6 +12,9 @@ import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -44,6 +48,8 @@ import java.util.Map;
 @RestController // 이 클래스가 JSON 응답을 반환하는 REST API 컨트롤러라는 뜻입니다.
 @RequestMapping("/admin/api") // 관리자 API 주소의 공통 시작 경로입니다.
 public class AdminController {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
     @Autowired // Spring이 AdminService 객체를 자동으로 연결해줍니다.
     private AdminService adminService;
@@ -84,6 +90,7 @@ public class AdminController {
     public Map<String, List<AdminMember>> getMembers(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
+        log.info("[ADMIN_API] GET /admin/api/members requested");
         return Map.of("members", adminService.getMembers(authorizationHeader));
     }
 
@@ -102,7 +109,88 @@ public class AdminController {
     public Map<String, List<AdminContentPost>> getAdminContentPosts(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
+        log.info("[ADMIN_API] GET /admin/api/content/posts requested");
         return Map.of("posts", adminService.getAdminContentPosts(authorizationHeader));
+    }
+
+    /*
+     * 게시글 숨김 처리 API
+     * --------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리 카드의 "숨김" 버튼에서 호출합니다.
+     * 삭제가 아니라 visibility만 PRIVATE로 바꾸고, 변경된 게시글 한 건을 돌려줍니다.
+     */
+    @PutMapping("/content/posts/{postId}/hide")
+    public Map<String, Object> hideAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.hideAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 게시글 숨김 복구 API
+     * --------------------------------------------------------------------------
+     * 숨김 상태 게시글의 "복구" 버튼에서 호출합니다.
+     */
+    @PutMapping("/content/posts/{postId}/visibility/restore")
+    public Map<String, Object> restoreHiddenAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.restoreHiddenAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 게시글 삭제 상태 전환 API
+     * --------------------------------------------------------------------------
+     * 처음 삭제는 post_tbl.deleted_yn을 Y로 바꿔 삭제 탭으로 보내는 soft delete입니다.
+     */
+    @PutMapping("/content/posts/{postId}/delete")
+    public Map<String, Object> softDeleteAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.softDeleteAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 삭제 게시글 복구 API
+     * --------------------------------------------------------------------------
+     * 삭제 탭의 "복구" 버튼에서 호출합니다.
+     */
+    @PutMapping("/content/posts/{postId}/delete/restore")
+    public Map<String, Object> restoreDeletedAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        return Map.of(
+                "success", true,
+                "post", adminService.restoreDeletedAdminContentPost(authorizationHeader, postId)
+        );
+    }
+
+    /*
+     * 게시글 완전 삭제 API
+     * --------------------------------------------------------------------------
+     * 삭제 탭의 "완전 삭제" 버튼에서만 호출합니다.
+     */
+    @DeleteMapping("/content/posts/{postId}/delete/permanent")
+    public Map<String, Object> hardDeleteAdminContentPost(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long postId
+    ) {
+        adminService.hardDeleteAdminContentPost(authorizationHeader, postId);
+
+        return Map.of("success", true);
     }
 
     /* ==========================================================================
@@ -120,7 +208,16 @@ public class AdminController {
     public AdminUserManagementSummary getUserManagementSummary(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
+        log.info("[ADMIN_API] GET /admin/api/members/management-summary requested");
         return adminService.getUserManagementSummary(authorizationHeader);
+    }
+
+    @GetMapping("/members/action-logs")
+    public Map<String, List<AdminActionLogView>> getAllAdminActionLogs(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        log.info("[ADMIN_API] GET /admin/api/members/action-logs requested");
+        return Map.of("actionLogs", adminService.getAllAdminActionLogs(authorizationHeader));
     }
 
     /* ==========================================================================
@@ -208,6 +305,11 @@ public class AdminController {
             @RequestParam(defaultValue = "email") String searchType,
             @RequestParam(defaultValue = "") String keyword
     ) {
+        log.info(
+                "[ADMIN_API] GET /admin/api/members/admin-promotion/search requested searchType={} keywordLength={}",
+                searchType,
+                keyword == null ? 0 : keyword.length()
+        );
         return Map.of(
                 "members",
                 adminService.searchMembersForAdminPromotion(authorizationHeader, searchType, keyword)
