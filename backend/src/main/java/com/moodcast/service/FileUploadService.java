@@ -39,13 +39,18 @@ import java.util.stream.Collectors;
 @Service
 public class FileUploadService {
 
+    // 이 서비스는 이미지 파일을 S3에 업로드하고,
+    // 예전에 로컬로 저장하던 URL을 S3 URL로 정리하는 일을 함.
+    // 부트캠프에서 처음 보는 사람이 보면 크게 두 가지 역할임.
+    // 1) 이미지 업로드 처리
+    // 2) DB에 남은 로컬 이미지 링크 정리
     private static final String USER_IMAGE_FOLDER = "user-images";
     private static final String POST_IMAGE_FOLDER = "post-images";
 
-    // S3에 파일을 올리고 지우는 일을 담당하는 클라이언트임
+    // S3와 통신하는 클라이언트임. 실제로 S3에 올리거나 지울 때 사용함.
     private final S3Client s3Client;
 
-    // DB 내용을 직접 고쳐서 예전 로컬 주소를 S3 주소로 바꾸는 데 사용함
+    // DB에 직접 접속해서 기존 로컬 URL 정보를 바꾸는 데 사용함.
     private final DataSource dataSource;
 
     // AWS 리전 정보임. 예: ap-northeast-2
@@ -69,23 +74,26 @@ public class FileUploadService {
         this.dataSource = dataSource;
     }
 
-    // 프론트에서 받은 파일을 S3에 저장하고, 나중에 다시 쓸 수 있는 주소를 돌려줌
+    // 프론트에서 받은 이미지 파일을 S3에 저장하는 기본 엔드포인트임.
+    // 여기서는 게시물 이미지(post-images)를 기본값으로 사용함.
     public Map<String, String> uploadImage(MultipartFile file) {
         return uploadImage(file, POST_IMAGE_FOLDER, resolveBaseUrl("http://localhost:8080"));
     }
 
-    // 프론트에서 받은 파일을 특정 폴더(user-images / post-images)에 저장함
+    // 저장할 폴더를 선택할 수 있는 업로드 메서드임.
+    // user-images는 프로필, post-images는 게시물 이미지 용도로 나눠서 저장함.
     public Map<String, String> uploadImage(MultipartFile file, String folderType) {
         return uploadImage(file, folderType, resolveBaseUrl("http://localhost:8080"));
     }
 
     public Map<String, String> uploadImage(MultipartFile file, String folderType, String baseUrl) {
-        // 파일이 아예 없거나 비어 있으면 업로드할 수 없음
+        // 업로드 요청에 파일이 없으면 예외 처리함.
+        // 부트캠프에서 이 검증 로직은 꼭 이해해야 함.
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("파일이 비어있습니다.");
         }
 
-        // 이미지 파일만 받도록 제한함
+        // 이미지 여부를 확인함. contentType이 image/로 시작하지 않으면 거부함.
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
             throw new IllegalArgumentException("이미지 파일만 업로드 가능합니다.");
@@ -129,7 +137,8 @@ public class FileUploadService {
         }
     }
 
-    // 파일명을 받아 S3에서 지움. 로컬 uploads 폴더 지우는 방식이 아니라 S3 객체를 지우는 방식임
+    // 파일명을 받아 S3에서 삭제함.
+    // 로컬 디스크에서 지우는 것이 아니라 S3 버킷에서 지우는 것임.
     public boolean deleteImage(String filename) {
         return deleteImage(filename, POST_IMAGE_FOLDER);
     }
@@ -151,7 +160,9 @@ public class FileUploadService {
         return true;
     }
 
-        // S3 key에 해당하는 이미지를 백엔드가 직접 읽어서 브라우저에 내려줌
+        // 주어진 S3 key에 해당하는 이미지를 읽어서
+        // 브라우저로 그대로 내려주는 역할임.
+        // 이 메서드는 /upload/view?key=... 같은 URL 뒤에 실제 이미지 바이트를 전달함.
         public ResponseEntity<byte[]> loadImage(String key) {
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
             .bucket(uploadBucket)
@@ -171,8 +182,9 @@ public class FileUploadService {
                 .body(bytes.asByteArray());
     }
 
-    // 로컬 uploads 폴더에 남아 있는 예전 파일을 S3로 옮기는 이관용 메서드임
-    // deleteAfterUpload 값을 true로 주면 S3 업로드가 끝난 뒤 로컬 파일도 지움
+    // 로컬 서버의 uploads 폴더에 남아 있는 예전 파일을 S3로 옮기는 메서드임.
+    // 이 메서드는 파일을 찾아서 하나씩 S3로 업로드하고, 필요한 경우 로컬 파일을 지움.
+    // 부트캠프에서 말하는 "legacy migration" 역할을 함.
     public Map<String, Map<String, String>> migrateLocalUploads(boolean deleteAfterUpload) {
         Path uploadPath = resolveLocalUploadPath();
 
@@ -198,7 +210,9 @@ public class FileUploadService {
         }
     }
 
-    // 로컬 파일을 S3로 옮긴 뒤, DB에 남아 있는 예전 로컬 URL도 S3 URL로 바꾸는 이관 메서드임
+    // 이 메서드는 로컬 파일 이관과 DB URL 업데이트를 한 번에 처리함.
+    // 예전 로컬 업로드 URL이 DB에 남아 있으면, 그걸 S3 URL로 바꿔줌.
+    // 그래서 이 메서드 하나만 호출하면 파일과 DB 둘 다 정리할 수 있음.
     public Map<String, Object> migrateLocalUploadsAndDatabase(boolean deleteAfterUpload) {
         Map<String, Map<String, String>> migratedFiles = migrateLocalUploads(deleteAfterUpload);
         MigrationCounts migrationCounts = updateDatabaseReferences(migratedFiles);
@@ -212,7 +226,9 @@ public class FileUploadService {
         return result;
     }
 
-    // DB에 저장된 이미지 주소를 public S3 URL로 정리해서 브라우저가 직접 읽게 함
+    // DB에 이미 저장된 이미지 주소 중에서 로컬 URL 또는 /upload/view URL을
+    // public S3 URL로 바꾸는 메서드임.
+    // 이 작업이 있어야 기존 글에 들어간 이미지가 웹에서 깨지지 않음.
     public Map<String, Object> rewriteImageUrlsToPublicS3Urls(String baseUrl) {
         MigrationCounts counts = rewriteDatabaseViewReferencesToPublicUrls();
         MigrationCounts legacyCounts = rewriteDatabaseLegacyLocalReferences();
@@ -227,7 +243,8 @@ public class FileUploadService {
         return result;
     }
 
-    // 공개 주소가 설정되어 있으면 그 값을 쓰고, 아니면 요청이 들어온 주소를 그대로 사용함
+    // 이미지 URL을 만들 때 기준이 되는 base URL을 결정함.
+    // app.public-base-url을 설정하면 그걸 우선 사용하고, 없으면 요청한 서버 주소를 그대로 씀.
     public String resolveBaseUrl(String requestBaseUrl) {
         if (publicBaseUrl != null && !publicBaseUrl.isBlank()) {
             return publicBaseUrl.trim().replaceAll("/+$", "");
@@ -238,7 +255,9 @@ public class FileUploadService {
         return requestBaseUrl.replaceAll("/+$", "");
     }
 
-    // 로컬 주소의 대표 형태를 모두 만들어 둠. DB에 어떤 형태로 들어있어도 바꿀 수 있게 하려는 용도임
+    // DB에 저장된 로컬 URL은 여러 형태일 수 있음.
+    // localhost, 127.0.0.1, /uploads/ 등 다양한 변형을 모두 만들어서
+    // 일괄 치환할 수 있도록 함.
     private List<String> buildLocalUrlVariants(String filename) {
         List<String> variants = new ArrayList<>();
         variants.add("http://localhost:8080/uploads/" + filename);
