@@ -1,4 +1,5 @@
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
+import { formatKoreanTime } from '../../../shared/lib/dateTime';
 
 export function GroupChatRoomList({
   rooms,
@@ -81,7 +82,7 @@ export function GroupChatRoomList({
                   {room.unreadCount}
                 </span>
               ) : null}
-              <span>{room.lastMessageAt || ''}</span>
+              <span>{formatKoreanTime(room.lastMessageAt) || room.lastMessageAt || ''}</span>
             </div>
           </button>
         ))}

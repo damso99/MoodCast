@@ -16,5 +16,6 @@ public class ChatRoomMemberVo {
     private String joinedAt;
     private String leftAt;
     private String lastReadAt;
+    private Long lastReadMessageId;
     private String deletedYn;
 }

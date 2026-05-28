@@ -66,6 +66,8 @@
 .listView {
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 77, 255, 0.26) transparent;
 }
 
 .roomView {
@@ -76,6 +78,29 @@
 .threadList {
   display: grid;
   gap: 12px;
+}
+
+.listView::-webkit-scrollbar,
+.messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.listView::-webkit-scrollbar-track,
+.messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.listView::-webkit-scrollbar-thumb,
+.messages::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(124, 77, 255, 0.32), rgba(88, 185, 255, 0.26));
+  background-clip: content-box;
+}
+
+.listView::-webkit-scrollbar-thumb:hover,
+.messages::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(124, 77, 255, 0.5), rgba(88, 185, 255, 0.38));
 }
 
 .statusText,
@@ -284,12 +309,12 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 18px;
-  height: 0;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 18px 4px 12px;
 }
 
@@ -891,11 +916,11 @@
 
   .messages {
     flex: 1 1 auto;
-    justify-content: flex-end;
+    justify-content: flex-start;
     min-height: 0;
-    height: 0;
     max-height: none;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: 8px;
   }
 

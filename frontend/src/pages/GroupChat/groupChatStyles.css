@@ -114,6 +114,31 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 77, 255, 0.26) transparent;
+}
+
+.group-chat-room-list::-webkit-scrollbar,
+.group-chat-messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.group-chat-room-list::-webkit-scrollbar-track,
+.group-chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.group-chat-room-list::-webkit-scrollbar-thumb,
+.group-chat-messages::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(124, 77, 255, 0.32), rgba(88, 185, 255, 0.26));
+  background-clip: content-box;
+}
+
+.group-chat-room-list::-webkit-scrollbar-thumb:hover,
+.group-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(124, 77, 255, 0.5), rgba(88, 185, 255, 0.38));
 }
 
 .group-chat-room-item {
@@ -269,6 +294,8 @@
   min-height: 0;
   overflow-y: auto;
   padding: 12px 2px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 77, 255, 0.26) transparent;
 }
 
 .group-chat-empty,

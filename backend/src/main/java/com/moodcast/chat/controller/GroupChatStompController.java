@@ -2,6 +2,8 @@ package com.moodcast.chat.controller;
 
 import com.moodcast.chat.dto.ChatRoomMessageSendRequestDto;
 import com.moodcast.chat.dto.ChatRoomMessageResponseDto;
+import com.moodcast.chat.dto.ChatReadRequest;
+import com.moodcast.chat.dto.ChatReadResponse;
 import com.moodcast.chat.service.GroupChatService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -28,5 +30,20 @@ public class GroupChatStompController {
         }
 
         messagingTemplate.convertAndSend("/topic/chat/rooms/" + roomId, savedMessage);
+    }
+
+    @MessageMapping("/chat/rooms/{roomId}/read")
+    public void readMessage(
+            @DestinationVariable Long roomId,
+            @Payload ChatReadRequest request
+    ) {
+        if (request == null) {
+            return;
+        }
+
+        groupChatService.updateLastReadMessageId(roomId, request.getMemberId(), request.getLastReadMessageId());
+
+        ChatReadResponse response = new ChatReadResponse(roomId, request.getMemberId(), request.getLastReadMessageId());
+        messagingTemplate.convertAndSend("/topic/chat/rooms/" + roomId + "/read", response);
     }
 }

@@ -29,20 +29,28 @@ const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
 const DEBUG_CHAT_ROOM = true;
 
-function normalizeIncomingMessage(message, currentUserId) {
+function normalizeIncomingMessage(message, currentUserId, timeCache) {
   const senderId = Number(message?.senderId);
+  const messageKey =
+    message?.chatId ??
+    message?.id ??
+    `${senderId}-${message?.createdAt ?? Date.now()}`;
+  const cachedTime = timeCache?.get?.(messageKey);
+  const computedTime = message?.time || formatKoreanTime(message?.createdAt) || "";
+  const displayTime = cachedTime || computedTime;
+
+  if (timeCache && displayTime && !cachedTime) {
+    timeCache.set(messageKey, displayTime);
+  }
 
   return {
-    id:
-    message?.chatId ??
-      message?.id ??
-      `${senderId}-${message?.createdAt ?? Date.now()}`,
+    id: messageKey,
     sender: senderId === currentUserId ? "me" : "them",
     text: message?.content ?? message?.text ?? "",
-    time: formatKoreanTime(message?.createdAt) || message?.time || "",
+    time: displayTime,
     senderId,
     receiverId: Number(message?.receiverId),
-    createdAt: message?.createdAt ?? new Date().toISOString(),
+    createdAt: message?.createdAt ?? "",
     isRead: message?.isRead ?? 0,
     eventType: message?.eventType ?? "CHAT_MESSAGE",
   };
@@ -56,7 +64,8 @@ function normalizeGroupMessage(message) {
     senderName: message?.senderName || "회원",
     profileImageUrl: message?.profileImageUrl || "",
     content: message?.content || "",
-    createdAt: message?.createdAt ? formatKoreanTime(message.createdAt) : "",
+    time: message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : ""),
+    createdAt: message?.createdAt || "",
   };
 }
 
@@ -156,6 +165,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const initialPartnerName = searchParams.get("partnerName") || "";
   const messageListRef = useRef(null);
   const messageInputRef = useRef(null);
+  const directMessageTimeCacheRef = useRef(new Map());
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [isRoomOpen, setIsRoomOpen] = useState(false);
@@ -209,6 +219,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     const normalizedMessage = normalizeIncomingMessage(
       incomingMessage,
       currentMemberId,
+      directMessageTimeCacheRef.current,
     );
     const incomingPartnerId =
       normalizedMessage.senderId === currentMemberId
@@ -444,9 +455,10 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       }
 
       setMessages(
-        list.map((item) => normalizeIncomingMessage(item, currentMemberId)),
+        list.map((item) =>
+          normalizeIncomingMessage(item, currentMemberId, directMessageTimeCacheRef.current),
+        ),
       );
-      await loadThreads();
     } catch (requestError) {
       console.error("메시지 조회 실패", requestError);
       setMessages([]);
@@ -703,7 +715,9 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             </div>
             <div className={styles.threadMeta}>
               <span>
-                {thread.lastMessageAt ? formatKoreanTime(thread.lastMessageAt) : ""}
+                {thread.lastMessageAt
+                  ? formatKoreanTime(thread.lastMessageAt) || thread.lastMessageAt
+                  : ""}
               </span>
               {thread.unreadCount > 0 ? (
                 <b className={styles.unreadBadge}>{thread.unreadCount}</b>
