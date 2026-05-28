@@ -286,7 +286,7 @@ export function ProfilePage() {
   const displayName = user?.nickname || user?.name || 'MoodCast 사용자';
   const displayInitial = displayName.charAt(0).toUpperCase();
   const displayText = user?.bio || (isOwnProfile ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.' : '안녕하세요! MoodCast 사용자입니다.');
-  const profileImageUrl = user?.profileImageUrl || null;
+  const profileImageUrl = user?.profileImageUrl || user?.profile_image_url || user?.avatarUrl || user?.avatar_url || user?.imageUrl || user?.image_url || user?.photoUrl || user?.photo || user?.pictureUrl || user?.picture || null;
   const profileAvatarSrc = profileImageUrl || defaultAvatarSrc;
   const handleChatClick = () => {
     const searchParams = new URLSearchParams({
@@ -302,7 +302,14 @@ export function ProfilePage() {
       {/* 히어로 섹션 - 풍성하게 수정함 */}
       <article className={styles.hero}>
         <div className={styles.avatar}>
-          <img src={profileAvatarSrc} alt={displayName} />
+          <img
+            src={profileAvatarSrc}
+            alt={displayName}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = defaultAvatarSrc;
+            }}
+          />
         </div>
         <div className={styles.heroContent}>
           <strong>{displayName}</strong>
@@ -477,7 +484,6 @@ export function ProfilePage() {
                     
                     // 180도 이상일 때 large-arc-flag를 1로 설정 (정확한 비율)
                     const largeArc = angle > 180 ? 1 : 0;
-                    const pathData = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
                     const emotion = EMOTION_CONFIG[stat.emotionId];
                     currentAngle += angle;
                     const isHovered = hoveredEmotion === stat.emotionId;
@@ -488,22 +494,36 @@ export function ProfilePage() {
                     const offsetX = offsetDistance * Math.cos(midAngle);
                     const offsetY = offsetDistance * Math.sin(midAngle);
                     
-                    return (
-                      <g key={stat.emotionId} 
-                         onMouseEnter={() => setHoveredEmotion(stat.emotionId)}
-                         onMouseLeave={() => setHoveredEmotion(null)}
-                         style={{ cursor: 'pointer' }}
-                         transform={`translate(${offsetX}, ${offsetY})`}>
-                        <path
-                          d={pathData}
+                    const slice = angle >= 359.999
+                      ? (
+                        <circle
+                          cx={centerX}
+                          cy={centerY}
+                          r={radius}
                           fill={emotion?.color || '#ccc'}
                           stroke="rgba(255,255,255,1)"
                           strokeWidth="2"
                           opacity={isHovered ? 1 : 0.85}
-                          style={{
-                            transition: 'all 0.25s ease',
-                          }}
                         />
+                      )
+                      : (
+                        <path
+                          d={`M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                          fill={emotion?.color || '#ccc'}
+                          stroke="rgba(255,255,255,1)"
+                          strokeWidth="2"
+                          opacity={isHovered ? 1 : 0.85}
+                          style={{ transition: 'all 0.25s ease' }}
+                        />
+                      );
+                    
+                    return (
+                      <g key={stat.emotionId}
+                         onMouseEnter={() => setHoveredEmotion(stat.emotionId)}
+                         onMouseLeave={() => setHoveredEmotion(null)}
+                         style={{ cursor: 'pointer' }}
+                         transform={`translate(${offsetX}, ${offsetY})`}>
+                        {slice}
                       </g>
                     );
                   });

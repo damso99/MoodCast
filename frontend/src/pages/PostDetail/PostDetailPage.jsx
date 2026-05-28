@@ -16,6 +16,18 @@ function normalizeContent(content) {
   return textarea.value;
 }
 
+function extractImageUrls(html) {
+  if (!html) return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    return Array.from(doc.querySelectorAll('img')).map((img) => img.src).filter(Boolean);
+  } catch (error) {
+    const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
+    return Array.from(matches, (match) => match[1]).filter(Boolean);
+  }
+}
+
 function formatTime(dateString) {
   if (!dateString) return '방금';
   const date = new Date(dateString);
@@ -61,6 +73,7 @@ export function PostDetailPage() {
         }
         const data = item;
         const authorName = data.author || data.nickname || '익명';
+        const rawContent = data.content ?? data.body ?? '';
         setPost({
           id: data.postId,
           postId: data.postId,
@@ -71,8 +84,8 @@ export function PostDetailPage() {
           profileImageUrl: data.profileImageUrl ?? data.profile_image_url ?? null,
           avatar: authorName.charAt(0).toUpperCase(),
           time: formatTime(data.createdAt),
-          text: normalizeContent(data.content),
-          content: data.content,
+          text: normalizeContent(rawContent),
+          content: rawContent,
           emotionId: data.emotionId,
           comments: data.comments ?? 0,
           commentsList: [],
@@ -81,7 +94,14 @@ export function PostDetailPage() {
           likedByMe: data.likedByMe,
           savedByMe: data.savedByMe,
           tags: data.tags ?? '',
-          imageSrc: data.imageSrc ?? data.image ?? data.cover ?? data.thumbnail,
+          imageSrc: data.imageSrc ?? data.image ?? data.cover ?? data.thumbnail ?? extractImageUrls(rawContent)[0],
+          imageSrcs: Array.from(new Set([
+            ...(data.imageSrc ? [data.imageSrc] : []),
+            ...(data.image ? [data.image] : []),
+            ...(data.cover ? [data.cover] : []),
+            ...(data.thumbnail ? [data.thumbnail] : []),
+            ...extractImageUrls(rawContent),
+          ])).filter(Boolean),
           imageAlt: data.imageAlt || data.author,
         });
       })

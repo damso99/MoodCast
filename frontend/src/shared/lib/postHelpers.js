@@ -35,6 +35,25 @@ export function extractImageUrl(html) {
 }
 
 /**
+ * HTML에서 모든 이미지 URL을 추출
+ * @param {string} html - HTML 문자열
+ * @returns {string[]} 이미지 URL 배열
+ */
+export function extractImageUrls(html) {
+  if (!html) return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    return Array.from(doc.querySelectorAll('img'))
+      .map((img) => img.src)
+      .filter(Boolean);
+  } catch (error) {
+    const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
+    return Array.from(matches, (match) => match[1]).filter(Boolean);
+  }
+}
+
+/**
  * 상대 시간 포맷팅 (예: "5분 전", "2시간 전")
  * @param {string|Date} dateString - 날짜 문자열 또는 Date 객체
  * @returns {string} 포맷된 시간 문자열
@@ -95,6 +114,11 @@ export function normalizePostData(item) {
     
     // 이미지 정보
     imageSrc: item.imageSrc ?? extractImageUrl(rawContent),
+    imageSrcs: Array.from(new Set([
+      ...(item.imageSrc ? [item.imageSrc] : []),
+      ...(item.imageSrcs ?? []),
+      ...extractImageUrls(rawContent),
+    ])).filter(Boolean),
     imageAlt: item.imageAlt ?? authorName,
     
     // 시간 정보
