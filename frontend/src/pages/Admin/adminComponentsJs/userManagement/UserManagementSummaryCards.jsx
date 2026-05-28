@@ -4,20 +4,18 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
 /* ==========================================================================
  * 사용자 관리 하단 요약 카드 컴포넌트
  * --------------------------------------------------------------------------
- * UserManagementPage.jsx의 하단에 표시되는 두 개의 박스를 담당합니다.
+ * 사용자 관리 페이지 아래쪽의 "전체 회원 비율"과 "회원 관리 정보" 영역입니다.
  *
- * 담당 UI:
- * 1. 전체 회원 비율
- *    - 일반 회원 / 관리자 회원 / 정지 회원 수를 원형 그래프로 보여줍니다.
- * 2. 회원 관리 정보
- *    - 가장 최근 가입한 회원 1명
- *    - 가장 최근 제재당한 회원 1명
+ * 담당 기능:
+ * - 일반 회원 / 관리자 회원 / 정지 회원 수를 원형 그래프로 표시
+ * - 최근 가입 회원 1명 표시
+ * - 최근 제재 회원 1명 표시
  *
  * 초보자 설명:
- * - 부모 컴포넌트(UserManagementPage)는 API 호출과 큰 페이지 구성을 담당합니다.
- * - 이 컴포넌트는 "받은 데이터를 어떻게 화면에 보여줄지"만 담당합니다.
- * - 이렇게 나누면 UserManagementPage.jsx가 너무 길어지는 것을 막을 수 있고,
- *   나중에 원형 그래프나 최근 회원 UI만 수정할 때 이 파일만 보면 됩니다.
+ * - 부모 컴포넌트(UserManagementPage.jsx)가 API를 호출해서 숫자와 회원 정보를 넘겨줍니다.
+ * - 이 컴포넌트는 받은 데이터를 화면에 보기 좋게 그리는 일만 담당합니다.
+ * - 정지 회원은 role과 별개로 status가 SUSPENDED인 회원이라 일반/관리자 수와 겹칠 수 있습니다.
+ *   그래서 그래프는 세 항목을 같은 원 안에서 비교할 수 있도록 "그래프 항목 합계"를 기준으로 다시 계산합니다.
  * ========================================================================== */
 export function UserManagementSummaryCards({
   isLoading,
@@ -29,59 +27,53 @@ export function UserManagementSummaryCards({
   latestJoinedMember,
   latestSanctionedMember,
 }) {
-  /* ------------------------------------------------------------------------
-   * 비율 계산 함수
+  /*
+   * 원형 그래프 계산 기준
    * ------------------------------------------------------------------------
-   * count는 일반 회원 수, 관리자 회원 수처럼 특정 그룹의 숫자입니다.
-   * totalMemberCount가 0이면 0으로 나누는 문제가 생기므로 바로 0%를 반환합니다.
-   * ------------------------------------------------------------------------ */
-  const getPercent = (count) => {
-    if (!totalMemberCount) {
+   * 초보자 설명:
+   * - totalMemberCount는 실제 전체 회원 수입니다.
+   * - 하지만 정지 회원은 role이 USER이면서 status만 SUSPENDED일 수도 있어 일반 회원 수와 겹칠 수 있습니다.
+   * - 원형 그래프에서는 겹친 값을 그대로 전체 회원 수로 나누면 마지막 조각이 잘 안 보일 수 있습니다.
+   * - 그래서 그래프 조각은 normal/admin/suspended 세 항목 합계를 기준으로 다시 계산합니다.
+   */
+  const chartTotal =
+    normalMemberCount + adminMemberCount + suspendedMemberCount;
+
+  const getChartPercent = (count) => {
+    if (!chartTotal) {
       return 0;
     }
 
-    return Math.round((count / totalMemberCount) * 100);
+    return Math.round((count / chartTotal) * 100);
   };
 
-  /* ------------------------------------------------------------------------
-   * 원형 그래프에 표시할 항목 목록
-   * ------------------------------------------------------------------------
-   * 배열로 만들어두면 JSX에서 map으로 반복 출력할 수 있습니다.
-   * color 값은 원형 그래프 조각 색과 범례 점 색에 같이 사용됩니다.
-   * ------------------------------------------------------------------------ */
   const memberRatioItems = [
     {
       label: "일반 회원",
       count: normalMemberCount,
       color: "#7c4dff",
-      percent: getPercent(normalMemberCount),
+      percent: getChartPercent(normalMemberCount),
     },
     {
       label: "관리자 회원",
       count: adminMemberCount,
       color: "#12b76a",
-      percent: getPercent(adminMemberCount),
+      percent: getChartPercent(adminMemberCount),
     },
     {
       label: "정지 회원",
       count: suspendedMemberCount,
       color: "#f04438",
-      percent: getPercent(suspendedMemberCount),
+      percent: getChartPercent(suspendedMemberCount),
     },
   ];
 
-  /* ------------------------------------------------------------------------
+  /*
    * conic-gradient 구간 계산
    * ------------------------------------------------------------------------
-   * CSS conic-gradient는 0~100% 구간을 여러 색으로 나눠 원형 그래프를 만듭니다.
-   *
-   * 예:
-   * - 일반 회원 60%
-   * - 관리자 회원 30%
-   * - 정지 회원 10%
-   *
-   * 그러면 첫 번째 색은 0~60, 두 번째 색은 60~90, 세 번째 색은 90~100 구간입니다.
-   * ------------------------------------------------------------------------ */
+   * CSS conic-gradient는 0%부터 100%까지 색을 이어 붙여 원형 그래프를 만듭니다.
+   * 각 조각의 시작점과 끝점을 누적해서 계산해야 항목이 서로 겹치지 않습니다.
+   */
   const firstRatioEnd = memberRatioItems[0].percent;
   const secondRatioEnd = firstRatioEnd + memberRatioItems[1].percent;
   const thirdRatioEnd = Math.min(
@@ -89,23 +81,20 @@ export function UserManagementSummaryCards({
     secondRatioEnd + memberRatioItems[2].percent,
   );
   const ratioChartStyle = {
-    background: `conic-gradient(
-      ${memberRatioItems[0].color} 0% ${firstRatioEnd}%,
-      ${memberRatioItems[1].color} ${firstRatioEnd}% ${secondRatioEnd}%,
-      ${memberRatioItems[2].color} ${secondRatioEnd}% ${thirdRatioEnd}%,
-      #eef2f6 ${thirdRatioEnd}% 100%
-    )`,
+    background:
+      chartTotal > 0
+        ? `conic-gradient(
+            ${memberRatioItems[0].color} 0% ${firstRatioEnd}%,
+            ${memberRatioItems[1].color} ${firstRatioEnd}% ${secondRatioEnd}%,
+            ${memberRatioItems[2].color} ${secondRatioEnd}% ${thirdRatioEnd}%,
+            #eef2f6 ${thirdRatioEnd}% 100%
+          )`
+        : "#eef2f6",
   };
 
-  /* ------------------------------------------------------------------------
-   * 회원 이름 표시 함수
-   * ------------------------------------------------------------------------
-   * API에서 name이 오면 실명을 보여주고, name이 없지만 nickname이 있으면 닉네임을 보여줍니다.
-   * 둘 다 없으면 화면이 비어 보이지 않도록 안내 문구를 반환합니다.
-   * ------------------------------------------------------------------------ */
   const getMemberDisplayName = (memberItem, fallbackId) => {
     if (!memberItem) {
-      return fallbackId ? `삭제된 회원 #${fallbackId}` : "회원 정보 없음";
+      return fallbackId ? `회원 #${fallbackId}` : "회원 정보 없음";
     }
 
     if (memberItem.name) {
@@ -117,7 +106,7 @@ export function UserManagementSummaryCards({
     }
 
     return memberItem.memberId
-      ? `삭제된 회원 #${memberItem.memberId}`
+      ? `회원 #${memberItem.memberId}`
       : "회원 정보 없음";
   };
 
@@ -126,12 +115,10 @@ export function UserManagementSummaryCards({
       <article className={styles.infoBox}>
         <strong>전체 회원 비율</strong>
 
-        {/* 로딩 중이어도 회원 목록 fallback 숫자가 있으면 그래프를 바로 보여줍니다. */}
         {isLoading && totalMemberCount === 0 ? (
           <p>회원 비율을 불러오는 중입니다.</p>
         ) : (
           <>
-            {/* 요약 API가 실패해도 회원 목록으로 계산한 숫자를 보여주기 위한 안내입니다. */}
             {hasError && (
               <p className={styles.summaryNotice}>
                 요약 API 조회 실패로 현재 회원 목록 기준 비율을 표시합니다.
@@ -139,7 +126,6 @@ export function UserManagementSummaryCards({
             )}
 
             <div className={styles.ratioContent}>
-              {/* 원형 그래프 영역입니다. style에는 위에서 만든 conic-gradient가 들어갑니다. */}
               <div className={styles.ratioChart} style={ratioChartStyle}>
                 <div className={styles.ratioChartCenter}>
                   <span>전체</span>
@@ -147,7 +133,6 @@ export function UserManagementSummaryCards({
                 </div>
               </div>
 
-              {/* 그래프 색상별 의미와 실제 수치를 오른쪽 범례로 보여줍니다. */}
               <ul className={styles.ratioLegend}>
                 {memberRatioItems.map((ratioItem) => (
                   <li key={ratioItem.label}>
@@ -170,14 +155,13 @@ export function UserManagementSummaryCards({
       <article className={styles.infoBox}>
         <strong>회원 관리 정보</strong>
 
-        {/* 최근 회원 정보는 management-summary API 데이터가 있어야 정확합니다. */}
         {isLoading ? (
           <p>회원 관리 정보를 불러오는 중입니다.</p>
         ) : (
           <>
             {hasError && (
               <p className={styles.summaryNotice}>
-                요약 API 조회 실패로 최근 가입 회원은 현재 목록 기준으로 표시합니다.
+                요약 API 조회 실패로 일부 정보가 목록 기준으로 표시됩니다.
               </p>
             )}
 

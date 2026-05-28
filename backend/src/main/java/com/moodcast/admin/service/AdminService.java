@@ -4,11 +4,13 @@ import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminActionLogView;
 import com.moodcast.admin.vo.AdminContentPost;
+import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
+import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
@@ -22,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -584,6 +587,14 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "정지할 회원 정보를 찾을 수 없습니다.");
         }
 
+        if (Objects.equals(loginMember.getMemberId(), memberId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 계정은 정지할 수 없습니다.");
+        }
+
+        if ("SUPER_ADMIN".equals(targetMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 계정은 정지할 수 없습니다.");
+        }
+
         LocalDateTime suspendedUntil = calculateSuspendedUntil(request);
         int updated = adminDao.suspendMember(memberId, suspendedUntil);
 
@@ -663,6 +674,14 @@ public class AdminService {
 
         if (targetMember == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "정지 해제할 회원 정보를 찾을 수 없습니다.");
+        }
+
+        if (Objects.equals(loginMember.getMemberId(), memberId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 계정은 정지 해제 대상이 될 수 없습니다.");
+        }
+
+        if ("SUPER_ADMIN".equals(targetMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 계정은 관리할 수 없습니다.");
         }
 
         int updated = adminDao.restoreSuspendedMember(memberId);
@@ -787,6 +806,59 @@ public class AdminService {
     public AdminDashboardSummary getDashboardSummary(String authorizationHeader) {
         validateAdmin(authorizationHeader);
         return adminDao.selectDashboardSummary();
+    }
+
+    /*
+     * 관리자 대시보드 감정별 활동 분포 조회
+     * --------------------------------------------------------------------------
+     * 초보자 설명:
+     * - 프론트에서 day/week/month 중 하나를 보내면 해당 기간에 작성된 게시글을 감정별로 집계합니다.
+     * - 잘못된 period 값이 들어와도 SQL에 그대로 넘기지 않고 day로 바꿔 안전하게 처리합니다.
+     */
+    public List<AdminEmotionActivity> getDashboardEmotionActivity(
+            String authorizationHeader,
+            String period
+    ) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminEmotionActivity> activities = adminDao.selectDashboardEmotionActivity(normalizedPeriod);
+
+        return activities == null ? Collections.emptyList() : activities;
+    }
+
+    /*
+     * 관리자 대시보드 최근 활동 10개 조회
+     * --------------------------------------------------------------------------
+     * 가입, 탈퇴, 정지, 정지 해제처럼 관리자 대시보드에서 바로 확인해야 하는 활동만 최신순으로 가져옵니다.
+     */
+    public List<AdminRecentActivity> getRecentDashboardActivities(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+
+        List<AdminRecentActivity> activities = adminDao.selectRecentDashboardActivities();
+
+        return activities == null ? Collections.emptyList() : activities;
+    }
+
+    /*
+     * 관리자 대시보드 전체 활동 조회
+     * --------------------------------------------------------------------------
+     * 프론트의 "전체 보기" 팝업에서 페이지네이션으로 나누어 보여줄 전체 활동 목록입니다.
+     */
+    public List<AdminRecentActivity> getAllDashboardActivities(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+
+        List<AdminRecentActivity> activities = adminDao.selectAllDashboardActivities();
+
+        return activities == null ? Collections.emptyList() : activities;
+    }
+
+    private String normalizeDashboardPeriod(String period) {
+        if ("week".equals(period) || "month".equals(period)) {
+            return period;
+        }
+
+        return "day";
     }
 
     /* ==========================================================================

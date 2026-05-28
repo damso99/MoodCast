@@ -136,7 +136,7 @@ function stripHtml(html) {
   return textarea.value;
 }
 
-export function FeedCard({ post, compact = false }) {
+export function FeedCard({ post, compact = false, initialCommentOpen = false, onCommentClick }) {
   const navigate = useNavigate();
   const { member, accessToken: storeToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
@@ -161,6 +161,8 @@ export function FeedCard({ post, compact = false }) {
   const carouselRef = useRef(null);
   const moreButtonRef = useRef(null);
   const menuRef = useRef(null);
+  const hasAutoOpenedCommentsRef = useRef(false);
+  const postId = post.id ?? post.postId;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -261,16 +263,34 @@ export function FeedCard({ post, compact = false }) {
     }
   };
 
-  const openCommentModal = async (event) => {
+  const handleCommentClick = async (event) => {
     event?.stopPropagation();
-    setSelectedPost({
-      ...post,
-      imageSrc: imageSrc,
-      text: cardText,
+    if (onCommentClick) {
+      onCommentClick();
+      return;
+    }
+
+    navigate(`/app/post/${postId}?comments=1`, {
+      state: {
+        openComments: true,
+      },
     });
-    await fetchComments(postId);
-    setIsCommentModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!initialCommentOpen || hasAutoOpenedCommentsRef.current || !postId) {
+      return;
+    }
+
+    hasAutoOpenedCommentsRef.current = true;
+      const timerId = window.setTimeout(() => {
+      handleCommentClick();
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [initialCommentOpen, postId]);
 
   const closeCommentModal = () => {
     setSelectedPost(null);
@@ -281,8 +301,6 @@ export function FeedCard({ post, compact = false }) {
     event?.stopPropagation();
     setMenuOpen(!menuOpen);
   };
-
-  const postId = post.id ?? post.postId;
 
   const handleCardClick = () => {
     const postId = post.id ?? post.postId;
@@ -709,7 +727,7 @@ export function FeedCard({ post, compact = false }) {
               )}
               {likesCount}
             </button>
-            <button type="button" className={styles.reactionButton} onClick={openCommentModal}>
+            <button type="button" className={styles.reactionButton} onClick={handleCommentClick}>
               <ChatBubbleOutlineIcon className={styles.actionIcon} />
               {commentCount}
             </button>

@@ -12,23 +12,33 @@ import com.moodcast.post.vo.PostDetail;
 import com.moodcast.post.vo.Post;
 import com.moodcast.post.vo.PostSummary;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
 public class PostService {
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+    private static final DateTimeFormatter NOTIFICATION_TIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
     private PostDao postDao;
 
     @Autowired
     private LoginService loginService;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public Long createPost(String authorizationHeader, CreatePostRequest request) {
@@ -197,7 +207,64 @@ public class PostService {
 
         comment.setAuthor(loginMember.getNickname());
         comment.setProfileImageUrl(loginMember.getProfileImageUrl());
+        sendCommentNotification(postId, comment, loginMember);
         return comment;
+    }
+
+    private void sendCommentNotification(Long postId, CommentSummary comment, LoginMemberResponse commenter) {
+        if (postId == null || comment == null || commenter == null) {
+            return;
+        }
+
+        PostDetail post = postDao.selectPostById(postId, null);
+        if (post == null || post.getMemberId() == null || post.getMemberId().equals(commenter.getMemberId())) {
+            return;
+        }
+
+        com.moodcast.post.dto.PostCommentNotificationDto notification =
+                new com.moodcast.post.dto.PostCommentNotificationDto();
+        notification.setNotificationId("comment-" + comment.getCommentId());
+        notification.setEventType("COMMENT_NOTIFICATION");
+        notification.setPostId(postId);
+        notification.setCommentId(comment.getCommentId());
+        notification.setPostOwnerId(post.getMemberId());
+        notification.setCommenterId(commenter.getMemberId());
+        notification.setCommenterName(resolveMemberDisplayName(commenter));
+        notification.setCommenterProfileImageUrl(commenter.getProfileImageUrl());
+        notification.setPostTitle(post.getTitle());
+        notification.setPreview(buildCommentPreview(comment.getContent()));
+        notification.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(NOTIFICATION_TIME_FORMATTER));
+
+        messagingTemplate.convertAndSend("/sub/notifications/" + post.getMemberId(), notification);
+    }
+
+    private String buildCommentPreview(String content) {
+        if (content == null) {
+            return "";
+        }
+
+        String trimmed = content.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+
+        return trimmed.length() > 80 ? trimmed.substring(0, 80) + "..." : trimmed;
+    }
+
+    private String resolveMemberDisplayName(LoginMemberResponse member) {
+        if (member == null) {
+            return "";
+        }
+
+        if (member.getNickname() != null && !member.getNickname().trim().isEmpty()) {
+            return member.getNickname().trim();
+        }
+
+        if (member.getName() != null && !member.getName().trim().isEmpty()) {
+            return member.getName().trim();
+        }
+
+        return "";
     }
 
     @Transactional

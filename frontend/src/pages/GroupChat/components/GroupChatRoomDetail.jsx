@@ -253,12 +253,32 @@ export function GroupChatRoomDetail({
                     </button>
                   ) : null}
                   <div className={styles.bubbleLine}>
-                    {unreadCount > 0 ? <span className={styles.unreadMarker}>{unreadCount}</span> : null}
-                    <div className={`${styles.bubble} ${isMine ? styles.me : styles.them}`}>
-                      <p>{item.content}</p>
-                    </div>
+                    {isMine ? (
+                      <>
+                        {unreadCount > 0 ? <span className={styles.unreadMarker}>{unreadCount}</span> : null}
+                        <div className={`${styles.bubble} ${styles.me}`}>
+                          <p>{item.content}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className={`${styles.bubble} ${styles.them}`}>
+                          <p>{item.content}</p>
+                        </div>
+                        {unreadCount > 0 ? (
+                          <span className={styles.unreadMarker} style={{ marginLeft: "6px", marginBottom: "4px" }}>
+                            {unreadCount}
+                          </span>
+                        ) : null}
+                      </>
+                    )}
                   </div>
-                  <span className={styles.messageTime}>{item.time || formatKoreanTime(item.createdAt) || ""}</span>
+                  <span
+                    className={styles.messageTime}
+                    style={isMine ? { textAlign: "right" } : { textAlign: "left" }}
+                  >
+                    {item.time || formatKoreanTime(item.createdAt) || ""}
+                  </span>
                 </div>
               </div>
             </div>

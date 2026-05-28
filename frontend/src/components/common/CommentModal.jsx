@@ -34,6 +34,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   const [expandedReplies, setExpandedReplies] = useState({});  // 답글 펼침 여부
   const menuRef = useRef(null);
   const submittingRef = useRef(false);
+  const ignoreOverlayClickRef = useRef(false);
 
   useEffect(() => {
     if (open && post) {
@@ -98,6 +99,20 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
 
   useEffect(() => {
     if (open) setComment('');
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      ignoreOverlayClickRef.current = false;
+      return undefined;
+    }
+
+    ignoreOverlayClickRef.current = true;
+    const timerId = window.setTimeout(() => {
+      ignoreOverlayClickRef.current = false;
+    }, 250);
+
+    return () => window.clearTimeout(timerId);
   }, [open]);
 
   if (!open || !post) return null;
@@ -341,7 +356,16 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   };
 
   return createPortal(
-    <div className={styles.overlay} onClick={onClose} role="presentation">
+    <div
+      className={styles.overlay}
+      onClick={() => {
+        if (ignoreOverlayClickRef.current) {
+          return;
+        }
+        onClose();
+      }}
+      role="presentation"
+    >
       <section className={styles.modal} role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <header className={styles.header}>
           <div className={styles.headerMeta}>

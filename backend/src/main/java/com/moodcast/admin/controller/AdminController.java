@@ -4,11 +4,13 @@ import com.moodcast.admin.service.AdminService;
 import com.moodcast.admin.vo.AdminActionLogView;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
+import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
+import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -361,6 +363,52 @@ public class AdminController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         return adminService.getDashboardSummary(authorizationHeader);
+    }
+
+    /*
+     * 관리자 대시보드 감정별 활동 분포 API
+     * --------------------------------------------------------------------------
+     * period 값은 day, week, month 중 하나이며 서비스에서 한 번 더 검증합니다.
+     */
+    @GetMapping("/dashboard/emotion-activity")
+    public Map<String, List<AdminEmotionActivity>> getDashboardEmotionActivity(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String period
+    ) {
+        return Map.of(
+                "items",
+                adminService.getDashboardEmotionActivity(authorizationHeader, period)
+        );
+    }
+
+    /*
+     * 관리자 대시보드 최근 활동 10개 API
+     * --------------------------------------------------------------------------
+     * 가입, 탈퇴, 정지, 정지 해제 기록을 최신순으로 10개만 내려줍니다.
+     */
+    @GetMapping("/dashboard/recent-activities")
+    public Map<String, List<AdminRecentActivity>> getRecentDashboardActivities(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return Map.of(
+                "activities",
+                adminService.getRecentDashboardActivities(authorizationHeader)
+        );
+    }
+
+    /*
+     * 관리자 대시보드 전체 활동 API
+     * --------------------------------------------------------------------------
+     * 프론트에서 전체 보기 팝업을 열 때 페이지네이션용 원본 목록으로 사용합니다.
+     */
+    @GetMapping("/dashboard/activities")
+    public Map<String, List<AdminRecentActivity>> getAllDashboardActivities(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return Map.of(
+                "activities",
+                adminService.getAllDashboardActivities(authorizationHeader)
+        );
     }
 
     /* ==========================================================================
