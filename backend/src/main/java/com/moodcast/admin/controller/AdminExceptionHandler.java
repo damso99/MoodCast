@@ -2,6 +2,8 @@ package com.moodcast.admin.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,8 +23,12 @@ import java.util.Map;
 @RestControllerAdvice(assignableTypes = AdminController.class)
 public class AdminExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminExceptionHandler.class);
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<?> handleIllegalArgumentException(IllegalArgumentException e) {
+        log.warn("[ADMIN_API] IllegalArgumentException message={}", e.getMessage(), e);
+
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(
                         Map.of(
@@ -34,6 +40,13 @@ public class AdminExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<?> handleResponseStatusException(ResponseStatusException e) {
+        log.warn(
+                "[ADMIN_API] ResponseStatusException status={} reason={}",
+                e.getStatusCode(),
+                e.getReason(),
+                e
+        );
+
         return ResponseEntity.status(e.getStatusCode())
                 .body(
                         Map.of(
@@ -45,6 +58,8 @@ public class AdminExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleException(Exception e) {
+        log.error("[ADMIN_API] Unhandled exception occurred in admin API", e);
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(
                         Map.of(

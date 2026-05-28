@@ -1,17 +1,18 @@
 ﻿import { useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import { AdminLayout } from "../common/AdminLayout";
-import { EmptyState } from "../common/EmptyState";
 import { EmptyTableRow, TableShell } from "../common/TableShell";
 import { MetricCard } from "../common/MetricCard";
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
+import { UserManagementActionLogs } from "./UserManagementActionLogs";
 import { UserManagementDrawer } from "./UserManagementDrawer";
+import { UserManagementSummaryCards } from "./UserManagementSummaryCards";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
@@ -27,13 +28,13 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  * - 회원 상태 요약 카드
  * - 사용자 목록 테이블
  * - 관리자 권한 관리 페이지로 이동하는 버튼
- * - 권한 변경 로그 영역
+ * - 하단 요약 컴포넌트 연결
+ * - 권한 변경 로그 컴포넌트 연결
  *
- * selectedUserType 상태 설명:
- * - 사용자가 "전체 / 일반 회원 / 정지 회원 / 관리자 회원" 탭을 누르면
- *   어떤 탭이 선택됐는지 기억하는 값입니다.
- * - 지금은 백엔드 데이터가 없어서 실제 목록 필터링은 하지 않고,
- *   선택한 탭에 맞는 제목과 안내 문구만 바꿔서 UI 동작을 확인할 수 있게 했습니다.
+ * 초보자 설명:
+ * - 페이지 컴포넌트는 "데이터를 가져오고, 어떤 컴포넌트를 보여줄지 결정"하는 역할입니다.
+ * - 원형 그래프, 최근 회원 정보, 로그 목록처럼 화면 조각이 큰 UI는 별도 컴포넌트로 분리했습니다.
+ * - 이렇게 나누면 한 파일이 너무 길어지지 않고, 문제가 생긴 영역을 찾기 쉬워집니다.
  *
  * totalMemberCount 상태 설명:
  * - members 테이블에 저장된 전체 회원 수를 기억하는 값입니다.
@@ -64,25 +65,85 @@ export function UserManagementPage() {
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState(false);
+  const [managementSummary, setManagementSummary] = useState(null);
+  const [managementSummaryLoading, setManagementSummaryLoading] =
+    useState(false);
+  const [managementSummaryError, setManagementSummaryError] = useState(false);
   const [selectedManagedMember, setSelectedManagedMember] = useState(null);
-  const { accessToken } = useAuthStore();
+  const { accessToken, member } = useAuthStore();
+  const navigate = useNavigate(); // 버튼 클릭 시 관리자 권한 관리 페이지로 이동시키기 위한 React Router 함수입니다.
 
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const BACKSERVER = (
+    import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
+  ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하고, 끝의 /는 제거합니다.
   const MEMBERS_PER_PAGE = 10; // 한 페이지에 보여줄 회원 수입니다.
   const PAGE_BUTTON_COUNT = 10; // 페이지 번호 버튼은 1~10처럼 최대 10개씩 보여줍니다.
-
-  const userTypeDescriptions = {
-    전체: "전체 회원 목록이 이 영역에 표시됩니다.",
-    "일반 회원": "정상 이용 중인 일반 회원 목록이 이 영역에 표시됩니다.",
-    "정지 회원":
-      "일시정지 또는 이용 제한 상태의 회원 목록이 이 영역에 표시됩니다.",
-    "관리자 회원": "관리자 권한을 가진 계정 목록이 이 영역에 표시됩니다.",
-  };
 
   const searchPlaceholder = {
     name: "이름으로 검색",
     nickname: "닉네임으로 검색",
     email: "이메일로 검색",
+  };
+
+  /*
+   * 관리자 권한 관리 버튼 클릭 처리
+   * --------------------------------------------------------------------------
+   * 초보자 설명:
+   * - NavLink를 그대로 쓰면 클릭하는 순간 바로 /admin/users/new로 이동합니다.
+   * - 일반 관리자는 이 페이지에 들어가면 안 되므로, 먼저 로그인한 관리자의 role을 확인합니다.
+   * - SUPER_ADMIN이면 이동하고, 아니면 alert만 보여준 뒤 이동하지 않습니다.
+   * - URL 직접 입력은 AdminPages.jsx의 라우트 보호에서 한 번 더 막습니다.
+   */
+  const handleAdminRoleManagementClick = () => {
+    if (member?.role !== "SUPER_ADMIN") {
+      alert("관리자 권한 관리는 슈퍼 관리자만 접근할 수 있습니다.");
+      return;
+    }
+
+    navigate("/admin/users/new");
+  };
+
+  const fetchManagementSummary = () => {
+    if (!accessToken) {
+      return;
+    }
+
+    /* ========================================================================
+     * 사용자 관리 하단 요약 조회
+     * ------------------------------------------------------------------------
+     * 하단의 원형 그래프, 최근 가입/제재 회원, 권한 변경 로그를 채우기 위한
+     * 관리자 전용 API를 호출합니다.
+     *
+     * 초보자 설명:
+     * - 회원 목록 API는 테이블 행을 만들기 위한 데이터입니다.
+     * - 이 API는 하단 요약 UI만을 위한 데이터입니다.
+     * - API가 실패해도 회원 목록 자체는 계속 볼 수 있게 별도 에러 상태로 관리합니다.
+     * ======================================================================== */
+    setManagementSummaryLoading(true);
+    setManagementSummaryError(false);
+
+    axios
+      .get(`${BACKSERVER}/admin/api/members/management-summary`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      .then((res) => {
+        setManagementSummary(res.data || null);
+      })
+      .catch((error) => {
+        console.error("[ADMIN_MANAGEMENT_SUMMARY_ERROR]", {
+          endpoint: `${BACKSERVER}/admin/api/members/management-summary`,
+          status: error.response?.status,
+          response: error.response?.data,
+          message: error.message,
+        });
+        setManagementSummary(null);
+        setManagementSummaryError(true);
+      })
+      .finally(() => {
+        setManagementSummaryLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -116,6 +177,10 @@ export function UserManagementPage() {
         setTotalMemberCount(null);
         setTotalMemberCountError(true);
       });
+  }, [BACKSERVER, accessToken]);
+
+  useEffect(() => {
+    fetchManagementSummary();
   }, [BACKSERVER, accessToken]);
 
   useEffect(() => {
@@ -216,19 +281,61 @@ export function UserManagementPage() {
     }
   }, [currentPage, totalPageCount]);
 
-  const normalMemberCount = members.filter(
+  const fallbackNormalMemberCount = members.filter(
     (member) => member.role === "USER",
   ).length;
 
   // members 목록 중 status가 SUSPENDED인 회원만 세어서 "정지 회원" 카드에 표시합니다.
   // 백엔드에서 이미 회원 목록을 받아오고 있으므로, 별도 API를 만들지 않고 현재 화면 데이터 기준으로 계산합니다.
-  const suspendedMemberCount = members.filter(
+  const fallbackSuspendedMemberCount = members.filter(
     (member) => member.status === "SUSPENDED",
   ).length;
 
-  const adminMemberCount = members.filter((member) =>
+  const fallbackAdminMemberCount = members.filter((member) =>
     ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"].includes(member.role),
   ).length;
+
+  const summaryTotalMemberCount =
+    managementSummary?.totalMemberCount ?? totalMemberCount ?? members.length;
+  const normalMemberCount =
+    managementSummary?.normalMemberCount ?? fallbackNormalMemberCount;
+  const suspendedMemberCount =
+    managementSummary?.suspendedMemberCount ?? fallbackSuspendedMemberCount;
+  const adminMemberCount =
+    managementSummary?.adminMemberCount ?? fallbackAdminMemberCount;
+
+  const latestJoinedMember = managementSummary?.latestJoinedMember;
+  const latestSanctionedMember = managementSummary?.latestSanctionedMember;
+  const actionLogs = Array.isArray(managementSummary?.actionLogs)
+    ? managementSummary.actionLogs
+    : [];
+
+  /* --------------------------------------------------------------------------
+   * 최근 가입 회원 fallback 계산
+   * --------------------------------------------------------------------------
+   * management-summary API가 실패하면 최근 가입 회원 API 데이터도 받을 수 없습니다.
+   * 그래도 회원 목록 API는 정상일 수 있으므로, members 배열에서 createdAt이 가장 최신인
+   * 회원 1명을 찾아 회원 관리 정보 컴포넌트에 넘깁니다.
+   * -------------------------------------------------------------------------- */
+  const fallbackLatestJoinedMember = [...members].sort((firstMember, secondMember) => {
+    return new Date(secondMember.createdAt || 0) - new Date(firstMember.createdAt || 0);
+  })[0];
+
+  /* --------------------------------------------------------------------------
+   * 최근 제재 회원 fallback 계산
+   * --------------------------------------------------------------------------
+   * 정확한 최근 제재 회원은 admin_action_logs를 봐야 합니다.
+   * summary API가 실패한 경우에는 임시로 현재 회원 목록 중 SUSPENDED 상태인 회원을
+   * 하나 선택해 "제재 가능성이 있는 최근 회원" 정도로만 보여줍니다.
+   * -------------------------------------------------------------------------- */
+  const fallbackLatestSanctionedMember = [...members]
+    .filter((member) => member.status === "SUSPENDED")
+    .sort((firstMember, secondMember) => {
+      return (
+        new Date(secondMember.suspendedUntil || secondMember.createdAt || 0) -
+        new Date(firstMember.suspendedUntil || firstMember.createdAt || 0)
+      );
+    })[0];
 
   const formatDate = (value) => {
     return formatKoreanDate(value);
@@ -301,6 +408,7 @@ export function UserManagementPage() {
     setSelectedManagedMember((prevMember) =>
       prevMember ? { ...prevMember, ...updatedMember } : prevMember,
     );
+    fetchManagementSummary();
   };
 
   return (
@@ -333,9 +441,13 @@ export function UserManagementPage() {
             />
           </div>
         </div>
-        <NavLink className={styles.primaryLinkButton} to="/admin/users/new">
+        <button
+          type="button"
+          className={styles.primaryLinkButton}
+          onClick={handleAdminRoleManagementClick}
+        >
           관리자 권한 관리
-        </NavLink>
+        </button>
       </section>
 
       <section className={styles.metricGrid}>
@@ -464,29 +576,28 @@ export function UserManagementPage() {
         )}
       </TableShell>
 
-      <section className={styles.infoGrid}>
-        <article className={styles.infoBox}>
-          <strong>{selectedUserType} 탭 역할</strong>
-          <p>{userTypeDescriptions[selectedUserType]}</p>
-        </article>
-        <article className={styles.infoBox}>
-          <strong>관리자 권한 관리 정보</strong>
-          <p>
-            관리자 권한 관리 버튼을 누르면 가입된 회원을 이메일 또는 이름으로
-            검색한 뒤 관리자 권한을 부여하거나 해제하는 화면으로 이동합니다.
-          </p>
-        </article>
-      </section>
+      {/* 사용자 관리 하단 요약 카드: 전체 회원 비율과 최근 회원 정보를 담당합니다. */}
+      <UserManagementSummaryCards
+        isLoading={managementSummaryLoading}
+        hasError={managementSummaryError}
+        totalMemberCount={summaryTotalMemberCount}
+        normalMemberCount={normalMemberCount}
+        adminMemberCount={adminMemberCount}
+        suspendedMemberCount={suspendedMemberCount}
+        latestJoinedMember={latestJoinedMember || fallbackLatestJoinedMember}
+        latestSanctionedMember={
+          latestSanctionedMember || fallbackLatestSanctionedMember
+        }
+      />
 
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h2>권한 변경 로그</h2>
-        </div>
-        <EmptyState
-          title="변경 내역 없음"
-          description="권한 변경 이력이 생기면 최신순으로 표시됩니다."
-        />
-      </section>
+      {/* 사용자 관리 하단 로그: 승급, 강등, 정지, 해제 이력을 담당합니다. */}
+      <UserManagementActionLogs
+        isLoading={managementSummaryLoading}
+        hasError={managementSummaryError}
+        actionLogs={actionLogs}
+        accessToken={accessToken}
+        backserver={BACKSERVER}
+      />
 
       {/* 회원 관리 우측 패널: 관리 버튼을 누른 회원의 상세 정보와 정지/해제 작업을 담당합니다. */}
       <UserManagementDrawer
