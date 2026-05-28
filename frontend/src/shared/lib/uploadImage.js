@@ -82,7 +82,7 @@ function resizeImage(file, maxWidth, maxHeight, quality = 0.85, cropSquare = fal
  * @param {File} file - 업로드할 이미지 파일
  * @param {string} token - JWT Access Token
  * @param {string} backserver - 백엔드 base URL (예: http://localhost:8080)
- * @param {{maxWidth?: number, maxHeight?: number, quality?: number, cropSquare?: boolean}} [options]
+ * @param {{maxWidth?: number, maxHeight?: number, quality?: number, cropSquare?: boolean, folderType?: 'user-images'|'post-images'}} [options]
  * @returns {Promise<string>} - 서버에 저장된 이미지 접근 URL
  */
 export async function uploadImage(file, token, backserver = 'http://localhost:8080', options = {}) {
@@ -99,6 +99,7 @@ export async function uploadImage(file, token, backserver = 'http://localhost:80
 
   const formData = new FormData();
   formData.append('file', uploadFile);
+  formData.append('folderType', options.folderType || 'post-images');
 
   const headers = {};
   if (token) {

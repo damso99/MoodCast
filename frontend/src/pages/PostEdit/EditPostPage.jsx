@@ -112,6 +112,7 @@ export function EditPostPage() {
           maxHeight: 1200,
           quality: 0.8,
           cropSquare: false,
+          folderType: 'post-images',
         });
         const imgHtml = `<img src="${url}" alt="${file.name}" class="${styles.editorImage}" />`;
         const el = document.getElementById(tempId);

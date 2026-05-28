@@ -15,6 +15,9 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.upload-dir:uploads}")
     private String uploadDirConfig;
 
+    @Value("${app.local-upload-resource-enabled:false}")
+    private boolean localUploadResourceEnabled;
+
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
@@ -28,6 +31,10 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
+        if (!localUploadResourceEnabled) {
+            return;
+        }
+
         // 절대/상대 경로 모두 처리 (Mac/Windows 무관)
         String absolutePath;
         if (Paths.get(uploadDirConfig).isAbsolute()) {

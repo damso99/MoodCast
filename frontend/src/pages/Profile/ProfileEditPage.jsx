@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
+import { normalizeBackendUrl } from '../../shared/lib/postHelpers';
 import styles from './ProfileEditPage.module.css';
 import { uploadImage } from '../../shared/lib/uploadImage';
 
@@ -34,8 +35,9 @@ export function ProfileEditPage() {
       bio: member.bio || prev.bio,
     }));
     if (member.profileImageUrl) {
-      setPhotoPreview(member.profileImageUrl);
-      setProfileImageUrl(member.profileImageUrl);
+      const normalizedUrl = normalizeBackendUrl(member.profileImageUrl, BACKSERVER, 'user-images');
+      setPhotoPreview(normalizedUrl);
+      setProfileImageUrl(normalizedUrl);
     }
   }, [member]);
 
@@ -65,6 +67,7 @@ export function ProfileEditPage() {
         maxHeight: 320,
         quality: 0.9,
         cropSquare: true,
+        folderType: 'user-images',
       });
       setProfileImageUrl(url);
     } catch (err) {

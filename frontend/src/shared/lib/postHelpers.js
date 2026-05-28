@@ -8,6 +8,60 @@
  * @param {string} html - HTML 문자열
  * @returns {string} 순수 텍스트
  */
+export const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+export const PUBLIC_S3_BASE_URL = import.meta.env.VITE_PUBLIC_S3_BASE_URL || '';
+
+function buildPublicS3Url(key, publicS3BaseUrl = PUBLIC_S3_BASE_URL) {
+  const normalizedBase = publicS3BaseUrl.replace(/\/+$/, '');
+  const normalizedKey = key.replace(/^\/+/, '');
+  return normalizedBase ? `${normalizedBase}/${normalizedKey}` : null;
+}
+
+function buildLegacyViewUrl(filename, folderType, backserver) {
+  const normalizedBase = backserver.replace(/\/+$/, '');
+  return `${normalizedBase}/upload/view?key=${encodeURIComponent(`${folderType}/${filename}`)}`;
+}
+
+export function normalizeBackendUrl(url, backserver = BACKSERVER, legacyFolderType = null) {
+  if (!url) return url;
+  if (typeof url !== 'string') return url;
+  if (url.startsWith('data:')) {
+    return url;
+  }
+
+  if (legacyFolderType) {
+    const relativeLegacyMatch = url.match(/^\/?uploads\/([^/?#]+)$/i);
+    if (relativeLegacyMatch) {
+      return buildPublicS3Url(`${legacyFolderType}/${relativeLegacyMatch[1]}`) || buildLegacyViewUrl(relativeLegacyMatch[1], legacyFolderType, backserver);
+    }
+
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      try {
+        const parsed = new URL(url);
+        const absoluteLegacyMatch = parsed.pathname.match(/^\/uploads\/([^/]+)$/i);
+        if (absoluteLegacyMatch) {
+          return buildPublicS3Url(`${legacyFolderType}/${absoluteLegacyMatch[1]}`) || buildLegacyViewUrl(absoluteLegacyMatch[1], legacyFolderType, backserver);
+        }
+      } catch (error) {
+      }
+    }
+  }
+
+  const viewMatch = url.match(/(?:https?:\/\/[^/?#]+)?\/upload\/view\?key=([^&#"'\s]+)/i);
+  if (viewMatch) {
+    const decodedKey = decodeURIComponent(viewMatch[1]);
+    return buildPublicS3Url(decodedKey) || `${backserver.replace(/\/+$/, '')}/upload/view?key=${encodeURIComponent(decodedKey)}`;
+  }
+
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+
+  const normalizedBase = backserver.replace(/\/+$/, '');
+  const normalizedPath = url.replace(/^\/?/, '');
+  return `${normalizedBase}/${normalizedPath}`;
+}
+
 export function stripHtml(html) {
   if (!html) return '';
   const text = html.replace(/<img[^>]*>/gi, ' ').replace(/<[^>]+>/g, ' ').trim();
@@ -27,7 +81,7 @@ export function extractImageUrl(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     const img = doc.querySelector('img');
-    return img?.src ?? null;
+    return img?.getAttribute('src') ?? null;
   } catch (error) {
     const match = html.match(/<img[^>]+src=["']?([^"' >]+)["']?/i);
     return match ? match[1] : null;
@@ -45,7 +99,7 @@ export function extractImageUrls(html) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
     return Array.from(doc.querySelectorAll('img'))
-      .map((img) => img.src)
+      .map((img) => img.getAttribute('src'))
       .filter(Boolean);
   } catch (error) {
     const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
@@ -91,7 +145,8 @@ export function formatRelativeTime(dateString) {
  * @returns {object} 표준화된 게시물 데이터
  */
 export function resolveProfileImageUrl(item) {
-  return item?.profileImageUrl ?? item?.profile_image_url ?? item?.avatarUrl ?? item?.avatar_url ?? item?.profileImage ?? item?.imageUrl ?? item?.image ?? item?.photoUrl ?? item?.photo ?? item?.pictureUrl ?? item?.picture ?? item?.image_url ?? item?.photo_url ?? null;
+  const url = item?.profileImageUrl ?? item?.profile_image_url ?? item?.avatarUrl ?? item?.avatar_url ?? item?.profileImage ?? item?.imageUrl ?? item?.image ?? item?.photoUrl ?? item?.photo ?? item?.pictureUrl ?? item?.picture ?? item?.image_url ?? item?.photo_url ?? null;
+  return normalizeBackendUrl(url, BACKSERVER, 'user-images');
 }
 
 export function normalizePostData(item) {
@@ -99,6 +154,15 @@ export function normalizePostData(item) {
   const rawContent = item.content ?? item.body ?? item.text ?? '';
   const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id ?? item.userId ?? item.user_id;
   
+  const imageSrc = normalizeBackendUrl(item.imageSrc ?? extractImageUrl(rawContent), BACKSERVER, 'post-images');
+  const imageSrcs = Array.from(new Set([
+      ...(item.imageSrc ? [item.imageSrc] : []),
+      ...(item.imageSrcs ?? []),
+      ...extractImageUrls(rawContent),
+    ]))
+    .map((src) => normalizeBackendUrl(src, BACKSERVER, 'post-images'))
+    .filter(Boolean);
+
   return {
     // 기본 ID 필드
     id: item.postId,
@@ -118,12 +182,8 @@ export function normalizePostData(item) {
     tags: item.tags ?? '',
     
     // 이미지 정보
-    imageSrc: item.imageSrc ?? extractImageUrl(rawContent),
-    imageSrcs: Array.from(new Set([
-      ...(item.imageSrc ? [item.imageSrc] : []),
-      ...(item.imageSrcs ?? []),
-      ...extractImageUrls(rawContent),
-    ])).filter(Boolean),
+    imageSrc,
+    imageSrcs,
     imageAlt: item.imageAlt ?? authorName,
     
     // 시간 정보

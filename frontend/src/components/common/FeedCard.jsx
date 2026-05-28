@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
+import { normalizeBackendUrl } from '../../shared/lib/postHelpers';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { HashtagRow } from './HashtagRow';
@@ -195,16 +196,20 @@ export function FeedCard({ post, compact = false }) {
     post.cover,
     post.thumbnail,
     ...extractImageUrls(rawContent),
-  ].filter(Boolean);
+  ].filter(Boolean).map((src) => normalizeBackendUrl(src, BACKSERVER, 'post-images'));
   const imageSrcs = Array.from(new Set(imageCandidates));
   const imageSrc = imageSrcs[0] ?? null;
   const cardText = post.text ?? stripHtml(rawContent);
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
   const postMemberId = post.memberId ?? post.member_id ?? post.authorId ?? post.author_id ?? post.userId ?? post.user_id;
   const profileLink = post.profileLink ?? (postMemberId ? `/app/user/${postMemberId}` : null);
-  const profileImageUrl = post.profileImageUrl ?? post.profile_image_url ?? post.avatarUrl ?? post.avatar_url ??
+  const profileImageUrl = normalizeBackendUrl(
+    post.profileImageUrl ?? post.profile_image_url ?? post.avatarUrl ?? post.avatar_url ??
     post.profileImage ?? post.imageUrl ?? post.image ?? post.photoUrl ?? post.photo ??
-    post.pictureUrl ?? post.picture ?? post.image_url ?? post.photo_url ?? null;
+    post.pictureUrl ?? post.picture ?? post.image_url ?? post.photo_url ?? null,
+    BACKSERVER,
+    'user-images'
+  );
   const profileInitial = post.author ? post.author.charAt(0).toUpperCase() : '?';
 
   useEffect(() => {
@@ -451,6 +456,11 @@ export function FeedCard({ post, compact = false }) {
               src={profileImageUrl || defaultAvatarSrc}
               alt={post.author || '프로필'}
               onError={(event) => {
+                console.error('[FeedCard] profile image load failed', {
+                  author: post.author,
+                  attemptedSrc: event.currentTarget.currentSrc || event.currentTarget.src,
+                  rawProfileImageUrl: profileImageUrl,
+                });
                 event.currentTarget.onerror = null;
                 event.currentTarget.src = defaultAvatarSrc;
               }}

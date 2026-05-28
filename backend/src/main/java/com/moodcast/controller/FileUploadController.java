@@ -1,24 +1,22 @@
 package com.moodcast.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.moodcast.service.FileUploadService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import jakarta.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @CrossOrigin(
@@ -29,88 +27,64 @@ import java.util.UUID;
 )
 @RequestMapping("/upload")
 public class FileUploadController {
+    private final FileUploadService fileUploadService;
 
-    // application.yml의 app.upload-dir 값, 기본값은 실행 디렉토리 하위 uploads/
-    @Value("${app.upload-dir:uploads}")
-    private String uploadDirConfig;
-
-    /**
-     * OS에 관계없이 절대 경로를 반환합니다.
-     * Mac/Linux: /path/to/project/uploads
-     * Windows:   C:/Users/username/uploads
-     */
-    private Path getUploadPath() throws IOException {
-        Path path;
-        if (Paths.get(uploadDirConfig).isAbsolute()) {
-            path = Paths.get(uploadDirConfig);
-        } else {
-            // 상대 경로면 JAR 실행 디렉토리 기준
-            path = Paths.get(System.getProperty("user.dir"), uploadDirConfig);
-        }
-        Files.createDirectories(path); // 없으면 자동 생성
-        return path;
+    // 업로드/삭제에 필요한 실제 처리는 Service가 맡도록 분리함
+    public FileUploadController(FileUploadService fileUploadService) {
+        this.fileUploadService = fileUploadService;
     }
 
+    // 프론트에서 이미지를 보내면 S3 업로드 결과(url, filename, key)를 돌려주는 API임
     @PostMapping
-    public ResponseEntity<?> upload(
+    public ResponseEntity<Map<String, String>> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestHeader(value = "X-Base-Url", required = false) String baseUrl
+            @RequestParam(defaultValue = "post-images") String folderType,
+            HttpServletRequest request
     ) {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "파일이 비어있습니다."));
-        }
-
-        // 허용 MIME 타입 제한
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "이미지 파일만 업로드 가능합니다."));
-        }
-
-        try {
-            Path uploadPath = getUploadPath();
-
-            // 원본 파일명에서 확장자만 추출
-            String original = file.getOriginalFilename();
-            String ext = "";
-            if (original != null && original.contains(".")) {
-                ext = original.substring(original.lastIndexOf('.'));
-            }
-
-            // UUID로 고유한 파일명 생성 (OS 경로 문자 문제 방지)
-            String filename = UUID.randomUUID().toString() + ext;
-            Path target = uploadPath.resolve(filename);
-
-            // 파일 저장 (NIO Path 사용, Mac/Windows 모두 동작)
-            Files.copy(file.getInputStream(), target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-
-            // 접근 URL 구성
-            // 프론트에서 X-Base-Url 헤더를 보내지 않으면 기본값 사용
-            String serverBase = (baseUrl != null && !baseUrl.isBlank())
-                    ? baseUrl
-                    : "http://localhost:8080";
-
-            String url = serverBase + "/uploads/" + filename;
-            return ResponseEntity.ok(Map.of("url", url, "filename", filename));
-
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "파일 저장에 실패했습니다: " + e.getMessage()));
-        }
+        return ResponseEntity.ok(fileUploadService.uploadImage(file, folderType, baseUrl(request)));
     }
 
+    // 저장된 파일명을 받아 S3에서 삭제하는 API임
     @DeleteMapping("/{filename}")
-    public ResponseEntity<?> delete(@PathVariable String filename) {
-        // 파일명에 /, \\ 또는 .. 같은 문자가 들어가면 안 됩니다.
-        if (filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "잘못된 파일명입니다."));
-        }
-        try {
-            Path file = getUploadPath().resolve(filename);
-            boolean deleted = Files.deleteIfExists(file);
-            return ResponseEntity.ok(Map.of("deleted", deleted));
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "파일 삭제에 실패했습니다."));
-        }
+    public ResponseEntity<Map<String, Boolean>> delete(
+            @PathVariable String filename,
+            @RequestParam(defaultValue = "post-images") String folderType
+    ) {
+        return ResponseEntity.ok(Map.of("deleted", fileUploadService.deleteImage(filename, folderType)));
+    }
+
+    // 브라우저가 보는 주소는 이 엔드포인트임. 내부에서 S3 이미지를 직접 읽어서 내려줌
+    @GetMapping("/view")
+    public ResponseEntity<byte[]> view(@RequestParam String key) {
+        String decodedKey = URLDecoder.decode(key, StandardCharsets.UTF_8);
+        return fileUploadService.loadImage(decodedKey);
+    }
+
+    // 예전 DB에 남아 있는 /uploads/... 주소도 같은 이미지로 열어줌
+    @GetMapping("/uploads/**")
+    public ResponseEntity<byte[]> legacyUploads(HttpServletRequest request) {
+        String requestUri = request.getRequestURI();
+        String prefix = request.getContextPath() + "/upload/";
+        String key = requestUri.startsWith(prefix) ? requestUri.substring(prefix.length()) : requestUri;
+        return fileUploadService.loadImage(key);
+    }
+
+    // 예전 로컬 uploads 폴더에 남아 있는 파일을 S3로 옮기는 이관용 API임
+    // deleteAfterUpload=true 로 보내면 업로드 후 로컬 파일도 지움
+    @PostMapping("/migrate-local")
+    public ResponseEntity<Map<String, Object>> migrateLocalUploads(
+            @RequestParam(defaultValue = "false") boolean deleteAfterUpload,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.ok(fileUploadService.migrateLocalUploadsAndDatabase(deleteAfterUpload));
+    }
+
+    @PostMapping("/rewrite-s3-links")
+    public ResponseEntity<Map<String, Object>> rewriteS3Links(HttpServletRequest request) {
+        return ResponseEntity.ok(fileUploadService.rewriteImageUrlsToPublicS3Urls(baseUrl(request)));
+    }
+
+    private String baseUrl(HttpServletRequest request) {
+        return request.getScheme() + "://" + request.getServerName() + ":" + request.getServerPort();
     }
 }

@@ -7,7 +7,7 @@ import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { FeedCard } from '../../components/common/FeedCard';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
-import { normalizePostDataArray } from '../../shared/lib/postHelpers';
+import { normalizeBackendUrl, normalizePostDataArray } from '../../shared/lib/postHelpers';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
@@ -205,6 +205,18 @@ export function ProfilePage() {
   const isOwnProfile = (user?.memberId && currentMember?.memberId && String(user.memberId) === String(currentMember.memberId)) ||
                        (currentMember && String(currentMember.memberId) === String(targetId));
 
+  const effectiveUser = isOwnProfile
+    ? {
+        ...user,
+        profileImageUrl: currentMember?.profileImageUrl || currentMember?.profile_image_url || user?.profileImageUrl || user?.profile_image_url,
+        profile_image_url: currentMember?.profileImageUrl || currentMember?.profile_image_url || user?.profileImageUrl || user?.profile_image_url,
+      }
+    : user;
+
+  const normalizeUploadViewUrl = (url) => {
+    return normalizeBackendUrl(url, BACKSERVER, 'user-images');
+  };
+
   // 팔로우 처리 함수
   const handleFollowToggle = () => {
     if (!token) {
@@ -271,6 +283,25 @@ export function ProfilePage() {
     });
   }, [moodStats]);
 
+  const displayName = effectiveUser?.nickname || effectiveUser?.name || 'MoodCast 사용자';
+  const displayInitial = displayName.charAt(0).toUpperCase();
+  const displayText = effectiveUser?.bio || (isOwnProfile ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.' : '안녕하세요! MoodCast 사용자입니다.');
+  const profileImageUrl = normalizeUploadViewUrl(
+    effectiveUser?.profileImageUrl || effectiveUser?.profile_image_url || effectiveUser?.avatarUrl || effectiveUser?.avatar_url || effectiveUser?.imageUrl || effectiveUser?.image_url || effectiveUser?.photoUrl || effectiveUser?.photo || effectiveUser?.pictureUrl || effectiveUser?.picture || null
+  );
+  const profileAvatarSrc = profileImageUrl || defaultAvatarSrc;
+
+  useEffect(() => {
+    console.debug('[ProfilePage] image resolution', {
+      targetId,
+      isOwnProfile,
+      backserver: BACKSERVER,
+      rawUserProfileImage: user?.profileImageUrl || user?.profile_image_url || null,
+      rawCurrentMemberProfileImage: currentMember?.profileImageUrl || currentMember?.profile_image_url || null,
+      resolvedProfileAvatarSrc: profileAvatarSrc,
+    });
+  }, [BACKSERVER, currentMember?.profileImageUrl, currentMember?.profile_image_url, isOwnProfile, profileAvatarSrc, targetId, user?.profileImageUrl, user?.profile_image_url]);
+
   if (loading) {
     const loader = <div style={{ padding: '20px', textAlign: 'center' }}>프로필을 불러오는 중...</div>;
     if (!desktop) return <MobileShell title="프로필" hideSearch>{loader}</MobileShell>;
@@ -283,11 +314,6 @@ export function ProfilePage() {
     return <DesktopShell>{noUser}</DesktopShell>;
   }
 
-  const displayName = user?.nickname || user?.name || 'MoodCast 사용자';
-  const displayInitial = displayName.charAt(0).toUpperCase();
-  const displayText = user?.bio || (isOwnProfile ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.' : '안녕하세요! MoodCast 사용자입니다.');
-  const profileImageUrl = user?.profileImageUrl || user?.profile_image_url || user?.avatarUrl || user?.avatar_url || user?.imageUrl || user?.image_url || user?.photoUrl || user?.photo || user?.pictureUrl || user?.picture || null;
-  const profileAvatarSrc = profileImageUrl || defaultAvatarSrc;
   const handleChatClick = () => {
     const searchParams = new URLSearchParams({
       partnerId: String(targetId),
@@ -306,6 +332,12 @@ export function ProfilePage() {
             src={profileAvatarSrc}
             alt={displayName}
             onError={(event) => {
+              console.error('[ProfilePage] profile image load failed', {
+                attemptedSrc: event.currentTarget.currentSrc || event.currentTarget.src,
+                profileAvatarSrc,
+                rawUserProfileImage: user?.profileImageUrl || user?.profile_image_url || null,
+                rawCurrentMemberProfileImage: currentMember?.profileImageUrl || currentMember?.profile_image_url || null,
+              });
               event.currentTarget.onerror = null;
               event.currentTarget.src = defaultAvatarSrc;
             }}

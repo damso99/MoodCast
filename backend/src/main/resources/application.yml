@@ -54,10 +54,16 @@ spring:
 # Mac/Windows 둘다 동작 - 절대경로 예: /Users/leebc/moodcast-uploads
 app:
   upload-dir: uploads
+  local-upload-resource-enabled: ${APP_LOCAL_UPLOAD_RESOURCE_ENABLED:false}
+  public-base-url: ${APP_PUBLIC_BASE_URL:}
 
 cloud:
   aws:
     region: ${AWS_REGION:ap-northeast-2}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID:}
+      secret-key: ${AWS_SECRET_ACCESS_KEY:}
+      session-token: ${AWS_SESSION_TOKEN:}
     s3:
       upload-bucket: ${AWS_UPLOAD_BUCKET_NAME}
 

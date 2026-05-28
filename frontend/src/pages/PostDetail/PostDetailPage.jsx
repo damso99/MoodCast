@@ -6,6 +6,7 @@ import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { FeedCard } from '../../components/common/FeedCard';
+import { normalizePostData } from '../../shared/lib/postHelpers';
 import styles from './PostDetailPage.module.css';
 
 function normalizeContent(content) {
@@ -71,40 +72,8 @@ export function PostDetailPage() {
           setPost(null);
           return;
         }
-        const data = item;
-        const authorName = data.author || data.nickname || '익명';
-        const rawContent = data.content ?? data.body ?? '';
-        const memberId = data.memberId ?? data.member_id ?? data.authorId ?? data.author_id;
-        setPost({
-          id: data.postId,
-          postId: data.postId,
-          memberId,
-          profileLink: memberId ? `/app/user/${memberId}` : null,
-          title: data.title,
-          author: authorName,
-          profileImageUrl: data.profileImageUrl ?? data.profile_image_url ?? data.avatarUrl ?? data.avatar_url ?? data.profileImage ?? data.imageUrl ?? data.image ?? data.photoUrl ?? data.photo ?? data.pictureUrl ?? data.picture ?? data.image_url ?? data.photo_url ?? null,
-          avatar: authorName.charAt(0).toUpperCase(),
-          time: formatTime(data.createdAt),
-          text: normalizeContent(rawContent),
-          content: rawContent,
-          emotionId: data.emotionId,
-          comments: data.comments ?? 0,
-          commentsList: [],
-          likes: data.likes ?? 0,
-          vibes: data.vibes ?? 0,
-          likedByMe: data.likedByMe,
-          savedByMe: data.savedByMe,
-          tags: data.tags ?? '',
-          imageSrc: data.imageSrc ?? data.image ?? data.cover ?? data.thumbnail ?? extractImageUrls(rawContent)[0],
-          imageSrcs: Array.from(new Set([
-            ...(data.imageSrc ? [data.imageSrc] : []),
-            ...(data.image ? [data.image] : []),
-            ...(data.cover ? [data.cover] : []),
-            ...(data.thumbnail ? [data.thumbnail] : []),
-            ...extractImageUrls(rawContent),
-          ])).filter(Boolean),
-          imageAlt: data.imageAlt || data.author,
-        });
+        const normalized = normalizePostData(item);
+        setPost(normalized);
       })
       .catch((err) => {
         console.error('게시물 상세 조회 실패:', err);
