@@ -23,14 +23,18 @@ import java.util.regex.Pattern;
 public class SignupService {
     @Autowired
     private SignupDao signupDao;
+
     @Autowired
     private PasswordEncoder passwordEncoder;
+
     @Autowired
     private EmailService emailService;
+
     @Autowired
     private PhoneService phoneService;
 
-    private Integer testSendCount = 100;
+    @Autowired
+    private AuthCodeRedisService authCodeRedisService;
 
     // 이메일 정규식
     private static final Pattern EMAIL_PATTERN =
@@ -163,42 +167,6 @@ public class SignupService {
         }
     }
 
-    // 인증코드 체크 메서드
-    private void checkAuthCode(AuthCode lastAuthCode, String authCode) {
-        if (authCode == null || authCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("인증번호를 입력해주세요.");
-        }
-        authCode = authCode.trim();
-
-        if (!authCode.matches("^[0-9]{6}$")) {
-            throw new IllegalArgumentException("인증번호는 숫자 6자리입니다.");
-        }
-        if (lastAuthCode == null) {
-            throw new IllegalArgumentException("요청된 인증번호가 없습니다. 인증번호를 다시 요청해주세요.");
-        }
-        if (lastAuthCode.getUsedAt() != null) {
-            throw new IllegalArgumentException("이미 사용된 인증번호입니다. 인증번호를 다시 요청해주세요.");
-        }
-        if (lastAuthCode.getVerifiedAt() != null) {
-            throw new IllegalArgumentException("이미 인증이 완료된 인증번호입니다.");
-        }
-        if (LocalDateTime.now().isAfter(lastAuthCode.getExpiresAt())) {
-            throw new IllegalArgumentException("인증번호가 만료되었습니다. 인증번호를 다시 요청해주세요.");
-        }
-        if (lastAuthCode.getAttemptCount() >= 5) {
-            throw new IllegalArgumentException("인증번호 입력 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
-        }
-
-        boolean matches = passwordEncoder.matches(authCode, lastAuthCode.getCodeHash());
-        if (!matches) {
-            int result = signupDao.incrementAttempt(lastAuthCode.getAuthCodeId());
-            if (result != 1) {
-                throw new IllegalStateException("인증번호 확인 처리에 실패했습니다. 500 Server");
-            }
-            throw new IllegalArgumentException("인증번호가 올바르지 않습니다.");
-        }
-    }
-
 
     // 랜덤 난수 생성 -> 문자열로 리턴 메서드
     private String createAuthCode() {
@@ -206,39 +174,61 @@ public class SignupService {
         return String.valueOf(number);
     }
 
-    // 인증번호 재요청 시간 체크 메서드
-    private void reSendAuthCode(AuthCode lastAuthCode) {
-        if (lastAuthCode != null &&
-                LocalDateTime.now().isBefore(lastAuthCode.getCreatedAt().plusSeconds(60))) {
-            throw new IllegalArgumentException("인증번호 요청 후 60초 이후 재요청이 가능합니다.");
+    // Redis에 저장된 인증번호랑 입력 번호 체크
+    // 횟수 제한체크
+    private void checkRedisAuthCode(String purpose, String targetType, String targetValue, String authCode) {
+        if (authCode == null || authCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("인증번호를 입력해주세요.");
         }
-    }
 
-    // 인증번호 일일 발송 횟수 체크 메서드
-    private void checkAuthCodeSendLimit(String targetType, String targetValue, String purpose) {
-        LocalDateTime from = LocalDateTime.now().minusDays(1);
+        authCode = authCode.trim();
 
-        int sendCount = signupDao.countAuthCodeSend(targetType, targetValue, purpose, from);
-        if (sendCount >= testSendCount) {
-            throw new IllegalArgumentException("일일 인증번호 발송 횟수를 초과했습니다.");
+        if (!authCode.matches("^[0-9]{6}$")) {
+            throw new IllegalArgumentException("인증번호는 숫자 6자리입니다.");
         }
+
+        String savedHashCode = authCodeRedisService.getAuthCodeHash(purpose, targetType, targetValue);
+
+        if (savedHashCode == null) {
+            throw new IllegalArgumentException("인증번호가 만료되었습니다. 인증번호를 다시 요청해주세요.");
+        }
+
+        long currentAttemptCount = authCodeRedisService.getAttemptCount(purpose, targetType, targetValue);
+
+        if (currentAttemptCount >= 5) {
+            throw new IllegalArgumentException("인증번호 입력 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
+        }
+
+        boolean matches = passwordEncoder.matches(authCode, savedHashCode);
+
+        if (!matches) {
+            Long attemptCount = authCodeRedisService.increaseAttempt(purpose, targetType, targetValue);
+
+            if (attemptCount >= 5) {
+                throw new IllegalArgumentException("인증번호 입력 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
+            }
+
+            throw new IllegalArgumentException("인증번호가 올바르지 않습니다.");
+        }
+
+        authCodeRedisService.markVerified(purpose, targetType, targetValue);
     }
 
     // 이메일 인증 완료여부
     private void checkEmailVerified(String email) {
-        int verifiedCount = signupDao.countVerifiedEmailAuthCode(email);
+        boolean isVerified = authCodeRedisService.isVerified("SIGNUP", "EMAIL", email);
 
-        if (verifiedCount == 0) {
-            throw new IllegalArgumentException("이메일 인증 시간이 만료되었습니다. 다시 인증해주세요");
+        if (!isVerified) {
+            throw new IllegalArgumentException("이메일 인증 시간이 만료되었습니다. 다시 시도해주세요");
         }
     }
 
     // 휴대폰 인증 완료여부
     private void checkPhoneVerified(String phone) {
-        int verifiedCount = signupDao.countVerifiedPhoneAuthCode(phone);
+        boolean isVerified = authCodeRedisService.isVerified("SIGNUP", "PHONE", phone);
 
-        if (verifiedCount == 0) {
-            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 다시 인증해주세요");
+        if (!isVerified) {
+            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 다시 시도해주세요");
         }
     }
 
@@ -249,29 +239,13 @@ public class SignupService {
 
         checkEmailDuplicate(email);
 
-        AuthCode lastAuthCode = signupDao.findLastAuthCode("EMAIL", email, "SIGNUP");
-
-        reSendAuthCode(lastAuthCode);
-
-        checkAuthCodeSendLimit("EMAIL", email, "SIGNUP");
+        authCodeRedisService.checkCooldown("SIGNUP", "EMAIL", email);
+        authCodeRedisService.checkAndIncreaseSendCount("SIGNUP", "EMAIL", email);
 
         String authCode = createAuthCode();
         String hashCode = passwordEncoder.encode(authCode);
 
-        AuthCode authCodeInfo = new AuthCode();
-        authCodeInfo.setMemberId(null);
-        authCodeInfo.setTargetType("EMAIL");
-        authCodeInfo.setTargetValue(email);
-        authCodeInfo.setPurpose("SIGNUP");
-        authCodeInfo.setCodeHash(hashCode);
-        authCodeInfo.setExpiresAt(LocalDateTime.now().plusMinutes(3));
-        authCodeInfo.setAttemptCount(0);
-
-        int result = signupDao.insertAuthCode(authCodeInfo);
-
-        if (result != 1) {
-            throw new IllegalStateException("인증코드 저장에 실패했습니다. 500 Server");
-        }
+        authCodeRedisService.saveAuthCode("SIGNUP", "EMAIL", email, hashCode);
 
         try {
             emailService.sendSignupAuthCode(email, authCode);
@@ -290,27 +264,14 @@ public class SignupService {
     public String sendPhoneAuthCode(String phone) {
         phone = normalizePhone(phone);
         checkPhoneDuplicate(phone);
-        AuthCode lastAuthCode = signupDao.findLastAuthCode("PHONE", phone, "SIGNUP");
 
-        reSendAuthCode(lastAuthCode);
-        checkAuthCodeSendLimit("PHONE", phone, "SIGNUP");
+        authCodeRedisService.checkCooldown("SIGNUP", "PHONE", phone);
+        authCodeRedisService.checkAndIncreaseSendCount("SIGNUP", "PHONE", phone);
 
         String authCode = createAuthCode();
         String hashCode = passwordEncoder.encode(authCode);
 
-        AuthCode authCodeInfo = new AuthCode();
-        authCodeInfo.setMemberId(null);
-        authCodeInfo.setTargetType("PHONE");
-        authCodeInfo.setTargetValue(phone);
-        authCodeInfo.setPurpose("SIGNUP");
-        authCodeInfo.setCodeHash(hashCode);
-        authCodeInfo.setExpiresAt(LocalDateTime.now().plusMinutes(3));
-        authCodeInfo.setAttemptCount(0);
-
-        int result = signupDao.insertAuthCode(authCodeInfo);
-        if (result != 1) {
-            throw new IllegalStateException("인증코드 저장에 실패했습니다. 500 Server");
-        }
+        authCodeRedisService.saveAuthCode("SIGNUP", "PHONE", phone, hashCode);
 
         // phoneService.sendSignupAuthCode(phone, authCode); 포인트 없어서 일단 주석
         System.out.println("휴대폰 인증번호: " + authCode);
@@ -322,28 +283,14 @@ public class SignupService {
     @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyEmailAuthCode(String email, String authCode) {
         email = normalizeEmail(email);
-        AuthCode lastAuthCode = signupDao.findLastAuthCode("EMAIL", email, "SIGNUP");
-
-        checkAuthCode(lastAuthCode, authCode);
-
-        int result = signupDao.updateVerifiedAt(lastAuthCode.getAuthCodeId());
-        if (result != 1) {
-            throw new IllegalStateException("이메일 인증 처리에 실패했습니다. 500 Server");
-        }
+        checkRedisAuthCode("SIGNUP", "EMAIL", email, authCode);
     }
 
     // 휴대폰 인증코드 확인
     @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyPhoneAuthCode(String phone, String authCode) {
         phone = normalizePhone(phone);
-        AuthCode lastAuthCode = signupDao.findLastAuthCode("PHONE", phone, "SIGNUP");
-
-        checkAuthCode(lastAuthCode, authCode);
-
-        int result = signupDao.updateVerifiedAt(lastAuthCode.getAuthCodeId());
-        if (result != 1) {
-            throw new IllegalStateException("휴대폰 인증 처리에 실패했습니다. 500 Server");
-        }
+        checkRedisAuthCode("SIGNUP", "PHONE", phone, authCode);
     }
 
     // 이메일 기본검사, 중복여부
@@ -482,15 +429,7 @@ public class SignupService {
 
         insertTermsAgreements(member.getMemberId(), request.getAgreements());
 
-        int emailUsedResult = signupDao.updateAuthCodeUsed("EMAIL", email, "SIGNUP");
-        int phoneUsedResult = signupDao.updateAuthCodeUsed("PHONE", phone, "SIGNUP");
-
-        if (emailUsedResult < 1) {
-            throw new IllegalStateException("이메일 인증 사용 처리에 실패했습니다.");
-        }
-
-        if (phoneUsedResult < 1) {
-            throw new IllegalStateException("휴대폰 인증 사용 처리에 실패했습니다.");
-        }
+        authCodeRedisService.clearAuth("SIGNUP", "EMAIL", email);
+        authCodeRedisService.clearAuth("SIGNUP", "PHONE", phone);
     }
 }
