@@ -73,7 +73,7 @@ function getLatestConfirmedMessageId(messages) {
 }
 
 function GroupChatBody({ desktop, onRoomOpenChange }) {
-  const { member } = useAuthStore();
+  const { member, accessToken } = useAuthStore();
   const navigate = useNavigate();
   const currentMemberId = useMemo(() => Number(member?.memberId) || null, [member?.memberId]);
   const messageInputRef = useRef(null);
@@ -90,6 +90,12 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   const [mobileRoomOpen, setMobileRoomOpen] = useState(false);
   const [error, setError] = useState("");
   const lastSentReadMessageIdRef = useRef(0);
+
+  useEffect(() => {
+    if (!accessToken || !currentMemberId) {
+      navigate("/auth/login", { replace: true });
+    }
+  }, [accessToken, currentMemberId, navigate]);
 
   const refreshRooms = async () => {
     if (!currentMemberId) {
