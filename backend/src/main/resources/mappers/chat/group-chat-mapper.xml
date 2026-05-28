@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodcast.chat.mapper.GroupChatMapper">
+    <insert id="insertChatRoom" parameterType="com.moodcast.chat.vo.ChatRoomVo" useGeneratedKeys="true" keyProperty="roomId">
+        INSERT INTO chat_room (
+            room_name,
+            room_description,
+            created_by,
+            deleted_yn
+        ) VALUES (
+            #{roomName},
+            #{roomDescription},
+            #{createdBy},
+            COALESCE(#{deletedYn}, 'N')
+        )
+    </insert>
+
+    <insert id="upsertChatRoomMember" parameterType="com.moodcast.chat.vo.ChatRoomMemberVo">
+        INSERT INTO chat_room_member (
+            room_id,
+            member_id,
+            deleted_yn,
+            joined_at,
+            left_at
+        ) VALUES (
+            #{roomId},
+            #{memberId},
+            COALESCE(#{deletedYn}, 'N'),
+            CURRENT_TIMESTAMP,
+            NULL
+        )
+        ON DUPLICATE KEY UPDATE
+            deleted_yn = 'N',
+            joined_at = CURRENT_TIMESTAMP,
+            left_at = NULL
+    </insert>
+
+    <update id="softDeleteChatRoomMember">
+        UPDATE chat_room_member
+        SET deleted_yn = 'Y',
+            left_at = CURRENT_TIMESTAMP
+        WHERE room_id = #{roomId}
+          AND member_id = #{memberId}
+          AND deleted_yn = 'N'
+    </update>
+
+    <update id="softDeleteChatRoomIfEmpty">
+        UPDATE chat_room
+        SET deleted_yn = 'Y'
+        WHERE room_id = #{roomId}
+          AND NOT EXISTS (
+              SELECT 1
+              FROM chat_room_member crm
+              WHERE crm.room_id = #{roomId}
+                AND crm.deleted_yn = 'N'
+          )
+    </update>
+
+    <select id="selectChatRoomById" resultType="com.moodcast.chat.vo.ChatRoomVo">
+        SELECT
+            r.room_id AS roomId,
+            r.room_name AS roomName,
+            r.room_description AS roomDescription,
+            r.created_by AS createdBy,
+            DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
+            r.deleted_yn AS deletedYn,
+            COALESCE(mc.member_count, 0) AS memberCount,
+            latest.last_message AS lastMessage,
+            latest.last_message_at AS lastMessageAt
+        FROM chat_room r
+        LEFT JOIN (
+            SELECT
+                room_id,
+                COUNT(*) AS member_count
+            FROM chat_room_member
+            WHERE deleted_yn = 'N'
+            GROUP BY room_id
+        ) mc ON mc.room_id = r.room_id
+        LEFT JOIN (
+            SELECT
+                room_id,
+                DATE_FORMAT(MAX(created_at), '%Y-%m-%dT%H:%i:%s') AS last_message_at,
+                SUBSTRING_INDEX(
+                    GROUP_CONCAT(content ORDER BY created_at DESC, message_id DESC SEPARATOR '|||'),
+                    '|||',
+                    1
+                ) AS last_message
+            FROM chat_message
+            WHERE deleted_yn = 'N'
+            GROUP BY room_id
+        ) latest ON latest.room_id = r.room_id
+        WHERE r.room_id = #{roomId}
+          AND r.deleted_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="selectChatRoomsByMemberId" resultType="com.moodcast.chat.vo.ChatRoomVo">
+        SELECT
+            r.room_id AS roomId,
+            r.room_name AS roomName,
+            r.room_description AS roomDescription,
+            r.created_by AS createdBy,
+            DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
+            r.deleted_yn AS deletedYn,
+            COALESCE(mc.member_count, 0) AS memberCount,
+            latest.last_message AS lastMessage,
+            latest.last_message_at AS lastMessageAt
+        FROM chat_room r
+        JOIN chat_room_member rm
+          ON rm.room_id = r.room_id
+         AND rm.member_id = #{memberId}
+         AND rm.deleted_yn = 'N'
+        LEFT JOIN (
+            SELECT
+                room_id,
+                COUNT(*) AS member_count
+            FROM chat_room_member
+            WHERE deleted_yn = 'N'
+            GROUP BY room_id
+        ) mc ON mc.room_id = r.room_id
+        LEFT JOIN (
+            SELECT
+                room_id,
+                DATE_FORMAT(MAX(created_at), '%Y-%m-%dT%H:%i:%s') AS last_message_at,
+                SUBSTRING_INDEX(
+                    GROUP_CONCAT(content ORDER BY created_at DESC, message_id DESC SEPARATOR '|||'),
+                    '|||',
+                    1
+                ) AS last_message
+            FROM chat_message
+            WHERE deleted_yn = 'N'
+            GROUP BY room_id
+        ) latest ON latest.room_id = r.room_id
+        WHERE r.deleted_yn = 'N'
+        ORDER BY
+            CASE WHEN latest.last_message_at IS NULL THEN 1 ELSE 0 END,
+            latest.last_message_at DESC,
+            r.room_id DESC
+    </select>
+
+    <select id="selectActiveChatRoomMember" resultType="com.moodcast.chat.vo.ChatRoomMemberVo">
+        SELECT
+            rm.room_member_id AS roomMemberId,
+            rm.room_id AS roomId,
+            rm.member_id AS memberId,
+            COALESCE(m.nickname, m.name) AS memberName,
+            m.profile_image_url AS profileImageUrl,
+            DATE_FORMAT(rm.joined_at, '%Y-%m-%dT%H:%i:%s') AS joinedAt,
+            DATE_FORMAT(rm.left_at, '%Y-%m-%dT%H:%i:%s') AS leftAt,
+            rm.deleted_yn AS deletedYn
+        FROM chat_room_member rm
+        JOIN members m
+          ON m.member_id = rm.member_id
+        WHERE rm.room_id = #{roomId}
+          AND rm.member_id = #{memberId}
+          AND rm.deleted_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="selectChatRoomMembersByRoomId" resultType="com.moodcast.chat.vo.ChatRoomMemberVo">
+        SELECT
+            rm.room_member_id AS roomMemberId,
+            rm.room_id AS roomId,
+            rm.member_id AS memberId,
+            COALESCE(m.nickname, m.name) AS memberName,
+            m.profile_image_url AS profileImageUrl,
+            DATE_FORMAT(rm.joined_at, '%Y-%m-%dT%H:%i:%s') AS joinedAt,
+            DATE_FORMAT(rm.left_at, '%Y-%m-%dT%H:%i:%s') AS leftAt,
+            rm.deleted_yn AS deletedYn
+        FROM chat_room_member rm
+        JOIN members m
+          ON m.member_id = rm.member_id
+        WHERE rm.room_id = #{roomId}
+          AND rm.deleted_yn = 'N'
+        ORDER BY rm.joined_at ASC, rm.room_member_id ASC
+    </select>
+
+    <select id="countActiveChatRoomMembers" resultType="int">
+        SELECT COUNT(*)
+        FROM chat_room_member
+        WHERE room_id = #{roomId}
+          AND deleted_yn = 'N'
+    </select>
+
+    <insert id="insertChatMessage" parameterType="com.moodcast.chat.vo.ChatMessageVo" useGeneratedKeys="true" keyProperty="messageId">
+        INSERT INTO chat_message (
+            room_id,
+            sender_id,
+            content,
+            deleted_yn
+        ) VALUES (
+            #{roomId},
+            #{senderId},
+            #{content},
+            COALESCE(#{deletedYn}, 'N')
+        )
+    </insert>
+
+    <select id="selectChatMessageById" resultType="com.moodcast.chat.vo.ChatMessageVo">
+        SELECT
+            cm.message_id AS messageId,
+            cm.room_id AS roomId,
+            cm.sender_id AS senderId,
+            COALESCE(m.nickname, m.name) AS senderName,
+            m.profile_image_url AS profileImageUrl,
+            cm.content AS content,
+            DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
+            cm.deleted_yn AS deletedYn
+        FROM chat_message cm
+        JOIN members m
+          ON m.member_id = cm.sender_id
+        WHERE cm.message_id = #{messageId}
+          AND cm.deleted_yn = 'N'
+        LIMIT 1
+    </select>
+
+    <select id="selectChatMessagesByRoomId" resultType="com.moodcast.chat.vo.ChatMessageVo">
+        SELECT
+            cm.message_id AS messageId,
+            cm.room_id AS roomId,
+            cm.sender_id AS senderId,
+            COALESCE(m.nickname, m.name) AS senderName,
+            m.profile_image_url AS profileImageUrl,
+            cm.content AS content,
+            DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
+            cm.deleted_yn AS deletedYn
+        FROM chat_message cm
+        JOIN members m
+          ON m.member_id = cm.sender_id
+        WHERE cm.room_id = #{roomId}
+          AND cm.deleted_yn = 'N'
+        ORDER BY cm.created_at ASC, cm.message_id ASC
+    </select>
+</mapper>

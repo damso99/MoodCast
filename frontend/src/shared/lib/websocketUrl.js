@@ -10,3 +10,4 @@ export function buildWebSocketUrl(path) {
 }
 
 export const websocketBaseUrl = buildWebSocketUrl('/ws-chat');
+export const groupChatWebsocketBaseUrl = buildWebSocketUrl('/ws-stomp');

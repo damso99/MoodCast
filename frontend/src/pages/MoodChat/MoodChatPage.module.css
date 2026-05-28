@@ -13,6 +13,15 @@
   min-height: 0;
 }
 
+.chatCanvas {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
 .mobileListView {
   display: flex;
   flex-direction: column;
@@ -112,6 +121,12 @@
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+}
+
+.threadTypeLabel {
+  color: #7c4dff;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .threadPreview {
@@ -566,6 +581,240 @@
   padding: 8px 2px;
 }
 
+.createRoomButton {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7f6adf, #58b9ff);
+  color: #fff;
+  box-shadow: 0 18px 36px rgba(124, 77, 255, 0.3);
+  cursor: pointer;
+}
+
+:global(.moodchat-modalBackdrop),
+:global(.moodchat-groupOverlay) {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+:global(.moodchat-modal),
+:global(.moodchat-groupSheet) {
+  width: min(92vw, 560px);
+  max-height: min(86vh, 860px);
+  overflow: hidden;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.18);
+}
+
+:global(.moodchat-modal) {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+:global(.moodchat-modalHeader) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+:global(.moodchat-modalHeader) strong {
+  display: block;
+  color: #111827;
+  font-size: 1.02rem;
+}
+
+:global(.moodchat-modalHeader) p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-size: 0.92rem;
+}
+
+:global(.moodchat-iconButton) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(17, 24, 39, 0.06);
+  color: #51607a;
+  cursor: pointer;
+}
+
+:global(.moodchat-modalSummary) {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(243, 247, 255, 0.92);
+  color: #51607a;
+}
+
+:global(.moodchat-modalSummary) strong {
+  color: #7c4dff;
+}
+
+:global(.moodchat-searchField) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+:global(.moodchat-searchField) input {
+  width: 100%;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: #111827;
+}
+
+:global(.moodchat-searchField) input:focus {
+  outline: 0;
+}
+
+:global(.moodchat-memberList) {
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+:global(.moodchat-memberItem) {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid rgba(229, 231, 235, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  text-align: left;
+  cursor: pointer;
+}
+
+:global(.moodchat-memberItem.is-selected) {
+  border-color: rgba(124, 77, 255, 0.26);
+  background: rgba(124, 77, 255, 0.08);
+}
+
+:global(.moodchat-memberAvatar) {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+:global(.moodchat-memberMeta) {
+  min-width: 0;
+}
+
+:global(.moodchat-memberMeta) strong {
+  display: block;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global(.moodchat-memberMeta) span {
+  display: block;
+  margin-top: 4px;
+  color: #98a2b3;
+  font-size: 0.82rem;
+}
+
+:global(.moodchat-checkbox) {
+  min-width: 42px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.06);
+  color: #51607a;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+:global(.moodchat-modalActions) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+:global(.moodchat-secondaryButton),
+:global(.moodchat-primaryButton) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+:global(.moodchat-secondaryButton) {
+  background: rgba(17, 24, 39, 0.06);
+  color: #51607a;
+}
+
+:global(.moodchat-primaryButton) {
+  background: linear-gradient(135deg, #7f6adf, #58b9ff);
+  color: #fff;
+  box-shadow: 0 14px 28px rgba(124, 77, 255, 0.18);
+}
+
+:global(.moodchat-primaryButton):disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+:global(.moodchat-groupOverlay) {
+  z-index: 1290;
+}
+
+:global(.moodchat-groupSheet) {
+  width: min(96vw, 920px);
+  max-height: min(92vh, 920px);
+  display: flex;
+  flex-direction: column;
+}
+
+:global(.moodchat-overlayStatus) {
+  margin: 0;
+  padding: 10px 14px 16px;
+  color: #51607a;
+  font-size: 0.92rem;
+  background: rgba(255, 255, 255, 0.95);
+}
+
 @media (max-width: 1023px) {
   .mobileChat {
     height: 100%;
@@ -653,5 +902,26 @@
   .inputShell {
     min-height: 46px;
     padding-left: 14px;
+  }
+
+  .createRoomButton {
+    right: 18px;
+    bottom: 18px;
+  }
+
+  :global(.moodchat-modal),
+  :global(.moodchat-groupSheet) {
+    width: 100%;
+    max-height: 88vh;
+    border-radius: 24px;
+  }
+
+  :global(.moodchat-modalActions) {
+    justify-content: stretch;
+  }
+
+  :global(.moodchat-secondaryButton),
+  :global(.moodchat-primaryButton) {
+    flex: 1 1 0;
   }
 }
