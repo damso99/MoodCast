@@ -11,6 +11,7 @@ import { pageTitles } from "./adminComponentsJs/common/adminConfig";
 import { useAuthStore } from "../../stores/useAuthStore";
 
 const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
+const SUPER_ADMIN_ROLE = "SUPER_ADMIN";
 
 /* ==========================================================================
  * 관리자 페이지 라우팅 파일
@@ -43,12 +44,30 @@ export function AdminRoutes() {
     return <Navigate to="/app/feed" replace />;
   }
 
+  /*
+   * 슈퍼 관리자 전용 라우트 보호 컴포넌트입니다.
+   * --------------------------------------------------------------------------
+   * 초보자 설명:
+   * - 사용자 관리 화면의 버튼에서 한 번 막더라도, 사용자가 주소창에
+   *   /admin/users/new를 직접 입력할 수 있습니다.
+   * - 그래서 라우트 단계에서도 member.role을 다시 확인합니다.
+   * - SUPER_ADMIN이 아니면 관리자 대시보드로 돌려보내 관리자 권한 관리 페이지가
+   *   화면에 렌더링되지 않게 합니다.
+   */
+  const superAdminOnly = (pageElement) => {
+    if (memberRole !== SUPER_ADMIN_ROLE) {
+      return <Navigate to="/admin/dashboard" replace />;
+    }
+
+    return pageElement;
+  };
+
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/dashboard" element={<AdminDashboardPage />} />
       <Route path="/users" element={<UserManagementPage />} />
-      <Route path="/users/new" element={<AdminCreatePage />} />
+      <Route path="/users/new" element={superAdminOnly(<AdminCreatePage />)} />
       <Route path="/content" element={<ContentManagementPage />} />
       <Route path="/notices" element={<NoticeManagementPage />} />
       <Route path="/reports" element={<ReportManagementPage />} />

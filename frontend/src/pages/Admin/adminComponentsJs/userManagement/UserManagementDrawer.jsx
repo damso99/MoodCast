@@ -42,7 +42,9 @@ export function UserManagementDrawer({
   const [actionMessage, setActionMessage] = useState("");
   const { accessToken } = useAuthStore();
 
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const BACKSERVER = (
+    import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
+  ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하고, 끝의 /는 제거합니다.
 
   useEffect(() => {
     setMemberDetail(null);

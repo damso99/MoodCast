@@ -40,7 +40,9 @@ export function AdminCreatePage() {
   const [selectedRole, setSelectedRole] = useState("NORMAL_ADMIN"); // 선택한 관리자 등급입니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 JWT 토큰입니다.
 
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const BACKSERVER = (
+    import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
+  ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하고, 끝의 /는 제거합니다.
 
   const roleDescription =
     selectedRole === "USER"
@@ -115,7 +117,14 @@ export function AdminCreatePage() {
         setMembers(nextMembers);
       })
       .catch((error) => {
-        console.log(error);
+        console.error("[ADMIN_ROLE_SEARCH_ERROR]", {
+          endpoint: `${BACKSERVER}/admin/api/members/admin-promotion/search`,
+          searchType,
+          keywordLength: trimmedKeyword.length,
+          status: error.response?.status,
+          response: error.response?.data,
+          message: error.message,
+        });
         setMembers([]);
         setSearchError("회원 검색 중 문제가 발생했습니다.");
       })

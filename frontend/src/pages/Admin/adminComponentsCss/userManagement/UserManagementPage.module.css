@@ -47,12 +47,15 @@
   align-items: center;
   justify-content: center;
   padding: 0 16px;
+  border: 0;
   border-radius: 12px;
   color: #fff;
   font-size: 0.88rem;
   font-weight: 900;
+  font-family: inherit;
   text-decoration: none;
   white-space: nowrap;
+  cursor: pointer;
   background: #7c4dff;
   box-shadow: 0 14px 28px rgba(124, 77, 255, 0.24);
   transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
@@ -105,6 +108,227 @@
   font-size: 0.88rem;
 }
 
+.summaryNotice {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: #8a5a00;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.45;
+  background: rgba(255, 247, 205, 0.9);
+}
+
+.ratioContent {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 16px;
+}
+
+.ratioChart {
+  position: relative;
+  flex: 0 0 auto;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(102, 112, 133, 0.08);
+}
+
+.ratioChart::after {
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  background: #fff;
+  content: "";
+}
+
+.ratioChartCenter {
+  position: absolute;
+  inset: 24px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  border-radius: 50%;
+  text-align: center;
+}
+
+.ratioChartCenter span {
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.ratioChartCenter strong {
+  color: #111827;
+  font-size: 1.12rem;
+  font-weight: 950;
+}
+
+.ratioLegend {
+  display: grid;
+  flex: 1;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ratioLegend li {
+  display: grid;
+  grid-template-columns: auto minmax(70px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #475467;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.ratioLegend strong {
+  color: #111827;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.ratioDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.memberInfoList {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.memberInfoItem {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(102, 112, 133, 0.1);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.78);
+}
+
+.memberInfoItem span {
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.memberInfoItem strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 0.92rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memberInfoItem small {
+  overflow: hidden;
+  color: #667085;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionLogList {
+  display: grid;
+  gap: 10px;
+}
+
+.actionLogItem {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(102, 112, 133, 0.1);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.actionLogBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  border-radius: 999px;
+  color: #633df2;
+  font-size: 0.76rem;
+  font-weight: 950;
+  background: rgba(124, 77, 255, 0.1);
+}
+
+.actionLogBody {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.actionLogBody strong {
+  overflow: hidden;
+  color: #111827;
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionLogBody p {
+  margin: 0;
+  overflow: hidden;
+  color: #475467;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actionLogBody small {
+  overflow: hidden;
+  color: #667085;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logModalLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.logModalDim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.45);
+  cursor: pointer;
+}
+
+.logModalPanel {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(124, 77, 255, 0.12);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
+}
+
 .panel {
   min-width: 0;
   padding: 18px;
@@ -127,6 +351,28 @@
   color: #111827;
   font-size: 1rem;
   font-weight: 900;
+}
+
+.secondaryActionButton {
+  min-height: 34px;
+  border: 1px solid rgba(124, 77, 255, 0.16);
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #633df2;
+  font-size: 0.8rem;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.08);
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.secondaryActionButton:hover {
+  background: rgba(124, 77, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.secondaryActionButton:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .userCell {

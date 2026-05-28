@@ -45,6 +45,28 @@
     </resultMap>
 
     <!--
+      콘텐츠 관리 게시글 목록 조회 결과를 AdminContentPost VO에 연결합니다.
+
+      초보자 설명:
+      - post_tbl의 게시글 정보와 members의 작성자 정보를 함께 보여줘야 하므로
+        아래 select에서 join한 결과를 이 resultMap으로 묶습니다.
+    -->
+    <resultMap id="adminContentPostMap" type="com.moodcast.admin.vo.AdminContentPost">
+        <id property="postId" column="post_id"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="visibility" column="visibility"/>
+        <result property="deletedYn" column="deleted_yn"/>
+        <result property="emotionId" column="emotion_id"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="memberId" column="member_id"/>
+        <result property="authorName" column="author_name"/>
+        <result property="authorNickname" column="author_nickname"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="hashtagCount" column="hashtag_count"/>
+    </resultMap>
+
+    <!--
       관리자 개인 정보 조회 결과를 AdminProfile VO에 연결합니다.
     -->
     <resultMap id="adminProfileMap" type="com.moodcast.admin.vo.AdminProfile">
@@ -78,6 +100,40 @@
         <result property="suspendedUntil" column="suspended_until"/>
         <result property="suspensionCount" column="suspension_count"/>
         <result property="warningCount" column="warning_count"/>
+    </resultMap>
+
+    <resultMap id="adminRecentMemberMap" type="com.moodcast.admin.vo.AdminRecentMember">
+        <id property="memberId" column="member_id"/>
+        <result property="name" column="name"/>
+        <result property="nickname" column="nickname"/>
+        <result property="email" column="email"/>
+        <result property="status" column="status"/>
+        <result property="role" column="role"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="actionType" column="action_type"/>
+        <result property="actionDetail" column="action_detail"/>
+    </resultMap>
+
+    <resultMap id="adminActionLogViewMap" type="com.moodcast.admin.vo.AdminActionLogView">
+        <id property="logId" column="log_id"/>
+        <result property="adminId" column="admin_id"/>
+        <result property="adminName" column="admin_name"/>
+        <result property="adminNickname" column="admin_nickname"/>
+        <result property="actionType" column="action_type"/>
+        <result property="targetType" column="target_type"/>
+        <result property="targetId" column="target_id"/>
+        <result property="targetName" column="target_name"/>
+        <result property="targetNickname" column="target_nickname"/>
+        <result property="targetEmail" column="target_email"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="actionDetail" column="action_detail"/>
+    </resultMap>
+
+    <resultMap id="adminUserManagementSummaryMap" type="com.moodcast.admin.vo.AdminUserManagementSummary">
+        <result property="totalMemberCount" column="total_member_count"/>
+        <result property="normalMemberCount" column="normal_member_count"/>
+        <result property="adminMemberCount" column="admin_member_count"/>
+        <result property="suspendedMemberCount" column="suspended_member_count"/>
     </resultMap>
 
     <!--
@@ -114,16 +170,222 @@
             coalesce(suspension_count, 0) as suspension_count,
             coalesce(warning_count, 0) as warning_count,
             0 as report_count,
-            (select count(*)
-             from post_tbl p
-             where p.member_id = members.member_id
-               and p.deleted_yn = 'N') as post_count,
-            (select count(*)
-             from comment_tbl c
-             where c.member_id = members.member_id
-               and c.deleted_yn = 'N') as comment_count
+            0 as post_count,
+            0 as comment_count
         from members
         order by created_at desc
+    </select>
+
+    <!--
+      콘텐츠 관리 게시글 목록 조회입니다.
+
+      조회 기준:
+      - post_tbl의 게시글을 최신순으로 조회합니다.
+      - deleted_yn이 Y인 게시글도 관리자 화면에서는 상태 "삭제"로 보여줘야 하므로 제외하지 않습니다.
+      - 작성자는 members와 join해서 이름/닉네임을 함께 내려줍니다.
+      - 게시글 조회가 안정적으로 동작하도록 필수 테이블인 post_tbl, members만 사용합니다.
+    -->
+    <select id="selectAdminContentPosts" resultMap="adminContentPostMap">
+        select
+            p.post_id,
+            p.title,
+            p.content,
+            p.visibility,
+            p.deleted_yn,
+            p.emotion_id,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as created_at,
+            p.member_id,
+            m.name as author_name,
+            m.nickname as author_nickname,
+            0 as comment_count,
+            0 as hashtag_count
+        from post_tbl p
+        left join members m on m.member_id = p.member_id
+        order by p.created_at desc
+        limit 500
+    </select>
+
+    <select id="selectAdminContentPostById" resultMap="adminContentPostMap">
+        select
+            p.post_id,
+            p.title,
+            p.content,
+            p.visibility,
+            p.deleted_yn,
+            p.emotion_id,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as created_at,
+            p.member_id,
+            m.name as author_name,
+            m.nickname as author_nickname,
+            coalesce((
+                select count(*)
+                from comment_tbl c
+                where c.post_id = p.post_id
+                  and c.deleted_yn = 'N'
+            ), 0) as comment_count,
+            coalesce((
+                select count(*)
+                from post_hashtag ph
+                where ph.post_id = p.post_id
+            ), 0) as hashtag_count
+        from post_tbl p
+        left join members m on m.member_id = p.member_id
+        where p.post_id = #{postId}
+        limit 1
+    </select>
+
+    <!-- 게시글 숨김: 삭제되지 않은 게시글만 PRIVATE 상태로 바꿉니다. -->
+    <update id="hideAdminContentPost">
+        update post_tbl
+        set visibility = 'PRIVATE',
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where post_id = #{postId}
+          and deleted_yn = 'N'
+    </update>
+
+    <!-- 숨김 복구: 삭제되지 않은 게시글만 PUBLIC 상태로 되돌립니다. -->
+    <update id="restoreHiddenAdminContentPost">
+        update post_tbl
+        set visibility = 'PUBLIC',
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where post_id = #{postId}
+          and deleted_yn = 'N'
+    </update>
+
+    <!-- 게시글 삭제: 첫 삭제는 완전 삭제가 아니라 deleted_yn만 Y로 바꿉니다. -->
+    <update id="softDeleteAdminContentPost">
+        update post_tbl
+        set deleted_yn = 'Y',
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where post_id = #{postId}
+          and deleted_yn = 'N'
+    </update>
+
+    <!-- 삭제 게시글 복구: deleted_yn을 N으로 되돌리고 공개 상태를 PUBLIC으로 맞춥니다. -->
+    <update id="restoreDeletedAdminContentPost">
+        update post_tbl
+        set deleted_yn = 'N',
+            visibility = 'PUBLIC',
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where post_id = #{postId}
+          and deleted_yn = 'Y'
+    </update>
+
+    <!-- 완전 삭제 전 연결 데이터 정리: FK 제약을 피하기 위해 자식 데이터를 먼저 삭제합니다. -->
+    <delete id="deleteAdminPostComments">
+        delete from comment_tbl
+        where post_id = #{postId}
+    </delete>
+
+    <delete id="deleteAdminPostLikes">
+        delete from user_post_like
+        where post_id = #{postId}
+    </delete>
+
+    <delete id="deleteAdminPostSaves">
+        delete from saved_post
+        where post_id = #{postId}
+    </delete>
+
+    <delete id="deleteAdminPostHashtags">
+        delete from post_hashtag
+        where post_id = #{postId}
+    </delete>
+
+    <!-- 완전 삭제: 삭제 탭에 들어간 게시글만 실제로 post_tbl에서 제거합니다. -->
+    <delete id="hardDeleteAdminContentPost">
+        delete from post_tbl
+        where post_id = #{postId}
+          and deleted_yn = 'Y'
+    </delete>
+
+    <select id="selectUserManagementSummaryCounts" resultMap="adminUserManagementSummaryMap">
+        select
+            count(*) as total_member_count,
+            coalesce(sum(case when role in ('USER', 'MEMBER') then 1 else 0 end), 0) as normal_member_count,
+            coalesce(sum(case when role in ('ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN') then 1 else 0 end), 0) as admin_member_count,
+            coalesce(sum(case when status = 'SUSPENDED' then 1 else 0 end), 0) as suspended_member_count
+        from members
+    </select>
+
+    <select id="selectLatestJoinedMember" resultMap="adminRecentMemberMap">
+        select
+            member_id,
+            name,
+            nickname,
+            email,
+            status,
+            role,
+            created_at,
+            null as action_type,
+            null as action_detail
+        from members
+        order by created_at desc
+        limit 1
+    </select>
+
+    <select id="selectLatestSanctionedMember" resultMap="adminRecentMemberMap">
+        select
+            coalesce(target.member_id, log.target_id) as member_id,
+            target.name,
+            target.nickname,
+            target.email,
+            target.status,
+            target.role,
+            log.created_at,
+            log.action_type,
+            log.action_detail
+        from admin_action_logs log
+        left join members target on target.member_id = log.target_id
+        where log.target_type = 'USER'
+          and log.action_type = 'SUSPEND'
+        order by log.created_at desc, log.log_id desc
+        limit 1
+    </select>
+
+    <select id="selectRecentAdminActionLogs" resultMap="adminActionLogViewMap">
+        select
+            log.log_id,
+            log.admin_id,
+            admin_member.name as admin_name,
+            admin_member.nickname as admin_nickname,
+            log.action_type,
+            log.target_type,
+            log.target_id,
+            target_member.name as target_name,
+            target_member.nickname as target_nickname,
+            target_member.email as target_email,
+            log.created_at,
+            log.action_detail
+        from admin_action_logs log
+        left join members admin_member on admin_member.member_id = log.admin_id
+        left join members target_member on target_member.member_id = log.target_id
+        where log.target_type = 'USER'
+          and log.action_type in ('UPDATE_ADMIN_ROLE', 'SUSPEND', 'RESTORE')
+        order by log.created_at desc, log.log_id desc
+        limit 10
+    </select>
+
+    <select id="selectAllAdminActionLogs" resultMap="adminActionLogViewMap">
+        select
+            log.log_id,
+            log.admin_id,
+            admin_member.name as admin_name,
+            admin_member.nickname as admin_nickname,
+            log.action_type,
+            log.target_type,
+            log.target_id,
+            target_member.name as target_name,
+            target_member.nickname as target_nickname,
+            target_member.email as target_email,
+            log.created_at,
+            log.action_detail
+        from admin_action_logs log
+        left join members admin_member on admin_member.member_id = log.admin_id
+        left join members target_member on target_member.member_id = log.target_id
+        where log.target_type = 'USER'
+          and log.action_type in ('UPDATE_ADMIN_ROLE', 'SUSPEND', 'RESTORE')
+        order by log.created_at desc, log.log_id desc
     </select>
 
     <!--
@@ -179,14 +441,8 @@
             coalesce(suspension_count, 0) as suspension_count,
             coalesce(warning_count, 0) as warning_count,
             0 as report_count,
-            (select count(*)
-             from post_tbl p
-             where p.member_id = members.member_id
-               and p.deleted_yn = 'N') as post_count,
-            (select count(*)
-             from comment_tbl c
-             where c.member_id = members.member_id
-               and c.deleted_yn = 'N') as comment_count
+            0 as post_count,
+            0 as comment_count
         from members
         where status = 'ACTIVE'
           and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
