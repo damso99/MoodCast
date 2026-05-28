@@ -35,6 +35,25 @@ export function extractImageUrl(html) {
 }
 
 /**
+ * HTML에서 모든 이미지 URL을 추출
+ * @param {string} html - HTML 문자열
+ * @returns {string[]} 이미지 URL 배열
+ */
+export function extractImageUrls(html) {
+  if (!html) return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    return Array.from(doc.querySelectorAll('img'))
+      .map((img) => img.src)
+      .filter(Boolean);
+  } catch (error) {
+    const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
+    return Array.from(matches, (match) => match[1]).filter(Boolean);
+  }
+}
+
+/**
  * 상대 시간 포맷팅 (예: "5분 전", "2시간 전")
  * @param {string|Date} dateString - 날짜 문자열 또는 Date 객체
  * @returns {string} 포맷된 시간 문자열
@@ -71,9 +90,14 @@ export function formatRelativeTime(dateString) {
  * @param {object} item - API에서 받은 게시물 데이터
  * @returns {object} 표준화된 게시물 데이터
  */
+export function resolveProfileImageUrl(item) {
+  return item?.profileImageUrl ?? item?.profile_image_url ?? item?.avatarUrl ?? item?.avatar_url ?? item?.profileImage ?? item?.imageUrl ?? item?.image ?? item?.photoUrl ?? item?.photo ?? item?.pictureUrl ?? item?.picture ?? item?.image_url ?? item?.photo_url ?? null;
+}
+
 export function normalizePostData(item) {
   const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
   const rawContent = item.content ?? item.body ?? item.text ?? '';
+  const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id ?? item.userId ?? item.user_id;
   
   return {
     // 기본 ID 필드
@@ -81,11 +105,11 @@ export function normalizePostData(item) {
     postId: item.postId,
     
     // 작성자 정보
-    memberId: item.memberId ?? item.member_id,
+    memberId,
     author: authorName,
     avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
-    profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
-    profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
+    profileLink: memberId ? `/app/user/${memberId}` : null,
+    profileImageUrl: resolveProfileImageUrl(item),
     
     // 게시물 내용
     title: item.title,
@@ -95,6 +119,11 @@ export function normalizePostData(item) {
     
     // 이미지 정보
     imageSrc: item.imageSrc ?? extractImageUrl(rawContent),
+    imageSrcs: Array.from(new Set([
+      ...(item.imageSrc ? [item.imageSrc] : []),
+      ...(item.imageSrcs ?? []),
+      ...extractImageUrls(rawContent),
+    ])).filter(Boolean),
     imageAlt: item.imageAlt ?? authorName,
     
     // 시간 정보

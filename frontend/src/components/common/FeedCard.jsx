@@ -16,7 +16,6 @@ import MoodBadIcon from '@mui/icons-material/MoodBad';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 import { useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -116,6 +115,18 @@ function extractImageUrl(html) {
   }
 }
 
+function extractImageUrls(html) {
+  if (!html) return [];
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    return Array.from(doc.querySelectorAll('img')).map((img) => img.src).filter(Boolean);
+  } catch (error) {
+    const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
+    return Array.from(matches, (match) => match[1]).filter(Boolean);
+  }
+}
+
 function stripHtml(html) {
   if (!html) return '';
   const text = html.replace(/<img[^>]*>/gi, ' ').replace(/<[^>]+>/g, ' ').trim();
@@ -124,7 +135,7 @@ function stripHtml(html) {
   return textarea.value;
 }
 
-export function FeedCard({ post, compact = false }) {
+export function FeedCard({ post, compact = false, initialCommentOpen = false, onCommentClick }) {
   const navigate = useNavigate();
   const { member, accessToken: storeToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
@@ -144,8 +155,13 @@ export function FeedCard({ post, compact = false }) {
   const [likesCount, setLikesCount] = useState(post.likes ?? 0);
   const [liked, setLiked] = useState(post.likedByMe ?? false);
   const [saved, setSaved] = useState(post.savedByMe ?? false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const carouselRef = useRef(null);
   const moreButtonRef = useRef(null);
   const menuRef = useRef(null);
+  const hasAutoOpenedCommentsRef = useRef(false);
+  const postId = post.id ?? post.postId;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -169,26 +185,74 @@ export function FeedCard({ post, compact = false }) {
   }, [post]);
 
   const rawContent = post.content ?? post.body ?? post.text ?? '';
-  const imageSrc = post.imageSrc ?? post.image ?? post.cover ?? post.thumbnail ?? extractImageUrl(post.content ?? post.body ?? '');
+  const explicitImageSrcs = Array.isArray(post.imageSrcs)
+    ? post.imageSrcs
+    : post.imageSrcs
+      ? [post.imageSrcs]
+      : [];
+  const imageCandidates = [
+    ...explicitImageSrcs,
+    post.imageSrc,
+    post.image,
+    post.cover,
+    post.thumbnail,
+    ...extractImageUrls(rawContent),
+  ].filter(Boolean);
+  const imageSrcs = Array.from(new Set(imageCandidates));
+  const imageSrc = imageSrcs[0] ?? null;
   const cardText = post.text ?? stripHtml(rawContent);
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
-  const profileLink = post.profileLink ?? (post.memberId ? `/app/user/${post.memberId}` : null);
+  const postMemberId = post.memberId ?? post.member_id ?? post.authorId ?? post.author_id ?? post.userId ?? post.user_id;
+  const profileLink = post.profileLink ?? (postMemberId ? `/app/user/${postMemberId}` : null);
   const profileImageUrl = post.profileImageUrl ?? post.profile_image_url ?? post.avatarUrl ?? post.avatar_url ??
     post.profileImage ?? post.imageUrl ?? post.image ?? post.photoUrl ?? post.photo ??
     post.pictureUrl ?? post.picture ?? post.image_url ?? post.photo_url ?? null;
   const profileInitial = post.author ? post.author.charAt(0).toUpperCase() : '?';
 
+  useEffect(() => {
+    if (imageSrcs.length === 0) return;
+    if (!carouselRef.current) return;
+    
+    // 썸네일이 보이도록 스크롤 조정
+    const thumbWidth = 80; // 썸네일 크기 + gap
+    const containerWidth = carouselRef.current.clientWidth;
+    const scrollLeft = Math.max(0, carouselIndex * thumbWidth - containerWidth / 2 + thumbWidth / 2);
+    
+    carouselRef.current.scrollLeft = scrollLeft;
+  }, [carouselIndex, imageSrcs.length]);
+
+  useEffect(() => {
+    if (imageSrcs.length > 0) {
+      setCarouselIndex(0);
+    }
+  }, [imageSrcs.length]);
+
+  const handleCarouselScroll = (event) => {
+    const el = event.currentTarget;
+    if (!el) return;
+    const itemWidth = el.clientWidth;
+    if (!itemWidth) return;
+    const nextIndex = Math.round(el.scrollLeft / itemWidth);
+    if (nextIndex !== carouselIndex && nextIndex < imageSrcs.length) {
+      setCarouselIndex(nextIndex);
+    }
+  };
+
   const fetchComments = async (postId) => {
     try {
       const response = await axios.get(`${BACKSERVER}/posts/${postId}/comments`);
       const items = response.data?.results || [];
-      setComments(items.map((item) => ({
-        ...item,
-        memberId: item.memberId,
-        profileLink: item.memberId ? `/app/user/${item.memberId}` : null,
-        profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
-        author: item.author || item.nickname || '익명',
-      })));
+      
+      const normalizeComment = (comment) => ({
+        ...comment,
+        memberId: comment.memberId,
+        profileLink: comment.memberId ? `/app/user/${comment.memberId}` : null,
+        profileImageUrl: comment.profileImageUrl ?? comment.profile_image_url ?? null,
+        author: comment.author || comment.nickname || '익명',
+        replies: (comment.replies ?? []).map(reply => normalizeComment(reply)),
+      });
+      
+      setComments(items.map(item => normalizeComment(item)));
     } catch (error) {
       console.error('댓글을 불러오는 중 오류가 발생했습니다.', error);
     }
@@ -196,14 +260,33 @@ export function FeedCard({ post, compact = false }) {
 
   const openCommentModal = async (event) => {
     event?.stopPropagation();
+    if (onCommentClick) {
+      onCommentClick();
+      return;
+    }
     setSelectedPost({
       ...post,
       imageSrc: imageSrc,
       text: cardText,
     });
-    await fetchComments(postId);
     setIsCommentModalOpen(true);
+    await fetchComments(postId);
   };
+
+  useEffect(() => {
+    if (!initialCommentOpen || hasAutoOpenedCommentsRef.current || !postId) {
+      return;
+    }
+
+    hasAutoOpenedCommentsRef.current = true;
+    const timerId = window.setTimeout(() => {
+      openCommentModal();
+    }, 120);
+
+    return () => {
+      window.clearTimeout(timerId);
+    };
+  }, [initialCommentOpen, postId]);
 
   const closeCommentModal = () => {
     setSelectedPost(null);
@@ -214,8 +297,6 @@ export function FeedCard({ post, compact = false }) {
     event?.stopPropagation();
     setMenuOpen(!menuOpen);
   };
-
-  const postId = post.id ?? post.postId;
 
   const handleCardClick = () => {
     const postId = post.id ?? post.postId;
@@ -241,14 +322,25 @@ export function FeedCard({ post, compact = false }) {
     setDeleteModalOpen(true);
   };
 
-  const handleShare = (event) => {
+  const handleShare = async (event) => {
     event?.stopPropagation();
     setMenuOpen(false);
-    if (navigator.share) {
-      navigator.share({
-        title: post.title || '게시물',
-        text: post.text,
+    const shareUrl = `${window.location.origin}/app/post/${postId}`;
+
+    if (!navigator.share) {
+      return;
+    }
+
+    try {
+      await navigator.share({
+        title: post.title || 'MoodCast 게시물',
+        text: post.text || 'MoodCast에서 공유된 게시물입니다.',
+        url: shareUrl,
       });
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error('공유 실패:', error);
+      }
     }
   };
 
@@ -374,7 +466,14 @@ export function FeedCard({ post, compact = false }) {
       <article className={`${styles.card} ${compact ? styles.compact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
         <div className={styles.head} onClick={(e) => e.stopPropagation()}>
           <div className={styles.avatar} onClick={handleAuthorClick} style={profileLink ? { cursor: 'pointer' } : {}}>
-            <img src={profileImageUrl || defaultAvatarSrc} alt={post.author || '프로필'} />
+            <img
+              src={profileImageUrl || defaultAvatarSrc}
+              alt={post.author || '프로필'}
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = defaultAvatarSrc;
+              }}
+            />
           </div>
           <div className={styles.meta}>
             <strong onClick={handleAuthorClick} style={profileLink ? { cursor: 'pointer' } : {}}>
@@ -448,12 +547,146 @@ export function FeedCard({ post, compact = false }) {
 
         {post.title && <p className={styles.title}>{post.title}</p>}
         <p className={styles.text}>{cardText}</p>
-        {imageSrc && (
-          <div className={styles.postImageWrap} onClick={(e) => { e.stopPropagation(); handleCardClick(); }} style={{ cursor: 'pointer' }}>
-            <img className={styles.postImage} src={imageSrc} alt={post.imageAlt ?? post.author} />
+        {imageSrcs.length > 0 && (
+          <div className={styles.postImageCarousel}>
+            {/* 메인 이미지 */}
+            <div className={styles.mainImageContainer}>
+              <div className={styles.mainImageWrapper}>
+                {imageSrcs.length > 1 && (
+                  <button
+                    className={styles.carouselArrowLeft}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newIdx = Math.max(0, carouselIndex - 1);
+                      setCarouselIndex(newIdx);
+                    }}
+                    aria-label="이전 이미지"
+                  >
+                    ‹
+                  </button>
+                )}
+                
+                <img 
+                  className={styles.mainImage} 
+                  src={imageSrcs[carouselIndex]} 
+                  alt={`이미지 ${carouselIndex + 1}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLightboxIndex(carouselIndex);
+                  }}
+                />
+                
+                {imageSrcs.length > 1 && (
+                  <button
+                    className={styles.carouselArrowRight}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newIdx = Math.min(imageSrcs.length - 1, carouselIndex + 1);
+                      setCarouselIndex(newIdx);
+                    }}
+                    aria-label="다음 이미지"
+                  >
+                    ›
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 썸네일 스트립 */}
+            {imageSrcs.length > 1 && (
+              <div className={styles.thumbnailContainer}>
+                <div 
+                  className={styles.thumbnailTrack}
+                  ref={carouselRef}
+                >
+                  {imageSrcs.map((src, index) => (
+                    <button
+                      key={src + index}
+                      className={`${styles.thumbnail} ${carouselIndex === index ? styles.activeThumbnail : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCarouselIndex(index);
+                      }}
+                      aria-label={`이미지 ${index + 1}`}
+                    >
+                      <img src={src} alt={`썸네일 ${index + 1}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
         <HashtagRow tags={post.tags} variant="feed" />
+
+        {lightboxIndex !== null && (
+          <div className={styles.imageViewerOverlay} onClick={() => setLightboxIndex(null)}>
+            <div className={styles.imageViewerContent} onClick={(e) => e.stopPropagation()}>
+              <button type="button" className={styles.imageViewerClose} onClick={() => setLightboxIndex(null)} aria-label="닫기">
+                ✕
+              </button>
+
+              {/* 메인 이미지 */}
+              <div className={styles.lightboxMainContainer}>
+                {imageSrcs.length > 1 && (
+                  <button
+                    type="button"
+                    className={styles.lightboxArrowLeft}
+                    disabled={lightboxIndex <= 0}
+                    onClick={() => setLightboxIndex((prev) => Math.max(0, prev - 1))}
+                    aria-label="이전 이미지"
+                  >
+                    ‹
+                  </button>
+                )}
+
+                <div className={styles.lightboxMainImage}>
+                  <img
+                    src={imageSrcs[lightboxIndex]}
+                    alt={`${post.imageAlt ?? post.author} ${lightboxIndex + 1}`}
+                  />
+                </div>
+
+                {imageSrcs.length > 1 && (
+                  <button
+                    type="button"
+                    className={styles.lightboxArrowRight}
+                    disabled={lightboxIndex >= imageSrcs.length - 1}
+                    onClick={() => setLightboxIndex((prev) => Math.min(imageSrcs.length - 1, prev + 1))}
+                    aria-label="다음 이미지"
+                  >
+                    ›
+                  </button>
+                )}
+              </div>
+
+              {/* 이미지 카운터 */}
+              {imageSrcs.length > 1 && (
+                <div className={styles.lightboxCounter}>
+                  {lightboxIndex + 1} / {imageSrcs.length}
+                </div>
+              )}
+
+              {/* 썸네일 스트립 */}
+              {imageSrcs.length > 1 && (
+                <div className={styles.lightboxThumbnailContainer}>
+                  <div className={styles.lightboxThumbnailTrack}>
+                    {imageSrcs.map((src, index) => (
+                      <button
+                        key={src + index}
+                        className={`${styles.lightboxThumbnail} ${lightboxIndex === index ? styles.lightboxActiveThumbnail : ''}`}
+                        onClick={() => setLightboxIndex(index)}
+                        aria-label={`이미지 ${index + 1}`}
+                      >
+                        <img src={src} alt={`썸네일 ${index + 1}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {post.attachments?.length ? (
           <div className={styles.attachmentArea}>
@@ -489,10 +722,14 @@ export function FeedCard({ post, compact = false }) {
               <ChatBubbleOutlineIcon className={styles.actionIcon} />
               {commentCount}
             </button>
-            <span className={styles.reaction}>
-              <SparkleIcon className={styles.actionIcon} />
-              {post.vibes}
-            </span>
+            <button
+              type="button"
+              className={styles.reactionButton}
+              onClick={handleShare}
+              aria-label="공유"
+            >
+              <ShareIcon className={styles.actionIcon} />
+            </button>
             <button
               type="button"
               className={`${styles.bookmark} ${saved ? styles.activeBookmark : ''}`}

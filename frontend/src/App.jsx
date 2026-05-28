@@ -12,6 +12,7 @@ import { FollowingPage } from './pages/Follow/FollowingPage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
 import { SearchPage } from './pages/Search/SearchPage';
 import { CreatePostPage } from './pages/CreatePost/CreatePostPage';
+import { PostDetailPage } from './pages/PostDetail/PostDetailPage';
 import { ProfileSetupPage } from './pages/ProfileSetup/ProfileSetupPage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { AdminRoutes } from './pages/Admin/AdminPages';
@@ -79,6 +80,7 @@ function AppRoutes() {
       <Route path="/app/search" element={<SearchPage />} />
       <Route path="/app/write" element={<CreatePostPage />} />
       <Route path="/app/create" element={<CreatePostPage />} />
+      <Route path="/app/post/:postId" element={<PostDetailPage />} />
       <Route path="/app/mood" element={<Navigate to="/app/write" replace />} />
       <Route path="/app/community" element={<Navigate to="/app/feed" replace />} />
       <Route path="/admin/*" element={<AdminRoutes />} />

@@ -2,9 +2,51 @@ import { Client } from '@stomp/stompjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { websocketBaseUrl } from '../shared/lib/websocketUrl';
 
+function getNotificationStorageKey(memberId) {
+  return memberId ? `moodcast-notifications-${memberId}` : null;
+}
+
+function readStoredNotifications(memberId) {
+  if (!memberId || typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getNotificationStorageKey(memberId));
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
 export function useRealtimeNotifications(memberId) {
   const clientRef = useRef(null);
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState(() => readStoredNotifications(memberId));
+
+  useEffect(() => {
+    if (!memberId) {
+      setNotifications([]);
+      return undefined;
+    }
+
+    setNotifications(readStoredNotifications(memberId));
+    return undefined;
+  }, [memberId]);
+
+  useEffect(() => {
+    if (!memberId || typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const storageKey = getNotificationStorageKey(memberId);
+    window.localStorage.setItem(storageKey, JSON.stringify(notifications.slice(0, 5)));
+    return undefined;
+  }, [memberId, notifications]);
 
   useEffect(() => {
     if (!memberId) {
@@ -24,11 +66,13 @@ export function useRealtimeNotifications(memberId) {
       client.subscribe(`/sub/notifications/${memberId}`, (frame) => {
         try {
           const payload = JSON.parse(frame.body);
-          if (payload?.eventType !== 'CHAT_NOTIFICATION') {
+          if (!['CHAT_NOTIFICATION', 'COMMENT_NOTIFICATION'].includes(payload?.eventType)) {
             return;
           }
 
-          const notificationId = `${payload.eventType || 'notification'}-${payload.chatId || Date.now()}`;
+          const notificationId =
+            payload?.notificationId ||
+            `${payload.eventType || 'notification'}-${payload.chatId || payload.commentId || Date.now()}`;
 
           setNotifications((prevNotifications) => {
             const nextNotifications = [
@@ -39,7 +83,7 @@ export function useRealtimeNotifications(memberId) {
               ...prevNotifications.filter((item) => item.id !== notificationId),
             ];
 
-            return nextNotifications.slice(0, 20);
+            return nextNotifications.slice(0, 5);
           });
         } catch (error) {
           console.error('채팅 알림 메시지 수신 실패', error);
@@ -67,11 +111,16 @@ export function useRealtimeNotifications(memberId) {
   const unreadCount = useMemo(() => notifications.length, [notifications]);
 
   const removeNotification = (notificationId) => {
-    setNotifications((prevNotifications) => prevNotifications.filter((item) => item.id !== notificationId));
+    setNotifications((prevNotifications) =>
+      prevNotifications.filter((item) => item.id !== notificationId),
+    );
   };
 
   const clearNotifications = () => {
     setNotifications([]);
+    if (memberId && typeof window !== 'undefined') {
+      window.localStorage.removeItem(getNotificationStorageKey(memberId));
+    }
   };
 
   return {

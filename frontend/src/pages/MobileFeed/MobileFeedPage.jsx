@@ -72,28 +72,31 @@ export function MobileFeedPage() {
     })
       .then((response) => {
         const items = response.data?.results || [];
-        setPosts(items.map((item) => ({
-          id: item.postId,
-          postId: item.postId,
-          memberId: item.memberId ?? item.member_id,
-          profileLink: (item.memberId ?? item.member_id) ? `/app/user/${item.memberId ?? item.member_id}` : null,
-          title: item.title,
-          author: item.author,
-          profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
-          avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',
-          time: formatTime(item.createdAt),
-          text: normalizeContent(item.content),
-          content: item.content,
-          emotionId: item.emotionId,
-          comments: item.comments ?? item.commentsCount ?? 0,
-          commentsList: item.commentsList ?? [],
-          likes: item.likes ?? 0,
-          vibes: item.vibes ?? 0,
-          likedByMe: item.likedByMe,
-          savedByMe: item.savedByMe,
-          tags: item.tags ?? '',
-          previewComment: null,
-        })));
+        setPosts(items.map((item) => {
+          const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id;
+          return {
+            id: item.postId,
+            postId: item.postId,
+            memberId,
+            profileLink: memberId ? `/app/user/${memberId}` : null,
+            title: item.title,
+            author: item.author,
+            profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? item.avatarUrl ?? item.avatar_url ?? item.profileImage ?? item.imageUrl ?? item.image ?? item.photoUrl ?? item.photo ?? item.pictureUrl ?? item.picture ?? item.image_url ?? item.photo_url ?? null,
+            avatar: item.author ? item.author.charAt(0).toUpperCase() : '?',
+            time: formatTime(item.createdAt),
+            text: normalizeContent(item.content),
+            content: item.content,
+            emotionId: item.emotionId,
+            comments: item.comments ?? item.commentsCount ?? 0,
+            commentsList: item.commentsList ?? [],
+            likes: item.likes ?? 0,
+            vibes: item.vibes ?? 0,
+            likedByMe: item.likedByMe,
+            savedByMe: item.savedByMe,
+            tags: item.tags ?? '',
+            previewComment: null,
+          };
+        }));
       })
       .catch((err) => {
         console.error('게시물 조회 실패', err);
