@@ -34,6 +34,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   const [expandedReplies, setExpandedReplies] = useState({});  // 답글 펼침 여부
   const menuRef = useRef(null);
   const submittingRef = useRef(false);
+  const ignoreOverlayClickRef = useRef(false);
 
   useEffect(() => {
     if (open && post) {
@@ -43,10 +44,20 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   }, [open, post]);
 
   useEffect(() => {
-    setLocalComments((comments ?? []).map((item) => ({
+    const normalizeComment = (item) => ({
       ...item,
-      profileImageUrl: item.profileImageUrl ?? item.profile_image_url ?? null,
-    })));
+      profileImageUrl: item.profileImageUrl ?? 
+                       item.profile_image_url ?? 
+                       item.avatarUrl ?? 
+                       item.avatar_url ?? 
+                       item.imageUrl ?? 
+                       item.image_url ??
+                       item.photoUrl ??
+                       item.photo ?? null,
+      replies: (item.replies ?? []).map(reply => normalizeComment(reply)),
+    });
+    
+    setLocalComments((comments ?? []).map(item => normalizeComment(item)));
   }, [comments]);
 
   useEffect(() => {
@@ -88,6 +99,20 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
 
   useEffect(() => {
     if (open) setComment('');
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      ignoreOverlayClickRef.current = false;
+      return undefined;
+    }
+
+    ignoreOverlayClickRef.current = true;
+    const timerId = window.setTimeout(() => {
+      ignoreOverlayClickRef.current = false;
+    }, 250);
+
+    return () => window.clearTimeout(timerId);
   }, [open]);
 
   if (!open || !post) return null;
@@ -146,7 +171,14 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const newReply = res.data.comment;
-      newReply.profileImageUrl = newReply.profileImageUrl ?? newReply.profile_image_url ?? null;
+      newReply.profileImageUrl = newReply.profileImageUrl ?? 
+                                 newReply.profile_image_url ?? 
+                                 newReply.avatarUrl ?? 
+                                 newReply.avatar_url ?? 
+                                 newReply.imageUrl ?? 
+                                 newReply.image_url ??
+                                 newReply.photoUrl ??
+                                 newReply.photo ?? null;
       newReply.author = newReply.author ?? member?.nickname;
       setLocalComments((prev) => prev.map((c) =>
         c.commentId === parentCommentId
@@ -205,11 +237,14 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
               onClick={(event) => handleAuthorNavigation(event, commentProfileLink)}
               style={commentProfileLink ? { cursor: 'pointer' } : {}}
             >
-              {item.profileImageUrl ? (
-                <img src={item.profileImageUrl} alt={item.author || '프로필'} />
-              ) : (
-                item.author?.[0] ?? '?'
-              )}
+              <img 
+                src={item.profileImageUrl || defaultAvatarSrc} 
+                alt={item.author || '프로필'}
+                onError={(e) => { 
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = defaultAvatarSrc;
+                }}
+              />
             </div>
             <div>
               <strong
@@ -290,6 +325,13 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
               className={styles.replyInput}
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleReplySubmit(id);
+                }
+              }}
               placeholder={`@${item.author}에게 답글 달기`}
               rows={2}
               autoFocus
@@ -314,7 +356,16 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
   };
 
   return createPortal(
-    <div className={styles.overlay} onClick={onClose} role="presentation">
+    <div
+      className={styles.overlay}
+      onClick={() => {
+        if (ignoreOverlayClickRef.current) {
+          return;
+        }
+        onClose();
+      }}
+      role="presentation"
+    >
       <section className={styles.modal} role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
         <header className={styles.header}>
           <div className={styles.headerMeta}>

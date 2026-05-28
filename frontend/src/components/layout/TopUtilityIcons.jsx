@@ -1,4 +1,4 @@
-import { memo, useState, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
@@ -7,24 +7,26 @@ import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useRealtimeNotifications } from '../../hooks/useRealtimeNotifications';
 import { defaultAvatarSrc } from '../../shared/lib/defaultAvatar';
 import styles from './TopUtilityIcons.module.css';
+
 function TopUtilityIconsBase({ onSearch }) {
   const navigate = useNavigate();
   const { isLoggedIn, member, clearAuthData } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
-  
-  // 메뉴의 영역을 가리키는 참조(Ref) 생성함
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const menuRef = useRef(null);
-  
-  // 버튼 자체를 클릭했을 때 닫히는 현상을 방지하기 위한 버튼 참조임
+  const notificationRef = useRef(null);
   const profileBtnRef = useRef(null);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
-  // 화면의 다른 곳을 눌렀을 때 메뉴를 닫아주는 기능임
+  const { notifications, unreadCount, removeNotification, clearNotifications } = useRealtimeNotifications(
+    isLoggedIn ? member?.memberId : null,
+  );
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // 프로필 메뉴가 열려있고, 클릭한 곳이 메뉴 밖이며, 프로필 버튼도 아닐 때 닫음
       if (
         menuOpen &&
         menuRef.current &&
@@ -33,16 +35,21 @@ function TopUtilityIconsBase({ onSearch }) {
       ) {
         setMenuOpen(false);
       }
+
+      if (
+        notificationsOpen &&
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setNotificationsOpen(false);
+      }
     };
 
-    // 마우스 누름 이벤트를 감시하기 시작함
     document.addEventListener('mousedown', handleClickOutside);
-    
-    // 컴포넌트가 사라질 때 감시를 종료함 (메모리 관리임)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [menuOpen]);
+  }, [menuOpen, notificationsOpen]);
 
   const logout = () => {
     axios
@@ -53,13 +60,65 @@ function TopUtilityIconsBase({ onSearch }) {
       .finally(() => {
         clearAuthData();
         setMenuOpen(false);
+        setNotificationsOpen(false);
         navigate('/auth/login');
       });
   };
 
   const goLogin = () => {
     setMenuOpen(false);
+    setNotificationsOpen(false);
     navigate('/auth/login');
+  };
+
+  const getNotificationTitle = (item) => {
+    if (item?.eventType === 'COMMENT_NOTIFICATION') {
+      return '새 댓글 알림';
+    }
+
+    if (item?.eventType === 'CHAT_NOTIFICATION') {
+      return '새 채팅 알림';
+    }
+
+    return '새 알림';
+  };
+
+  const getNotificationPreview = (item) => {
+    if (item?.eventType === 'COMMENT_NOTIFICATION') {
+      const authorName = item?.commenterName || '누군가';
+      const postTitle = item?.postTitle ? `내 게시물 "${item.postTitle}"` : '내 게시물';
+      const preview = item?.preview ? `: ${item.preview}` : '';
+      return `${authorName}님이 ${postTitle}에 댓글을 남겼습니다${preview}`;
+    }
+
+    if (item?.eventType === 'CHAT_NOTIFICATION') {
+      const authorName = item?.senderNickname || '누군가';
+      const preview = item?.content ? `: ${item.content}` : '';
+      return `${authorName}님이 보낸 새 메시지${preview}`;
+    }
+
+    return item?.content || '';
+  };
+
+  const handleNotificationClick = (item) => {
+    if (!item) {
+      return;
+    }
+
+    removeNotification(item.id);
+
+    if (item.postId) {
+      const commentQuery = item.commentId ? `&commentId=${item.commentId}` : '';
+      navigate(`/app/post/${item.postId}?comments=1${commentQuery}`, {
+        state: {
+          openComments: true,
+          notificationId: item.id,
+          notificationCommentId: item.commentId ?? null,
+        },
+      });
+    } else if (item.eventType === 'CHAT_NOTIFICATION' && item.senderId) {
+      navigate(`/app/chat?partnerId=${item.senderId}`);
+    }
   };
 
   return (
@@ -67,40 +126,76 @@ function TopUtilityIconsBase({ onSearch }) {
       <button type="button" className={styles.search} onClick={onSearch} aria-label="검색">
         <SearchOutlinedIcon />
       </button>
+
       <button
         type="button"
         className={styles.bell}
         aria-label="알림"
         onClick={() => {
           setMenuOpen(false);
+          setNotificationsOpen((value) => !value);
         }}
       >
         <NotificationsNoneOutlinedIcon />
+        {unreadCount > 0 ? <span aria-hidden="true" /> : null}
       </button>
 
       {isLoggedIn ? (
         <>
+          {notificationsOpen ? (
+            <div className={styles.notificationCard} ref={notificationRef}>
+              <strong>알림</strong>
+              {notifications.length > 0 ? (
+                <>
+                  <div className={styles.notificationList}>
+                    {notifications.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={styles.notificationItem}
+                        onClick={() => handleNotificationClick(item)}
+                      >
+                        <span className={styles.notificationTitle}>{getNotificationTitle(item)}</span>
+                        <span className={styles.notificationPreview}>{getNotificationPreview(item)}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.notificationClear} onClick={clearNotifications}>
+                    모두 지우기
+                  </button>
+                </>
+              ) : (
+                <p>새로운 알림이 없습니다.</p>
+              )}
+            </div>
+          ) : null}
+
           <button
             type="button"
             ref={profileBtnRef}
             className={styles.profile}
             aria-label="회원 메뉴"
             onClick={() => {
+              setNotificationsOpen(false);
               setMenuOpen((value) => !value);
             }}
           >
             <img src={member?.profileImageUrl || defaultAvatarSrc} alt="" />
           </button>
+
           {menuOpen ? (
             <div className={styles.menu} ref={menuRef}>
-              <button type="button" onClick={() => {
-                setMenuOpen(false);
-                if (member?.memberId) {
-                  navigate(`/app/user/${member.memberId}`);
-                } else {
-                  navigate('/app/profile');
-                }
-              }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (member?.memberId) {
+                    navigate(`/app/user/${member.memberId}`);
+                  } else {
+                    navigate('/app/profile');
+                  }
+                }}
+              >
                 <AccountCircleOutlinedIcon />
                 프로필 보기
               </button>

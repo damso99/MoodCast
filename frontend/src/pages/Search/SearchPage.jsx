@@ -168,11 +168,14 @@ export function SearchPage() {
 
   const transformPostData = (item) => {
     const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
+    const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id ?? item.userId ?? item.user_id;
     return {
       id: item.postId,
       title: item.title,
       author: authorName,
       avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+      memberId,
+      profileLink: memberId ? `/app/user/${memberId}` : null,
       profileImageUrl: resolveAvatarUrl(item),
       time: formatTime(item.createdAt),
       text: normalizeContent(item.content),

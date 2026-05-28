@@ -14,7 +14,8 @@ export function BottomNav() {
   const items = [
     { label: '홈', to: '/app/feed', icon: HomeOutlinedIcon },
     { label: '저장', to: '/app/saved', icon: BookmarkBorderOutlinedIcon },
-    { label: '작성', to: '/app/write', icon: AddCircleOutlineOutlinedIcon, centerAction: true },
+    { label: '새글작성', to: '/app/write', icon: AddCircleOutlineOutlinedIcon, centerAction: true },
+    { label: '채팅', to: '/app/mood-chat', icon: ChatBubbleOutlineOutlinedIcon },
     isLoggedIn
       ? { label: '프로필', to: `/app/user/${member?.memberId}`, icon: PersonOutlineOutlinedIcon }
       : { label: '로그인', to: '/auth/login', icon: LoginOutlinedIcon },

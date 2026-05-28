@@ -44,7 +44,16 @@ export function SavedPage() {
     })
       .then((response) => {
         const items = response.data?.results || [];
-        setPosts(normalizePostDataArray(items));
+        const normalized = normalizePostDataArray(items).map((post) => {
+          const memberId = post.memberId ?? post.member_id ?? post.authorId ?? post.author_id ?? post.userId ?? post.user_id;
+          return {
+            ...post,
+            memberId,
+            profileLink: post.profileLink ?? (memberId ? `/app/user/${memberId}` : null),
+            profileImageUrl: post.profileImageUrl ?? post.profile_image_url ?? post.avatarUrl ?? post.avatar_url ?? post.profileImage ?? post.imageUrl ?? post.image ?? post.photoUrl ?? post.photo ?? post.pictureUrl ?? post.picture ?? post.image_url ?? post.photo_url ?? null,
+          };
+        });
+        setPosts(normalized);
       })
       .catch((error) => {
         console.error('저장된 게시물 조회 실패', error);
