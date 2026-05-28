@@ -106,10 +106,16 @@ public class GroupChatService {
 
         ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, (long) memberId);
         if (activeMember == null) {
+            System.out.println("[GroupChat][read] active member not found roomId=" + roomId + ", memberId=" + memberId);
             return;
         }
 
-        groupChatMapper.updateLastReadMessageId(roomId, (long) memberId, lastReadMessageId);
+        int updatedRows = groupChatMapper.updateLastReadMessageId(roomId, (long) memberId, lastReadMessageId);
+        System.out.println("[GroupChat][read] roomId=" + roomId
+                + ", memberId=" + memberId
+                + ", lastReadMessageId=" + lastReadMessageId
+                + ", updatedRows=" + updatedRows
+                + ", activeLastReadMessageId=" + activeMember.getLastReadMessageId());
     }
 
     @Transactional

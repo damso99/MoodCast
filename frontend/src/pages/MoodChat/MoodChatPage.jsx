@@ -402,7 +402,13 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         (leftThread, rightThread) => getThreadSortValue(rightThread) - getThreadSortValue(leftThread),
       );
 
-      setThreads(nextThreads);
+      setThreads(
+        nextThreads.map((thread) =>
+          activeGroupRoom?.roomId && Number(activeGroupRoom.roomId) === Number(thread.roomId)
+            ? { ...thread, unreadCount: 0 }
+            : thread,
+        ),
+      );
     } catch (requestError) {
       console.error("채팅 리스트議고쉶 ?ㅽ뙣", requestError);
       setThreads([]);
@@ -570,6 +576,11 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
     setIsThreadMenuOpen(false);
     setActiveGroupRoom(thread);
+    setThreads((previousThreads) =>
+      previousThreads.map((item) =>
+        Number(item.roomId) === Number(thread.roomId) ? { ...item, unreadCount: 0 } : item,
+      ),
+    );
     setIsRoomOpen(false);
     setActiveThread(null);
     setMessages([]);

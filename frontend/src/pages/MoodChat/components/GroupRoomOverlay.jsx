@@ -77,6 +77,11 @@ export function GroupRoomOverlay({
   const [isSending, setIsSending] = useState(false);
   const lastSentReadMessageIdRef = useRef(0);
   const currentMemberId = Number(currentMember?.memberId) || null;
+  const notifyRoomUpdated = () => {
+    window.setTimeout(() => {
+      onRoomUpdated?.();
+    }, 150);
+  };
 
   const syncRoomReadState = async (roomId, lastReadMessageId) => {
     const numericLastReadMessageId = Number(lastReadMessageId);
@@ -100,11 +105,13 @@ export function GroupRoomOverlay({
     };
 
     if (sendReadEvent(roomId, payload)) {
+      notifyRoomUpdated();
       return;
     }
 
     try {
       await updateGroupChatRoomRead(roomId, payload);
+      notifyRoomUpdated();
     } catch (error) {
       console.error("Group read sync failed", error);
     }

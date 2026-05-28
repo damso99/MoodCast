@@ -115,13 +115,27 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     try {
       const response = await fetchGroupChatRooms(currentMemberId);
       const nextRooms = Array.isArray(response.data) ? response.data : [];
-      setRooms(nextRooms.map(normalizeRoom));
+      setRooms(
+        nextRooms.map((room) => {
+          const normalizedRoom = normalizeRoom(room);
+          if (activeRoom?.roomId && Number(activeRoom.roomId) === Number(normalizedRoom.roomId)) {
+            return { ...normalizedRoom, unreadCount: 0 };
+          }
+          return normalizedRoom;
+        }),
+      );
     } catch (requestError) {
       console.error("Group room list load failed", requestError);
       setRooms([]);
     } finally {
       setIsLoadingRooms(false);
     }
+  };
+
+  const refreshRoomsAfterRead = () => {
+    window.setTimeout(() => {
+      refreshRoomsAfterRead();
+    }, 150);
   };
 
   const refreshMessages = async (roomId, shouldMarkRead = true) => {
@@ -259,11 +273,13 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     };
 
     if (sendReadEvent(roomId, payload)) {
+      refreshRooms().catch(() => {});
       return;
     }
 
     try {
       await updateGroupChatRoomRead(roomId, payload);
+      refreshRoomsAfterRead();
     } catch (requestError) {
       console.error("메시지 읽음 처리 실패", requestError);
     }
