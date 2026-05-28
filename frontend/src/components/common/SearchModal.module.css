@@ -19,6 +19,19 @@
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 22px 60px rgba(17, 24, 39, 0.16);
+  position: relative;
+}
+
+.modal::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42px;
+  pointer-events: none;
+  border-radius: 0 0 28px 28px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96));
 }
 
 .header {
@@ -58,6 +71,29 @@
   border-radius: 18px;
   background: #f8f9ff;
   position: relative;
+  border: 1px solid rgba(124, 77, 255, 0.08);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.searchField:focus-within {
+  border-color: rgba(124, 77, 255, 0.28);
+  box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.12);
+  transform: translateY(-1px);
+  animation: focusPulse 0.32s ease-out;
+}
+
+@keyframes focusPulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(124, 77, 255, 0.2);
+  }
+  to {
+    box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.12);
+  }
+}
+
+.searchIcon {
+  color: #475569;
+  flex-shrink: 0;
 }
 
 .searchField input {
@@ -67,10 +103,12 @@
   width: 100%;
   padding-right: 36px;
   color: #111827;
+  font-size: 0.98rem;
+  font-weight: 500;
 }
 
 .searchField input::placeholder {
-  color: #98a2b3;
+  color: #6b7280;
 }
 
 .clearButton {
@@ -127,6 +165,7 @@
   margin-top: 16px;
   overflow-y: auto;
   padding-right: 6px;
+  padding-bottom: 54px;
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
@@ -165,31 +204,35 @@
 
 .followButton,
 .unfollowButton {
-  min-height: 32px;
-  padding: 0 14px;
+  min-height: 34px;
+  padding: 0 13px;
   border-radius: 999px;
-  border: none;
+  border: 1px solid transparent;
   font-size: 0.9rem;
   font-weight: 700;
   cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .followButton {
-  background: #0095f6;
-  color: #fff;
+  background: rgba(59, 130, 246, 0.1);
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.18);
 }
 
 .followButton:hover {
-  background: #1877f2;
+  background: rgba(59, 130, 246, 0.16);
 }
 
 .unfollowButton {
-  background: #ff4d4f;
-  color: #fff;
+  background: transparent;
+  color: #667085;
+  border-color: rgba(148, 163, 184, 0.28);
 }
 
 .unfollowButton:hover {
-  background: #ff7875;
+  background: rgba(148, 163, 184, 0.08);
+  color: #344054;
 }
 
 /* 인기 해시태그 섹션 스타일 */
@@ -198,11 +241,43 @@
   margin-bottom: 20px;
 }
 
+.sectionHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .trendingTitle {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 10px 0 12px;
   color: #4b5563;
+}
+
+.sortChips {
+  display: inline-flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.sortChip {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 999px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sortChipActive {
+  background: rgba(124, 77, 255, 0.12);
+  color: #7c4dff;
+  border-color: rgba(124, 77, 255, 0.24);
 }
 
 .trendingTags {
@@ -212,21 +287,83 @@
 }
 
 .trendingTag {
-  padding: 5px 10px;
-  background-color: #f0f0f0;
-  border: 1px solid #ddd;
-  border-radius: 14px;
+  min-width: 118px;
+  padding: 8px 10px;
+  background: #f8f9ff;
+  border: 1px solid rgba(124, 77, 255, 0.12);
+  border-radius: 16px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 500;
-  color: #333;
+  color: #111827;
   transition: all 0.2s ease;
   font-family: inherit;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 8px;
+  align-items: center;
 }
 
 .trendingTag:hover {
-  background-color: #e0e0e0;
-  border-color: #999;
+  background-color: #f3efff;
+  border-color: rgba(124, 77, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.tagRank {
+  grid-row: span 2;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.12);
+  color: #7c4dff;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.tagLabel {
+  justify-self: start;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.tagMeta {
+  justify-self: start;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.quickTagSection {
+  margin-top: 16px;
+}
+
+.quickTagTitle {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.quickTagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quickTag {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid rgba(124, 77, 255, 0.12);
+  border-radius: 999px;
+  background: #fff;
+  color: #7c4dff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .trendingLoading,
@@ -289,19 +426,34 @@
 }
 
 .selfBadge {
-  min-height: 32px;
-  padding: 0 12px;
+  min-height: 28px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  background: rgba(124, 77, 255, 0.1);
+  background: transparent;
   color: #7c4dff;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
-.searchField:focus-within {
-  box-shadow: 0 0 0 2px rgba(124, 77, 255, 0.08);
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.itemCount {
+  min-width: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.1);
+  color: #7c4dff;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
 }
 
 @media (max-width: 1023px) {

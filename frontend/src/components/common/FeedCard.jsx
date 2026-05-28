@@ -75,6 +75,34 @@ function MoodVisual({ emotionId }) {
   );
 }
 
+function SparkleIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M12 3.5L13.8 9.4L19.5 11.2L13.8 13L12 18.9L10.2 13L4.5 11.2L10.2 9.4L12 3.5Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 4.8L18.7 7.1L21 7.8L18.7 8.5L18 10.8L17.3 8.5L15 7.8L17.3 7.1L18 4.8Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6 13.2L6.7 15.5L9 16.2L6.7 16.9L6 19.2L5.3 16.9L3 16.2L5.3 15.5L6 13.2Z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function extractImageUrl(html) {
   if (!html) return null;
   try {
@@ -112,7 +140,6 @@ export function FeedCard({ post, compact = false }) {
   const [comments, setComments] = useState(post.commentsList ?? []);
   const [commentCount, setCommentCount] = useState(post.comments ?? post.commentsCount ?? post.commentsList?.length ?? 0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes ?? 0);
   const [liked, setLiked] = useState(post.likedByMe ?? false);
@@ -183,13 +210,6 @@ export function FeedCard({ post, compact = false }) {
 
   const toggleMenu = (event) => {
     event?.stopPropagation();
-    if (!menuOpen && moreButtonRef.current) {
-      const rect = moreButtonRef.current.getBoundingClientRect();
-      setMenuPos({
-        top: rect.bottom + 4,
-        right: window.innerWidth - rect.right,
-      });
-    }
     setMenuOpen(!menuOpen);
   };
 
@@ -379,8 +399,7 @@ export function FeedCard({ post, compact = false }) {
             {menuOpen && (
               <div 
                 ref={menuRef}
-                className={styles.moreMenu} 
-                style={{ top: menuPos.top, right: menuPos.right }}
+                className={styles.moreMenu}
               >
                 {/* 작성자만 수정/삭제 가능 */}
                 {isOwner && (
@@ -398,7 +417,7 @@ export function FeedCard({ post, compact = false }) {
                     onClick={(e) => handleSave(e)}
                   >
                     {saved
-                      ? <BookmarkIcon className={styles.menuIcon} style={{ color: '#3b82f6' }} />
+                      ? <BookmarkIcon className={styles.menuIcon} />
                       : <BookmarkBorderIcon className={styles.menuIcon} />
                     }
                     {saved ? '저장됨' : '저장'}
@@ -449,37 +468,39 @@ export function FeedCard({ post, compact = false }) {
         ) : null}
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={`${styles.reaction} ${liked ? styles.activeReaction : ''}`}
-            onClick={handleLike}
-            aria-pressed={liked}
-            aria-label={liked ? '좋아요 취소' : '좋아요'}
-          >
-            {liked ? (
-              <FavoriteIcon style={{ color: '#e74c3c' }} />
-            ) : (
-              <FavoriteBorderIcon style={{ color: '#e74c3c' }} />
-            )}
-            {likesCount}
-          </button>
-          <button type="button" className={styles.reactionButton} onClick={openCommentModal}>
-            <ChatBubbleOutlineIcon />
-            {commentCount}
-          </button>
-          <span className={styles.reaction}>
-            <AutoAwesomeOutlinedIcon />
-            {post.vibes}
-          </span>
-          <button
-            type="button"
-            className={`${styles.bookmark} ${saved ? styles.activeBookmark : ''}`}
-            aria-pressed={saved}
-            aria-label={saved ? '저장 취소' : '저장'}
-            onClick={handleSave}
-          >
-            {saved ? <BookmarkIcon /> : <BookmarkBorderIcon />}
-          </button>
+          <div className={styles.actionGroup}>
+            <button
+              type="button"
+              className={`${styles.reaction} ${liked ? styles.activeReaction : ''}`}
+              onClick={handleLike}
+              aria-pressed={liked}
+              aria-label={liked ? '좋아요 취소' : '좋아요'}
+            >
+              {liked ? (
+                <FavoriteIcon className={styles.actionIcon} />
+              ) : (
+                <FavoriteBorderIcon className={styles.actionIcon} />
+              )}
+              {likesCount}
+            </button>
+            <button type="button" className={styles.reactionButton} onClick={openCommentModal}>
+              <ChatBubbleOutlineIcon className={styles.actionIcon} />
+              {commentCount}
+            </button>
+            <span className={styles.reaction}>
+              <SparkleIcon className={styles.actionIcon} />
+              {post.vibes}
+            </span>
+            <button
+              type="button"
+              className={`${styles.bookmark} ${saved ? styles.activeBookmark : ''}`}
+              aria-pressed={saved}
+              aria-label={saved ? '저장 취소' : '저장'}
+              onClick={handleSave}
+            >
+              {saved ? <BookmarkIcon className={styles.actionIcon} /> : <BookmarkBorderIcon className={styles.actionIcon} />}
+            </button>
+          </div>
         </div>
 
         {post.previewComment ? (
