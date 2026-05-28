@@ -13,6 +13,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,8 +40,20 @@ public class GroupChatController {
     }
 
     @GetMapping("/rooms/{roomId}/messages")
-    public ResponseEntity<List<ChatRoomMessageResponseDto>> getMessagesByRoomId(@PathVariable Long roomId) {
-        return ResponseEntity.ok(groupChatService.getMessagesByRoomId(roomId));
+    public ResponseEntity<List<ChatRoomMessageResponseDto>> getMessagesByRoomId(
+            @PathVariable Long roomId,
+            @RequestParam(required = false) Long memberId
+    ) {
+        return ResponseEntity.ok(groupChatService.getMessagesByRoomId(roomId, memberId));
+    }
+
+    @PostMapping("/rooms/{roomId}/read")
+    public ResponseEntity<Void> markRoomAsRead(
+            @PathVariable Long roomId,
+            @RequestParam Long memberId
+    ) {
+        groupChatService.markRoomAsRead(roomId, memberId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/rooms/{roomId}/messages")

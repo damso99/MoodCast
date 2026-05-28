@@ -15,5 +15,6 @@ public class ChatRoomMemberVo {
     private String profileImageUrl;
     private String joinedAt;
     private String leftAt;
+    private String lastReadAt;
     private String deletedYn;
 }

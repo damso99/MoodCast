@@ -17,4 +17,5 @@ public class ChatRoomVo {
     private Integer memberCount;
     private String lastMessage;
     private String lastMessageAt;
+    private Integer unreadCount;
 }

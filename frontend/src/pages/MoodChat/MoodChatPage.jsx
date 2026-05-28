@@ -106,7 +106,7 @@ function normalizeGroupThread(thread) {
     roomDescription: thread?.roomDescription || "",
     lastMessage: thread?.lastMessage || "",
     lastMessageAt: thread?.lastMessageAt || "",
-    unreadCount: 0,
+    unreadCount: Number(thread?.unreadCount || 0),
     memberCount: Number(thread?.memberCount || 0),
     createdBy: thread?.createdBy,
   };
@@ -820,7 +820,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </div>
   );
 
-  const groupRoomOverlay = activeGroupRoom ? (
+  const groupRoomPanel = activeGroupRoom ? (
     <GroupRoomOverlay
       room={activeGroupRoom}
       currentMember={member}
@@ -864,26 +864,29 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </button>
   );
 
+  const showCreateRoomButton = !isRoomOpen && !activeGroupRoom;
+
   if (!desktop) {
     return (
       <>
         <div className={styles.chatCanvas}>
           <section className={styles.mobileChat}>
-            {!isRoomOpen ? (
+            {!isRoomOpen && !activeGroupRoom ? (
               <div className={styles.mobileListView}>
                 <div className={styles.threadHeader}>
                   <strong>채팅 리스트</strong>
                 </div>
                 {threadList}
               </div>
+            ) : activeGroupRoom ? (
+              <div className={styles.roomView}>{groupRoomPanel}</div>
             ) : (
               chatRoom
             )}
           </section>
-          {createRoomButton}
+          {showCreateRoomButton ? createRoomButton : null}
         </div>
         {roomCreateModal}
-        {groupRoomOverlay}
       </>
     );
   }
@@ -896,22 +899,23 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             <strong>Mood Chat</strong>
             <p>{isChatConnected ? "실시간 연결됨" : "연결을 시도하는 중입니다."}</p>
           </div>
-          {!isRoomOpen ? (
-            <div className={styles.listView}>
-              <div className={styles.threadHeader}>
-                <strong>채팅 리스트</strong>
-              </div>
-              {threadList}
+        {!isRoomOpen && !activeGroupRoom ? (
+          <div className={styles.listView}>
+            <div className={styles.threadHeader}>
+              <strong>채팅 리스트</strong>
             </div>
-          ) : (
-            <div className={styles.roomView}>{chatRoom}</div>
-          )}
-        </section>
-        {createRoomButton}
-      </div>
-      {roomCreateModal}
-      {groupRoomOverlay}
-    </>
+            {threadList}
+          </div>
+        ) : activeGroupRoom ? (
+          <div className={styles.roomView}>{groupRoomPanel}</div>
+        ) : (
+          <div className={styles.roomView}>{chatRoom}</div>
+        )}
+      </section>
+      {showCreateRoomButton ? createRoomButton : null}
+    </div>
+    {roomCreateModal}
+  </>
   );
 }
 

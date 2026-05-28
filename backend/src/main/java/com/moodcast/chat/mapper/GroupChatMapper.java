@@ -18,6 +18,8 @@ public interface GroupChatMapper {
 
     int softDeleteChatRoomIfEmpty(@Param("roomId") Long roomId);
 
+    int updateChatRoomMemberLastReadAt(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
+
     ChatRoomVo selectChatRoomById(@Param("roomId") Long roomId);
 
     List<ChatRoomVo> selectChatRoomsByMemberId(@Param("memberId") Long memberId);
@@ -32,5 +34,5 @@ public interface GroupChatMapper {
 
     ChatMessageVo selectChatMessageById(@Param("messageId") Long messageId);
 
-    List<ChatMessageVo> selectChatMessagesByRoomId(@Param("roomId") Long roomId);
+    List<ChatMessageVo> selectChatMessagesByRoomId(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 }

@@ -69,12 +69,30 @@ public class GroupChatService {
 
     @Transactional(readOnly = true)
     public List<ChatRoomMessageResponseDto> getMessagesByRoomId(Long roomId) {
+        return getMessagesByRoomId(roomId, null);
+    }
+
+    @Transactional
+    public List<ChatRoomMessageResponseDto> getMessagesByRoomId(Long roomId, Long memberId) {
         if (roomId == null || roomId <= 0) {
             return List.of();
         }
 
-        List<ChatMessageVo> messages = groupChatMapper.selectChatMessagesByRoomId(roomId);
+        if (memberId != null && memberId > 0) {
+            groupChatMapper.updateChatRoomMemberLastReadAt(roomId, memberId);
+        }
+
+        List<ChatMessageVo> messages = groupChatMapper.selectChatMessagesByRoomId(roomId, memberId);
         return messages.stream().map(this::toMessageResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void markRoomAsRead(Long roomId, Long memberId) {
+        if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0) {
+            return;
+        }
+
+        groupChatMapper.updateChatRoomMemberLastReadAt(roomId, memberId);
     }
 
     @Transactional
@@ -206,7 +224,8 @@ public class GroupChatService {
                 room.getCreatedAt(),
                 room.getMemberCount(),
                 room.getLastMessage(),
-                room.getLastMessageAt()
+                room.getLastMessageAt(),
+                room.getUnreadCount()
         );
     }
 
@@ -221,7 +240,9 @@ public class GroupChatService {
                 message.getSenderName(),
                 message.getProfileImageUrl(),
                 message.getContent(),
-                message.getCreatedAt()
+                message.getCreatedAt(),
+                message.getReadCount(),
+                message.getUnreadCount()
         );
     }
 

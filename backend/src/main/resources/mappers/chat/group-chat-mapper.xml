@@ -21,19 +21,30 @@
             member_id,
             deleted_yn,
             joined_at,
-            left_at
+            left_at,
+            last_read_at
         ) VALUES (
             #{roomId},
             #{memberId},
             COALESCE(#{deletedYn}, 'N'),
             CURRENT_TIMESTAMP,
-            NULL
+            NULL,
+            CURRENT_TIMESTAMP
         )
         ON DUPLICATE KEY UPDATE
             deleted_yn = 'N',
             joined_at = CURRENT_TIMESTAMP,
-            left_at = NULL
+            left_at = NULL,
+            last_read_at = CURRENT_TIMESTAMP
     </insert>
+
+    <update id="updateChatRoomMemberLastReadAt">
+        UPDATE chat_room_member
+        SET last_read_at = CURRENT_TIMESTAMP
+        WHERE room_id = #{roomId}
+          AND member_id = #{memberId}
+          AND deleted_yn = 'N'
+    </update>
 
     <update id="softDeleteChatRoomMember">
         UPDATE chat_room_member
@@ -66,7 +77,8 @@
             r.deleted_yn AS deletedYn,
             COALESCE(mc.member_count, 0) AS memberCount,
             latest.last_message AS lastMessage,
-            latest.last_message_at AS lastMessageAt
+            latest.last_message_at AS lastMessageAt,
+            0 AS unreadCount
         FROM chat_room r
         LEFT JOIN (
             SELECT
@@ -104,7 +116,8 @@
             r.deleted_yn AS deletedYn,
             COALESCE(mc.member_count, 0) AS memberCount,
             latest.last_message AS lastMessage,
-            latest.last_message_at AS lastMessageAt
+            latest.last_message_at AS lastMessageAt,
+            COALESCE(unread.unread_count, 0) AS unreadCount
         FROM chat_room r
         JOIN chat_room_member rm
           ON rm.room_id = r.room_id
@@ -131,6 +144,20 @@
             WHERE deleted_yn = 'N'
             GROUP BY room_id
         ) latest ON latest.room_id = r.room_id
+        LEFT JOIN (
+            SELECT
+                cm.room_id,
+                COUNT(*) AS unread_count
+            FROM chat_message cm
+            JOIN chat_room_member requester
+              ON requester.room_id = cm.room_id
+             AND requester.member_id = #{memberId}
+             AND requester.deleted_yn = 'N'
+            WHERE cm.deleted_yn = 'N'
+              AND cm.sender_id &lt;&gt; #{memberId}
+              AND (requester.last_read_at IS NULL OR cm.created_at &gt; requester.last_read_at)
+            GROUP BY cm.room_id
+        ) unread ON unread.room_id = r.room_id
         WHERE r.deleted_yn = 'N'
         ORDER BY
             CASE WHEN latest.last_message_at IS NULL THEN 1 ELSE 0 END,
@@ -147,6 +174,7 @@
             m.profile_image_url AS profileImageUrl,
             DATE_FORMAT(rm.joined_at, '%Y-%m-%dT%H:%i:%s') AS joinedAt,
             DATE_FORMAT(rm.left_at, '%Y-%m-%dT%H:%i:%s') AS leftAt,
+            DATE_FORMAT(rm.last_read_at, '%Y-%m-%dT%H:%i:%s') AS lastReadAt,
             rm.deleted_yn AS deletedYn
         FROM chat_room_member rm
         JOIN members m
@@ -205,7 +233,24 @@
             m.profile_image_url AS profileImageUrl,
             cm.content AS content,
             DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
-            cm.deleted_yn AS deletedYn
+            cm.deleted_yn AS deletedYn,
+            (
+                SELECT COUNT(*)
+                FROM chat_room_member crm
+                WHERE crm.room_id = cm.room_id
+                  AND crm.deleted_yn = 'N'
+                  AND crm.member_id &lt;&gt; cm.sender_id
+                  AND crm.last_read_at IS NOT NULL
+                  AND crm.last_read_at >= cm.created_at
+            ) AS readCount,
+            (
+                SELECT COUNT(*)
+                FROM chat_room_member crm
+                WHERE crm.room_id = cm.room_id
+                  AND crm.deleted_yn = 'N'
+                  AND crm.member_id &lt;&gt; cm.sender_id
+                  AND (crm.last_read_at IS NULL OR crm.last_read_at &lt; cm.created_at)
+            ) AS unreadCount
         FROM chat_message cm
         JOIN members m
           ON m.member_id = cm.sender_id
@@ -223,7 +268,24 @@
             m.profile_image_url AS profileImageUrl,
             cm.content AS content,
             DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
-            cm.deleted_yn AS deletedYn
+            cm.deleted_yn AS deletedYn,
+            (
+                SELECT COUNT(*)
+                FROM chat_room_member crm
+                WHERE crm.room_id = cm.room_id
+                  AND crm.deleted_yn = 'N'
+                  AND crm.member_id &lt;&gt; cm.sender_id
+                  AND crm.last_read_at IS NOT NULL
+                  AND crm.last_read_at >= cm.created_at
+            ) AS readCount,
+            (
+                SELECT COUNT(*)
+                FROM chat_room_member crm
+                WHERE crm.room_id = cm.room_id
+                  AND crm.deleted_yn = 'N'
+                  AND crm.member_id &lt;&gt; cm.sender_id
+                  AND (crm.last_read_at IS NULL OR crm.last_read_at &lt; cm.created_at)
+            ) AS unreadCount
         FROM chat_message cm
         JOIN members m
           ON m.member_id = cm.sender_id

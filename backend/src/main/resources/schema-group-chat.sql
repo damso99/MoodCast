@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS chat_room_member (
     member_id BIGINT NOT NULL,
     joined_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
     left_at DATETIME(6) NULL,
+    last_read_at DATETIME(6) NULL,
     deleted_yn CHAR(1) NOT NULL DEFAULT 'N',
     PRIMARY KEY (room_member_id),
     UNIQUE KEY uk_chat_room_member (room_id, member_id),

@@ -16,4 +16,6 @@ public class ChatMessageVo {
     private String content;
     private String createdAt;
     private String deletedYn;
+    private Integer readCount;
+    private Integer unreadCount;
 }

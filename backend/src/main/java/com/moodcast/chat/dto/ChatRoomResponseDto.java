@@ -16,4 +16,5 @@ public class ChatRoomResponseDto {
     private Integer memberCount;
     private String lastMessage;
     private String lastMessageAt;
+    private Integer unreadCount;
 }

@@ -65,6 +65,22 @@ export function GroupChatRoomList({
             </div>
             <div className="group-chat-room-meta">
               <span>{room.memberCount || 0}명</span>
+              {Number(room.unreadCount || 0) > 0 ? (
+                <span
+                  style={{
+                    minWidth: '20px',
+                    padding: '2px 6px',
+                    borderRadius: '999px',
+                    background: '#7c4dff',
+                    color: '#fff',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    textAlign: 'center',
+                  }}
+                >
+                  {room.unreadCount}
+                </span>
+              ) : null}
               <span>{room.lastMessageAt || ''}</span>
             </div>
           </button>

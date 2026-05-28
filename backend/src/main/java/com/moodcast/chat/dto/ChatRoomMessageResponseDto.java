@@ -15,4 +15,6 @@ public class ChatRoomMessageResponseDto {
     private String profileImageUrl;
     private String content;
     private String createdAt;
+    private Integer readCount;
+    private Integer unreadCount;
 }

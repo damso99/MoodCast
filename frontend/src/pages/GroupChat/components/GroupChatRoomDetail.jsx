@@ -1,11 +1,22 @@
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import PersonAddAltRoundedIcon from '@mui/icons-material/PersonAddAltRounded';
-import { defaultAvatarSrc } from '../../../shared/lib/defaultAvatar';
-import { GroupChatMessageComposer } from './GroupChatMessageComposer';
+import { useEffect, useRef, useState } from "react";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import PhoneRoundedIcon from "@mui/icons-material/PhoneRounded";
+import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
+import styles from "../../MoodChat/MoodChatPage.module.css";
+import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 
-function getRoomInitial(roomName) {
-  return (roomName || 'G').charAt(0).toUpperCase();
+function getRoomTitle(activeRoom) {
+  return activeRoom?.roomName || "Group Chat";
+}
+
+function getRoomSubtitle(activeRoom, connected) {
+  const memberCount = Number(activeRoom?.memberCount || 0);
+  const countText = memberCount > 0 ? `Members ${memberCount}` : "No member info";
+  const connectionText = connected ? "Connected" : "Disconnected";
+  return `${countText} · ${connectionText}`;
 }
 
 export function GroupChatRoomDetail({
@@ -13,8 +24,6 @@ export function GroupChatRoomDetail({
   messages,
   connected,
   currentMemberId,
-  currentMemberName,
-  currentMemberProfileImageUrl,
   messageInputRef,
   messageValue,
   onMessageChange,
@@ -24,88 +33,199 @@ export function GroupChatRoomDetail({
   onProfileClick,
   onBack,
 }) {
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const messagesRef = useRef(null);
+
+  useEffect(() => {
+    const element = messagesRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.scrollTop = element.scrollHeight;
+  }, [messages, activeRoom?.roomId]);
+
   if (!activeRoom) {
-    return (
-      <section className="group-chat-room-card group-chat-room-placeholder">
-        <strong>채팅방을 선택해 주세요</strong>
-        <p>왼쪽 목록에서 그룹 채팅방을 고르면 대화 내용을 볼 수 있습니다.</p>
-      </section>
-    );
+    return null;
   }
 
-  const roomInitial = getRoomInitial(activeRoom.roomName);
+  const roomTitle = getRoomTitle(activeRoom);
+  const roomInitial = roomTitle.charAt(0).toUpperCase();
+  const roomSubtitle = getRoomSubtitle(activeRoom, connected);
 
   return (
-    <section className="group-chat-room-card">
-      <div className="group-chat-room-header">
-        <button type="button" className="group-chat-backButton" onClick={onBack} aria-label="목록으로 돌아가기">
+    <div className={styles.room}>
+      <div className={styles.roomHeader}>
+        <button
+          type="button"
+          className={styles.backButton}
+          onClick={onBack}
+          aria-label="Back"
+        >
           <ArrowBackRoundedIcon />
         </button>
-        <div className="group-chat-headerAvatar">{roomInitial}</div>
-        <div className="group-chat-room-title">
-          <strong>{activeRoom.roomName}</strong>
-          <span>{connected ? '실시간 연결됨' : '연결을 시도하는 중입니다.'}</span>
+        <div className={styles.headerAvatar}>{roomInitial}</div>
+        <div className={styles.roomTitle}>
+          <strong>{roomTitle}</strong>
+          <span>{roomSubtitle}</span>
         </div>
-        <div className="group-chat-room-actions">
-          <button type="button" className="group-chat-headerActionButton" onClick={onInviteMembers} aria-label="멤버 초대">
-            <PersonAddAltRoundedIcon />
+        <div className={styles.headerActions}>
+          <button type="button" aria-label="Call">
+            <PhoneRoundedIcon />
           </button>
-          <button type="button" className="group-chat-headerActionButton danger" onClick={onLeaveRoom} aria-label="나가기">
-            <LogoutRoundedIcon />
-          </button>
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              aria-label="More"
+              onClick={() => setIsMoreMenuOpen((value) => !value)}
+            >
+              <MoreVertRoundedIcon />
+            </button>
+            {isMoreMenuOpen ? (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "46px",
+                  right: 0,
+                  display: "grid",
+                  gap: "8px",
+                  minWidth: "140px",
+                  padding: "10px",
+                  borderRadius: "16px",
+                  background: "rgba(255, 255, 255, 0.98)",
+                  boxShadow: "0 18px 40px rgba(17, 24, 39, 0.14)",
+                  zIndex: 20,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    onInviteMembers?.();
+                  }}
+                  style={{
+                    minHeight: "40px",
+                    border: 0,
+                    borderRadius: "12px",
+                    background: "rgba(124, 77, 255, 0.1)",
+                    color: "#7c4dff",
+                    cursor: "pointer",
+                  }}
+                >
+                  Invite
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMoreMenuOpen(false);
+                    onLeaveRoom?.();
+                  }}
+                  style={{
+                    minHeight: "40px",
+                    border: 0,
+                    borderRadius: "12px",
+                    background: "rgba(255, 106, 119, 0.1)",
+                    color: "#d92d20",
+                    cursor: "pointer",
+                  }}
+                >
+                  Leave
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="group-chat-message-list" aria-live="polite">
-        {messages.length === 0 ? (
-          <p className="group-chat-empty">아직 메시지가 없습니다. 대화를 시작해보세요.</p>
-        ) : null}
+      <div ref={messagesRef} className={styles.messages} aria-live="polite">
+        {messages.length === 0 ? <p className={styles.emptyState}>No messages yet.</p> : null}
 
-        {messages.map((message) => {
-          const isMine = Number(message.senderId) === Number(currentMemberId);
-          const profileImageSrc = message.profileImageUrl || defaultAvatarSrc;
-          const senderInitial = (message.senderName || 'M').charAt(0).toUpperCase();
+        {messages.map((item) => {
+          const isMine = Number(item.senderId) === Number(currentMemberId);
+          const senderName = item.senderName || "Member";
+          const senderInitial = senderName.charAt(0).toUpperCase();
+          const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
 
           return (
-            <article key={message.messageId} className={`group-chat-message-row ${isMine ? 'mine' : 'theirs'}`}>
+            <div
+              key={item.messageId}
+              className={`${styles.messageRow} ${isMine ? styles.me : styles.them}`}
+            >
               {!isMine ? (
                 <button
                   type="button"
-                  className="group-chat-message-avatarButton"
-                  onClick={() => onProfileClick?.(message.senderId)}
-                  aria-label={`${message.senderName || '회원'} 프로필 보기`}
+                  className={styles.messageAvatar}
+                  onClick={() => onProfileClick?.(item.senderId)}
+                  aria-label={`${senderName} profile`}
+                  title={`${senderName} profile`}
                 >
-                  <img
-                    className="group-chat-message-avatarImage"
-                    src={profileImageSrc}
-                    alt={message.senderName || '회원'}
-                    onError={(event) => {
-                      event.currentTarget.src = defaultAvatarSrc;
-                    }}
-                  />
-                  <span className="group-chat-message-avatarFallback">{senderInitial}</span>
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={senderName}
+                      className={styles.messageAvatarImage}
+                      onError={(event) => {
+                        event.currentTarget.src = defaultAvatarSrc;
+                      }}
+                    />
+                  ) : (
+                    <span>{senderInitial}</span>
+                  )}
                 </button>
               ) : null}
 
-              <div className={`group-chat-message-bubble ${isMine ? 'mine' : 'theirs'}`}>
-                {!isMine ? <strong>{message.senderName || '회원'}</strong> : null}
-                <p>{message.content}</p>
-                <span>{message.createdAt}</span>
+              <div className={`${styles.messageItem} ${isMine ? styles.me : styles.them}`}>
+                {!isMine ? <span className={styles.senderLabel}>{senderName}</span> : null}
+                <div className={styles.bubbleWrap}>
+                  <div className={styles.bubbleLine}>
+                    <div className={`${styles.bubble} ${isMine ? styles.me : styles.them}`}>
+                      <p>{item.content}</p>
+                    </div>
+                    {isMine && Number(item.readCount || 0) > 0 ? (
+                      <span className={styles.unreadMarker}>Read {item.readCount}</span>
+                    ) : null}
+                  </div>
+                  <span className={styles.messageTime}>{item.createdAt}</span>
+                </div>
               </div>
-            </article>
+            </div>
           );
         })}
       </div>
 
-      <GroupChatMessageComposer
-        inputRef={messageInputRef}
-        value={messageValue}
-        onChange={onMessageChange}
-        onSubmit={onSubmitMessage}
-        disabled={!activeRoom}
-      />
-
-      <p className="group-chat-room-footnote">현재 참여자: {currentMemberName || '회원'}</p>
-    </section>
+      <form className={styles.composer} onSubmit={onSubmitMessage}>
+        <label className={styles.addButton} aria-label="Add image" title="Add image">
+          <AddRoundedIcon />
+          <input type="file" accept="image/*" />
+        </label>
+        <div className={styles.inputShell}>
+          <input
+            ref={messageInputRef}
+            placeholder="Type a message..."
+            value={messageValue}
+            onChange={onMessageChange}
+            disabled={!activeRoom}
+          />
+          <button
+            type="button"
+            className={styles.emojiButton}
+            aria-label="Emoji"
+            title="Emoji"
+            disabled={!activeRoom}
+          >
+            <SentimentSatisfiedAltRoundedIcon />
+          </button>
+        </div>
+        <button
+          type="submit"
+          className={styles.sendButton}
+          aria-label="Send message"
+          title="Send message"
+          disabled={!activeRoom}
+        >
+          <SendRoundedIcon />
+        </button>
+      </form>
+    </div>
   );
 }

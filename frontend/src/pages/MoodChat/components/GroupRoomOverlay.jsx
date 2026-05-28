@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useGroupChatSocket } from "../../../hooks/useGroupChatSocket";
-import { fetchGroupChatMessages, leaveGroupChatRoom } from "../../../shared/api/groupChatApi";
-import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
+import {
+  fetchGroupChatMessages,
+  leaveGroupChatRoom,
+  markGroupChatRoomAsRead,
+} from "../../../shared/api/groupChatApi";
+import { formatKoreanTime } from "../../../shared/lib/dateTime";
 import { GroupChatRoomDetail } from "../../GroupChat/components/GroupChatRoomDetail";
-import "../../GroupChat/groupChatStyles.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
@@ -13,10 +16,12 @@ function normalizeGroupMessage(message) {
     messageId: message?.messageId ?? message?.id,
     roomId: message?.roomId,
     senderId: Number(message?.senderId),
-    senderName: message?.senderName || "회원",
+    senderName: message?.senderName || "Member",
     profileImageUrl: message?.profileImageUrl || "",
     content: message?.content || "",
-    createdAt: message?.createdAt || "",
+    createdAt: formatKoreanTime(message?.createdAt) || message?.createdAt || "",
+    readCount: Number(message?.readCount || 0),
+    unreadCount: Number(message?.unreadCount || 0),
   };
 }
 
@@ -35,6 +40,18 @@ export function GroupRoomOverlay({
   const [isSending, setIsSending] = useState(false);
   const currentMemberId = Number(currentMember?.memberId) || null;
 
+  const syncRoomReadState = async (roomId) => {
+    if (!roomId || !currentMemberId) {
+      return;
+    }
+
+    try {
+      await markGroupChatRoomAsRead(roomId, currentMemberId);
+    } catch (error) {
+      console.error("Group read sync failed", error);
+    }
+  };
+
   const loadMessages = async (roomId) => {
     if (!roomId) {
       setMessages([]);
@@ -44,11 +61,12 @@ export function GroupRoomOverlay({
     setIsLoadingMessages(true);
 
     try {
-      const response = await fetchGroupChatMessages(roomId);
+      const response = await fetchGroupChatMessages(roomId, currentMemberId);
       const nextMessages = Array.isArray(response.data) ? response.data : [];
       setMessages(nextMessages.map(normalizeGroupMessage));
+      await syncRoomReadState(roomId);
     } catch (error) {
-      console.error("그룹 채팅 메시지 조회 실패", error);
+      console.error("Group messages load failed", error);
       setMessages([]);
     } finally {
       setIsLoadingMessages(false);
@@ -59,18 +77,26 @@ export function GroupRoomOverlay({
   useEffect(() => {
     loadMessages(room?.roomId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room?.roomId]);
+  }, [room?.roomId, currentMemberId]);
 
   const handleIncomingMessage = (incomingMessage) => {
     const normalized = normalizeGroupMessage(incomingMessage);
 
     setMessages((previousMessages) => {
-      if (previousMessages.some((item) => Number(item.messageId) === Number(normalized.messageId))) {
+      if (
+        previousMessages.some(
+          (item) => Number(item.messageId) === Number(normalized.messageId),
+        )
+      ) {
         return previousMessages;
       }
 
       return [...previousMessages, normalized];
     });
+
+    if (currentMemberId && Number(normalized.senderId) !== currentMemberId) {
+      syncRoomReadState(room?.roomId);
+    }
 
     onRoomUpdated?.();
   };
@@ -99,19 +125,24 @@ export function GroupRoomOverlay({
       });
 
       if (!published) {
-        const response = await axios.post(`${API_BASE}/chat/rooms/${room.roomId}/messages`, {
-          senderId: currentMemberId,
-          content: trimmedMessage,
-        });
+        const response = await axios.post(
+          `${API_BASE}/chat/rooms/${room.roomId}/messages`,
+          {
+            senderId: currentMemberId,
+            content: trimmedMessage,
+          },
+        );
+
         setMessages((previousMessages) => [
           ...previousMessages,
           normalizeGroupMessage(response.data),
         ]);
       }
 
+      await syncRoomReadState(room.roomId);
       onRoomUpdated?.();
     } catch (error) {
-      console.error("그룹 채팅 메시지 전송 실패", error);
+      console.error("Group message send failed", error);
     } finally {
       setIsSending(false);
       requestAnimationFrame(() => {
@@ -130,15 +161,16 @@ export function GroupRoomOverlay({
       onRoomUpdated?.();
       onClose?.();
     } catch (error) {
-      console.error("그룹 채팅방 나가기 실패", error);
+      console.error("Group room leave failed", error);
     }
   };
 
   const activeRoom = useMemo(
     () => ({
       roomId: room?.roomId,
-      roomName: room?.roomName || "그룹 채팅방",
+      roomName: room?.roomName || "Group Chat",
       roomDescription: room?.roomDescription || "",
+      memberCount: room?.memberCount || 0,
       currentMemberId,
     }),
     [room, currentMemberId],
@@ -149,26 +181,22 @@ export function GroupRoomOverlay({
   }
 
   return (
-    <div className="moodchat-groupOverlay" role="presentation" onClick={onClose}>
-      <div className="moodchat-groupSheet" role="presentation" onClick={(event) => event.stopPropagation()}>
-        <GroupChatRoomDetail
-          activeRoom={activeRoom}
-          messages={messages}
-          connected={connected}
-          currentMemberId={currentMemberId}
-          currentMemberName={currentMember?.nickname || currentMember?.name || "회원"}
-          currentMemberProfileImageUrl={currentMember?.profileImageUrl || defaultAvatarSrc}
-          messageInputRef={messageInputRef}
-          messageValue={message}
-          onMessageChange={(event) => setMessage(event.target.value)}
-          onSubmitMessage={handleSend}
-          onLeaveRoom={handleLeave}
-          onInviteMembers={() => onRequestInvite?.(room)}
-          onProfileClick={onProfileClick}
-          onBack={onClose}
-        />
-        {isLoadingMessages ? <p className="moodchat-overlayStatus">메시지를 불러오는 중입니다.</p> : null}
-      </div>
-    </div>
+    <>
+      <GroupChatRoomDetail
+        activeRoom={activeRoom}
+        messages={messages}
+        connected={connected}
+        currentMemberId={currentMemberId}
+        messageInputRef={messageInputRef}
+        messageValue={message}
+        onMessageChange={(event) => setMessage(event.target.value)}
+        onSubmitMessage={handleSend}
+        onLeaveRoom={handleLeave}
+        onInviteMembers={() => onRequestInvite?.(room)}
+        onProfileClick={onProfileClick}
+        onBack={onClose}
+      />
+      {isLoadingMessages ? <p className="moodchat-overlayStatus">Loading messages...</p> : null}
+    </>
   );
 }
