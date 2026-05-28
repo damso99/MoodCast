@@ -33,6 +33,7 @@ export function HomeFeedPage() {
     <DesktopShell>
       <section className={styles.column}>
         <ComposerCard />
+
         {loading ? (
           <div>게시물을 불러오는 중입니다...</div>
         ) : (

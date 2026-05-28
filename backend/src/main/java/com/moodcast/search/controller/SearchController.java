@@ -45,6 +45,19 @@ public class SearchController {
         );
     }
 
+    @GetMapping("/users/trending")
+    public ResponseEntity<?> getTrendingUsers(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestParam(value = "limit", required = false, defaultValue = "10") Integer limit
+    ) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "results", searchService.getTrendingUsers(authHeader, limit)
+                )
+        );
+    }
+
     @GetMapping("/hashtags")
     public ResponseEntity<?> searchHashtags(
             @RequestParam(value = "q", required = false) String query,

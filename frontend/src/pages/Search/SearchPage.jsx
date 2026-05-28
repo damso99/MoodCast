@@ -19,8 +19,30 @@ export function SearchPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [trendingTags, setTrendingTags] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
   const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
+  // 트렌딩 태그 조회
+  useEffect(() => {
+    setLoadingTrending(true);
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const config = effectiveToken ? {
+      headers: { Authorization: `Bearer ${effectiveToken}` }
+    } : {};
+    
+    axios
+      .get(`${BACKSERVER}/hashtags/trending`, config)
+      .then((response) => {
+        setTrendingTags(response.data?.results || []);
+      })
+      .catch((err) => {
+        console.error('트렌딩 태그 조회 실패:', err);
+        setTrendingTags([]);
+      })
+      .finally(() => setLoadingTrending(false));
+  }, [BACKSERVER, token]);
 
   // 검색어 또는 탭이 바뀌면 백엔드에 검색 요청을 다시 보냅니다.
   useEffect(() => {
@@ -181,10 +203,39 @@ export function SearchPage() {
       
       <div className={styles.list}>
         {query.trim() === '' ? (
-          <article className={styles.item}>
-            <strong>검색어를 입력하세요</strong>
-            <p>게시글, 사용자, 해시태그를 찾아볼 수 있습니다.</p>
-          </article>
+          <>
+            <div className={styles.trendingSection}>
+              <h3 className={styles.trendingTitle}>
+                🔥 현재 인기 있는 해시태그
+              </h3>
+              {loadingTrending ? (
+                <div className={styles.trendingLoading}>로드 중...</div>
+              ) : trendingTags.length > 0 ? (
+                <div className={styles.trendingTags}>
+                  {trendingTags.map((tag) => (
+                    <button
+                      key={tag.hashtagId}
+                      type="button"
+                      className={styles.trendingTag}
+                      onClick={() => {
+                        setQuery(`#${tag.hashtag}`);
+                        navigate(`/app/search?q=${encodeURIComponent(`#${tag.hashtag}`)}`);
+                      }}
+                    >
+                      #{tag.hashtag}
+                      <span style={{ marginLeft: '4px', fontSize: '12px', color: '#999' }}>({tag.postCount})</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.trendingEmpty}>인기 태그가 없습니다.</div>
+              )}
+            </div>
+            <article className={styles.item}>
+              <strong>검색어를 입력하세요</strong>
+              <p>게시글, 사용자, 해시태그를 찾아볼 수 있습니다.</p>
+            </article>
+          </>
         ) : loading ? (
           <article className={styles.item}>
             <strong>검색 중입니다...</strong>

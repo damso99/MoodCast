@@ -40,6 +40,27 @@
         limit 50
     </select>
 
+    <!-- 사용자 인기 목록: 팔로워 수가 많은 사용자 순으로 보여줍니다. -->
+    <select id="selectTrendingUsers" parameterType="map" resultType="com.moodcast.search.vo.SearchUserResult">
+        select
+            m.member_id as memberId,
+            m.name,
+            m.nickname,
+            m.email,
+            m.profile_image_url as profileImageUrl,
+            coalesce(fc.followerCount, 0) as followerCount,
+            CASE WHEN f.follower_member_id IS NOT NULL THEN 1 ELSE 0 END as following
+        from members m
+                 left join (
+                    select following_member_id, count(*) as followerCount
+                    from follow_tbl
+                    group by following_member_id
+                 ) fc on fc.following_member_id = m.member_id
+                 left join follow_tbl f on f.follower_member_id = #{loginId} and f.following_member_id = m.member_id
+        order by followerCount desc, m.member_id desc
+        limit #{limit}
+    </select>
+
     <!-- 해시태그 검색: 태그 이름에 검색어가 포함된 해시태그를 찾습니다. -->
     <select id="searchHashtags" parameterType="string" resultType="com.moodcast.search.vo.SearchHashtagResult">
         select

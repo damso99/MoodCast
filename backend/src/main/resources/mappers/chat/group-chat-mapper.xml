@@ -267,7 +267,7 @@
             cm.content AS content,
             DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
             cm.deleted_yn AS deletedYn,
-            NULL AS eventType,
+            'CHAT_MESSAGE' AS eventType,
             (
                 SELECT COUNT(*)
                 FROM chat_room_member crm
@@ -297,7 +297,7 @@
             cm.content AS content,
             DATE_FORMAT(cm.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
             cm.deleted_yn AS deletedYn,
-            NULL AS eventType,
+            'CHAT_MESSAGE' AS eventType,
             (
                 SELECT COUNT(*)
                 FROM chat_room_member crm

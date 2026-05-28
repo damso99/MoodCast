@@ -7,6 +7,7 @@ public class SearchUserResult {
     private String email;
     private String profileImageUrl;
     private boolean following;
+    private Long followerCount;
 
     public Long getMemberId() {
         return memberId;
@@ -54,5 +55,13 @@ public class SearchUserResult {
 
     public void setFollowing(boolean following) {
         this.following = following;
+    }
+
+    public Long getFollowerCount() {
+        return followerCount;
+    }
+
+    public void setFollowerCount(Long followerCount) {
+        this.followerCount = followerCount;
     }
 }

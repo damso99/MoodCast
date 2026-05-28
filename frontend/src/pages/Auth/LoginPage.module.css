@@ -102,11 +102,17 @@
 }
 
 .options {
+  display: grid;
+  gap: 10px;
+  min-height: 30px;
+}
+
+.optionRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 30px;
+  flex-wrap: wrap;
 }
 
 .remember {

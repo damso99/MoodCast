@@ -1,15 +1,19 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_BASE = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
 export function fetchGroupChatRooms(memberId) {
-  return axios.get(`${API_BASE}/chat/rooms/member/${memberId}`);
+  return axios
+    .get(`${API_BASE}/chat/rooms/member/${memberId}`)
+    .catch(() => ({ data: [] }));
 }
 
 export function fetchGroupChatMessages(roomId, memberId) {
-  return axios.get(`${API_BASE}/chat/rooms/${roomId}/messages`, {
-    params: memberId ? { memberId } : undefined,
-  });
+  return axios
+    .get(`${API_BASE}/chat/rooms/${roomId}/messages`, {
+      params: memberId ? { memberId } : undefined,
+    })
+    .catch(() => ({ data: [] }));
 }
 
 export function createGroupChatRoom(payload) {
@@ -24,12 +28,19 @@ export function leaveGroupChatRoom(roomId, memberId) {
   return axios.delete(`${API_BASE}/chat/rooms/${roomId}/members/${memberId}`);
 }
 
-export function updateGroupChatRoomRead(roomId, payload) {
-  return axios.patch(`${API_BASE}/chat/rooms/${roomId}/read`, payload);
+export function markGroupChatRoomAsRead(roomId, memberId) {
+  return axios
+    .post(`${API_BASE}/chat/rooms/${roomId}/read`, null, {
+      params: memberId ? { memberId } : undefined,
+    })
+    .catch(() => ({}));
 }
 
 export function deleteGroupChatMessage(roomId, messageId, memberId) {
-  return axios.delete(`${API_BASE}/chat/rooms/${roomId}/messages/${messageId}`, {
-    params: { memberId },
-  });
+  return axios.delete(
+    `${API_BASE}/chat/rooms/${roomId}/messages/${messageId}`,
+    {
+      params: { memberId },
+    },
+  );
 }

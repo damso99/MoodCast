@@ -120,3 +120,46 @@
   font-size: 0.8rem;
   font-weight: 600;
 }
+/* 인기 해시태그 섹션 스타일 */
+.trendingSection {
+  margin-bottom: 24px;
+}
+
+.trendingTitle {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.trendingTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trendingTag {
+  padding: 6px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.trendingTag:hover {
+  background-color: #e0e0e0;
+  border-color: #999;
+}
+
+.trendingLoading,
+.trendingEmpty {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+  font-size: 13px;
+}

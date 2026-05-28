@@ -1,7 +1,7 @@
 import CloseIcon from '@mui/icons-material/Close';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -12,17 +12,93 @@ import styles from './SearchModal.module.css';
 // 게시글/사용자/해시태그 검색 결과를 보여주는 UI 컴포넌트입니다.
 // 검색 요청은 실제로 백엔드 서버의 검색 API를 호출합니다.
 export function SearchModal({ open, onClose }) {
+  const POPULAR_POST_LIMIT = 5;
   const navigate = useNavigate();
+  const inputRef = useRef(null);
   const [query, setQuery] = useState('');
   const [activeTab, setActiveTab] = useState('posts');
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState([]); 
+  const [postSortMode, setPostSortMode] = useState('popular');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [trendingTags, setTrendingTags] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
+  const [trendingPosts, setTrendingPosts] = useState([]);
+  const [recentPosts, setRecentPosts] = useState([]);
+  const [trendingUsers, setTrendingUsers] = useState([]);
+  const [loadingTrendingData, setLoadingTrendingData] = useState(false);
+  const [recentTagQueries, setRecentTagQueries] = useState([]);
   const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   // 백엔드 서버 주소를 여기에서 설정합니다.
   // 개발 환경에서는 VITE_BACKSERVER 환경 변수를 사용하고,
   // 없으면 로컬 백엔드 주소를 기본값으로 사용합니다.
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
+  const saveRecentTagQuery = (tag) => {
+    if (!tag) return;
+    const normalizedTag = tag.replace(/^#/, '').trim();
+    if (!normalizedTag) return;
+
+    const nextTags = [normalizedTag, ...recentTagQueries.filter((item) => item !== normalizedTag)].slice(0, 6);
+    setRecentTagQueries(nextTags);
+    window.localStorage.setItem('moodcast-recent-tags', JSON.stringify(nextTags));
+  };
+
+  const handleSearchFieldChange = (event) => {
+    setQuery(event.target.value);
+  };
+
+  // 트렌딩 데이터 조회
+  useEffect(() => {
+    if (!open || query.trim() !== '') return;
+
+    setLoadingTrendingData(true);
+    setLoadingTrending(true);
+    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const config = effectiveToken
+      ? { headers: { Authorization: `Bearer ${effectiveToken}` } }
+      : {};
+
+    Promise.allSettled([
+      axios.get(`${BACKSERVER}/posts/popular?limit=${POPULAR_POST_LIMIT}`, config),
+      axios.get(`${BACKSERVER}/posts`, config),
+      axios.get(`${BACKSERVER}/search/users/trending?limit=10`, config),
+      axios.get(`${BACKSERVER}/search/hashtags/trending?limit=10`, config),
+    ])
+      .then(([popularPostsResult, latestPostsResult, usersResult, tagsResult]) => {
+        if (popularPostsResult.status === 'fulfilled') {
+          setTrendingPosts((popularPostsResult.value.data?.results || []).slice(0, POPULAR_POST_LIMIT));
+        } else {
+          console.error('게시글 조회 실패:', popularPostsResult.reason);
+          setTrendingPosts([]);
+        }
+
+        if (latestPostsResult.status === 'fulfilled') {
+          setRecentPosts((latestPostsResult.value.data?.results || []).slice(0, POPULAR_POST_LIMIT));
+        } else {
+          console.error('최신 게시글 조회 실패:', latestPostsResult.reason);
+          setRecentPosts([]);
+        }
+
+        if (usersResult.status === 'fulfilled') {
+          setTrendingUsers(usersResult.value.data?.results || []);
+        } else {
+          console.error('인기 사용자 조회 실패:', usersResult.reason);
+          setTrendingUsers([]);
+        }
+
+        if (tagsResult.status === 'fulfilled') {
+          setTrendingTags(tagsResult.value.data?.results || []);
+        } else {
+          console.error('트렌딩 태그 조회 실패:', tagsResult.reason);
+          setTrendingTags([]);
+        }
+      })
+      .finally(() => {
+        setLoadingTrendingData(false);
+        setLoadingTrending(false);
+      });
+  }, [open, query, BACKSERVER, token]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -41,7 +117,26 @@ export function SearchModal({ open, onClose }) {
     if (!open) return;
     setQuery('');
     setActiveTab('posts');
+    setPostSortMode('popular');
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const savedRecentTags = window.localStorage.getItem('moodcast-recent-tags');
+    if (!savedRecentTags) return;
+
+    try {
+      const parsedTags = JSON.parse(savedRecentTags);
+      if (Array.isArray(parsedTags)) {
+        setRecentTagQueries(parsedTags.filter((tag) => typeof tag === 'string' && tag.trim()));
+      }
+    } catch {
+      setRecentTagQueries([]);
+    }
+  }, [open]);
+
+  const displayPosts = postSortMode === 'latest' ? recentPosts : trendingPosts;
 
   const toggleFollow = (memberId) => {
     const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
@@ -128,7 +223,10 @@ export function SearchModal({ open, onClose }) {
       text: normalizeContent(item.content),
       emotionId: item.emotionId,
       commentsList: [],
-      likes: 0,
+      comments: item.comments ?? item.commentsCount ?? 0,
+      likes: item.likes ?? 0,
+      likedByMe: item.likedByMe ?? false,
+      savedByMe: item.savedByMe ?? false,
       vibes: 0,
       previewComment: null,
       postId: item.postId,
@@ -188,11 +286,12 @@ export function SearchModal({ open, onClose }) {
           </button>
         </div>
 
-        <label className={styles.searchField}>
-          <SearchOutlinedIcon />
+        <div className={styles.searchField}>
+          <SearchOutlinedIcon className={styles.searchIcon} />
           <input 
+            ref={inputRef}
             value={query} 
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={handleSearchFieldChange}
             onKeyDown={(event) => {
               if (event.key === 'Enter' && query.trim() !== '') {
                 onClose();
@@ -200,27 +299,189 @@ export function SearchModal({ open, onClose }) {
               }
             }}
             placeholder="검색어를 입력하세요" 
+            aria-label="검색어 입력"
           />
-        </label>
+          {query.trim() && (
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => {
+                setQuery('');
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              aria-label="검색어 지우기"
+            >
+              <CloseIcon fontSize="small" />
+            </button>
+          )}
+        </div>
 
         <div className={styles.tabs}>
-          <button type="button" className={activeTab === 'posts' ? styles.active : ''} onClick={() => setActiveTab('posts')}>
+          <button type="button" className={activeTab === 'posts' ? styles.active : ''} onClick={() => setActiveTab('posts')} aria-pressed={activeTab === 'posts'}>
             게시글
           </button>
-          <button type="button" className={activeTab === 'users' ? styles.active : ''} onClick={() => setActiveTab('users')}>
+          <button type="button" className={activeTab === 'users' ? styles.active : ''} onClick={() => setActiveTab('users')} aria-pressed={activeTab === 'users'}>
             사용자
           </button>
-          <button type="button" className={activeTab === 'hashtags' ? styles.active : ''} onClick={() => setActiveTab('hashtags')}>
+          <button type="button" className={activeTab === 'hashtags' ? styles.active : ''} onClick={() => setActiveTab('hashtags')} aria-pressed={activeTab === 'hashtags'}>
             해시태그
           </button>
         </div>
 
         <div className={styles.list}>
           {query.trim() === '' ? (
-            <article className={styles.item}>
-              <strong>검색어를 입력하세요</strong>
-              <p>게시글, 사용자, 해시태그를 검색할 수 있습니다.</p>
-            </article>
+            <>
+              {/* 게시글 탭 - 인기 게시글 */}
+              {activeTab === 'posts' && (
+                <div className={styles.trendingSection}>
+                  <div className={styles.sectionHeaderRow}>
+                    <h3 className={styles.trendingTitle}>🔥 {postSortMode === 'latest' ? '최신 게시글' : '인기 게시글'}</h3>
+                    <div className={styles.sortChips} aria-label="게시글 정렬 옵션">
+                      <button
+                        type="button"
+                        className={`${styles.sortChip} ${postSortMode === 'popular' ? styles.sortChipActive : ''}`}
+                        onClick={() => setPostSortMode('popular')}
+                        aria-pressed={postSortMode === 'popular'}
+                      >
+                        인기순
+                      </button>
+                      <button
+                        type="button"
+                        className={`${styles.sortChip} ${postSortMode === 'latest' ? styles.sortChipActive : ''}`}
+                        onClick={() => setPostSortMode('latest')}
+                        aria-pressed={postSortMode === 'latest'}
+                      >
+                        최신순
+                      </button>
+                    </div>
+                  </div>
+                  {loadingTrendingData ? (
+                    <div className={styles.trendingLoading}>로드 중...</div>
+                  ) : displayPosts.length > 0 ? (
+                    displayPosts.map((post) => (
+                      <div 
+                        key={post.postId}
+                        onClick={() => {
+                          onClose();
+                          navigate(`/app/post/${post.postId}`);
+                        }}
+                      >
+                        <FeedCard post={transformPostData(post)} />
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.trendingEmpty}>인기 게시글이 없습니다.</div>
+                  )}
+                </div>
+              )}
+
+              {/* 사용자 탭 - 인기 사용자 */}
+              {activeTab === 'users' && (
+                <div className={styles.trendingSection}>
+                  <h3 className={styles.trendingTitle}>👥 인기 사용자</h3>
+                  {loadingTrendingData ? (
+                    <div className={styles.trendingLoading}>로드 중...</div>
+                  ) : trendingUsers.length > 0 ? (
+                    trendingUsers.map((user) => (
+                      <article
+                        key={user.memberId}
+                        className={styles.item}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => {
+                          onClose();
+                          navigate(`/app/user/${user.memberId}`);
+                        }}
+                      >
+                        <div className={styles.userRow}>
+                          <div className={styles.userAvatar}>
+                            {user.profileImageUrl ? (
+                              <img src={user.profileImageUrl} alt={user.nickname} />
+                            ) : (
+                              (user.nickname || user.name || '?').charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className={styles.userMeta}>
+                            <strong>{user.nickname || user.name}</strong>
+                            <span>
+                              @{user.email ? user.email.split('@')[0] : user.memberId} · 팔로워 {user.followerCount ?? 0}명
+                            </span>
+                          </div>
+                          <div className={styles.userAction}>
+                            {currentMember?.memberId === user.memberId ? (
+                              <span className={styles.selfBadge}>내 계정</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  toggleFollow(user.memberId);
+                                }}
+                                className={user.following ? styles.unfollowButton : styles.followButton}
+                                style={{ whiteSpace: 'nowrap' }}
+                              >
+                                {user.following ? '언팔로우' : '팔로우'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className={styles.trendingEmpty}>인기 사용자가 없습니다.</div>
+                  )}
+                </div>
+              )}
+
+              {/* 해시태그 탭 - 인기 해시태그 */}
+              {activeTab === 'hashtags' && (
+                <div className={styles.trendingSection}>
+                  <h3 className={styles.trendingTitle}>🔥 인기 해시태그</h3>
+                  {loadingTrending ? (
+                    <div className={styles.trendingLoading}>로드 중...</div>
+                  ) : trendingTags.length > 0 ? (
+                    <div className={styles.trendingTags}>
+                      {trendingTags.slice(0, 8).map((tag, index) => (
+                        <button
+                          key={tag.hashtagId}
+                          type="button"
+                          className={styles.trendingTag}
+                          onClick={() => {
+                            saveRecentTagQuery(tag.hashtag);
+                            onClose();
+                            navigate(`/app/search?q=%23${tag.hashtag}`);
+                          }}
+                        >
+                          <span className={styles.tagRank}>{index + 1}</span>
+                          <span className={styles.tagLabel}>#{tag.hashtag}</span>
+                          <span className={styles.tagMeta}>{(tag.useCount ?? tag.postCount ?? 0).toLocaleString('ko-KR')}개</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.trendingEmpty}>인기 태그가 없습니다.</div>
+                  )}
+                  <div className={styles.quickTagSection}>
+                    <h4 className={styles.quickTagTitle}>{recentTagQueries.length > 0 ? '최근 검색한 태그' : '실시간 트렌드 키워드'}</h4>
+                    <div className={styles.quickTagList}>
+                      {(recentTagQueries.length > 0 ? recentTagQueries : trendingTags.slice(0, 6).map((tag) => tag.hashtag)).map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          className={styles.quickTag}
+                          onClick={() => {
+                            saveRecentTagQuery(tag);
+                            onClose();
+                            navigate(`/app/search?q=%23${tag}`);
+                          }}
+                        >
+                          #{tag}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           ) : loading ? (
             <article className={styles.item}>
               <strong>검색 중입니다...</strong>
@@ -246,45 +507,35 @@ export function SearchModal({ open, onClose }) {
                       navigate(`/app/user/${item.memberId}`); // 사용자의 고유 ID를 경로로 사용해 이동합니다.
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ 
-                        width: '32px', 
-                        height: '32px', 
-                        borderRadius: '50%', 
-                        backgroundColor: '#eee', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        fontSize: '14px',
-                        fontWeight: 'bold',
-                        color: '#999',
-                        overflow: 'hidden'
-                      }}>
+                    <div className={styles.userRow}>
+                      <div className={styles.userAvatar}>
                         {item.profileImageUrl ? (
-                          <img src={item.profileImageUrl} alt={item.nickname} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={item.profileImageUrl} alt={item.nickname} />
                         ) : (
                           (item.nickname || item.name || '?').charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ display: 'block' }}>{item.nickname || item.name}</strong>
-                        <span style={{ fontSize: '12px', color: '#888' }}>
-                          @{item.email ? item.email.split('@')[0] : item.memberId}
-                        </span>
+                      <div className={styles.userMeta}>
+                        <strong>{item.nickname || item.name}</strong>
+                        <span>@{item.email ? item.email.split('@')[0] : item.memberId}</span>
                       </div>
-                      {isLoggedIn && currentMember?.memberId !== item.memberId && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleFollow(item.memberId);
-                          }}
-                          className={item.following ? styles.unfollowButton : styles.followButton}
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          {item.following ? '언팔로우' : '팔로우'}
-                        </button>
-                      )}
+                      <div className={styles.userAction}>
+                        {currentMember?.memberId === item.memberId ? (
+                          <span className={styles.selfBadge}>내 계정</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleFollow(item.memberId);
+                            }}
+                            className={item.following ? styles.unfollowButton : styles.followButton}
+                            style={{ whiteSpace: 'nowrap' }}
+                          >
+                            {item.following ? '언팔로우' : '팔로우'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );
@@ -297,12 +548,16 @@ export function SearchModal({ open, onClose }) {
                     className={styles.item}
                     style={{ cursor: 'pointer' }}
                     onClick={() => {
+                      saveRecentTagQuery(item.hashtag);
                       onClose(); // 모달 닫기
                       navigate(`/app/search?q=%23${item.hashtag}`); // 해시태그 검색 페이지로 이동
                     }}
                   >
-                    <strong>#{item.hashtag}</strong>
-                    <p>{item.postCount ?? 0}개의 게시물</p>
+                    <div className={styles.itemHeader}>
+                      <strong>#{item.hashtag}</strong>
+                      <span className={styles.itemCount}>{(item.useCount ?? item.postCount ?? 0).toLocaleString('ko-KR')}</span>
+                    </div>
+                    <p>{(item.useCount ?? item.postCount ?? 0).toLocaleString('ko-KR')}개의 게시물</p>
                   </article>
                 );
               }

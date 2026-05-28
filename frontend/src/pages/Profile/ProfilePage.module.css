@@ -258,3 +258,232 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* 감정 통계 섹션 스타일 */
+.moodStatsContainer {
+  display: grid;
+  grid-template-columns: 220px 1fr 180px;
+  gap: 28px;
+  align-items: center;
+}
+
+.moodChartArea {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.moodPieChart {
+  width: 200px;
+  height: 200px;
+}
+
+.moodChartTooltip {
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.95);
+  color: white;
+  padding: 8px 11px;
+  border-radius: 6px;
+  text-align: center;
+  pointer-events: none;
+  z-index: 20;
+  white-space: nowrap;
+  animation: fadeIn 0.15s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.tooltipLabel {
+  font-size: 0.55rem;
+  font-weight: 600;
+  margin-bottom: 3px;
+  letter-spacing: 0.1px;
+}
+
+.tooltipValue {
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+.tooltipCount {
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -55%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.moodLegend {
+  display: grid;
+  gap: 12px;
+}
+
+.moodStatsInfo {
+  display: grid;
+  gap: 14px;
+  padding: 14px 0;
+}
+
+.moodStatItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+}
+
+.moodStatItem:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.moodStatLabel {
+  font-size: 0.7rem;
+  color: #98a2b3;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+}
+
+.moodStatValue {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.2;
+  text-align: center;
+}
+.moodLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.moodLegendItem:hover {
+  /* 범례 자체 호버는 미세한 강조만 (배경 제거) */
+  opacity: 0.9;
+}
+
+.moodLegendColor {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.moodLegendInfo {
+  flex: 1;
+}
+
+.moodLegendLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.moodLegendValue {
+  font-size: 0.8rem;
+  color: #667085;
+  margin-top: 2px;
+}
+
+.moodEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  gap: 16px;
+}
+
+.moodEmptyIcon {
+  font-size: 3rem;
+  opacity: 0.5;
+}
+
+.moodEmptyTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.moodEmptyDesc {
+  font-size: 0.9rem;
+  color: #667085;
+  max-width: 280px;
+  line-height: 1.4;
+}
+
+.moodEmptyBtn {
+  margin-top: 12px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.12), rgba(124, 77, 255, 0.06));
+  color: #7c4dff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.moodEmptyBtn:hover {
+  background: linear-gradient(135deg, rgba(124, 77, 255, 0.18), rgba(124, 77, 255, 0.1));
+  transform: translateY(-2px);
+}
+
+@media (max-width: 1024px) {
+  .moodStatsContainer {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .moodPieChart {
+    width: 160px;
+    height: 160px;
+  }
+
+  .moodLegend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .moodStatsInfo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .moodStatsContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .moodLegend {
+    grid-template-columns: 1fr;
+  }
+
+  .moodStatsInfo {
+    grid-template-columns: 1fr;
+  }
+}

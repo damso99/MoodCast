@@ -6,6 +6,7 @@ import com.moodcast.post.dao.PostDao;
 import com.moodcast.post.dto.CreateCommentRequest;
 import com.moodcast.post.dto.CreatePostRequest;
 import com.moodcast.post.vo.CommentSummary;
+import com.moodcast.post.vo.EmotionStat;
 import com.moodcast.post.vo.Hashtag;
 import com.moodcast.post.vo.PostDetail;
 import com.moodcast.post.vo.Post;
@@ -108,6 +109,12 @@ public class PostService {
         return postDao.selectRecentPosts(viewerId);
     }
 
+    public List<PostSummary> getPopularPosts(String authorizationHeader, Integer limit) {
+        Long viewerId = getViewerId(authorizationHeader);
+        int safeLimit = limit == null || limit <= 0 ? 5 : limit;
+        return postDao.selectPopularPosts(viewerId, safeLimit);
+    }
+
     public List<PostSummary> getPostsByMember(Long memberId, String authorizationHeader) {
         if (memberId == null) {
             throw new IllegalArgumentException("회원 ID가 필요합니다.");
@@ -156,6 +163,13 @@ public class PostService {
             }
         }
         return parents;
+    }
+
+    public List<EmotionStat> getWeeklyEmotionStats(Long memberId) {
+        if (memberId == null) {
+            throw new IllegalArgumentException("회원 ID가 필요합니다.");
+        }
+        return postDao.selectWeeklyEmotionStats(memberId);
     }
 
     @Transactional

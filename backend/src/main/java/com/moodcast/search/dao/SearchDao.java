@@ -17,6 +17,8 @@ public interface SearchDao {
 
     List<SearchUserResult> searchUsers(@Param("query") String query, @Param("loginId") Long loginId);
 
+    List<SearchUserResult> selectTrendingUsers(@Param("loginId") Long loginId, @Param("limit") Integer limit);
+
     List<SearchHashtagResult> searchHashtags(String query);
 
     List<SearchHashtagResult> selectTrendingHashtags(@Param("from") LocalDateTime from, @Param("limit") Integer limit);

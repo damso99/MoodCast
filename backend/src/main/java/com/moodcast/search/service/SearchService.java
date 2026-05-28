@@ -50,6 +50,21 @@ public class SearchService {
         return searchDao.searchUsers(query.trim(), loginId);
     }
 
+    public List<SearchUserResult> getTrendingUsers(String authHeader, Integer limit) {
+        Long loginId = 0L;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7).trim();
+                loginId = jwtService.getMemberIdFromAccessToken(token);
+            } catch (JwtException | IllegalArgumentException ignored) {
+                loginId = 0L;
+            }
+        }
+
+        int safeLimit = limit == null || limit <= 0 ? 10 : limit;
+        return searchDao.selectTrendingUsers(loginId, safeLimit);
+    }
+
     public List<SearchHashtagResult> searchHashtags(String query, String range, Integer limit) {
         if (query != null && !query.trim().isEmpty()) {
             return searchDao.searchHashtags(query.trim());

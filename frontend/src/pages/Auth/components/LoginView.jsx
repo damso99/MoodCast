@@ -56,15 +56,27 @@ export const LoginView = ({
           </div>
 
           <div className={styles.options}>
-            <label className={styles.remember}>
-              <input
-                type="checkbox"
-                name="remember"
-                checked={member.remember}
-                onChange={inputMember}
-              />
-              <span>로그인 상태 유지</span>
-            </label>
+            <div className={styles.optionRow}>
+              <label className={styles.remember}>
+                <input
+                  type="checkbox"
+                  name="remember"
+                  checked={member.remember}
+                  onChange={inputMember}
+                />
+                <span>로그인 상태 유지</span>
+              </label>
+
+              <label className={styles.remember}>
+                <input
+                  type="checkbox"
+                  name="rememberId"
+                  checked={member.rememberId}
+                  onChange={inputMember}
+                />
+                <span>아이디 저장</span>
+              </label>
+            </div>
 
             <div className={styles.findLinks}>
               <button

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
+
+const SAVED_EMAIL_KEY = "moodcast-saved-email";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -11,6 +13,7 @@ export const LoginPage = () => {
   const [member, setMember] = useState({
     email: "",
     password: "",
+    rememberId: false,
     remember: false,
   });
   const [message, setMessage] = useState("");
@@ -21,6 +24,20 @@ export const LoginPage = () => {
     message: "",
   });
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+
+  useEffect(() => {
+    const savedEmail = window.localStorage.getItem(SAVED_EMAIL_KEY);
+
+    if (!savedEmail) {
+      return;
+    }
+
+    setMember((prev) => ({
+      ...prev,
+      email: savedEmail,
+      rememberId: true,
+    }));
+  }, []);
 
   const showToast = (type, message) => {
     setToast({
@@ -77,10 +94,18 @@ export const LoginPage = () => {
       )
       .then((res) => {
         console.log(res.data);
+
+        if (member.rememberId) {
+          window.localStorage.setItem(SAVED_EMAIL_KEY, member.email.trim());
+        } else {
+          window.localStorage.removeItem(SAVED_EMAIL_KEY);
+        }
+
         setAuthData(res.data.accessToken, res.data.member);
         setMember({
-          email: "",
+          email: member.rememberId ? member.email : "",
           password: "",
+          rememberId: member.rememberId,
           remember: false,
         });
         navigate("/app/feed");

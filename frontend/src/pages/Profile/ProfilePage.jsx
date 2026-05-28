@@ -15,7 +15,47 @@ import BedtimeIcon from '@mui/icons-material/Bedtime';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import GradeIcon from '@mui/icons-material/Grade';
 import SeedlingIcon from '@mui/icons-material/Spa';
+import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
+import SpaIcon from '@mui/icons-material/Spa';
+import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
+import CelebrationIcon from '@mui/icons-material/Celebration';
+import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
 import styles from './ProfilePage.module.css';
+
+// 감정 설정 - 직관적 컬러 시스템 (긍정/부정/중립)
+const EMOTION_CONFIG = {
+  1: {
+    label: '행복해요',
+    icon: EmojiEmotionsIcon,
+    color: '#FDB500', // 밝은 황금색 (긍정)
+  },
+  2: {
+    label: '슬퍼요',
+    icon: SentimentDissatisfiedIcon,
+    color: '#5B8DEE', // 파란색 (부정)
+  },
+  3: {
+    label: '차분해요',
+    icon: SpaIcon,
+    color: '#9B8B7E', // 갈색 (중립)
+  },
+  4: {
+    label: '화가 나요',
+    icon: SentimentVeryDissatisfiedIcon,
+    color: '#EF4444', // 밝은 빨강 (강한 부정, 직관적)
+  },
+  5: {
+    label: '신나요',
+    icon: CelebrationIcon,
+    color: '#EC4899', // 생생한 핑크 (긍정)
+  },
+  6: {
+    label: '무덤덤해요',
+    icon: SentimentNeutralIcon,
+    color: '#A0AEC0', // 회색 (중립)
+  },
+};
 
 export function ProfilePage() {
   const desktop = useIsDesktop();
@@ -26,6 +66,9 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [moodStats, setMoodStats] = useState([]);
+  const [moodStatsLoading, setMoodStatsLoading] = useState(false);
+  const [hoveredEmotion, setHoveredEmotion] = useState(null); // 호버 상태 관리
   const [followInfo, setFollowInfo] = useState({ 
     following: false, 
     followerCount: 0, 
@@ -67,6 +110,39 @@ export function ProfilePage() {
       .catch(err => console.error('팔로우 상태 조회 실패:', err));
   }, [targetId, BACKSERVER, token]);
 
+  // 감정 통계 조회 함수
+  const fetchMoodStats = useCallback(() => {
+    if (!targetId) return;
+
+    setMoodStatsLoading(true);
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+    axios.get(`${BACKSERVER}/posts/emotion-stats/${targetId}`, config)
+      .then(res => {
+        if (res.data.success && res.data.stats) {
+          // 총합 계산
+          const total = res.data.stats.reduce((sum, stat) => sum + (stat.count || 0), 0);
+          // 백분율 계산 및 정렬
+          const statsWithPercentage = res.data.stats
+            .map(stat => ({
+              emotionId: stat.emotionId,
+              count: stat.count || 0,
+              percentage: total > 0 ? Math.round((stat.count / total) * 100) : 0,
+            }))
+            .sort((a, b) => b.count - a.count);
+          
+          setMoodStats(statsWithPercentage);
+        } else {
+          setMoodStats([]);
+        }
+      })
+      .catch(err => {
+        console.error('감정 통계 조회 실패:', err);
+        setMoodStats([]);
+      })
+      .finally(() => setMoodStatsLoading(false));
+  }, [targetId, BACKSERVER, token]);
+
   useEffect(() => {
     if (!targetId) {
       if (waitingForAuth) {
@@ -84,6 +160,8 @@ export function ProfilePage() {
           setUser(res.data.member);
           // 2. 팔로우 정보 조회 (실제 데이터)
           fetchFollowStatus();
+          // 3. 감정 통계 조회
+          fetchMoodStats();
         }
       })
       .catch(err => {
@@ -92,7 +170,7 @@ export function ProfilePage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [targetId, BACKSERVER, fetchFollowStatus, waitingForAuth]);
+  }, [targetId, BACKSERVER, fetchFollowStatus, fetchMoodStats, waitingForAuth]);
 
   useEffect(() => {
     if (!targetId) {
@@ -353,6 +431,159 @@ export function ProfilePage() {
           );
         })()}
       </Box>
+
+      {/* 감정 통계 섹션 */}
+      <Card sx={{ background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '16px', boxShadow: 'none', padding: '22px' }}>
+        <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.1rem', marginBottom: '16px' }}>
+          전체 감정 분포
+        </Typography>
+        {moodStatsLoading ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#667085' }}>감정 통계를 불러오는 중입니다...</div>
+        ) : moodStats.length > 0 ? (
+          <div className={styles.moodStatsContainer}>
+            {/* 차트 영역 */}
+            <div className={styles.moodChartArea}
+              onMouseLeave={() => {
+                setHoveredEmotion(null);
+              }}>
+              <svg viewBox="0 0 200 200" className={styles.moodPieChart}>
+                {(() => {
+                  let currentAngle = -90;
+                  const radius = 80;
+                  const centerX = 100;
+                  const centerY = 100;
+                  
+                  return moodStats.map((stat, index) => {
+                    const percent = stat.percentage / 100;
+                    const angle = percent * 360;
+                    const startAngle = currentAngle * (Math.PI / 180);
+                    const endAngle = (currentAngle + angle) * (Math.PI / 180);
+                    
+                    // 반지름을 기반으로 정확한 좌표 계산
+                    const x1 = centerX + radius * Math.cos(startAngle);
+                    const y1 = centerY + radius * Math.sin(startAngle);
+                    const x2 = centerX + radius * Math.cos(endAngle);
+                    const y2 = centerY + radius * Math.sin(endAngle);
+                    
+                    // 180도 이상일 때 large-arc-flag를 1로 설정 (정확한 비율)
+                    const largeArc = angle > 180 ? 1 : 0;
+                    const pathData = `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+                    const emotion = EMOTION_CONFIG[stat.emotionId];
+                    currentAngle += angle;
+                    const isHovered = hoveredEmotion === stat.emotionId;
+                    
+                    // 호버 시 조각을 바깥쪽으로 이동 (Explode effect)
+                    const offsetDistance = isHovered ? 8 : 0;
+                    const midAngle = (currentAngle - angle / 2) * (Math.PI / 180);
+                    const offsetX = offsetDistance * Math.cos(midAngle);
+                    const offsetY = offsetDistance * Math.sin(midAngle);
+                    
+                    return (
+                      <g key={stat.emotionId} 
+                         onMouseEnter={() => setHoveredEmotion(stat.emotionId)}
+                         onMouseLeave={() => setHoveredEmotion(null)}
+                         style={{ cursor: 'pointer' }}
+                         transform={`translate(${offsetX}, ${offsetY})`}>
+                        <path
+                          d={pathData}
+                          fill={emotion?.color || '#ccc'}
+                          stroke="rgba(255,255,255,0.5)"
+                          strokeWidth="2"
+                          opacity={isHovered ? 1 : 0.85}
+                          style={{
+                            transition: 'all 0.25s ease',
+                            filter: isHovered ? 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                          }}
+                        />
+                      </g>
+                    );
+                  });
+                })()}
+              </svg>
+              {hoveredEmotion && (
+                <div className={styles.moodChartTooltip}>
+                  {(() => {
+                    const stat = moodStats.find(s => s.emotionId === hoveredEmotion);
+                    const emotion = EMOTION_CONFIG[hoveredEmotion];
+                    return (
+                      <>
+                        <div className={styles.tooltipLabel}>{emotion?.label}</div>
+                        <div className={styles.tooltipValue}>{stat?.percentage}%</div>
+                        <div className={styles.tooltipCount}>{stat?.count}개</div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* 범례 */}
+            <div className={styles.moodLegend}>
+              {moodStats.map((stat) => {
+                const emotion = EMOTION_CONFIG[stat.emotionId];
+                const isHighlighted = hoveredEmotion === stat.emotionId;
+                return (
+                  <div 
+                    key={stat.emotionId} 
+                    className={styles.moodLegendItem}
+                    style={{
+                      // 차트에서 호버할 때만 폰트 강조, 배경은 제거
+                      fontWeight: isHighlighted ? 700 : 500,
+                      opacity: isHighlighted ? 1 : 0.8,
+                    }}
+                    onMouseEnter={() => setHoveredEmotion(stat.emotionId)}
+                    onMouseLeave={() => setHoveredEmotion(null)}
+                  >
+                    <div className={styles.moodLegendColor} style={{ backgroundColor: emotion?.color }}></div>
+                    <div className={styles.moodLegendInfo}>
+                      <div className={styles.moodLegendLabel}>{emotion?.label}</div>
+                      <div className={styles.moodLegendValue}>{stat.percentage}% ({stat.count})</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 우측 통계 정보 */}
+            <div className={styles.moodStatsInfo}>
+              {/* 총 포스트 */}
+              <div className={styles.moodStatItem}>
+                <div className={styles.moodStatLabel}>총 포스트</div>
+                <div className={styles.moodStatValue}>{moodStats.reduce((sum, stat) => sum + stat.count, 0)}</div>
+              </div>
+
+              {/* 대표 감정 */}
+              <div className={styles.moodStatItem}>
+                <div className={styles.moodStatLabel}>대표 감정</div>
+                <div className={styles.moodStatValue} style={{ fontSize: '0.95rem' }}>
+                  {EMOTION_CONFIG[moodStats[0]?.emotionId]?.label || '-'}
+                </div>
+              </div>
+
+              {/* 최고 비율 */}
+              <div className={styles.moodStatItem}>
+                <div className={styles.moodStatLabel}>최고 비율</div>
+                <div className={styles.moodStatValue}>{moodStats[0]?.percentage || 0}%</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Zero State - 데이터 없을 때
+          <div className={styles.moodEmptyState}>
+            <div className={styles.moodEmptyIcon}>📊</div>
+            <div className={styles.moodEmptyTitle}>아직 기록된 감정이 없습니다</div>
+            <div className={styles.moodEmptyDesc}>감정을 담은 게시물을 작성하면 통계가 표시됩니다</div>
+            {isOwnProfile && (
+              <button 
+                className={styles.moodEmptyBtn}
+                onClick={() => navigate('/app/write')}
+              >
+                첫 게시물 작성하기
+              </button>
+            )}
+          </div>
+        )}
+      </Card>
 
       {/* 최근 게시물 섹션 추가함 */}
       <section className={styles.recent}>

@@ -181,9 +181,13 @@ public class GroupChatService {
         chatMessageVo.setContent(content);
         chatMessageVo.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(CHAT_TIME_FORMATTER));
         chatMessageVo.setDeletedYn("N");
+        chatMessageVo.setEventType("CHAT_MESSAGE"); // 추가
         groupChatMapper.insertChatMessage(chatMessageVo);
 
         ChatMessageVo savedMessage = groupChatMapper.selectChatMessageById(chatMessageVo.getMessageId());
+        if (savedMessage != null) {
+            savedMessage.setEventType("CHAT_MESSAGE");
+        }
         return toMessageResponse(savedMessage);
     }
 
@@ -292,6 +296,7 @@ public class GroupChatService {
                 message.getCreatedAt(),
                 message.getReadCount(),
                 message.getUnreadCount(),
+                message.getEventType()
                 null
         );
     }

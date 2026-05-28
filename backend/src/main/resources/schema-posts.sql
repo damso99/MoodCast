@@ -11,10 +11,11 @@ CREATE TABLE IF NOT EXISTS post_like (
   FOREIGN KEY (member_id) REFERENCES members(member_id)
 );
 
-CREATE TABLE IF NOT EXISTS post_comment (
+CREATE TABLE IF NOT EXISTS comment_tbl (
   comment_id BIGINT NOT NULL AUTO_INCREMENT,
   post_id BIGINT NOT NULL,
   member_id BIGINT NOT NULL,
+  parent_id BIGINT NULL,
   content TEXT NOT NULL,
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   deleted_yn CHAR(1) NOT NULL DEFAULT 'N',

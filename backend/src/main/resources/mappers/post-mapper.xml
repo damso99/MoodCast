@@ -124,6 +124,33 @@
         limit 50
     </select>
 
+    <select id="selectPopularPosts" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
+        select
+            p.post_id as postId,
+            p.member_id as memberId,
+            coalesce(m.nickname, m.name) as author,
+            p.title as title,
+            p.content as content,
+            p.emotion_id as emotionId,
+            date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
+            coalesce(m.profile_image_url, '') as profileImageUrl,
+            coalesce((
+                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
+                where ph.post_id = p.post_id
+            ), '') as tags,
+            coalesce((select count(*) from user_post_like where post_id = p.post_id), 0) as likes,
+            coalesce((select count(*) from comment_tbl where post_id = p.post_id and deleted_yn = 'N'), 0) as comments,
+            exists(select 1 from user_post_like where post_id = p.post_id and member_id = #{viewerId}) as likedByMe,
+            exists(select 1 from saved_post where post_id = p.post_id and member_id = #{viewerId}) as savedByMe
+        from post_tbl p
+                 join members m on p.member_id = m.member_id
+        where p.deleted_yn = 'N'
+        order by (coalesce((select count(*) from user_post_like where post_id = p.post_id), 0) + coalesce((select count(*) from comment_tbl where post_id = p.post_id and deleted_yn = 'N'), 0)) desc,
+                 p.created_at desc
+        limit #{limit}
+    </select>
+
     <select id="selectPostsByMember" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
         select
             p.post_id as postId,
@@ -160,12 +187,12 @@
             c.content as content,
             date_format(c.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
-            c.parent_comment_id as parentCommentId
+            c.parent_id as parentCommentId
         from comment_tbl c
                  join members m on c.member_id = m.member_id
         where c.post_id = #{postId}
           and c.deleted_yn = 'N'
-          and c.parent_comment_id is null
+          and c.parent_id is null
         order by c.created_at asc
     </select>
 
@@ -178,13 +205,24 @@
             c.content as content,
             date_format(c.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
-            c.parent_comment_id as parentCommentId
+            c.parent_id as parentCommentId
         from comment_tbl c
                  join members m on c.member_id = m.member_id
         where c.post_id = #{postId}
           and c.deleted_yn = 'N'
-          and c.parent_comment_id is not null
-        order by c.parent_comment_id asc, c.created_at asc
+          and c.parent_id is not null
+        order by c.parent_id asc, c.created_at asc
+    </select>
+
+    <select id="selectWeeklyEmotionStats" parameterType="long" resultType="com.moodcast.post.vo.EmotionStat">
+        select
+            p.emotion_id as emotionId,
+            count(*) as count
+        from post_tbl p
+        where p.member_id = #{memberId}
+          and p.deleted_yn = 'N'
+        group by p.emotion_id
+        order by p.emotion_id asc
     </select>
 
     <insert id="insertComment" parameterType="com.moodcast.post.vo.CommentSummary" useGeneratedKeys="true" keyProperty="commentId">
@@ -192,7 +230,7 @@
             post_id,
             member_id,
             content,
-            parent_comment_id,
+            parent_id,
             created_at,
             deleted_yn
         ) values (
@@ -214,7 +252,7 @@
             c.content as content,
             date_format(c.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
-            c.parent_comment_id as parentCommentId
+            c.parent_id as parentCommentId
         from comment_tbl c
                  join members m on c.member_id = m.member_id
         where c.comment_id = #{commentId}
