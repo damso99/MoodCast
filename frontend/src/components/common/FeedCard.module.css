@@ -205,6 +205,24 @@
   line-height: 1.65;
 }
 
+.textContent {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mentionText {
+  color: #7c4dff;
+  font-weight: 800;
+  cursor: pointer;
+  background: rgba(124, 77, 255, 0.09);
+  border-radius: 8px;
+  padding: 0 4px;
+}
+
+.mentionText:hover {
+  background: rgba(124, 77, 255, 0.16);
+}
+
 .visual {
   position: relative;
   display: block;

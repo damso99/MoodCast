@@ -34,3 +34,36 @@ CREATE TABLE IF NOT EXISTS saved_post (
   FOREIGN KEY (post_id) REFERENCES post_tbl(post_id),
   FOREIGN KEY (member_id) REFERENCES members(member_id)
 );
+
+CREATE TABLE IF NOT EXISTS post_mention_tbl (
+  post_mention_id BIGINT NOT NULL AUTO_INCREMENT,
+  post_id BIGINT NOT NULL,
+  mentioned_user_id BIGINT NOT NULL,
+  mention_text VARCHAR(50) NOT NULL,
+  start_index INT NOT NULL,
+  end_index INT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (post_mention_id),
+  KEY idx_post_mention_post_id (post_id),
+  KEY idx_post_mention_user_id (mentioned_user_id),
+  FOREIGN KEY (post_id) REFERENCES post_tbl(post_id),
+  FOREIGN KEY (mentioned_user_id) REFERENCES members(member_id)
+);
+
+CREATE TABLE IF NOT EXISTS notification_tbl (
+  notification_id BIGINT NOT NULL AUTO_INCREMENT,
+  receiver_id BIGINT NOT NULL,
+  sender_id BIGINT NULL,
+  notification_type VARCHAR(30) NOT NULL,
+  target_type VARCHAR(20) NOT NULL,
+  target_id BIGINT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  content VARCHAR(500) NULL,
+  is_read CHAR(1) NOT NULL DEFAULT 'N',
+  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (notification_id),
+  KEY idx_notification_receiver (receiver_id),
+  KEY idx_notification_target (target_type, target_id),
+  FOREIGN KEY (receiver_id) REFERENCES members(member_id),
+  FOREIGN KEY (sender_id) REFERENCES members(member_id)
+);

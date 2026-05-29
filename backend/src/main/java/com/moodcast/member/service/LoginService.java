@@ -4,6 +4,7 @@ import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
 import com.moodcast.member.dto.follow.FollowResponse;
+import com.moodcast.member.dto.follow.MentionCandidateResponse;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResult;
@@ -274,6 +275,19 @@ public class LoginService {
             System.out.println("DEBUG: getFollowingList - NO AUTH HEADER RECEIVED");
         }
         return loginDao.getFollowingList(targetId, loginId);
+    }
+
+    public List<MentionCandidateResponse> getMentionCandidates(Long memberId, String keyword) {
+        if (memberId == null) {
+            throw new IllegalArgumentException("멤버 ID가 필요합니다.");
+        }
+
+        String normalizedKeyword = keyword == null ? null : keyword.trim();
+        if (normalizedKeyword != null && normalizedKeyword.isEmpty()) {
+            normalizedKeyword = null;
+        }
+
+        return loginDao.getMentionCandidates(memberId, normalizedKeyword);
     }
 
     private Long getMemberIdFromHeader(String authHeader) {

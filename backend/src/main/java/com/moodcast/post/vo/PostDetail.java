@@ -2,6 +2,9 @@ package com.moodcast.post.vo;
 
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Data
 public class PostDetail {
     private Long postId;
@@ -18,4 +21,5 @@ public class PostDetail {
     private Boolean likedByMe;
     private Boolean savedByMe;
     private String profileImageUrl;
+    private List<PostMention> mentions = new ArrayList<>();
 }

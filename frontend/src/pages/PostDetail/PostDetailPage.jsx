@@ -128,11 +128,11 @@ export function PostDetailPage() {
             ...extractImageUrls(rawContent),
           ]),
         ).filter(Boolean);
-        const nextPost = {
-          id: data.postId,
-          postId: data.postId,
-          memberId,
-          profileLink: memberId ? `/app/user/${memberId}` : null,
+          const nextPost = {
+            id: data.postId,
+            postId: data.postId,
+            memberId,
+            profileLink: memberId ? `/app/user/${memberId}` : null,
           title: data.title,
           author: authorName,
           profileImageUrl: normalizeBackendUrl(rawProfileImageUrl, BACKSERVER, "user-images"),
@@ -143,15 +143,16 @@ export function PostDetailPage() {
           emotionId: data.emotionId,
           comments: data.comments ?? 0,
           commentsList: [],
-          likes: data.likes ?? 0,
-          vibes: data.vibes ?? 0,
-          likedByMe: data.likedByMe,
-          savedByMe: data.savedByMe,
-          tags: data.tags ?? "",
-          imageSrc: normalizeBackendUrl(rawImageSrcs[0] ?? null, BACKSERVER, "post-images"),
-          imageSrcs: rawImageSrcs.map((src) => normalizeBackendUrl(src, BACKSERVER, "post-images")),
-          imageAlt: data.imageAlt || data.author,
-        };
+            likes: data.likes ?? 0,
+            vibes: data.vibes ?? 0,
+            likedByMe: data.likedByMe,
+            savedByMe: data.savedByMe,
+            tags: data.tags ?? "",
+            mentions: data.mentions ?? [],
+            imageSrc: normalizeBackendUrl(rawImageSrcs[0] ?? null, BACKSERVER, "post-images"),
+            imageSrcs: rawImageSrcs.map((src) => normalizeBackendUrl(src, BACKSERVER, "post-images")),
+            imageAlt: data.imageAlt || data.author,
+          };
 
         setPost(nextPost);
         setCommentCount(nextPost.comments);

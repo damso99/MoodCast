@@ -180,6 +180,7 @@ export function normalizePostData(item) {
     content: rawContent,
     text: stripHtml(rawContent),
     tags: item.tags ?? '',
+    mentions: item.mentions ?? [],
     
     // 이미지 정보
     imageSrc,

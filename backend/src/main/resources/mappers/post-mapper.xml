@@ -2,6 +2,52 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.moodcast.post.dao.PostDao">
 
+    <resultMap id="postMentionMap" type="com.moodcast.post.vo.PostMention">
+        <id property="postMentionId" column="postMentionId"/>
+        <result property="postId" column="postId"/>
+        <result property="userId" column="userId"/>
+        <result property="nickname" column="nickname"/>
+        <result property="mentionText" column="mentionText"/>
+        <result property="startIndex" column="startIndex"/>
+        <result property="endIndex" column="endIndex"/>
+        <result property="createdAt" column="createdAt"/>
+    </resultMap>
+
+    <resultMap id="postSummaryMap" type="com.moodcast.post.vo.PostSummary">
+        <id property="postId" column="postId"/>
+        <result property="memberId" column="memberId"/>
+        <result property="author" column="author"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="emotionId" column="emotionId"/>
+        <result property="createdAt" column="createdAt"/>
+        <result property="tags" column="tags"/>
+        <result property="likes" column="likes"/>
+        <result property="comments" column="comments"/>
+        <result property="likedByMe" column="likedByMe"/>
+        <result property="savedByMe" column="savedByMe"/>
+        <result property="profileImageUrl" column="profileImageUrl"/>
+        <collection property="mentions" ofType="com.moodcast.post.vo.PostMention" column="postId" select="selectMentionsByPostId"/>
+    </resultMap>
+
+    <resultMap id="postDetailMap" type="com.moodcast.post.vo.PostDetail">
+        <id property="postId" column="postId"/>
+        <result property="memberId" column="memberId"/>
+        <result property="author" column="author"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="emotionId" column="emotionId"/>
+        <result property="createdAt" column="createdAt"/>
+        <result property="tags" column="tags"/>
+        <result property="likes" column="likes"/>
+        <result property="comments" column="comments"/>
+        <result property="saves" column="saves"/>
+        <result property="likedByMe" column="likedByMe"/>
+        <result property="savedByMe" column="savedByMe"/>
+        <result property="profileImageUrl" column="profileImageUrl"/>
+        <collection property="mentions" ofType="com.moodcast.post.vo.PostMention" column="postId" select="selectMentionsByPostId"/>
+    </resultMap>
+
     <insert id="insertPost" parameterType="com.moodcast.post.vo.Post" useGeneratedKeys="true" keyProperty="postId">
         insert into post_tbl (
             member_id,
@@ -47,7 +93,30 @@
         )
     </insert>
 
-    <select id="selectPostById" parameterType="map" resultType="com.moodcast.post.vo.PostDetail">
+    <insert id="insertPostMention" parameterType="com.moodcast.post.vo.PostMention" useGeneratedKeys="true" keyProperty="postMentionId">
+        insert into post_mention_tbl (
+            post_id,
+            mentioned_user_id,
+            mention_text,
+            start_index,
+            end_index,
+            created_at
+        ) values (
+            #{postId},
+            #{userId},
+            #{mentionText},
+            #{startIndex},
+            #{endIndex},
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        )
+    </insert>
+
+    <delete id="deletePostMentionsByPostId" parameterType="long">
+        delete from post_mention_tbl
+        where post_id = #{postId}
+    </delete>
+
+    <select id="selectPostById" parameterType="map" resultMap="postDetailMap">
         select
             p.post_id as postId,
             p.member_id as memberId,
@@ -98,7 +167,7 @@
         where post_id = #{postId}
     </update>
 
-    <select id="selectRecentPosts" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
+    <select id="selectRecentPosts" parameterType="map" resultMap="postSummaryMap">
         select
             p.post_id as postId,
             p.member_id as memberId,
@@ -124,7 +193,7 @@
         limit 50
     </select>
 
-    <select id="selectPopularPosts" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
+    <select id="selectPopularPosts" parameterType="map" resultMap="postSummaryMap">
         select
             p.post_id as postId,
             p.member_id as memberId,
@@ -151,7 +220,7 @@
         limit #{limit}
     </select>
 
-    <select id="selectPostsByMember" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
+    <select id="selectPostsByMember" parameterType="map" resultMap="postSummaryMap">
         select
             p.post_id as postId,
             p.member_id as memberId,
@@ -176,6 +245,22 @@
           and p.member_id = #{memberId}
         order by p.created_at desc
         limit 50
+    </select>
+
+    <select id="selectMentionsByPostId" parameterType="long" resultMap="postMentionMap">
+        select
+            pm.post_mention_id as postMentionId,
+            pm.post_id as postId,
+            pm.mentioned_user_id as userId,
+            coalesce(m.nickname, m.name) as nickname,
+            pm.mention_text as mentionText,
+            pm.start_index as startIndex,
+            pm.end_index as endIndex,
+            date_format(pm.created_at, '%Y-%m-%d %H:%i:%s') as createdAt
+        from post_mention_tbl pm
+                 join members m on pm.mentioned_user_id = m.member_id
+        where pm.post_id = #{postId}
+        order by pm.start_index asc, pm.post_mention_id asc
     </select>
 
     <select id="selectCommentsByPostId" parameterType="long" resultType="com.moodcast.post.vo.CommentSummary">
@@ -335,7 +420,7 @@
           and member_id = #{memberId}
     </delete>
 
-    <select id="selectSavedPostsByMember" parameterType="map" resultType="com.moodcast.post.vo.PostSummary">
+    <select id="selectSavedPostsByMember" parameterType="map" resultMap="postSummaryMap">
         select
             p.post_id as postId,
             coalesce(m.nickname, m.name) as author,

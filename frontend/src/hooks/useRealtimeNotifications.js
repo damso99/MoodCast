@@ -66,7 +66,7 @@ export function useRealtimeNotifications(memberId) {
       client.subscribe(`/sub/notifications/${memberId}`, (frame) => {
         try {
           const payload = JSON.parse(frame.body);
-          if (!['CHAT_NOTIFICATION', 'COMMENT_NOTIFICATION'].includes(payload?.eventType)) {
+          if (!['CHAT_NOTIFICATION', 'COMMENT_NOTIFICATION', 'MENTION'].includes(payload?.eventType)) {
             return;
           }
 

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+﻿import { memo, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
@@ -73,26 +73,37 @@ function TopUtilityIconsBase({ onSearch }) {
 
   const getNotificationTitle = (item) => {
     if (item?.eventType === 'COMMENT_NOTIFICATION') {
-      return '새 댓글 알림';
+      return '댓글 알림';
+    }
+
+    if (item?.eventType === 'MENTION') {
+      return '멘션 알림';
     }
 
     if (item?.eventType === 'CHAT_NOTIFICATION') {
-      return '새 채팅 알림';
+      return '채팅 알림';
     }
 
-    return '새 알림';
+    return '알림';
   };
 
   const getNotificationPreview = (item) => {
     if (item?.eventType === 'COMMENT_NOTIFICATION') {
-      const authorName = item?.commenterName || '누군가';
-      const postTitle = item?.postTitle ? `내 게시물 "${item.postTitle}"` : '내 게시물';
+      const authorName = item?.commenterName || '회원';
+      const postTitle = item?.postTitle ? `"${item.postTitle}"` : '게시글';
       const preview = item?.preview ? `: ${item.preview}` : '';
       return `${authorName}님이 ${postTitle}에 댓글을 남겼습니다${preview}`;
     }
 
+    if (item?.eventType === 'MENTION') {
+      const authorName = item?.senderName || '회원';
+      const title = item?.title ? `"${item.title}"` : '게시글';
+      const preview = item?.mentionText ? `: ${item.mentionText}` : '';
+      return `${authorName}님이 ${title}에서 멘션했습니다${preview}`;
+    }
+
     if (item?.eventType === 'CHAT_NOTIFICATION') {
-      const authorName = item?.senderNickname || '누군가';
+      const authorName = item?.senderNickname || '회원';
       const preview = item?.content ? `: ${item.content}` : '';
       return `${authorName}님이 보낸 새 메시지${preview}`;
     }
@@ -108,14 +119,18 @@ function TopUtilityIconsBase({ onSearch }) {
     removeNotification(item.id);
 
     if (item.postId) {
-      const commentQuery = item.commentId ? `&commentId=${item.commentId}` : '';
-      navigate(`/app/post/${item.postId}?comments=1${commentQuery}`, {
-        state: {
-          openComments: true,
-          notificationId: item.id,
-          notificationCommentId: item.commentId ?? null,
-        },
-      });
+      if (item.eventType === 'COMMENT_NOTIFICATION') {
+        const commentQuery = item.commentId ? `&commentId=${item.commentId}` : '';
+        navigate(`/app/post/${item.postId}?comments=1${commentQuery}`, {
+          state: {
+            openComments: true,
+            notificationId: item.id,
+            notificationCommentId: item.commentId ?? null,
+          },
+        });
+      } else {
+        navigate(`/app/post/${item.postId}`);
+      }
     } else if (item.eventType === 'CHAT_NOTIFICATION' && item.senderId) {
       navigate(`/app/chat?partnerId=${item.senderId}`);
     }
