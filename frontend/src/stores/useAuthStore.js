@@ -57,3 +57,17 @@ export const useAuthStore = create((set) => ({
     });
   },
 }));
+
+export const logoutAndRedirect = () => {
+  const store = useAuthStore.getState();
+  if (store && typeof store.clearAuthData === 'function') {
+    store.clearAuthData();
+  } else {
+    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+    window.sessionStorage.removeItem(MEMBER_KEY);
+    useAuthStore.setState({ accessToken: null, member: null, isLoggedIn: false });
+  }
+  if (typeof window !== 'undefined') {
+    window.location.replace('/auth/login');
+  }
+};
