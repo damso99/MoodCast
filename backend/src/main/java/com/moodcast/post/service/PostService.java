@@ -175,11 +175,22 @@ public class PostService {
         return parents;
     }
 
-    public List<EmotionStat> getWeeklyEmotionStats(Long memberId) {
+    public List<EmotionStat> getEmotionStats(Long memberId, String period) {
         if (memberId == null) {
             throw new IllegalArgumentException("회원 ID가 필요합니다.");
         }
-        return postDao.selectWeeklyEmotionStats(memberId);
+        return postDao.selectEmotionStats(memberId, normalizePeriod(period));
+    }
+
+    private String normalizePeriod(String period) {
+        if (period == null) {
+            return "all";
+        }
+        String normalized = period.toLowerCase();
+        if ("week".equals(normalized) || "month".equals(normalized) || "all".equals(normalized)) {
+            return normalized;
+        }
+        return "all";
     }
 
     @Transactional

@@ -214,13 +214,19 @@
         order by c.parent_id asc, c.created_at asc
     </select>
 
-    <select id="selectWeeklyEmotionStats" parameterType="long" resultType="com.moodcast.post.vo.EmotionStat">
+    <select id="selectEmotionStats" parameterType="map" resultType="com.moodcast.post.vo.EmotionStat">
         select
             p.emotion_id as emotionId,
             count(*) as count
         from post_tbl p
         where p.member_id = #{memberId}
           and p.deleted_yn = 'N'
+          <if test="period == 'week'">
+            and p.created_at >= date_sub(convert_tz(now(6), '+00:00', '+09:00'), interval 7 day)
+          </if>
+          <if test="period == 'month'">
+            and p.created_at >= date_sub(convert_tz(now(6), '+00:00', '+09:00'), interval 30 day)
+          </if>
         group by p.emotion_id
         order by p.emotion_id asc
     </select>

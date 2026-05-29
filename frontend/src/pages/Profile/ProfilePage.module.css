@@ -384,6 +384,42 @@
   align-items: center;
 }
 
+.moodStatsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.moodPeriodTabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.moodPeriodTab {
+  border: 1px solid rgba(148, 163, 184, 0.65);
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #475569;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.moodPeriodTab:hover {
+  background: #f8fafc;
+}
+
+.activeMoodPeriodTab {
+  background: #eef2ff;
+  border-color: #6366f1;
+  color: #1f2937;
+}
+
 .moodChartArea {
   display: flex;
   justify-content: center;

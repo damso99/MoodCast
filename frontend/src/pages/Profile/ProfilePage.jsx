@@ -67,8 +67,9 @@ export function ProfilePage() {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [selectedMoodFilter, setSelectedMoodFilter] = useState(null);
-  const [moodStats, setMoodStats] = useState([]);
-  const [moodStatsLoading, setMoodStatsLoading] = useState(false);
+  const [selectedMoodPeriod, setSelectedMoodPeriod] = useState('all');
+  const [moodStatsByPeriod, setMoodStatsByPeriod] = useState({ all: null, month: null, week: null });
+  const [periodLoading, setPeriodLoading] = useState(false);
   const [hoveredEmotion, setHoveredEmotion] = useState(null); // 호버 상태 관리
   const [followInfo, setFollowInfo] = useState({ 
     following: false, 
@@ -84,6 +85,8 @@ export function ProfilePage() {
     if (!selectedMoodFilter) return posts;
     return posts.filter((post) => String(post.emotionId) === String(selectedMoodFilter));
   }, [posts, selectedMoodFilter]);
+
+  const visibleMoodStats = moodStatsByPeriod[selectedMoodPeriod] || [];
 
   const { member: currentMember, accessToken: token, isLoggedIn } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
@@ -117,18 +120,21 @@ export function ProfilePage() {
   }, [targetId, BACKSERVER, token]);
 
   // 감정 통계 조회 함수
-  const fetchMoodStats = useCallback(() => {
+  const fetchMoodStats = useCallback((periodKey) => {
     if (!targetId) return;
+    if (moodStatsByPeriod[periodKey] !== null) return;
 
-    setMoodStatsLoading(true);
+    setPeriodLoading(true);
     const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    const params = periodKey !== 'all' ? { period: periodKey } : {};
 
-    axios.get(`${BACKSERVER}/posts/emotion-stats/${targetId}`, config)
+    axios.get(`${BACKSERVER}/posts/emotion-stats/${targetId}`, {
+      params,
+      ...config,
+    })
       .then(res => {
         if (res.data.success && res.data.stats) {
-          // 총합 계산
           const total = res.data.stats.reduce((sum, stat) => sum + (stat.count || 0), 0);
-          // 백분율 계산 및 정렬
           const statsWithPercentage = res.data.stats
             .map(stat => ({
               emotionId: stat.emotionId,
@@ -136,18 +142,27 @@ export function ProfilePage() {
               percentage: total > 0 ? Math.round((stat.count / total) * 100) : 0,
             }))
             .sort((a, b) => b.count - a.count);
-          
-          setMoodStats(statsWithPercentage);
+
+          setMoodStatsByPeriod((prev) => ({
+            ...prev,
+            [periodKey]: statsWithPercentage,
+          }));
         } else {
-          setMoodStats([]);
+          setMoodStatsByPeriod((prev) => ({
+            ...prev,
+            [periodKey]: [],
+          }));
         }
       })
       .catch(err => {
         console.error('감정 통계 조회 실패:', err);
-        setMoodStats([]);
+        setMoodStatsByPeriod((prev) => ({
+          ...prev,
+          [periodKey]: [],
+        }));
       })
-      .finally(() => setMoodStatsLoading(false));
-  }, [targetId, BACKSERVER, token]);
+      .finally(() => setPeriodLoading(false));
+  }, [targetId, BACKSERVER, token, moodStatsByPeriod]);
 
   useEffect(() => {
     if (!targetId) {
@@ -166,8 +181,6 @@ export function ProfilePage() {
           setUser(res.data.member);
           // 2. 팔로우 정보 조회 (실제 데이터)
           fetchFollowStatus();
-          // 3. 감정 통계 조회
-          fetchMoodStats();
         }
       })
       .catch(err => {
@@ -176,7 +189,12 @@ export function ProfilePage() {
       .finally(() => {
         setLoading(false);
       });
-  }, [targetId, BACKSERVER, fetchFollowStatus, fetchMoodStats, waitingForAuth]);
+  }, [targetId, BACKSERVER, fetchFollowStatus, waitingForAuth]);
+
+  useEffect(() => {
+    if (!targetId) return;
+    fetchMoodStats(selectedMoodPeriod);
+  }, [selectedMoodPeriod, targetId, fetchMoodStats]);
 
   useEffect(() => {
     if (!targetId) {
@@ -281,17 +299,22 @@ export function ProfilePage() {
   };
 
   const orderedMoodStats = useMemo(() => {
-    return [...moodStats].sort((left, right) => {
+    return [...visibleMoodStats].sort((left, right) => {
       if ((right.count || 0) !== (left.count || 0)) {
         return (right.count || 0) - (left.count || 0);
       }
       return (left.emotionId || 0) - (right.emotionId || 0);
     });
-  }, [moodStats]);
+  }, [visibleMoodStats]);
 
   const displayName = effectiveUser?.nickname || effectiveUser?.name || 'MoodCast 사용자';
   const displayInitial = displayName.charAt(0).toUpperCase();
   const displayText = effectiveUser?.bio || (isOwnProfile ? '감성을 기록하고 커뮤니티 참여를 즐기는 MoodCast 프로필입니다.' : '안녕하세요! MoodCast 사용자입니다.');
+  const moodPeriodTitle = selectedMoodPeriod === 'month'
+    ? '월간 감정 분포'
+    : selectedMoodPeriod === 'week'
+      ? '주간 감정 분포'
+      : '전체 감정 분포';
   const profileImageUrl = normalizeUploadViewUrl(
     effectiveUser?.profileImageUrl || effectiveUser?.profile_image_url || effectiveUser?.avatarUrl || effectiveUser?.avatar_url || effectiveUser?.imageUrl || effectiveUser?.image_url || effectiveUser?.photoUrl || effectiveUser?.photo || effectiveUser?.pictureUrl || effectiveUser?.picture || null
   );
@@ -488,12 +511,30 @@ export function ProfilePage() {
 
       {/* 감정 통계 섹션 */}
       <Card sx={{ background: 'rgba(255,255,255,0.28)', border: '1px solid rgba(17,24,39,0.085)', borderRadius: '24px', boxShadow: 'none', padding: { xs: '18px', md: '24px' } }}>
-        <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.1rem', marginBottom: '16px' }}>
-          전체 감정 분포
-        </Typography>
-        {moodStatsLoading ? (
+        <div className={styles.moodStatsHeader}>
+          <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: '1.1rem' }}>
+            {moodPeriodTitle}
+          </Typography>
+          <div className={styles.moodPeriodTabs}>
+            {[
+              { key: 'all', label: '전체' },
+              { key: 'month', label: '월간' },
+              { key: 'week', label: '주간' },
+            ].map((period) => (
+              <button
+                key={period.key}
+                type="button"
+                className={`${styles.moodPeriodTab} ${selectedMoodPeriod === period.key ? styles.activeMoodPeriodTab : ''}`}
+                onClick={() => setSelectedMoodPeriod(period.key)}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {periodLoading ? (
           <div style={{ textAlign: 'center', padding: '20px', color: '#667085' }}>감정 통계를 불러오는 중입니다...</div>
-        ) : moodStats.length > 0 ? (
+        ) : visibleMoodStats.length > 0 ? (
           <div className={styles.moodStatsContainer}>
             {/* 차트 영역 */}
             <div className={styles.moodChartArea}
@@ -570,7 +611,7 @@ export function ProfilePage() {
               {hoveredEmotion && (
                 <div className={styles.moodChartTooltip}>
                   {(() => {
-                    const stat = moodStats.find(s => s.emotionId === hoveredEmotion);
+                    const stat = visibleMoodStats.find(s => s.emotionId === hoveredEmotion);
                     const emotion = EMOTION_CONFIG[hoveredEmotion];
                     return (
                       <>

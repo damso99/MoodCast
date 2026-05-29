@@ -102,11 +102,14 @@ public class PostController {
     }
 
     @GetMapping("/emotion-stats/{memberId}")
-    public ResponseEntity<?> getWeeklyEmotionStats(@PathVariable Long memberId) {
+    public ResponseEntity<?> getEmotionStats(
+            @PathVariable Long memberId,
+            @RequestParam(value = "period", required = false) String period
+    ) {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "stats", postService.getWeeklyEmotionStats(memberId)
+                        "stats", postService.getEmotionStats(memberId, period)
                 )
         );
     }

@@ -39,7 +39,7 @@ public interface PostDao {
 
     List<CommentSummary> selectRepliesByPostId(@Param("postId") Long postId);
 
-    List<EmotionStat> selectWeeklyEmotionStats(@Param("memberId") Long memberId);
+    List<EmotionStat> selectEmotionStats(@Param("memberId") Long memberId, @Param("period") String period);
 
     int insertComment(CommentSummary comment);
 
