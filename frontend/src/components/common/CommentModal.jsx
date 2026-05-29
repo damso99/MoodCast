@@ -145,12 +145,19 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
       await axios.delete(`${BACKSERVER}/posts/comments/${commentId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
+      const removeReplyFromComments = (comments) => comments.map((c) => ({
+        ...c,
+        replies: (c.replies ?? []).filter((r) => r.commentId !== commentId).map((r) => ({
+          ...r,
+          replies: r.replies ? removeReplyFromComments(r.replies) : [],
+        })),
+      }));
+
       if (parentCommentId) {
-        // 대댓글 삭제
         setLocalComments((prev) => prev.map((c) =>
           c.commentId === parentCommentId
             ? { ...c, replies: (c.replies ?? []).filter((r) => r.commentId !== commentId) }
-            : c
+            : { ...c, replies: removeReplyFromComments(c.replies ?? []) }
         ));
       } else {
         setLocalComments((prev) => prev.filter((c) => c.commentId !== commentId));
@@ -161,6 +168,19 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
       alert('댓글 삭제에 실패했습니다.');
     }
   };
+
+  const appendReplyToComments = (comments, parentCommentId, newReply) => comments.map((comment) => {
+    if (comment.commentId === parentCommentId) {
+      return {
+        ...comment,
+        replies: [...(comment.replies ?? []), newReply],
+      };
+    }
+    return {
+      ...comment,
+      replies: appendReplyToComments(comment.replies ?? [], parentCommentId, newReply),
+    };
+  });
 
   const handleReplySubmit = async (parentCommentId) => {
     if (!replyText.trim()) return;
@@ -180,11 +200,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
                                  newReply.photoUrl ??
                                  newReply.photo ?? null;
       newReply.author = newReply.author ?? member?.nickname;
-      setLocalComments((prev) => prev.map((c) =>
-        c.commentId === parentCommentId
-          ? { ...c, replies: [...(c.replies ?? []), newReply] }
-          : c
-      ));
+      setLocalComments((prev) => appendReplyToComments(prev, parentCommentId, newReply));
       setExpandedReplies((prev) => ({ ...prev, [parentCommentId]: true }));
       setReplyingToId(null);
       setReplyText('');
@@ -219,8 +235,8 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
     }
   };
 
-  // 총 댓글수 (부모 + 대댓글)
-  const totalCount = localComments.reduce((acc, c) => acc + 1 + (c.replies?.length ?? 0), 0);
+  const countComments = (commentsList) => commentsList.reduce((acc, c) => acc + 1 + countComments(c.replies ?? []), 0);
+  const totalCount = countComments(localComments);
 
   const renderCommentItem = (item, parentCommentId = null) => {
     const id = item.commentId ?? item.id;
@@ -292,34 +308,30 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
           <p className={styles.commentText}>{item.content ?? item.text}</p>
         )}
 
-        {/* 답글 달기 버튼 (최상위 댓글만) */}
-        {!isReply && (
-          <div className={styles.replyActions}>
+        <div className={styles.replyActions}>
+          <button
+            type="button"
+            className={styles.replyBtn}
+            onClick={() => {
+              setReplyingToId(replyingToId === id ? null : id);
+              setReplyText('');
+            }}
+          >
+            <ReplyIcon fontSize="small" />
+            답글 달기
+          </button>
+          {(item.replies?.length > 0) && (
             <button
               type="button"
-              className={styles.replyBtn}
-              onClick={() => {
-                setReplyingToId(replyingToId === id ? null : id);
-                setReplyText('');
-              }}
+              className={styles.toggleRepliesBtn}
+              onClick={() => setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))}
             >
-              <ReplyIcon fontSize="small" />
-              답글 달기
+              {expandedReplies[id] ? '▲ 답글 숨기기' : `▼ 답글 ${item.replies.length}개 보기`}
             </button>
-            {(item.replies?.length > 0) && (
-              <button
-                type="button"
-                className={styles.toggleRepliesBtn}
-                onClick={() => setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))}
-              >
-                {expandedReplies[id] ? '▲ 답글 숨기기' : `▼ 답글 ${item.replies.length}개 보기`}
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* 답글 입력창 */}
-        {!isReply && replyingToId === id && (
+        {replyingToId === id && (
           <div className={styles.replyComposer}>
             <textarea
               className={styles.replyInput}
@@ -346,7 +358,7 @@ export function CommentModal({ open, post, comments, onClose, onSubmit, onLike, 
         )}
 
         {/* 대댓글 목록 */}
-        {!isReply && expandedReplies[id] && item.replies?.length > 0 && (
+        {expandedReplies[id] && item.replies?.length > 0 && (
           <div className={styles.repliesList}>
             {item.replies.map((reply) => renderCommentItem(reply, id))}
           </div>

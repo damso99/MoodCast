@@ -45,8 +45,9 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
   const submittingRef = useRef(false);
 
   const postId = post?.postId ?? post?.id;
+  const countComments = (comments) => comments.reduce((acc, current) => acc + 1 + countComments(current.replies ?? []), 0);
   const totalCount = useMemo(
-    () => localComments.reduce((acc, current) => acc + 1 + (current.replies?.length ?? 0), 0),
+    () => countComments(localComments),
     [localComments],
   );
 
@@ -203,6 +204,19 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
     }
   };
 
+  const appendReplyToComments = (comments, parentCommentId, newReply) => comments.map((comment) => {
+    if (comment.commentId === parentCommentId) {
+      return {
+        ...comment,
+        replies: [...(comment.replies ?? []), newReply],
+      };
+    }
+    return {
+      ...comment,
+      replies: appendReplyToComments(comment.replies ?? [], parentCommentId, newReply),
+    };
+  });
+
   const handleReplySubmit = async (parentCommentId) => {
     if (!replyText.trim()) return;
 
@@ -214,11 +228,7 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
       );
       const newReply = normalizeCommentItem(response.data.comment, member);
 
-      setLocalComments((prev) => prev.map((item) =>
-        item.commentId === parentCommentId
-          ? { ...item, replies: [...(item.replies ?? []), newReply] }
-          : item
-      ));
+      setLocalComments((prev) => appendReplyToComments(prev, parentCommentId, newReply));
       setExpandedReplies((prev) => ({ ...prev, [parentCommentId]: true }));
       setReplyingToId(null);
       setReplyText('');
@@ -338,37 +348,41 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
           <p className={styles.commentText}>{item.content ?? item.text}</p>
         )}
 
-        {!isReply && (
-          <div className={styles.replyActions}>
+        <div className={styles.replyActions}>
+          <button
+            type="button"
+            className={styles.replyBtn}
+            onClick={() => {
+              setReplyingToId(replyingToId === id ? null : id);
+              setReplyText('');
+            }}
+          >
+            <ReplyIcon fontSize="small" />
+            답글 달기
+          </button>
+          {(item.replies?.length > 0) && (
             <button
               type="button"
-              className={styles.replyBtn}
-              onClick={() => {
-                setReplyingToId(replyingToId === id ? null : id);
-                setReplyText('');
-              }}
+              className={styles.toggleRepliesBtn}
+              onClick={() => setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))}
             >
-              <ReplyIcon fontSize="small" />
-              답글 달기
+              {expandedReplies[id] ? '답글 숨기기' : `답글 ${item.replies.length}개 보기`}
             </button>
-            {(item.replies?.length > 0) && (
-              <button
-                type="button"
-                className={styles.toggleRepliesBtn}
-                onClick={() => setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))}
-              >
-                {expandedReplies[id] ? '답글 숨기기' : `답글 ${item.replies.length}개 보기`}
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
-        {!isReply && replyingToId === id && (
+        {replyingToId === id && (
           <div className={styles.replyComposer}>
             <textarea
               className={styles.replyInput}
               value={replyText}
               onChange={(event) => setReplyText(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  handleReplySubmit(id);
+                }
+              }}
               placeholder={`@${item.author}에게 답글`}
               rows={2}
               autoFocus
@@ -383,7 +397,7 @@ export function PostDetailComments({ post, onCommentCountChange, targetCommentId
           </div>
         )}
 
-        {!isReply && expandedReplies[id] && item.replies?.length > 0 && (
+        {expandedReplies[id] && item.replies?.length > 0 && (
           <div className={styles.repliesList}>
             {item.replies.map((reply) => renderCommentItem(reply, id))}
           </div>
