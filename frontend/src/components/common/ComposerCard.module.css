@@ -1,6 +1,6 @@
 .card {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 14px;
   min-height: 82px;
@@ -10,6 +10,20 @@
   border: 1px solid rgba(17, 24, 39, 0.085);
   box-shadow: 0 1px 3px rgba(17, 24, 39, 0.055);
   cursor: pointer;
+}
+
+.actions {
+  display: none;
+}
+
+.action {
+  display: none;
+}
+
+.video,
+.image,
+.mood {
+  display: none;
 }
 
 .avatar {
