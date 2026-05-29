@@ -23,6 +23,7 @@ import { useAuthStore } from './stores/useAuthStore';
 import { RequireAuth } from './components/common/RequireAuth';
 
 function AppRoutes() {
+  // 화면 너비에 따라 데스크톱 버전 또는 모바일 버전을 자동으로 선택합니다.
   const desktop = useIsDesktop();
   const navigate = useNavigate();
   const { accessToken, setAuthData, clearAuthData } = useAuthStore();
@@ -37,6 +38,8 @@ function AppRoutes() {
       return;
     }
 
+    // 새로고침 후에 sessionStorage에 있는 토큰이 실제로 유효한지 서버에 확인함
+    // 만약 토큰이 만료되었거나 유효하지 않으면 자동 로그아웃 처리함
     axios
       .get(`${BACKSERVER}/auth/me`, {
         headers: {
@@ -86,9 +89,12 @@ function AppRoutes() {
       <Route path="/app/write" element={authRoute(<CreatePostPage />)} />
       <Route path="/app/create" element={authRoute(<CreatePostPage />)} />
       <Route path="/app/post/:postId" element={authRoute(<PostDetailPage />)} />
+      {/* /app/mood는 게시물 작성 화면으로 안내합니다. */}
       <Route path="/app/mood" element={authRoute(<Navigate to="/app/write" replace />)} />
+      {/* /app/community는 피드 홈으로 안내합니다. */}
       <Route path="/app/community" element={authRoute(<Navigate to="/app/feed" replace />)} />
       <Route path="/admin/*" element={<AdminRoutes />} />
+      {/* 그 외 모든 경로는 기본 피드 홈으로 보냅니다. */}
       <Route path="*" element={<Navigate to="/app/feed" replace />} />
     </Routes>
   );

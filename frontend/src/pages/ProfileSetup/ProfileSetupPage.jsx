@@ -6,6 +6,7 @@ import { useIsDesktop } from '../../hooks/useViewportWidth';
 import styles from './ProfileSetupPage.module.css';
 
 export function ProfileSetupPage() {
+  // 프로필 설정 화면에서는 관심사 태그를 최대 3개까지 선택할 수 있습니다.
   const [selected, setSelected] = useState(['감성']);
   const desktop = useIsDesktop();
 

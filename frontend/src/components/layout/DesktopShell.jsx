@@ -6,6 +6,8 @@ import { TopUtilityIcons } from './TopUtilityIcons';
 import { RightRail } from './RightRail';
 import { SearchModal } from '../common/SearchModal';
 
+// 데스크톱 레이아웃에서는 우측 사이드바에 피드 관련 추천 게시물을 띄웁니다.
+// 이 데이터를 캐시해서 같은 세션 동안 중복 요청을 줄입니다.
 let cachedPosts = null;
 let cachedPostsPromise = null;
 
@@ -36,6 +38,7 @@ function DesktopShell({ children }) {
   const [loadingPosts, setLoadingPosts] = useState(() => !cachedPosts);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // 검색 모달을 열기 위한 함수입니다.
   const handleSearchOpen = useCallback(() => {
     setSearchOpen(true);
   }, []);
@@ -75,6 +78,7 @@ function DesktopShell({ children }) {
   return (
     <main className={styles.layout}>
       <aside className={styles.leftSlot}>
+        {/* 왼쪽 사이드바: 로고, 메뉴, 주요 내비게이션 */}
         <Sidebar />
       </aside>
       <section className={styles.center}>

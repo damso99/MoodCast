@@ -8,6 +8,7 @@ import styles from './MobileShell.module.css';
 export function MobileShell({ title, children, hideSearch = false, fixedContent = false, hideBottomNav = false }) {
   const [searchOpen, setSearchOpen] = useState(false);
 
+  // 모바일 전용 레이아웃: 상단 바, 콘텐츠, 하단 탭 네비게이션을 구성합니다.
   return (
     <div className={`${styles.page} ${fixedContent ? styles.fixedPage : ''} ${hideBottomNav ? styles.fullPage : ''}`}>
       <main className={`${styles.frame} ${fixedContent ? styles.fixedFrame : ''} ${hideBottomNav ? styles.fullFrame : ''}`}>
@@ -19,6 +20,7 @@ export function MobileShell({ title, children, hideSearch = false, fixedContent 
                 <SearchOutlinedIcon />
               </button>
             ) : null}
+            {/* 알림 버튼과 프로필 버튼은 모바일 상단에서 자주 쓰는 유틸리티 기능을 제공합니다. */}
             <button
               type="button"
               className={styles.iconButton}

@@ -38,6 +38,7 @@ export function CreatePostPage() {
   const { accessToken: token } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // 본문에 이미지를 업로드하고, 업로드 중에는 임시 플레이스홀더를 보여줍니다.
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -96,6 +97,7 @@ export function CreatePostPage() {
     setTagInput(value);
   };
 
+  // 태그 입력 필드에서 엔터를 누르면 해시태그를 추가합니다.
   const handleTagKeyDown = (e) => {
     // 💡 한글 조합 중일 때는 이벤트 무시 (끝자리 따라가는 현상 방지)
     if (e.nativeEvent.isComposing) {
@@ -126,6 +128,7 @@ export function CreatePostPage() {
     setTagList(tagList.filter((_, index) => index !== indexToRemove));
   };
 
+  // 게시물 작성 완료 버튼을 눌렀을 때 서버로 저장 요청을 보냅니다.
   const handleSubmit = async () => {
     const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
     if (!effectiveToken) {

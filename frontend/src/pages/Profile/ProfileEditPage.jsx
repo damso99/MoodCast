@@ -52,6 +52,7 @@ export function ProfileEditPage() {
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // 프로필 사진을 선택하면 우선 즉시 미리보기를 보여주고, 서버에 업로드를 진행합니다.
   const handlePhotoChange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -79,6 +80,7 @@ export function ProfileEditPage() {
   };
 
   // [저장 버튼 클릭 시 실행되는 함수]
+  // 닉네임, 자기소개, 프로필 사진을 백엔드로 전송하고 로컬 상태를 업데이트합니다.
   const handleSave = () => {
     const newNickname = profile.nickname?.trim();
     

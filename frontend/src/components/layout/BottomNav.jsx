@@ -8,6 +8,8 @@ import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
 import { useAuthStore } from '../../stores/useAuthStore';
 import styles from './BottomNav.module.css';
 
+// 모바일에서 하단 탭 네비게이션을 보여주는 컴포넌트입니다.
+// 홈 / 저장 / 글쓰기 / 채팅 / 프로필(또는 로그인) 이동 기능을 제공합니다.
 export function BottomNav() {
   const { isLoggedIn, member } = useAuthStore();
 

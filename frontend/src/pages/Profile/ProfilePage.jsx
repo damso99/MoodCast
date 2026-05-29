@@ -58,6 +58,8 @@ const EMOTION_CONFIG = {
 };
 
 export function ProfilePage() {
+  // 프로필 화면: 마이 프로필과 다른 사용자 프로필을 모두 처리합니다.
+  // 무드 필터, 주간/월간 통계, 팔로우 상태, 게시물 목록을 보여줍니다.
   const desktop = useIsDesktop();
   const navigate = useNavigate();
   const { handle } = useParams(); // URL 파라미터 :handle (memberId)
@@ -242,6 +244,8 @@ export function ProfilePage() {
   };
 
   // 팔로우 처리 함수
+  // 팔로우 버튼을 눌렀을 때 실행됩니다.
+  // 로그인되지 않은 경우 로그인 화면으로 안내하고, 그 외에는 팔로우 상태를 토글합니다.
   const handleFollowToggle = () => {
     if (!token) {
       alert('로그인이 필요한 서비스입니다.');
@@ -264,6 +268,7 @@ export function ProfilePage() {
     });
   };
 
+  // 통계 카드 클릭 시 연관된 화면으로 이동합니다.
   const handleStatClick = (label) => {
     if (label === '저장됨' && isOwnProfile) navigate('/app/saved');
     if (label === '팔로워') {

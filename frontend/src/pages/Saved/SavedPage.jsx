@@ -8,6 +8,7 @@ import { FeedCard } from '../../components/common/FeedCard';
 import { normalizePostDataArray } from '../../shared/lib/postHelpers';
 import styles from './SavedPage.module.css';
 
+// 저장된 게시물을 리스트로 보여주는 컴포넌트입니다.
 function SavedList({ posts }) {
   if (!posts.length) {
     return <div className={styles.empty}>저장된 게시물이 없습니다.</div>;
@@ -29,6 +30,7 @@ export function SavedPage() {
   const [loading, setLoading] = useState(true);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // 로그인된 사용자의 저장된 게시물을 백엔드에서 가져옵니다.
   useEffect(() => {
     if (!isLoggedIn || !accessToken) {
       setPosts([]);
