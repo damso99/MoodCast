@@ -22,12 +22,12 @@ import CelebrationIcon from "@mui/icons-material/Celebration";
 import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 
 const EMOTIONS = [
-  { id: 1, name: "?됰났", icon: EmojiEmotionsIcon, color: "#FFD700" },
-  { id: 2, name: "?ы뵒", icon: SentimentDissatisfiedIcon, color: "#4A90E2" },
-  { id: 3, name: "李⑤텇", icon: SpaIcon, color: "#F4A460" },
-  { id: 4, name: "?붾궓", icon: MoodBadIcon, color: "#E74C3C" },
-  { id: 5, name: "?좊궓", icon: CelebrationIcon, color: "#FF69B4" },
-  { id: 6, name: "以묐┰", icon: SentimentNeutralIcon, color: "#95A5A6" },
+  { id: 1, name: "행복", icon: EmojiEmotionsIcon, color: "#FFD700" },
+  { id: 2, name: "슬픔", icon: SentimentDissatisfiedIcon, color: "#4A90E2" },
+  { id: 3, name: "차분", icon: SpaIcon, color: "#F4A460" },
+  { id: 4, name: "화남", icon: MoodBadIcon, color: "#E74C3C" },
+  { id: 5, name: "신남", icon: CelebrationIcon, color: "#FF69B4" },
+  { id: 6, name: "중립", icon: SentimentNeutralIcon, color: "#95A5A6" },
 ];
 
 export function CreatePostPage() {
@@ -37,9 +37,9 @@ export function CreatePostPage() {
   const tagInputRef = useRef(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [tagList, setTagList] = useState([]); // 諛곗뿴濡?愿由?
-  const [tagInput, setTagInput] = useState(""); // ?꾩옱 ?낅젰 以묒씤 媛?
-  const [selectedEmotion, setSelectedEmotion] = useState(null); // ?좏깮??媛먯젙
+  const [tagList, setTagList] = useState([]); // 배열로 관리
+  const [tagInput, setTagInput] = useState(""); // 현재 입력 중인 값
+  const [selectedEmotion, setSelectedEmotion] = useState(null); // 선택한 감정
   const [emotionError, setEmotionError] = useState("");
   const [saving, setSaving] = useState(false);
   const [mentionKeyword, setMentionKeyword] = useState("");
@@ -61,7 +61,7 @@ export function CreatePostPage() {
   useEffect(() => {
     const loadMentionCandidates = async () => {
       const currentMemberId = member?.memberId;
-      console.log("[寃뚯떆臾??묒꽦 硫섏뀡] ?곹깭", {
+      console.log("[게시물 작성 멘션] 상태", {
         currentMemberId,
         mentionOpen,
         mentionKeyword,
@@ -83,7 +83,7 @@ export function CreatePostPage() {
         );
         setMentionCandidates(candidates);
       } catch (error) {
-        console.error("硫섏뀡 ?꾨낫 議고쉶 ?ㅽ뙣", error);
+        console.error("멘션 후보 조회 실패", error);
         setMentionCandidates([]);
       } finally {
         setMentionLoading(false);
@@ -165,7 +165,7 @@ export function CreatePostPage() {
         const imageHtml = `<img src="${url}" alt="${file.name}" />`;
         setContent((prev) => `${prev}${prev ? "\n" : ""}${imageHtml}`);
       } catch (err) {
-        alert(`?대?吏 ?낅줈???ㅽ뙣: ${err.message}`);
+        alert(`이미지 업로드 실패: ${err.message}`);
       }
     }
 
@@ -179,7 +179,7 @@ export function CreatePostPage() {
 
   // 태그 입력 필드에서 엔터를 누르면 해시태그를 추가합니다.
   const handleTagKeyDown = (e) => {
-    // ?쒓? 議고빀 以묒씤 寃쎌슦???뷀꽣 泥섎━?섏? ?딅뒗??
+    // 한글 조합 중인 경우 엔터를 처리하지 않습니다.
     if (e.nativeEvent.isComposing) {
       return;
     }
@@ -188,17 +188,17 @@ export function CreatePostPage() {
       e.preventDefault();
       const tag = tagInput.trim();
 
-      // # # 湲고샇媛 ?놁쑝硫?異붽??섍퀬, ?덉쑝硫??쒓굅 ?놁씠 ?뚮Ц?먮쭔 ?뺢퇋?뷀븳??
+      // # 기호가 없으면 추가하고, 있으면 그대로 소문자로 정규화합니다.
       const cleanTag = tag.startsWith("#") ? tag : `#${tag}`;
       const normalizedTag = cleanTag.toLowerCase();
 
-      // ?좏슚??寃?? 鍮??쒓렇? 以묐났 ?쒓렇瑜??쒖쇅?쒕떎.
+      // 유효성 검사: 빈 태그와 중복 태그를 제외합니다.
       if (normalizedTag.length > 1 && !tagList.includes(normalizedTag)) {
         setTagList([...tagList, normalizedTag]);
-        setTagInput(""); // ?낅젰 移?珥덇린??
-        tagInputRef.current?.focus(); // ?ъ빱???좎?
+        setTagInput(""); // 입력 값 초기화
+        tagInputRef.current?.focus(); // 포커스 유지
       } else if (tagList.includes(normalizedTag)) {
-        alert("?대? 異붽????댁떆?쒓렇?낅땲??");
+        alert("이미 추가한 해시태그입니다.");
         setTagInput("");
       }
     }
@@ -213,7 +213,7 @@ export function CreatePostPage() {
     const effectiveToken =
       token || window.sessionStorage.getItem("moodcast-access-token");
     if (!effectiveToken) {
-      alert("濡쒓렇?몄씠 ?꾩슂?⑸땲??");
+      alert("로그인이 필요합니다.");
       navigate("/auth/login");
       return;
     }
@@ -221,30 +221,30 @@ export function CreatePostPage() {
     const editorContent = content;
 
     if (!title.trim() && !editorContent.trim()) {
-      alert("?쒕ぉ ?먮뒗 蹂몃Ц???낅젰?댁＜?몄슂.");
+      alert("제목 또는 본문을 입력해 주세요.");
       return;
     }
 
     if (!selectedEmotion) {
-      setEmotionError("?ㅻ뒛??媛먯젙???좏깮?댁＜?몄슂.");
+      setEmotionError("오늘의 감정을 선택해 주세요.");
       return;
     }
 
     setEmotionError("");
     setSaving(true);
     try {
-      // ?쒓렇 諛곗뿴??怨듬갚 援щ텇 臾몄옄?대줈 蹂?섑븳??
+      // 태그 배열을 공백 구분 문자열로 변환합니다.
       const tagsString = tagList.join(" ");
 
       const requestData = {
         title: title.trim(),
         content: editorContent,
         tags: tagsString,
-        emotionId: selectedEmotion.id, // ?좏깮??媛먯젙 ID
+        emotionId: selectedEmotion.id, // 선택한 감정 ID
         mentions,
       };
 
-      console.log("[寃뚯떆臾??묒꽦] ?붿껌 ?곗씠??", requestData);
+      console.log("[게시물 작성] 요청 데이터", requestData);
 
       const response = await axios.post(
         `${BACKSERVER}/api/posts`,
@@ -256,27 +256,27 @@ export function CreatePostPage() {
         },
       );
 
-      console.log("[寃뚯떆臾??묒꽦] ????깃났:", response.data);
+      console.log("[게시물 작성] 저장 성공:", response.data);
 
       setTitle("");
       setContent("");
       setTagList([]);
       setTagInput("");
-      setSelectedEmotion(null); // 媛먯젙 珥덇린??      setMentionKeyword('');
+      setSelectedEmotion(null); // 감정 초기화      setMentionKeyword('');
       setMentionCandidates([]);
       setMentionOpen(false);
       setMentionRange(null);
       setMentionLoading(false);
       setMentions([]);
-      window.alert("寃뚯떆臾쇱씠 ??λ릺?덉뒿?덈떎.");
+      window.alert("게시물이 저장되었습니다.");
       navigate("/app");
     } catch (error) {
-      console.error("[寃뚯떆臾??묒꽦] ????ㅻ쪟:", error);
-      console.error("[寃뚯떆臾??묒꽦] ?ㅻ쪟 ?묐떟:", error.response?.data);
+      console.error("[게시물 작성] 저장 오류:", error);
+      console.error("[게시물 작성] 오류 응답:", error.response?.data);
       alert(
         error.response?.data?.message ||
           error.message ||
-          "寃뚯떆臾???μ뿉 ?ㅽ뙣?덉뒿?덈떎.",
+          "게시물 저장에 실패했습니다.",
       );
     } finally {
       setSaving(false);
@@ -286,25 +286,22 @@ export function CreatePostPage() {
   const contentArea = (
     <section className={styles.wrap}>
       <div className={styles.hero}>
-        <strong>寃뚯떆臾??묒꽦</strong>
-        <p>
-          媛먯젙, ?ъ쭊, ?쒓렇, ?곸긽源뚯? ?④퍡 ?ｌ뼱 寃뚯떆臾쇱쓣 留뚮뱾
-          ???덉뒿?덈떎.
-        </p>
+        <strong>게시물 작성</strong>
+        <p>감정, 사진, 태그, 영상까지 함께 넣어 게시물을 만들 수 있습니다.</p>
       </div>
       <div className={styles.card}>
         <div className={styles.field}>
-          <label htmlFor="postTitle">?쒕ぉ</label>
+          <label htmlFor="postTitle">제목</label>
           <input
             id="postTitle"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="寃뚯떆臾??쒕ぉ???낅젰?섏꽭??"
+            placeholder="게시물 제목을 입력하세요"
           />
         </div>
 
         <div className={styles.field}>
-          <label>?ㅻ뒛??媛먯젙</label>
+          <label>오늘의 감정</label>
           <div className={styles.emotionGrid}>
             {EMOTIONS.map((emotion) => {
               const IconComponent = emotion.icon;
@@ -340,14 +337,14 @@ export function CreatePostPage() {
         </div>
 
         <div className={styles.field}>
-          <label htmlFor="postContent">蹂몃Ц</label>
+          <label htmlFor="postContent">본문</label>
           <div className={styles.mentionInputWrap}>
             <textarea
               id="postContent"
               ref={editorRef}
               className={styles.editor}
               value={content}
-              placeholder="?ㅻ뒛??媛먯젙怨??앷컖???곸뼱蹂댁꽭??"
+              placeholder="오늘의 감정과 생각을 적어보세요"
               onChange={handleContentChange}
               onKeyUp={(event) =>
                 syncMentionState(
@@ -367,7 +364,7 @@ export function CreatePostPage() {
                 {mentionLoading ? (
                   <div className={styles.mentionItem}>
                     <span className={styles.mentionText}>
-                      硫섏뀡 ?꾨낫瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.
+                      멘션 후보를 불러오는 중입니다.
                     </span>
                   </div>
                 ) : mentionCandidates.length > 0 ? (
@@ -398,7 +395,7 @@ export function CreatePostPage() {
                 ) : (
                   <div className={styles.mentionItem}>
                     <span className={styles.mentionText}>
-                      ?쇱튂?섎뒗 硫섏뀡 ?꾨낫媛 ?놁뒿?덈떎.
+                      일치하는 멘션 후보가 없습니다.
                     </span>
                   </div>
                 )}
@@ -410,7 +407,7 @@ export function CreatePostPage() {
         <div className={`${styles.uploadSection} ${styles.bodyUploadSection}`}>
           <div className={styles.uploadGroup}>
             <label className={styles.uploadButton}>
-              ?ъ쭊 泥⑤?
+              사진 첨부
               <input
                 type="file"
                 accept="image/*"
@@ -420,15 +417,15 @@ export function CreatePostPage() {
               />
             </label>
             <span className={styles.uploadDescription}>
-              蹂몃Ц???ㅼ뼱媛??ъ쭊???좏깮?섏꽭??
+              본문에 들어갈 사진을 선택하세요
             </span>
           </div>
         </div>
 
         <div className={styles.field}>
-          <label htmlFor="postTags">?댁떆?쒓렇</label>
+          <label htmlFor="postTags">해시태그</label>
 
-          {/* 異붽????댁떆?쒓렇 ?쒖떆 */}
+          {/* 추가한 해시태그 표시 */}
           {tagList.length > 0 && (
             <div className={styles.tagContainer}>
               {tagList.map((tag, index) => (
@@ -446,7 +443,7 @@ export function CreatePostPage() {
             </div>
           )}
 
-          {/* ?댁떆?쒓렇 ?낅젰 ?꾨뱶 */}
+          {/* 해시태그 입력 필드 */}
           <input
             ref={tagInputRef}
             id="postTags"
@@ -455,15 +452,15 @@ export function CreatePostPage() {
             onKeyDown={handleTagKeyDown}
             placeholder={
               tagList.length === 0
-                ? "#?쒓렇瑜??낅젰?섍퀬 ?뷀꽣瑜??꾨Ⅴ?몄슂"
-                : "異붽????쒓렇瑜??낅젰?섍퀬 ?뷀꽣"
+                ? "#태그를 입력하고 엔터를 누르세요"
+                : "추가할 태그를 입력하고 엔터"
             }
             style={{ width: "100%" }}
           />
 
-          {/* ?낅젰 ?꾩?留?*/}
+          {/* 입력 안내문 */}
           <small className={styles.tagHelpText}>
-            異붽????쒓렇: {tagList.length}媛?
+            추가한 태그: {tagList.length}개
             {tagList.length > 0 && ` (${tagList.join(", ")})`}
           </small>
         </div>
@@ -474,12 +471,10 @@ export function CreatePostPage() {
           onClick={handleSubmit}
           disabled={saving || !selectedEmotion}
         >
-          寃뚯떆?섍린
+          게시하기
         </button>
         {saving ? (
-          <div className={styles.message}>
-            寃뚯떆臾쇱쓣 ??ν븯??以묒엯?덈떎...
-          </div>
+          <div className={styles.message}>게시물을 저장하는 중입니다...</div>
         ) : null}
       </div>
     </section>
@@ -487,7 +482,7 @@ export function CreatePostPage() {
 
   if (!desktop)
     return (
-      <MobileShell title="寃뚯떆臾??묒꽦" hideSearch>
+      <MobileShell title="게시물 작성" hideSearch>
         {contentArea}
       </MobileShell>
     );
