@@ -433,8 +433,12 @@ export function PostDetailComments({
 
     try {
       const response = await axios.post(
-        `${BACKSERVER}/posts/comments/${parentCommentId}/replies`,
-        { content: replyText.trim(), mentions: replyMentions },
+        `${BACKSERVER}/posts/${postId}/comments`,
+        {
+          content: replyText.trim(),
+          parentCommentId,
+          mentions: replyMentions,
+        },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const newReply = normalizeCommentItem(response.data.comment, member);

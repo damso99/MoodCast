@@ -412,8 +412,12 @@ export function CommentModal({
     if (!replyText.trim()) return;
     try {
       const res = await axios.post(
-        `${BACKSERVER}/posts/comments/${parentCommentId}/replies`,
-        { content: replyText.trim(), mentions: replyMentions },
+        `${BACKSERVER}/posts/${post.postId}/comments`,
+        {
+          content: replyText.trim(),
+          parentCommentId,
+          mentions: replyMentions,
+        },
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       const newReply = res.data.comment;
