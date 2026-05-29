@@ -35,4 +35,5 @@ public interface LoginDao {
     // 상세 리스트 조회
     java.util.List<com.moodcast.member.dto.follow.FollowItemResponse> getFollowerList(@Param("targetId") Long targetId, @Param("loginId") Long loginId);
     java.util.List<com.moodcast.member.dto.follow.FollowItemResponse> getFollowingList(@Param("targetId") Long targetId, @Param("loginId") Long loginId);
+    java.util.List<com.moodcast.member.dto.follow.MentionCandidateResponse> getMentionCandidates(@Param("memberId") Long memberId, @Param("keyword") String keyword);
 }

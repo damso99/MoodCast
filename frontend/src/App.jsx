@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+﻿import { Navigate, Route, Routes } from 'react-router-dom';
 import { useIsDesktop } from './hooks/useViewportWidth';
 import { HomeFeedPage } from './pages/HomeFeed/HomeFeedPage';
 import { MobileFeedPage } from './pages/MobileFeed/MobileFeedPage';
@@ -28,7 +28,7 @@ function AppRoutes() {
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
-    서버 기준으로도 유효한지 확인한다.
+    서버 기준으로 유효한지 확인한다.
   */
   useEffect(() => {
     if (!accessToken) {
@@ -66,9 +66,11 @@ function AppRoutes() {
       <Route path="/app/mood-chat" element={<MoodChatPage />} />
       <Route path="/app/chat" element={<MoodChatPage />} />
       <Route path="/app/group-chat" element={<Navigate to="/app/mood-chat" replace />} />
-      {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
+      {/* 마이페이지와 저장페이지를 ProfilePage 라우트로 통합 */}
       <Route path="/app/profile" element={<ProfilePage />} />
       <Route path="/app/profile-mobile" element={<ProfilePage />} />
+      <Route path="/profile" element={<ProfilePage />} />
+      <Route path="/profile/:handle" element={<ProfilePage />} />
       <Route path="/app/profile/edit" element={<ProfileEditPage />} />
       <Route path="/app/post/edit/:postId" element={<EditPostPage />} />
       <Route path="/app/followers" element={<FollowersPage />} />

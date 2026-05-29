@@ -188,4 +188,18 @@
         ORDER BY f.created_at DESC
     </select>
 
+    <select id="getMentionCandidates" resultType="com.moodcast.member.dto.follow.MentionCandidateResponse">
+        SELECT
+            m.member_id as userId,
+            coalesce(m.nickname, m.name) as nickname,
+            m.profile_image_url as profileImage
+        FROM follow_tbl f
+        JOIN members m ON f.following_member_id = m.member_id
+        WHERE f.follower_member_id = #{memberId}
+        <if test="keyword != null and keyword != ''">
+            AND LOWER(COALESCE(m.nickname, m.name)) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+        </if>
+        ORDER BY f.created_at DESC
+    </select>
+
 </mapper>

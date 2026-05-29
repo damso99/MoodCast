@@ -2,5 +2,5 @@
   display: grid;
   gap: 14px;
   min-width: 0;
-  overflow: hidden;
+  overflow: visible;
 }

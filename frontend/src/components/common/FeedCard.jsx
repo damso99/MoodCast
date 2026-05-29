@@ -24,6 +24,7 @@ import { normalizeBackendUrl } from '../../shared/lib/postHelpers';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { HashtagRow } from './HashtagRow';
+import { MentionContent } from './MentionContent';
 import styles from './FeedCard.module.css';
 
 const EMOTIONS = {
@@ -201,7 +202,6 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
   ].filter(Boolean).map((src) => normalizeBackendUrl(src, BACKSERVER, 'post-images'));
   const imageSrcs = Array.from(new Set(imageCandidates));
   const imageSrc = imageSrcs[0] ?? null;
-  const cardText = post.text ?? stripHtml(rawContent);
   const timeLabel = post.time ?? post.createdAt ?? post.created_at ?? '';
   const postMemberId = post.memberId ?? post.member_id ?? post.authorId ?? post.author_id ?? post.userId ?? post.user_id;
   const profileLink = post.profileLink ?? (postMemberId ? `/app/user/${postMemberId}` : null);
@@ -213,6 +213,14 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
     'user-images'
   );
   const profileInitial = post.author ? post.author.charAt(0).toUpperCase() : '?';
+  const handleMentionClick = (mention) => {
+    const userId = mention?.userId ?? mention?.mentionedUserId;
+    if (!userId) {
+      return;
+    }
+
+    navigate(`/profile/${userId}`);
+  };
 
   useEffect(() => {
     if (imageSrcs.length === 0) return;
@@ -465,6 +473,44 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
     }
   };
 
+  const handleCommentSubmitWithMentions = async (payload) => {
+    const content = typeof payload === 'string' ? payload : payload?.content ?? '';
+    const mentions = Array.isArray(payload?.mentions) ? payload.mentions : [];
+
+    if (!accessToken) {
+      alert('濡쒓렇?몄씠 ?꾩슂?⑸땲??');
+      return null;
+    }
+
+    try {
+      const response = await axios.post(
+        `${BACKSERVER}/posts/${postId}/comments`,
+        { content, mentions },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const nextComment = response.data.comment;
+      const mappedComment = {
+        ...nextComment,
+        memberId: nextComment?.memberId,
+        profileLink: nextComment?.memberId ? `/app/user/${nextComment.memberId}` : null,
+        profileImageUrl: nextComment?.profileImageUrl ?? nextComment?.profile_image_url ?? null,
+        author: nextComment?.author || nextComment?.nickname || '?듬챸',
+        mentions: nextComment?.mentions ?? mentions,
+      };
+      setComments((prev) => [...prev, mappedComment]);
+      setCommentCount((prev) => prev + 1);
+      return mappedComment;
+    } catch (err) {
+      console.error('?볤? ?깅줉 ?ㅽ뙣:', err);
+      alert('?볤? ?깅줉???ㅽ뙣?덉뒿?덈떎.');
+      return null;
+    }
+  };
+
   return (
     <>
       <article className={`${styles.card} ${compact ? styles.compact : ''}`} onClick={handleCardClick} style={{ cursor: 'pointer' }}>
@@ -555,7 +601,15 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
         </div>
 
         {post.title && <p className={styles.title}>{post.title}</p>}
-        <p className={styles.text}>{cardText}</p>
+        <p className={styles.text}>
+          <MentionContent
+            content={rawContent}
+            mentions={post.mentions ?? []}
+            onMentionClick={handleMentionClick}
+            className={styles.textContent}
+            mentionClassName={styles.mentionText}
+          />
+        </p>
         {imageSrcs.length > 0 && (
           <div className={styles.postImageCarousel}>
             {/* 메인 이미지 */}
@@ -765,7 +819,7 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
         post={selectedPost}
         comments={comments}
         onClose={closeCommentModal}
-        onSubmit={handleCommentSubmit}
+        onSubmit={handleCommentSubmitWithMentions}
         onLike={handleLike}
       />
       <DeleteConfirmModal

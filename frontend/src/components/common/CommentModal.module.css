@@ -361,6 +361,49 @@
   gap: 6px;
 }
 
+.mentionField {
+  position: relative;
+}
+
+.mentionBox {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 9999;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 14px 32px rgba(17, 24, 39, 0.16);
+}
+
+.mentionItem {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #f8f9ff;
+  color: #374151;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mentionItem:hover {
+  background: #eef2ff;
+}
+
+.mentionText {
+  color: #5b47e8;
+  font-weight: 700;
+}
+
+.commentTextContent {
+  color: #111827;
+}
+
 .replyInput {
   width: 100%;
   box-sizing: border-box;

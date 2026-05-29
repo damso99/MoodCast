@@ -2,14 +2,19 @@ package com.moodcast.post.service;
 
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
+import com.moodcast.notification.dao.NotificationDao;
+import com.moodcast.notification.vo.Notification;
 import com.moodcast.post.dao.PostDao;
 import com.moodcast.post.dto.CreateCommentRequest;
 import com.moodcast.post.dto.CreatePostRequest;
+import com.moodcast.post.dto.PostMentionNotificationDto;
+import com.moodcast.post.dto.PostMentionRequest;
 import com.moodcast.post.vo.CommentSummary;
 import com.moodcast.post.vo.EmotionStat;
 import com.moodcast.post.vo.Hashtag;
 import com.moodcast.post.vo.PostDetail;
 import com.moodcast.post.vo.Post;
+import com.moodcast.post.vo.PostMention;
 import com.moodcast.post.vo.PostSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -22,7 +27,9 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -39,6 +46,9 @@ public class PostService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private NotificationDao notificationDao;
 
     @Transactional
     public Long createPost(String authorizationHeader, CreatePostRequest request) {
@@ -87,6 +97,10 @@ public class PostService {
             postDao.insertPostHashtag(postId, hashtagId);
         }
 
+        List<PostMention> mentions = normalizeMentions(postId, request.getMentions());
+        persistMentions(postId, mentions);
+        sendMentionNotifications(postId, post, loginMember, mentions);
+
         return postId;
     }
 
@@ -95,15 +109,109 @@ public class PostService {
             return List.of();
         }
 
-        // #으로 시작하는 해시태그를 추출 (예: #hello #world #test)
+        // #로 시작하는 해시태그를 추출 (예: #hello #world #test)
         return Arrays.stream(tags.split("\\s+"))
                 .map(String::trim)
-                .filter(tag -> tag.startsWith("#"))  // #으로 시작하는 태그만
+                .filter(tag -> tag.startsWith("#"))  // #로 시작하는 태그만
                 .map(tag -> tag.replaceAll("^#+", ""))  // # 기호 제거
                 .map(String::toLowerCase)
-                .filter(tag -> !tag.isEmpty() && tag.length() <= 50)  // 빈 태그, 50자 초과 제거
+                .filter(tag -> !tag.isEmpty() && tag.length() <= 50)  // 빈 태그, 50자 초과 태그 제거
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    private List<PostMention> normalizeMentions(Long postId, List<PostMentionRequest> requests) {
+        if (postId == null || requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        List<PostMention> mentions = new java.util.ArrayList<>();
+        for (PostMentionRequest request : requests) {
+            if (request == null) {
+                continue;
+            }
+
+            if (request.getUserId() == null
+                    || request.getMentionText() == null
+                    || request.getMentionText().trim().isEmpty()
+                    || request.getStartIndex() == null
+                    || request.getEndIndex() == null) {
+                throw new IllegalArgumentException("멘션 정보가 올바르지 않습니다.");
+            }
+
+            PostMention mention = new PostMention();
+            mention.setPostId(postId);
+            mention.setUserId(request.getUserId());
+            mention.setNickname(request.getNickname());
+            mention.setMentionText(request.getMentionText().trim());
+            mention.setStartIndex(request.getStartIndex());
+            mention.setEndIndex(request.getEndIndex());
+            mentions.add(mention);
+        }
+
+        mentions.sort(java.util.Comparator.comparingInt(mention -> mention.getStartIndex() == null ? 0 : mention.getStartIndex()));
+        return mentions;
+    }
+
+    private void persistMentions(Long postId, List<PostMention> mentions) {
+        if (postId == null) {
+            return;
+        }
+
+        postDao.deletePostMentionsByPostId(postId);
+        if (mentions == null || mentions.isEmpty()) {
+            return;
+        }
+
+        for (PostMention mention : mentions) {
+            postDao.insertPostMention(mention);
+        }
+    }
+
+    private void sendMentionNotifications(Long postId, Post post, LoginMemberResponse author, List<PostMention> mentions) {
+        if (postId == null || post == null || author == null || mentions == null || mentions.isEmpty()) {
+            return;
+        }
+
+        Set<String> sentKeys = new LinkedHashSet<>();
+        for (PostMention mention : mentions) {
+            if (mention == null || mention.getUserId() == null || mention.getUserId().equals(author.getMemberId())) {
+                continue;
+            }
+
+            String dedupeKey = mention.getUserId() + ":" + mention.getStartIndex() + ":" + mention.getEndIndex();
+            if (!sentKeys.add(dedupeKey)) {
+                continue;
+            }
+
+            Notification notification = new Notification();
+            notification.setRecipientMemberId(mention.getUserId());
+            notification.setSenderMemberId(author.getMemberId());
+            notification.setNotificationType("MENTION");
+            notification.setTargetType("POST");
+            notification.setTargetId(postId);
+            notification.setTitle(post.getTitle() == null || post.getTitle().trim().isEmpty() ? "새 멘션" : post.getTitle().trim());
+            notification.setContent(mention.getMentionText());
+            notification.setIsRead("N");
+            notificationDao.insertNotification(notification);
+
+            PostMentionNotificationDto payload = new PostMentionNotificationDto();
+            payload.setNotificationId("mention-" + postId + "-" + mention.getUserId() + "-" + mention.getStartIndex());
+            payload.setEventType("MENTION");
+            payload.setPostId(postId);
+            payload.setSenderId(author.getMemberId());
+            payload.setSenderName(resolveMemberDisplayName(author));
+            payload.setSenderProfileImageUrl(author.getProfileImageUrl());
+            payload.setMentionedUserId(mention.getUserId());
+            payload.setMentionText(mention.getMentionText());
+            payload.setTargetType("POST");
+            payload.setTargetId(postId);
+            payload.setTitle(notification.getTitle());
+            payload.setContent(mention.getMentionText());
+            payload.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(NOTIFICATION_TIME_FORMATTER));
+
+            messagingTemplate.convertAndSend("/sub/notifications/" + mention.getUserId(), payload);
+        }
     }
 
     private Long getViewerId(String authorizationHeader) {
@@ -375,6 +483,9 @@ public class PostService {
             postDao.insertPostHashtag(postId, hashtagId);
         }
 
+        List<PostMention> mentions = normalizeMentions(postId, request.getMentions());
+        persistMentions(postId, mentions);
+
         return getPostById(postId, authorizationHeader);
     }
 
@@ -424,3 +535,4 @@ public class PostService {
         postDao.deleteComment(commentId);
     }
 }
+

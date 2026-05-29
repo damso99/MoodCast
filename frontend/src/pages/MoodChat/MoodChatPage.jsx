@@ -406,9 +406,9 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         ),
       );
     } catch (requestError) {
-      console.error("채팅 리스트議고쉶 ?ㅽ뙣", requestError);
+      console.error("채팅 리스트 조회 실패", requestError);
       setThreads([]);
-      setError("梨꾪똿 由ъ뒪?몃? 遺덈윭?ㅼ? 紐삵뻽?듬땲??");
+      setError("채팅 리스트를 불러오지 못했습니다.");
     } finally {
       setIsLoadingThreads(false);
     }
@@ -470,8 +470,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
     const partnerThread = {
       partnerMemberId: initialPartnerId,
-      partnerName: initialPartnerName || `?뚯썝 ${initialPartnerId}`,
-      partnerNickname: initialPartnerName || `?뚯썝 ${initialPartnerId}`,
+      partnerName: initialPartnerName || `회원 ${initialPartnerId}`,
+      partnerNickname: initialPartnerName || `회원 ${initialPartnerId}`,
       partnerProfileImageUrl: "",
       lastMessage: "",
       lastMessageAt: "",
