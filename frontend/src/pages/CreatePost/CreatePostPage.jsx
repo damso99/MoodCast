@@ -435,8 +435,9 @@ export function CreatePostPage() {
                     type="button"
                     onClick={() => handleRemoveTag(index)}
                     className={styles.tagChipButton}
+                    aria-label={`${tag} 태그 삭제`}
                   >
-                    횞
+                    ×
                   </button>
                 </div>
               ))}
