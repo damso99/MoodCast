@@ -191,15 +191,13 @@ public class PostController {
     public ResponseEntity<?> createReply(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @PathVariable Long commentId,
-            @RequestBody Map<String, String> body
+            @RequestBody CreateCommentRequest body
     ) {
-        CreateCommentRequest replyRequest = new CreateCommentRequest();
-        replyRequest.setContent(body.get("content"));
-        replyRequest.setParentCommentId(commentId);
+        body.setParentCommentId(commentId);
 
         // parentComment에서 postId 조회
         com.moodcast.post.vo.CommentSummary parent = postService.getCommentById(commentId);
-        CommentSummary reply = postService.addComment(authorizationHeader, parent.getPostId(), replyRequest);
+        CommentSummary reply = postService.addComment(authorizationHeader, parent.getPostId(), body);
         return ResponseEntity.ok(Map.of("success", true, "comment", reply));
     }
 

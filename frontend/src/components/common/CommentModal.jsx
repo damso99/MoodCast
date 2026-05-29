@@ -598,40 +598,37 @@ export function CommentModal({
           </p>
         )}
 
-        {/* 글쓰기 버튼 (최상단 오른쪽만) */}
-        {!isReply && (
-          <div className={styles.replyActions}>
+        <div className={styles.replyActions}>
+          <button
+            type="button"
+            className={styles.replyBtn}
+            onClick={() => {
+              closeReplyMentionBox();
+              setReplyMentions([]);
+              setReplyingToId(replyingToId === id ? null : id);
+              setReplyText("");
+            }}
+          >
+            <ReplyIcon fontSize="small" />
+            답글 쓰기
+          </button>
+          {item.replies?.length > 0 && (
             <button
               type="button"
-              className={styles.replyBtn}
-              onClick={() => {
-                closeReplyMentionBox();
-                setReplyMentions([]);
-                setReplyingToId(replyingToId === id ? null : id);
-                setReplyText("");
-              }}
+              className={styles.toggleRepliesBtn}
+              onClick={() =>
+                setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))
+              }
             >
-              <ReplyIcon fontSize="small" />
-              답글 쓰기
+              {expandedReplies[id]
+                ? "답글 접기"
+                : `답글 ${item.replies.length}개 보기`}
             </button>
-            {item.replies?.length > 0 && (
-              <button
-                type="button"
-                className={styles.toggleRepliesBtn}
-                onClick={() =>
-                  setExpandedReplies((prev) => ({ ...prev, [id]: !prev[id] }))
-                }
-              >
-                {expandedReplies[id]
-                  ? "답글 접기"
-                  : `답글 ${item.replies.length}개 보기`}
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
         {/* 이미지 올리기 버튼*/}
-        {!isReply && replyingToId === id && (
+        {replyingToId === id && (
           <div className={styles.replyComposer}>
             <div className={styles.mentionField}>
               <textarea
@@ -652,6 +649,13 @@ export function CommentModal({
                     nextValue,
                     event.target.selectionStart ?? nextValue.length,
                   );
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleReplySubmit(id);
+                  }
                 }}
                 onKeyUp={(event) =>
                   syncReplyMentionState(

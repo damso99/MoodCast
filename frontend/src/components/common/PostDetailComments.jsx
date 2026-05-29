@@ -610,40 +610,38 @@ export function PostDetailComments({
           </p>
         )}
 
-        {!isReply && (
-          <div className={styles.replyActions}>
+        <div className={styles.replyActions}>
+          <button
+            type="button"
+            className={styles.replyBtn}
+            onClick={() => {
+              closeReplyMentionBox();
+              setReplyMentions([]);
+              setReplyingToId(replyingToId === id ? null : id);
+              setReplyText("");
+            }}
+          >
+            <ReplyIcon fontSize="small" />
+            답글 쓰기
+          </button>
+
+          {item.replies?.length > 0 && (
             <button
               type="button"
-              className={styles.replyBtn}
-              onClick={() => {
-                closeReplyMentionBox();
-                setReplyMentions([]);
-                setReplyingToId(replyingToId === id ? null : id);
-                setReplyText("");
-              }}
+              className={styles.toggleRepliesBtn}
+              onClick={() =>
+                setExpandedReplies((prev) => ({
+                  ...prev,
+                  [id]: !prev[id],
+                }))
+              }
             >
-              <ReplyIcon fontSize="small" />
-              답글 쓰기
+              {expandedReplies[id]
+                ? "답글 접기"
+                : `답글 ${item.replies.length}개 보기`}
             </button>
-
-            {item.replies?.length > 0 && (
-              <button
-                type="button"
-                className={styles.toggleRepliesBtn}
-                onClick={() =>
-                  setExpandedReplies((prev) => ({
-                    ...prev,
-                    [id]: !prev[id],
-                  }))
-                }
-              >
-                {expandedReplies[id]
-                  ? "답글 접기"
-                  : `답글 ${item.replies.length}개 보기`}
-              </button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
 
         {replyingToId === id && (
           <div className={styles.replyComposer}>
@@ -666,6 +664,13 @@ export function PostDetailComments({
                     nextValue,
                     event.target.selectionStart ?? nextValue.length,
                   );
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleReplySubmit(id);
+                  }
                 }}
                 onKeyUp={(event) =>
                   syncReplyMentionState(
@@ -771,7 +776,8 @@ export function PostDetailComments({
           <div className={styles.mentionField}>
             <textarea
               ref={commentTextareaRef}
-              rows={1}
+              className={styles.replyInput}
+              rows={2}
               value={comment}
               onChange={(event) => {
                 const nextValue = event.target.value;
