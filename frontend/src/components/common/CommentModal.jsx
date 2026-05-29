@@ -81,27 +81,31 @@ export function CommentModal({
 
     const loadComments = async () => {
       try {
-        const response = await axios.get(`${BACKSERVER}/posts/${post.postId}/comments`);
+        const response = await axios.get(
+          `${BACKSERVER}/posts/${post.postId}/comments`,
+        );
         const items = response.data?.results || [];
         if (!active) return;
 
         const normalizeComment = (item) => ({
           ...item,
-          profileImageUrl: item.profileImageUrl ??
-                           item.profile_image_url ??
-                           item.avatarUrl ??
-                           item.avatar_url ??
-                           item.imageUrl ??
-                           item.image_url ??
-                           item.photoUrl ??
-                           item.photo ?? null,
+          profileImageUrl:
+            item.profileImageUrl ??
+            item.profile_image_url ??
+            item.avatarUrl ??
+            item.avatar_url ??
+            item.imageUrl ??
+            item.image_url ??
+            item.photoUrl ??
+            item.photo ??
+            null,
           replies: (item.replies ?? []).map((r) => normalizeComment(r)),
         });
 
         setLocalComments(items.map((item) => normalizeComment(item)));
       } catch (error) {
         if (!active) return;
-        console.error('댓글을 불러오는 중 오류가 발생했습니다.', error);
+        console.error("댓글을 불러오는 중 오류가 발생했습니다.", error);
       }
     };
 
@@ -139,23 +143,6 @@ export function CommentModal({
       return next;
     });
   }, [localComments]);
-    const normalizeComment = (item) => ({
-      ...item,
-      profileImageUrl:
-        item.profileImageUrl ??
-        item.profile_image_url ??
-        item.avatarUrl ??
-        item.avatar_url ??
-        item.imageUrl ??
-        item.image_url ??
-        item.photoUrl ??
-        item.photo ??
-        null,
-      replies: (item.replies ?? []).map((reply) => normalizeComment(reply)),
-    });
-
-    setLocalComments((comments ?? []).map((item) => normalizeComment(item)));
-  }, [comments]);
 
   useEffect(() => {
     if (!menuOpenId) return undefined;
@@ -364,14 +351,6 @@ export function CommentModal({
   const handleEditSave = async (commentId) => {
     if (!editText.trim()) return;
     try {
-      await axios.put(`${BACKSERVER}/posts/comments/${commentId}`, { content: editText.trim() }, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const updateContent = (comments) => comments.map((c) => {
-        if (c.commentId === commentId) return { ...c, content: editText.trim() };
-        return { ...c, replies: updateContent(c.replies ?? []) };
-      });
-      setLocalComments((prev) => updateContent(prev));
       await axios.put(
         `${BACKSERVER}/posts/comments/${commentId}`,
         { content: editText.trim() },
@@ -379,20 +358,13 @@ export function CommentModal({
           headers: { Authorization: `Bearer ${accessToken}` },
         },
       );
-      setLocalComments((prev) =>
-        prev.map((c) => {
+      const updateContent = (comments) =>
+        comments.map((c) => {
           if (c.commentId === commentId)
             return { ...c, content: editText.trim() };
-          return {
-            ...c,
-            replies: (c.replies ?? []).map((r) =>
-              r.commentId === commentId
-                ? { ...r, content: editText.trim() }
-                : r,
-            ),
-          };
-        }),
-      );
+          return { ...c, replies: updateContent(c.replies ?? []) };
+        });
+      setLocalComments((prev) => updateContent(prev));
       setEditingId(null);
       if (onCommentUpdate) onCommentUpdate();
     } catch {
@@ -400,42 +372,17 @@ export function CommentModal({
     }
   };
 
-  const handleDeleteComment = async (commentId, parentCommentId = null) => {
+  const handleDeleteComment = async (commentId) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return;
     try {
       await axios.delete(`${BACKSERVER}/posts/comments/${commentId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const removeReplyFromComments = (comments) =>
-        comments.map((c) => ({
-          ...c,
-          replies: (c.replies ?? [])
-            .filter((r) => r.commentId !== commentId)
-            .map((r) => ({
-              ...r,
-              replies: r.replies ? removeReplyFromComments(r.replies) : [],
-            })),
-        }));
-
-      if (parentCommentId) {
-        // 대댓글 삭제
-        setLocalComments((prev) =>
-          prev.map((c) =>
-            c.commentId === parentCommentId
-              ? {
-                  ...c,
-                  replies: (c.replies ?? []).filter(
-                    (r) => r.commentId !== commentId,
-                  ),
-                }
-              : c,
-          ),
-        );
-      } else {
-        setLocalComments((prev) =>
-          prev.filter((c) => c.commentId !== commentId),
-        );
-      }
+      const removeById = (list) =>
+        list
+          .filter((c) => c.commentId !== commentId)
+          .map((c) => ({ ...c, replies: removeById(c.replies ?? []) }));
+      setLocalComments((prev) => removeById(prev));
       setMenuOpenId(null);
       if (onCommentUpdate) onCommentUpdate();
     } catch {
@@ -483,11 +430,7 @@ export function CommentModal({
         null;
       newReply.author = newReply.author ?? member?.nickname;
       setLocalComments((prev) =>
-        prev.map((c) =>
-          c.commentId === parentCommentId
-            ? { ...c, replies: [...(c.replies ?? []), newReply] }
-            : c,
-        ),
+        appendReplyToComments(prev, parentCommentId, newReply),
       );
       setExpandedReplies((prev) => ({ ...prev, [parentCommentId]: true }));
       setReplyingToId(null);
@@ -530,11 +473,9 @@ export function CommentModal({
     }
   };
 
-  // 총 댓글 수(부모 댓글 + 대댓글)
-  const totalCount = localComments.reduce(
-    (acc, c) => acc + 1 + (c.replies?.length ?? 0),
-    0,
-  );
+  const countComments = (list) =>
+    list.reduce((acc, c) => acc + 1 + countComments(c.replies ?? []), 0);
+  const totalCount = countComments(localComments);
 
   const renderCommentItem = (item, parentCommentId = null) => {
     const id = item.commentId ?? item.id;
@@ -605,7 +546,7 @@ export function CommentModal({
                   <button
                     type="button"
                     className={styles.danger}
-                    onClick={() => handleDeleteComment(id, parentCommentId)}
+                    onClick={() => handleDeleteComment(id)}
                   >
                     <DeleteOutlineIcon fontSize="small" /> 삭제
                   </button>
@@ -923,6 +864,8 @@ export function CommentModal({
           <div className={styles.mentionField}>
             <textarea
               ref={commentTextareaRef}
+              className={styles.replyInput}
+              rows={2}
               value={comment}
               onChange={(event) => {
                 const nextValue = event.target.value;

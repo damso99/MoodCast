@@ -33,7 +33,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 340px;   /* 댓글이 많으면 이 안에서 스크롤 */
+  max-height: 340px; /* 댓글이 많으면 이 안에서 스크롤 */
   overflow-y: auto;
   padding-right: 4px;
   scrollbar-width: thin;
@@ -50,7 +50,11 @@
 
 .list::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(125, 110, 255, 0.65), rgba(74, 172, 255, 0.7));
+  background: linear-gradient(
+    180deg,
+    rgba(125, 110, 255, 0.65),
+    rgba(74, 172, 255, 0.7)
+  );
   border: 2px solid transparent;
   background-clip: padding-box;
 }
@@ -163,7 +167,7 @@
   background: #fff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   z-index: 10;
   min-width: 100px;
   overflow: hidden;
@@ -289,6 +293,7 @@
 
 .mentionField {
   position: relative;
+  width: 100%;
 }
 
 .mentionBox {
@@ -362,12 +367,13 @@
 
 .composerRow {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 12px;
 }
 
 .composerRow textarea {
   flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
   min-height: 42px;
   height: 42px;
@@ -381,12 +387,16 @@
 }
 
 .send {
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 42px;
+  height: 42px;
+  min-width: 92px;
+  padding: 0 16px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  white-space: nowrap;
   color: #fff;
   background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
 }

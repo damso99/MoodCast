@@ -78,11 +78,7 @@ export function PostDetailComments({
       0,
     );
   const totalCount = useMemo(
-    () =>
-      localComments.reduce(
-        (acc, current) => acc + 1 + (current.replies?.length ?? 0),
-        0,
-      ),
+    () => countComments(localComments),
     [localComments],
   );
 
@@ -98,7 +94,6 @@ export function PostDetailComments({
         const items = response.data?.results || [];
         if (!active) return;
 
-        setLocalComments(items.map((item) => normalizeCommentItem(item, member)));
         setLocalComments(
           items.map((item) => normalizeCommentItem(item, member)),
         );
@@ -360,10 +355,18 @@ export function PostDetailComments({
     if (link) navigate(link);
   };
 
-  const updateCommentContent = (comments, commentId, newContent) => comments.map((item) => {
-    if (item.commentId === commentId) return { ...item, content: newContent };
-    return { ...item, replies: updateCommentContent(item.replies ?? [], commentId, newContent) };
-  });
+  const updateCommentContent = (comments, commentId, newContent) =>
+    comments.map((item) => {
+      if (item.commentId === commentId) return { ...item, content: newContent };
+      return {
+        ...item,
+        replies: updateCommentContent(
+          item.replies ?? [],
+          commentId,
+          newContent,
+        ),
+      };
+    });
 
   const handleEditSave = async (commentId) => {
     if (!editText.trim()) return;
@@ -375,21 +378,8 @@ export function PostDetailComments({
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      setLocalComments((prev) => updateCommentContent(prev, commentId, editText.trim()));
       setLocalComments((prev) =>
-        prev.map((item) => {
-          if (item.commentId === commentId) {
-            return { ...item, content: editText.trim() };
-          }
-          return {
-            ...item,
-            replies: (item.replies ?? []).map((reply) =>
-              reply.commentId === commentId
-                ? { ...reply, content: editText.trim() }
-                : reply,
-            ),
-          };
-        }),
+        updateCommentContent(prev, commentId, editText.trim()),
       );
       setEditingId(null);
     } catch {
@@ -397,13 +387,15 @@ export function PostDetailComments({
     }
   };
 
-  const removeCommentById = (comments, commentId) => comments
-    .filter((item) => item.commentId !== commentId)
-    .map((item) => ({ ...item, replies: removeCommentById(item.replies ?? [], commentId) }));
+  const removeCommentById = (comments, commentId) =>
+    comments
+      .filter((item) => item.commentId !== commentId)
+      .map((item) => ({
+        ...item,
+        replies: removeCommentById(item.replies ?? [], commentId),
+      }));
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('댓글을 삭제하시겠습니까?')) return;
-  const handleDeleteComment = async (commentId, parentCommentId = null) => {
     if (!window.confirm("댓글을 삭제하시겠습니까?")) return;
 
     try {
@@ -412,25 +404,6 @@ export function PostDetailComments({
       });
 
       setLocalComments((prev) => removeCommentById(prev, commentId));
-      if (parentCommentId) {
-        setLocalComments((prev) =>
-          prev.map((item) =>
-            item.commentId === parentCommentId
-              ? {
-                  ...item,
-                  replies: (item.replies ?? []).filter(
-                    (reply) => reply.commentId !== commentId,
-                  ),
-                }
-              : item,
-          ),
-        );
-      } else {
-        setLocalComments((prev) =>
-          prev.filter((item) => item.commentId !== commentId),
-        );
-      }
-
       setMenuOpenId(null);
     } catch {
       alert("댓글 삭제에 실패했습니다.");
@@ -468,11 +441,7 @@ export function PostDetailComments({
       newReply.mentions = response.data.comment?.mentions ?? replyMentions;
 
       setLocalComments((prev) =>
-        prev.map((item) =>
-          item.commentId === parentCommentId
-            ? { ...item, replies: [...(item.replies ?? []), newReply] }
-            : item,
-        ),
+        appendReplyToComments(prev, parentCommentId, newReply),
       );
       setExpandedReplies((prev) => ({ ...prev, [parentCommentId]: true }));
       setReplyingToId(null);
