@@ -1,0 +1,104 @@
+import styles from "../../adminComponentsCss/contentManagement/ContentHashtagGrid.module.css";
+
+/* ==========================================================================
+ * 콘텐츠 관리 해시태그 목록 컴포넌트
+ * --------------------------------------------------------------------------
+ * 해시태그 탭에서 조회된 해시태그를 카드 형태로 보여주고 페이지네이션을 담당합니다.
+ *
+ * 초보자 설명:
+ * - paginatedHashtags는 현재 페이지에서 보여줄 해시태그만 담긴 배열입니다.
+ * - postCount는 실제 게시글과 연결된 수, useCount는 해시태그 테이블의 누적 사용 수입니다.
+ * ========================================================================== */
+export function ContentHashtagGrid({
+  hashtagsLoading,
+  hashtagsError,
+  paginatedHashtags,
+  filteredHashtagCount,
+  currentPage,
+  totalPageCount,
+  pageNumbers,
+  onPageChange,
+}) {
+  return (
+    <>
+      <section className={styles.simpleList}>
+        {hashtagsLoading ? (
+          <div className={styles.emptyFeed}>
+            <strong>해시태그를 불러오는 중입니다.</strong>
+            <span>잠시만 기다려주세요.</span>
+          </div>
+        ) : hashtagsError ? (
+          <div className={styles.emptyFeed}>
+            <strong>해시태그 조회 실패</strong>
+            <span>백엔드 API 응답을 확인해주세요.</span>
+          </div>
+        ) : paginatedHashtags.length === 0 ? (
+          <div className={styles.emptyFeed}>
+            <strong>해시태그 데이터 없음</strong>
+            <span>검색어를 바꾸거나 다른 탭을 확인해주세요.</span>
+          </div>
+        ) : (
+          paginatedHashtags.map((hashtag) => (
+            <article className={styles.simpleCard} key={hashtag.hashtagId}>
+              <div className={styles.simpleCardHeader}>
+                <strong>#{hashtag.hashtag}</strong>
+                <span className={`${styles.statusBadge} ${styles.statusPublic}`}>
+                  사용 중
+                </span>
+              </div>
+
+              <dl className={styles.simpleMetaList}>
+                <div>
+                  <dt>연결 게시글</dt>
+                  <dd>{Number(hashtag.postCount || 0).toLocaleString()}개</dd>
+                </div>
+                <div>
+                  <dt>누적 사용</dt>
+                  <dd>{Number(hashtag.useCount || 0).toLocaleString()}회</dd>
+                </div>
+                <div>
+                  <dt>최근 사용일</dt>
+                  <dd>{hashtag.latestPostCreatedAt || "-"}</dd>
+                </div>
+              </dl>
+            </article>
+          ))
+        )}
+      </section>
+
+      {filteredHashtagCount > 0 && (
+        <nav className={styles.pagination} aria-label="해시태그 페이지 이동">
+          <div className={styles.paginationButtons}>
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            >
+              이전
+            </button>
+            {pageNumbers.map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                className={pageNumber === currentPage ? styles.activePage : ""}
+                aria-current={pageNumber === currentPage ? "page" : undefined}
+                onClick={() => onPageChange(pageNumber)}
+              >
+                {pageNumber}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={currentPage === totalPageCount}
+              onClick={() =>
+                onPageChange(Math.min(totalPageCount, currentPage + 1))
+              }
+            >
+              다음
+            </button>
+          </div>
+        </nav>
+      )}
+    </>
+  );
+}

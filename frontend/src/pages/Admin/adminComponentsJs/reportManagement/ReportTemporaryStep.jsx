@@ -1,7 +1,7 @@
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { reasonOptions, suspensionPeriods } from "./reportConstants";
 import { DrawerHeader } from "./ReportDrawerHeader";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportTemporaryStep.module.css";
 
 export function ReportTemporaryStep({
   report,

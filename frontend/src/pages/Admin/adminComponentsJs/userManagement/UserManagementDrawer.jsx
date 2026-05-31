@@ -8,7 +8,7 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PauseCircleOutlineOutlinedIcon from "@mui/icons-material/PauseCircleOutlineOutlined";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
-import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
+import styles from "../../adminComponentsCss/userManagement/UserManagementDrawer.module.css";
 
 /* ==========================================================================
  * 사용자 관리 오른쪽 패널 컴포넌트
@@ -42,7 +42,8 @@ export function UserManagementDrawer({
   const [customSuspendDate, setCustomSuspendDate] = useState(""); // 직접 선택한 정지 해제 날짜입니다.
   const [suspendLoading, setSuspendLoading] = useState(false); // 정지/해제 API 호출 중인지 표시합니다.
   const [suspendError, setSuspendError] = useState(""); // 정지/해제 실패 메시지입니다.
-  const [actionMessage, setActionMessage] = useState(""); // 정지/해제 성공 메시지입니다.
+  const [actionResultPopup, setActionResultPopup] = useState(null); // 정지/해제 API가 끝난 뒤 성공/실패 결과를 하나의 팝업으로 보여주기 위한 상태입니다.
+  const [isClosing, setIsClosing] = useState(false); // 패널을 닫을 때 바로 사라지지 않고 닫힘 애니메이션을 보여주기 위한 상태입니다.
   const { accessToken } = useAuthStore();
 
   const BACKSERVER = (
@@ -65,12 +66,32 @@ export function UserManagementDrawer({
     setCustomSuspendDate("");
     setSuspendError("");
     setSuspendLoading(false);
-    setActionMessage("");
+    setActionResultPopup(null);
+    setIsClosing(false);
   }, [selectedManagedMember?.memberId]);
 
   if (!selectedManagedMember) {
     return null;
   }
+
+  const handleDrawerClose = () => {
+    /*
+     * 우측 관리 패널 닫기 함수
+     * ----------------------------------------------------------------------
+     * 초보자 설명:
+     * - 기존에는 닫기 버튼을 누르면 부모의 onClose가 바로 실행되어 패널이 즉시 사라졌습니다.
+     * - 닫힐 때도 슬라이드 효과를 보여주려면, 먼저 isClosing을 true로 바꿔 CSS 닫힘 애니메이션을 실행합니다.
+     * - 220ms 뒤에 실제 onClose를 호출해서 부모 상태(selectedManagedMember)를 비우고 패널을 제거합니다.
+     */
+    if (isClosing) {
+      return;
+    }
+
+    setIsClosing(true);
+    window.setTimeout(() => {
+      onClose();
+    }, 220);
+  };
 
   const isCurrentAdminSuperAdmin = currentAdminRole === "SUPER_ADMIN";
   const isTargetSelf =
@@ -162,6 +183,27 @@ export function UserManagementDrawer({
     setSuspendError("");
   };
 
+  const openActionResultPopup = (type, title, message) => {
+    /*
+     * 정지/해제 결과 팝업 표시 함수
+     * ----------------------------------------------------------------------
+     * 초보자 설명:
+     * - type은 "success" 또는 "error"입니다. CSS에서 색상을 다르게 보여주기 위해 사용합니다.
+     * - title은 팝업의 굵은 제목이고, message는 아래 설명 문구입니다.
+     * - 기존에는 성공은 패널 안 문구, 실패는 정지 확인 모달 안 문구로 따로 나왔습니다.
+     *   이제는 성공/실패 모두 이 함수 하나로 같은 위치의 팝업에 표시합니다.
+     */
+    setActionResultPopup({
+      type,
+      title,
+      message,
+    });
+  };
+
+  const closeActionResultPopup = () => {
+    setActionResultPopup(null);
+  };
+
   const closeSuspendModal = () => {
     if (suspendLoading) return;
 
@@ -211,12 +253,15 @@ export function UserManagementDrawer({
           );
         }
 
-        setActionMessage(resultText);
+        openActionResultPopup("success", "처리 완료", resultText);
         setSuspendModalType(null);
       })
       .catch((error) => {
         console.log(error);
-        setSuspendError(
+        setSuspendModalType(null);
+        openActionResultPopup(
+          "error",
+          "처리 실패",
           error.response?.data?.message ||
             "회원 정지 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
         );
@@ -261,11 +306,13 @@ export function UserManagementDrawer({
           );
         }
 
-        setActionMessage("회원 정지를 해제했습니다.");
+        openActionResultPopup("success", "처리 완료", "회원 정지를 해제했습니다.");
       })
       .catch((error) => {
         console.log(error);
-        setSuspendError(
+        openActionResultPopup(
+          "error",
+          "처리 실패",
           error.response?.data?.message ||
             "회원 정지 해제에 실패했습니다. 잠시 후 다시 시도해주세요.",
         );
@@ -276,16 +323,24 @@ export function UserManagementDrawer({
   };
 
   return (
-    <div className={styles.memberDrawerLayer}>
+    <div
+      className={`${styles.memberDrawerLayer} ${
+        isClosing ? styles.memberDrawerLayerClosing : ""
+      }`}
+    >
       <button
         type="button"
-        className={styles.memberDrawerDim}
+        className={`${styles.memberDrawerDim} ${
+          isClosing ? styles.memberDrawerDimClosing : ""
+        }`}
         aria-label="회원 관리 패널 닫기"
-        onClick={onClose}
+        onClick={handleDrawerClose}
       />
 
       <aside
-        className={styles.memberDrawer}
+        className={`${styles.memberDrawer} ${
+          isClosing ? styles.memberDrawerClosing : ""
+        }`}
         aria-label={`${selectedManagedMember.name || "회원"} 관리 패널`}
       >
         <header className={styles.memberDrawerHeader}>
@@ -294,7 +349,7 @@ export function UserManagementDrawer({
             type="button"
             className={styles.drawerCloseButton}
             aria-label="회원 관리 패널 닫기"
-            onClick={onClose}
+            onClick={handleDrawerClose}
           >
             <CloseOutlinedIcon fontSize="small" />
           </button>
@@ -332,10 +387,6 @@ export function UserManagementDrawer({
             </small>
           </div>
         </section>
-
-        {actionMessage && (
-          <p className={styles.actionMessage}>{actionMessage}</p>
-        )}
 
         {isAdminBlockedTarget && (
           <p className={styles.detailErrorText}>{blockReason}</p>
@@ -515,6 +566,40 @@ export function UserManagementDrawer({
           </div>
         </section>
       </aside>
+
+      {/* 정지/해제 결과 팝업: 성공과 실패를 같은 팝업 하나로 통일해서 보여줍니다. */}
+      {actionResultPopup && (
+        <section
+          className={styles.actionResultLayer}
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="member-action-result-title"
+        >
+          <button
+            type="button"
+            className={styles.actionResultDim}
+            aria-label="정지 처리 결과 팝업 닫기"
+            onClick={closeActionResultPopup}
+          />
+
+          <article className={styles.actionResultPopup}>
+            <span
+              className={`${styles.actionResultBadge} ${
+                actionResultPopup.type === "success"
+                  ? styles.actionResultSuccess
+                  : styles.actionResultError
+              }`}
+            >
+              {actionResultPopup.type === "success" ? "성공" : "실패"}
+            </span>
+            <h3 id="member-action-result-title">{actionResultPopup.title}</h3>
+            <p>{actionResultPopup.message}</p>
+            <button type="button" onClick={closeActionResultPopup}>
+              확인
+            </button>
+          </article>
+        </section>
+      )}
 
       {suspendModalType && (
         <section className={styles.suspendModal} aria-label="회원 정지 확인">

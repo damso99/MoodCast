@@ -1,0 +1,101 @@
+.panel {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.83);
+  box-shadow: 0 22px 52px rgba(17, 24, 39, 0.055);
+}
+
+.widePanel {
+  min-height: 360px;
+}
+
+.panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panelHead h2 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.activeUserChartBox {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(102, 112, 133, 0.12);
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.92),
+    rgba(248, 250, 252, 0.78)
+  );
+}
+
+.activeUserChart {
+  display: block;
+  width: 100%;
+  min-height: 260px;
+}
+
+.activeUserChartDescription {
+  margin: 0;
+  color: #667085;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.activeUserGridLine {
+  stroke: rgba(102, 112, 133, 0.18);
+  stroke-width: 1;
+  stroke-dasharray: 5 7;
+}
+
+.activeUserArea {
+  fill: rgba(47, 126, 251, 0.12);
+}
+
+.activeUserLine {
+  fill: none;
+  stroke: #2f7efb;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.activeUserPoint {
+  fill: #ffffff;
+  stroke: #2f7efb;
+  stroke-width: 2.4;
+}
+
+.activeUserPointValue {
+  fill: #111827;
+  font-size: 0.58rem;
+  font-weight: 900;
+}
+
+.activeUserAxisLabel {
+  fill: #667085;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.activeUserChartSummary {
+  margin: 0;
+  color: #475467;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.activeUserChartSummary strong {
+  color: #2f7efb;
+}

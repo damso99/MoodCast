@@ -1,6 +1,6 @@
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { DrawerHeader } from "./ReportDrawerHeader";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportDetailStep.module.css";
 
 export function ReportDetailStep({ report, onClose, onProcess }) {
   return (

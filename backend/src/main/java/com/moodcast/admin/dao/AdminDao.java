@@ -1,6 +1,9 @@
 package com.moodcast.admin.dao;
 
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminActiveUserStat;
+import com.moodcast.admin.vo.AdminContentComment;
+import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminEmotionActivity;
@@ -9,6 +12,8 @@ import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRecentMember;
+import com.moodcast.admin.vo.AdminStatisticsSummary;
+import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -41,6 +46,12 @@ public interface AdminDao {
 
     /* 콘텐츠 관리 페이지에서 사용할 게시글 목록을 조회합니다. */
     List<AdminContentPost> selectAdminContentPosts();
+
+    /* 콘텐츠 관리 댓글 탭에서 사용할 댓글 목록을 조회합니다. */
+    List<AdminContentComment> selectAdminContentComments();
+
+    /* 콘텐츠 관리 해시태그 탭에서 사용할 해시태그 목록을 조회합니다. */
+    List<AdminContentHashtag> selectAdminContentHashtags();
 
     /*
      * 관리자 콘텐츠 관리에서 게시글 작업 후 최신 상태를 다시 조회합니다.
@@ -144,11 +155,23 @@ public interface AdminDao {
     /* 관리자 대시보드의 감정별 게시글 활동 수를 일/주/월 단위로 조회합니다. */
     List<AdminEmotionActivity> selectDashboardEmotionActivity(@Param("period") String period);
 
+    /* 관리자 대시보드의 시간별 활성 사용자 수를 일/주/월 단위로 조회합니다. */
+    List<AdminActiveUserStat> selectDashboardActiveUsers(@Param("period") String period);
+
     /* 관리자 대시보드의 최근 활동을 최신 10개만 조회합니다. */
     List<AdminRecentActivity> selectRecentDashboardActivities();
 
     /* 관리자 대시보드의 전체 활동 보기 팝업에서 사용할 모든 활동 로그를 조회합니다. */
     List<AdminRecentActivity> selectAllDashboardActivities();
+
+    /* 통계 대시보드 상단 카드와 하단 요약에 사용할 기간별 요약 숫자를 조회합니다. */
+    AdminStatisticsSummary selectStatisticsSummary(@Param("period") String period);
+
+    /* 통계 대시보드 가입자 추이 차트에 사용할 기간별 가입자 흐름을 조회합니다. */
+    List<AdminStatisticsTrend> selectStatisticsSubscriberTrend(@Param("period") String period);
+
+    /* 통계 대시보드 콘텐츠 활동 막대 그래프에 사용할 게시글/댓글/공감 수를 조회합니다. */
+    List<AdminStatisticsTrend> selectStatisticsContentActivity(@Param("period") String period);
 
     /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
     AdminProfile selectAdminProfile(@Param("memberId") Long memberId);

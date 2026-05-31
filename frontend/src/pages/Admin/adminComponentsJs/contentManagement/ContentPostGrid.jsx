@@ -1,14 +1,14 @@
-import styles from "../../adminComponentsCss/contentManagement/ContentManagementPage.module.css";
+import styles from "../../adminComponentsCss/contentManagement/ContentPostGrid.module.css";
 
 /* ==========================================================================
  * 콘텐츠 관리 게시글 그리드 컴포넌트
  * --------------------------------------------------------------------------
- * 게시글 카드 목록, 카드별 선택 체크박스, 카드별 처리 버튼, 페이지네이션을 담당합니다.
+ * 게시글 카드 목록, 카드 선택 체크박스, 카드별 처리 버튼, 페이지네이션을 담당합니다.
  *
  * 초보자 설명:
  * - paginatedPosts는 현재 페이지에 보여줄 게시글만 담긴 배열입니다.
- * - onPostAction은 숨김, 삭제, 복구 같은 실제 처리를 컨테이너 컴포넌트에 요청합니다.
  * - selectedPostIds에 postId가 들어 있으면 체크된 카드로 표시합니다.
+ * - onPostAction은 숨김/삭제/복구 같은 실제 API 처리를 부모 컴포넌트에 요청합니다.
  * ========================================================================== */
 export function ContentPostGrid({
   postsLoading,
@@ -24,6 +24,7 @@ export function ContentPostGrid({
   stripHtml,
   actionLoadingPostId,
   onPostAction,
+  onOpenPostDetail,
   filteredPostCount,
   currentPage,
   totalPageCount,
@@ -50,7 +51,11 @@ export function ContentPostGrid({
           >
             완전 삭제
           </button>
-          <button type="button" disabled={isActionLoading}>
+          <button
+            type="button"
+            disabled={isActionLoading}
+            onClick={() => onOpenPostDetail(post)}
+          >
             상세보기
           </button>
         </div>
@@ -83,7 +88,11 @@ export function ContentPostGrid({
         >
           삭제
         </button>
-        <button type="button" disabled={isActionLoading}>
+        <button
+          type="button"
+          disabled={isActionLoading}
+          onClick={() => onOpenPostDetail(post)}
+        >
           상세보기
         </button>
       </div>
@@ -95,6 +104,7 @@ export function ContentPostGrid({
     const { imageSrc, hasImage } = getPostImageInfo(post);
     const cardText = stripHtml(post.content) || "본문 없음";
     const emotionMeta = getEmotionMeta(post.emotionId);
+    const EmotionIcon = emotionMeta.icon;
     const isSelected = selectedPostIds.includes(post.postId);
 
     return (
@@ -142,8 +152,13 @@ export function ContentPostGrid({
             <h3>{post.title || "제목 없음"}</h3>
             <span
               className={styles.emotionTag}
-              style={{ color: emotionMeta.color }}
+              style={{
+                color: emotionMeta.color,
+                backgroundColor: `${emotionMeta.color}18`,
+                borderColor: emotionMeta.color,
+              }}
             >
+              <EmotionIcon className={styles.emotionIcon} />
               {emotionMeta.label}
             </span>
           </div>
@@ -154,7 +169,10 @@ export function ContentPostGrid({
         <div className={styles.statRow}>
           <span>댓글 {post.commentCount ?? 0}</span>
           <span>해시태그 {post.hashtagCount ?? 0}</span>
-          <span>감정 {emotionMeta.label}</span>
+          <span className={styles.statEmotion}>
+            <EmotionIcon className={styles.statEmotionIcon} />
+            감정 {emotionMeta.label}
+          </span>
         </div>
 
         {renderActionButtons(post, status)}

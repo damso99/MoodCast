@@ -1,160 +1,94 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
+import SentimentDissatisfiedIcon from "@mui/icons-material/SentimentDissatisfied";
+import SpaIcon from "@mui/icons-material/Spa";
+import MoodBadIcon from "@mui/icons-material/MoodBad";
+import CelebrationIcon from "@mui/icons-material/Celebration";
+import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 import { useAuthStore } from "../../../../stores/useAuthStore";
+import { extractImageUrls } from "../../../../shared/lib/postHelpers";
 import { ContentBulkActions } from "./ContentBulkActions";
+import { ContentCommentGrid } from "./ContentCommentGrid";
+import { ContentHashtagGrid } from "./ContentHashtagGrid";
 import { ContentManagementControls } from "./ContentManagementControls";
 import { ContentManagementToolbar } from "./ContentManagementToolbar";
+import { ContentPostDetailModal } from "./ContentPostDetailModal";
 import { ContentPostGrid } from "./ContentPostGrid";
 import { ContentSidePanel } from "./ContentSidePanel";
-import styles from "../../adminComponentsCss/contentManagement/ContentManagementPage.module.css";
+import styles from "../../adminComponentsCss/contentManagement/ContentPostManagement.module.css";
 
-const contentTabs = ["게시글", "댓글", "이미지", "해시태그"];
+const POSTS_PER_PAGE = 12;
+const PAGE_BUTTON_COUNT = 10;
+
 const statusFilters = ["전체", "공개", "숨김", "삭제"];
-const POSTS_PER_PAGE = 12; // 가로 3개, 세로 4개로 보여주기 위해 한 페이지에 12개를 사용합니다.
-const PAGE_BUTTON_COUNT = 10; // 페이지 번호는 사용자 관리와 동일하게 최대 10개까지 보여줍니다.
-
-const NO_IMAGE_PLACEHOLDER =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
-      <rect width="640" height="360" rx="28" fill="#f3f4f6"/>
-      <rect x="190" y="92" width="260" height="176" rx="24" fill="#ffffff" stroke="#d9d6ff" stroke-width="4"/>
-      <circle cx="262" cy="150" r="28" fill="#d9d6ff"/>
-      <path d="M218 235l78-74 52 48 34-32 40 58H218z" fill="#b8b2ff"/>
-      <text x="320" y="304" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="700" fill="#667085">이미지 없음</text>
-    </svg>
-  `);
 
 const emotionFilters = [
-  { id: "all", label: "전체 감정" },
-  { id: 1, label: "행복", color: "#f5a623" },
-  { id: 2, label: "슬픔", color: "#4a90e2" },
-  { id: 3, label: "차분함", color: "#36b37e" },
-  { id: 4, label: "화남", color: "#e74c3c" },
-  { id: 5, label: "신나감", color: "#9b5cff" },
-  { id: 6, label: "무감정", color: "#7a869a" },
+  { value: "all", label: "전체 감정", color: "#667085", icon: SentimentNeutralIcon },
+  { value: "1", label: "행복", color: "#FFD700", icon: EmojiEmotionsIcon },
+  { value: "2", label: "슬픔", color: "#4A90E2", icon: SentimentDissatisfiedIcon },
+  { value: "3", label: "차분함", color: "#F4A460", icon: SpaIcon },
+  { value: "4", label: "화남", color: "#E74C3C", icon: MoodBadIcon },
+  { value: "5", label: "신남", color: "#FF69B4", icon: CelebrationIcon },
+  { value: "6", label: "무감정", color: "#95A5A6", icon: SentimentNeutralIcon },
 ];
 
-const contentDescriptions = {
-  게시글:
-    "게시글 제목 또는 작성자로 검색하고 감정별, 상태별로 분류할 수 있습니다.",
-  댓글: "댓글 관리는 게시글 관리 API가 안정화된 뒤 연결할 예정입니다.",
-  이미지:
-    "이미지 관리는 게시글에 첨부된 이미지 기준으로 확장할 예정입니다.",
-  해시태그:
-    "해시태그 사용량과 노출 여부 관리는 추후 연결할 예정입니다.",
-};
-
-const getStatusClassName = (status) => {
-  if (status === "공개") return styles.statusPublic;
-  if (status === "숨김") return styles.statusHidden;
-  return styles.statusDeleted;
-};
-
-const getPostStatus = (post) => {
-  if (post.deletedYn === "Y") return "삭제";
-  if (post.visibility && post.visibility !== "PUBLIC") return "숨김";
-  return "공개";
-};
-
-const getAuthorName = (post) =>
-  post.authorNickname || post.authorName || "작성자 없음";
-
-const getEmotionMeta = (emotionId) =>
-  emotionFilters.find((emotionItem) => emotionItem.id === Number(emotionId)) ||
-  { label: "기타", color: "#667085" };
-
-const extractImageUrl = (html) => {
-  if (!html) return null;
-
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
-    const img = doc.querySelector("img");
-
-    return img?.getAttribute("src") || null;
-  } catch (error) {
-    const match = html.match(/<img[^>]+src=["']?([^"' >]+)["']?/i);
-
-    return match ? match[1] : null;
-  }
-};
-
-const buildImageUrl = (imageUrl, backserver) => {
-  if (!imageUrl) return NO_IMAGE_PLACEHOLDER;
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    return imageUrl;
-  }
-  if (imageUrl.startsWith("/")) return `${backserver}${imageUrl}`;
-
-  // DB에 파일명만 저장된 기존 게시글은 백엔드 uploads 경로를 붙여 이미지 요청 경로를 맞춥니다.
-  return `${backserver}/uploads/${imageUrl}`;
-};
-
-const stripHtml = (html) => {
-  if (!html) return "";
-
-  const text = html
-    .replace(/<img[^>]*>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .trim();
-  const textarea = document.createElement("textarea");
-  textarea.innerHTML = text;
-
-  return textarea.value;
-};
-
-const isInSelectedDateRange = (post, dateRange) => {
-  if (dateRange === "all") return true;
-  if (!post.createdAt) return false;
-
-  const createdDate = new Date(post.createdAt.replace(" ", "T"));
-  if (Number.isNaN(createdDate.getTime())) return true;
-
-  const now = new Date();
-  const diffMs = now.getTime() - createdDate.getTime();
-  const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-  if (dateRange === "today") {
-    return createdDate.toDateString() === now.toDateString();
-  }
-
-  return diffDays <= 7;
-};
-
 /* ==========================================================================
- * 게시글 관리 컨테이너 컴포넌트
+ * 게시글 콘텐츠 관리 컨테이너
  * --------------------------------------------------------------------------
- * 게시글 관리에 필요한 기능을 이 컴포넌트가 직접 소유합니다.
+ * 게시글 조회, 검색, 필터, 페이지네이션, 단일/복수 상태 변경을 담당합니다.
  *
  * 초보자 설명:
- * - state: 화면에서 바뀌는 값입니다. 예) 검색어, 선택된 게시글, 현재 페이지
- * - useEffect: 컴포넌트가 처음 보이거나 토큰이 바뀔 때 API를 호출합니다.
- * - useMemo: 게시글 목록이 많아질 수 있으므로 필터 결과를 필요할 때만 다시 계산합니다.
- * - 하위 컴포넌트는 화면 조각을 담당하고, 실제 데이터 흐름은 여기서 관리합니다.
+ * - 이 컴포넌트는 데이터를 가져오고 상태를 관리하는 중심 컴포넌트입니다.
+ * - 화면 조각은 Toolbar, Controls, BulkActions, PostGrid, SidePanel로 나눴습니다.
+ * - 컴포넌트 분리 후에도 기능이 흩어지지 않도록 API 호출과 계산은 이 파일에서
+ *   한 번에 관리하고, 하위 컴포넌트에는 필요한 값과 이벤트만 넘깁니다.
  * ========================================================================== */
 export function ContentPostManagement() {
-  const [selectedContentType, setSelectedContentType] = useState("게시글"); // 현재 선택한 콘텐츠 탭입니다.
-  const [selectedStatus, setSelectedStatus] = useState("전체"); // 공개/숨김/삭제 필터 값입니다.
-  const [searchField, setSearchField] = useState("title"); // 제목 또는 작성자 중 검색 기준입니다.
-  const [searchKeyword, setSearchKeyword] = useState(""); // 검색창에 입력된 문구입니다.
-  const [selectedEmotionId, setSelectedEmotionId] = useState("all"); // 감정 필터 값입니다.
-  const [dateRange, setDateRange] = useState("all"); // 작성일 필터 값입니다.
+  const [activeTab, setActiveTab] = useState("게시글"); // 게시글/댓글/해시태그 탭입니다.
+  const [searchField, setSearchField] = useState("title"); // 제목 또는 작성자 검색 기준입니다.
+  const [searchKeyword, setSearchKeyword] = useState(""); // 검색창에 입력한 검색어입니다.
+  const [activeStatus, setActiveStatus] = useState("전체"); // 공개/숨김/삭제 상태 필터입니다.
+  const [emotionFilter, setEmotionFilter] = useState("all"); // 선택된 감정 필터입니다.
+  const [startDate, setStartDate] = useState(""); // 기간 검색 시작일입니다.
+  const [endDate, setEndDate] = useState(""); // 기간 검색 종료일입니다.
   const [currentPage, setCurrentPage] = useState(1); // 현재 페이지 번호입니다.
-  const [posts, setPosts] = useState([]); // 백엔드에서 받아온 전체 게시글 목록입니다.
-  const [selectedPostIds, setSelectedPostIds] = useState([]); // 체크박스로 선택한 게시글 id 목록입니다.
-  const [postsLoading, setPostsLoading] = useState(false); // 게시글 조회 중인지 표시합니다.
-  const [postsError, setPostsError] = useState(false); // 게시글 조회 실패 여부입니다.
-  const [actionLoadingPostId, setActionLoadingPostId] = useState(null); // 개별 처리 중인 게시글 id입니다.
-  const [bulkActionLoading, setBulkActionLoading] = useState(false); // 여러 게시글을 처리 중인지 표시합니다.
-  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 토큰입니다.
+  const [posts, setPosts] = useState([]); // 백엔드에서 받은 게시글 목록입니다.
+  const [postsLoading, setPostsLoading] = useState(false); // 게시글 목록 API 호출 중인지 표시합니다.
+  const [postsError, setPostsError] = useState(false); // 게시글 목록 API 실패 여부입니다.
+  const [comments, setComments] = useState([]); // 댓글 탭에서 보여줄 댓글 목록입니다.
+  const [commentsLoading, setCommentsLoading] = useState(false); // 댓글 목록 API 호출 중인지 표시합니다.
+  const [commentsError, setCommentsError] = useState(false); // 댓글 목록 API 실패 여부입니다.
+  const [hashtags, setHashtags] = useState([]); // 해시태그 탭에서 보여줄 해시태그 목록입니다.
+  const [hashtagsLoading, setHashtagsLoading] = useState(false); // 해시태그 목록 API 호출 중인지 표시합니다.
+  const [hashtagsError, setHashtagsError] = useState(false); // 해시태그 목록 API 실패 여부입니다.
+  const [selectedPostIds, setSelectedPostIds] = useState([]); // 체크박스로 선택된 게시글 id 목록입니다.
+  const [selectedDetailPost, setSelectedDetailPost] = useState(null); // 상세보기 모달에 보여줄 게시글 정보입니다.
+  const [actionLoadingPostId, setActionLoadingPostId] = useState(null); // 단일 처리 중인 게시글 id입니다.
+  const [bulkActionLoading, setBulkActionLoading] = useState(false); // 복수 처리 API 호출 중인지 표시합니다.
+  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
   ).replace(/\/$/, "");
 
-  useEffect(() => {
-    if (!accessToken) return;
+  const noImageSrc = useMemo(() => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="420" height="180" viewBox="0 0 420 180">
+        <rect width="420" height="180" rx="24" fill="#f3f4f6"/>
+        <circle cx="210" cy="70" r="24" fill="#d0d5dd"/>
+        <path d="M128 132l52-44 40 34 28-24 44 34H128z" fill="#98a2b3"/>
+        <text x="210" y="158" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#667085">이미지 없음</text>
+      </svg>
+    `;
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }, []);
+
+  const fetchPosts = () => {
+    if (!accessToken) {
+      return;
+    }
 
     setPostsLoading(true);
     setPostsError(false);
@@ -166,60 +100,261 @@ export function ContentPostManagement() {
         },
       })
       .then((res) => {
-        const nextPosts = Array.isArray(res.data?.posts) ? res.data.posts : [];
-
-        setPosts(nextPosts);
+        setPosts(Array.isArray(res.data?.posts) ? res.data.posts : []);
       })
       .catch((error) => {
-        console.error("[ADMIN_CONTENT_POSTS_ERROR]", {
-          endpoint: `${BACKSERVER}/admin/api/content/posts`,
-          status: error.response?.status,
-          response: error.response?.data,
-          message: error.message,
-        });
+        console.log(error);
         setPosts([]);
         setPostsError(true);
       })
       .finally(() => {
         setPostsLoading(false);
       });
+  };
+
+  const fetchComments = () => {
+    if (!accessToken) {
+      return;
+    }
+
+    setCommentsLoading(true);
+    setCommentsError(false);
+
+    axios
+      .get(`${BACKSERVER}/admin/api/content/comments`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      .then((res) => {
+        setComments(Array.isArray(res.data?.comments) ? res.data.comments : []);
+      })
+      .catch((error) => {
+        console.log(error);
+        setComments([]);
+        setCommentsError(true);
+      })
+      .finally(() => {
+        setCommentsLoading(false);
+      });
+  };
+
+  const fetchHashtags = () => {
+    if (!accessToken) {
+      return;
+    }
+
+    setHashtagsLoading(true);
+    setHashtagsError(false);
+
+    axios
+      .get(`${BACKSERVER}/admin/api/content/hashtags`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      .then((res) => {
+        setHashtags(Array.isArray(res.data?.hashtags) ? res.data.hashtags : []);
+      })
+      .catch((error) => {
+        console.log(error);
+        setHashtags([]);
+        setHashtagsError(true);
+      })
+      .finally(() => {
+        setHashtagsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchPosts();
+    fetchComments();
+    fetchHashtags();
   }, [BACKSERVER, accessToken]);
 
-  const filteredPosts = useMemo(() => {
+  const getPostStatus = (post) => {
+    if (post.deletedYn === "Y") {
+      return "삭제";
+    }
+
+    if (post.visibility === "PRIVATE" || post.visibility === "HIDDEN") {
+      return "숨김";
+    }
+
+    return "공개";
+  };
+
+  const getStatusClassName = (status) => {
+    if (status === "삭제") {
+      return styles.statusDeleted;
+    }
+
+    if (status === "숨김") {
+      return styles.statusHidden;
+    }
+
+    return styles.statusPublic;
+  };
+
+  const getAuthorName = (post) => {
+    return post.authorNickname || post.authorName || "작성자 없음";
+  };
+
+  const getEmotionMeta = (emotionId) => {
+    return (
+      emotionFilters.find((emotionItem) => emotionItem.value === String(emotionId)) || {
+        label: "감정 없음",
+        color: "#667085",
+        icon: SentimentNeutralIcon,
+      }
+    );
+  };
+
+  const stripHtml = (value) => {
+    return String(value || "").replace(/<[^>]*>/g, "").trim();
+  };
+
+  const getPostImageInfo = (post) => {
+    /*
+     * 피드 카드와 동일하게 게시글 본문(content) 안의 <img> 태그까지 이미지 후보로 확인합니다.
+     * 게시글 작성 화면은 이미지를 업로드한 뒤 content에 <img src="..."> 형태로 저장하므로,
+     * 관리자 API에 별도 thumbnailUrl이 없어도 content만 있으면 첫 번째 이미지를 카드에 표시할 수 있습니다.
+     */
+    const contentImageUrls = extractImageUrls(post.content);
+    const explicitImageSrcs = Array.isArray(post.imageSrcs)
+      ? post.imageSrcs
+      : post.imageSrcs
+        ? [post.imageSrcs]
+        : [];
+    const imageCandidates = [
+      ...explicitImageSrcs,
+      post.imageSrc,
+      post.image,
+      post.cover,
+      post.thumbnail,
+      post.thumbnailUrl,
+      post.imageUrl,
+      post.imagePath,
+      post.firstImageUrl,
+      post.fileUrl,
+      ...contentImageUrls,
+    ].filter(Boolean);
+    const rawImageUrl = imageCandidates[0] || "";
+
+    if (!rawImageUrl) {
+      return { imageSrc: noImageSrc, hasImage: false };
+    }
+
+    if (/^https?:\/\//i.test(rawImageUrl)) {
+      return { imageSrc: rawImageUrl, hasImage: true };
+    }
+
+    if (rawImageUrl.startsWith("/")) {
+      return { imageSrc: `${BACKSERVER}${rawImageUrl}`, hasImage: true };
+    }
+
+    return { imageSrc: `${BACKSERVER}/uploads/${rawImageUrl}`, hasImage: true };
+  };
+
+  const filteredPosts = posts.filter((post) => {
+    const postStatus = getPostStatus(post);
+    const trimmedKeyword = searchKeyword.trim().toLowerCase();
+    const authorName = getAuthorName(post).toLowerCase();
+    const title = String(post.title || "").toLowerCase();
+    const createdDate = String(post.createdAt || "").slice(0, 10);
+
+    if (activeTab !== "게시글") {
+      return false;
+    }
+
+    if (activeStatus !== "전체" && postStatus !== activeStatus) {
+      return false;
+    }
+
+    if (
+      emotionFilter !== "all" &&
+      String(post.emotionId || "") !== emotionFilter
+    ) {
+      return false;
+    }
+
+    if (startDate && createdDate && createdDate < startDate) {
+      return false;
+    }
+
+    if (endDate && createdDate && createdDate > endDate) {
+      return false;
+    }
+
+    if (!trimmedKeyword) {
+      return true;
+    }
+
+    if (searchField === "author") {
+      return authorName.includes(trimmedKeyword);
+    }
+
+    return title.includes(trimmedKeyword);
+  });
+
+  const filteredComments = comments.filter((comment) => {
     const trimmedKeyword = searchKeyword.trim().toLowerCase();
 
-    return posts.filter((post) => {
-      const statusMatched =
-        selectedStatus === "전체" || getPostStatus(post) === selectedStatus;
-      const emotionMatched =
-        selectedEmotionId === "all" ||
-        Number(post.emotionId) === Number(selectedEmotionId);
-      const dateMatched = isInSelectedDateRange(post, dateRange);
+    if (activeTab !== "댓글") {
+      return false;
+    }
 
-      if (!statusMatched || !emotionMatched || !dateMatched) return false;
-      if (!trimmedKeyword) return true;
+    if (!trimmedKeyword) {
+      return true;
+    }
 
-      const title = String(post.title || "").toLowerCase();
-      const author = String(getAuthorName(post)).toLowerCase();
-      const targetText = searchField === "author" ? author : title;
+    if (searchField === "author") {
+      const authorName = `${comment.authorName || ""} ${comment.authorNickname || ""}`.toLowerCase();
 
-      return targetText.includes(trimmedKeyword);
-    });
-  }, [
-    dateRange,
-    posts,
-    searchField,
-    searchKeyword,
-    selectedEmotionId,
-    selectedStatus,
-  ]);
+      return authorName.includes(trimmedKeyword);
+    }
 
+    if (searchField === "postTitle") {
+      return String(comment.postTitle || "").toLowerCase().includes(trimmedKeyword);
+    }
+
+    return String(comment.content || "").toLowerCase().includes(trimmedKeyword);
+  });
+
+  const filteredHashtags = hashtags.filter((hashtag) => {
+    const trimmedKeyword = searchKeyword.trim().toLowerCase().replace(/^#/, "");
+
+    if (activeTab !== "해시태그") {
+      return false;
+    }
+
+    if (!trimmedKeyword) {
+      return true;
+    }
+
+    return String(hashtag.hashtag || "").toLowerCase().includes(trimmedKeyword);
+  });
+
+  const activeFilteredCount =
+    activeTab === "댓글"
+      ? filteredComments.length
+      : activeTab === "해시태그"
+        ? filteredHashtags.length
+        : filteredPosts.length;
   const totalPageCount = Math.max(
     1,
-    Math.ceil(filteredPosts.length / POSTS_PER_PAGE),
+    Math.ceil(activeFilteredCount / POSTS_PER_PAGE),
   );
   const pageStartIndex = (currentPage - 1) * POSTS_PER_PAGE;
   const paginatedPosts = filteredPosts.slice(
+    pageStartIndex,
+    pageStartIndex + POSTS_PER_PAGE,
+  );
+  const paginatedComments = filteredComments.slice(
+    pageStartIndex,
+    pageStartIndex + POSTS_PER_PAGE,
+  );
+  const paginatedHashtags = filteredHashtags.slice(
     pageStartIndex,
     pageStartIndex + POSTS_PER_PAGE,
   );
@@ -233,24 +368,30 @@ export function ContentPostManagement() {
     { length: pageGroupEnd - pageGroupStart + 1 },
     (_, index) => pageGroupStart + index,
   );
-  const selectedPosts = posts.filter((post) =>
-    selectedPostIds.includes(post.postId),
-  );
+
   const currentPagePostIds = paginatedPosts.map((post) => post.postId);
-  const isCurrentPageAllSelected =
+  const isCurrentPageSelected =
     currentPagePostIds.length > 0 &&
     currentPagePostIds.every((postId) => selectedPostIds.includes(postId));
 
   useEffect(() => {
+    if (activeTab === "댓글") {
+      setSearchField("content");
+      return;
+    }
+
+    if (activeTab === "해시태그") {
+      setSearchField("hashtag");
+      return;
+    }
+
+    setSearchField("title");
+  }, [activeTab]);
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [
-    dateRange,
-    searchField,
-    searchKeyword,
-    selectedContentType,
-    selectedEmotionId,
-    selectedStatus,
-  ]);
+    setSelectedPostIds([]);
+  }, [activeTab, searchField, searchKeyword, activeStatus, emotionFilter, startDate, endDate]);
 
   useEffect(() => {
     if (currentPage > totalPageCount) {
@@ -258,10 +399,10 @@ export function ContentPostManagement() {
     }
   }, [currentPage, totalPageCount]);
 
-  const replacePostInList = (updatedPost) => {
+  const updatePostInList = (updatedPost) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
-        post.postId === updatedPost.postId ? updatedPost : post,
+        post.postId === updatedPost.postId ? { ...post, ...updatedPost } : post,
       ),
     );
   };
@@ -271,47 +412,40 @@ export function ContentPostManagement() {
     setSelectedPostIds((prevIds) => prevIds.filter((id) => id !== postId));
   };
 
-  const getPostActionConfig = (post, actionType) => {
-    const baseUrl = `${BACKSERVER}/admin/api/content/posts/${post.postId}`;
-
-    const actionConfig = {
-      hide: {
-        method: "put",
-        url: `${baseUrl}/hide`,
-        confirmMessage: "선택한 게시글을 숨김 처리하시겠습니까?",
-      },
+  const getActionEndpoint = (postId, actionType) => {
+    const endpointMap = {
+      hide: { method: "put", url: `/admin/api/content/posts/${postId}/hide` },
       restoreHidden: {
         method: "put",
-        url: `${baseUrl}/visibility/restore`,
-        confirmMessage: "숨김 처리된 게시글을 공개 상태로 복구하시겠습니까?",
+        url: `/admin/api/content/posts/${postId}/visibility/restore`,
       },
       softDelete: {
         method: "put",
-        url: `${baseUrl}/delete`,
-        confirmMessage: "선택한 게시글을 삭제 탭으로 이동시키겠습니까?",
+        url: `/admin/api/content/posts/${postId}/delete`,
       },
       restoreDeleted: {
         method: "put",
-        url: `${baseUrl}/delete/restore`,
-        confirmMessage: "삭제된 게시글을 복구하시겠습니까?",
+        url: `/admin/api/content/posts/${postId}/delete/restore`,
       },
       hardDelete: {
         method: "delete",
-        url: `${baseUrl}/delete/permanent`,
-        confirmMessage:
-          "해당 게시글을 완전히 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+        url: `/admin/api/content/posts/${postId}/delete/permanent`,
       },
     };
 
-    return actionConfig[actionType];
+    return endpointMap[actionType];
   };
 
-  const requestPostAction = (post, actionType) => {
-    const config = getPostActionConfig(post, actionType);
+  const requestPostAction = (postId, actionType) => {
+    const actionEndpoint = getActionEndpoint(postId, actionType);
+
+    if (!actionEndpoint) {
+      return Promise.reject(new Error("알 수 없는 게시글 처리 요청입니다."));
+    }
 
     return axios({
-      method: config.method,
-      url: config.url,
+      method: actionEndpoint.method,
+      url: `${BACKSERVER}${actionEndpoint.url}`,
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
@@ -320,17 +454,19 @@ export function ContentPostManagement() {
 
   const handlePostAction = (post, actionType) => {
     if (!accessToken) {
-      alert("로그인 정보가 없어 게시글을 처리할 수 없습니다.");
       return;
     }
 
-    const config = getPostActionConfig(post, actionType);
-
-    if (!config || !window.confirm(config.confirmMessage)) return;
+    if (
+      actionType === "hardDelete" &&
+      !window.confirm("해당 게시글을 완전히 삭제하시겠습니까?")
+    ) {
+      return;
+    }
 
     setActionLoadingPostId(post.postId);
 
-    requestPostAction(post, actionType)
+    requestPostAction(post.postId, actionType)
       .then((res) => {
         if (actionType === "hardDelete") {
           removePostFromList(post.postId);
@@ -338,18 +474,14 @@ export function ContentPostManagement() {
         }
 
         if (res.data?.post) {
-          replacePostInList(res.data.post);
+          updatePostInList(res.data.post);
+        } else {
+          fetchPosts();
         }
       })
       .catch((error) => {
-        console.error("[ADMIN_CONTENT_POST_ACTION_ERROR]", {
-          actionType,
-          postId: post.postId,
-          status: error.response?.status,
-          response: error.response?.data,
-          message: error.message,
-        });
-        alert("게시글 처리 중 문제가 발생했습니다.");
+        console.log(error);
+        window.alert("게시글 처리 중 문제가 발생했습니다.");
       })
       .finally(() => {
         setActionLoadingPostId(null);
@@ -366,7 +498,7 @@ export function ContentPostManagement() {
 
   const toggleCurrentPageSelection = () => {
     setSelectedPostIds((prevIds) => {
-      if (isCurrentPageAllSelected) {
+      if (isCurrentPageSelected) {
         return prevIds.filter((postId) => !currentPagePostIds.includes(postId));
       }
 
@@ -374,162 +506,172 @@ export function ContentPostManagement() {
     });
   };
 
-  const handleBulkAction = async (actionType) => {
-    if (!accessToken) {
-      alert("로그인 정보가 없어 게시글을 처리할 수 없습니다.");
+  const handleBulkAction = (bulkActionType) => {
+    if (!accessToken || selectedPostIds.length === 0) {
       return;
     }
 
-    const targetPosts = selectedPosts.filter((post) => {
-      const status = getPostStatus(post);
+    const confirmMessage = {
+      hide: "선택한 게시글을 숨김 처리하시겠습니까?",
+      softDelete: "선택한 게시글을 삭제 상태로 전환하시겠습니까?",
+      restore: "선택한 게시글을 복구하시겠습니까?",
+    }[bulkActionType];
 
-      if (actionType === "hide") return status !== "삭제";
-      if (actionType === "softDelete") return status !== "삭제";
-      if (actionType === "restore") return status === "숨김" || status === "삭제";
-
-      return false;
-    });
-
-    if (targetPosts.length === 0) {
-      alert("선택한 게시글 중 처리할 수 있는 대상이 없습니다.");
-      return;
-    }
-
-    const actionLabel =
-      actionType === "hide" ? "숨김" : actionType === "softDelete" ? "삭제" : "복구";
-
-    if (!window.confirm(`${targetPosts.length}개 게시글을 ${actionLabel} 처리하시겠습니까?`)) {
+    if (confirmMessage && !window.confirm(confirmMessage)) {
       return;
     }
 
     setBulkActionLoading(true);
 
-    try {
-      const responses = await Promise.all(
-        targetPosts.map((post) => {
-          const status = getPostStatus(post);
-          const nextActionType =
-            actionType === "restore"
-              ? status === "삭제"
-                ? "restoreDeleted"
-                : "restoreHidden"
-              : actionType;
+    const actionRequests = selectedPostIds.map((postId) => {
+      const targetPost = posts.find((post) => post.postId === postId);
+      const targetStatus = targetPost ? getPostStatus(targetPost) : "공개";
 
-          return requestPostAction(post, nextActionType).then((res) => ({
-            post,
-            res,
-          }));
-        }),
-      );
+      if (bulkActionType === "restore") {
+        return requestPostAction(
+          postId,
+          targetStatus === "삭제" ? "restoreDeleted" : "restoreHidden",
+        );
+      }
 
-      responses.forEach(({ post, res }) => {
-        if (res.data?.post) {
-          replacePostInList(res.data.post);
-        } else {
-          removePostFromList(post.postId);
-        }
+      return requestPostAction(postId, bulkActionType);
+    });
+
+    Promise.allSettled(actionRequests)
+      .then(() => {
+        setSelectedPostIds([]);
+        fetchPosts();
+      })
+      .catch((error) => {
+        console.log(error);
+        window.alert("게시글 일괄 처리 중 문제가 발생했습니다.");
+      })
+      .finally(() => {
+        setBulkActionLoading(false);
       });
-      setSelectedPostIds([]);
-    } catch (error) {
-      console.error("[ADMIN_CONTENT_POST_BULK_ACTION_ERROR]", {
-        actionType,
-        status: error.response?.status,
-        response: error.response?.data,
-        message: error.message,
-      });
-      alert("선택 게시글 처리 중 문제가 발생했습니다.");
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
-  const getPostImageInfo = (post) => {
-    const rawImageSrc =
-      post.imageSrc ||
-      post.image ||
-      post.cover ||
-      post.thumbnail ||
-      extractImageUrl(post.content);
-
-    return {
-      hasImage: Boolean(rawImageSrc),
-      imageSrc: buildImageUrl(rawImageSrc, BACKSERVER),
-    };
   };
 
   const resetFilters = () => {
-    setSelectedStatus("전체");
-    setSelectedEmotionId("all");
-    setDateRange("all");
+    setSearchField("title");
     setSearchKeyword("");
-    setSelectedPostIds([]);
+    setActiveStatus("전체");
+    setEmotionFilter("all");
+    setStartDate("");
+    setEndDate("");
   };
 
   return (
     <>
       <ContentManagementToolbar
-        contentTabs={contentTabs}
-        selectedContentType={selectedContentType}
-        onSelectContentType={setSelectedContentType}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         searchField={searchField}
         onSearchFieldChange={setSearchField}
         searchKeyword={searchKeyword}
         onSearchKeywordChange={setSearchKeyword}
       />
 
-      <section className={styles.contentShell}>
-        <main className={styles.contentMain}>
-          <ContentManagementControls
-            statusFilters={statusFilters}
-            selectedStatus={selectedStatus}
-            onSelectedStatusChange={setSelectedStatus}
-            filteredPostCount={filteredPosts.length}
+      <section
+        className={`${styles.contentShell} ${
+          activeTab === "게시글" ? "" : styles.contentShellFull
+        }`}
+      >
+        <div className={styles.contentMain}>
+          {activeTab === "게시글" && (
+            <>
+              <ContentManagementControls
+                statusFilters={statusFilters}
+                activeStatus={activeStatus}
+                onStatusChange={setActiveStatus}
+                filteredPostCount={filteredPosts.length}
+              />
+
+              <ContentBulkActions
+                currentPagePosts={paginatedPosts}
+                selectedPostIds={selectedPostIds}
+                isCurrentPageSelected={isCurrentPageSelected}
+                bulkActionLoading={bulkActionLoading}
+                onToggleCurrentPage={toggleCurrentPageSelection}
+                onBulkAction={handleBulkAction}
+              />
+
+              <ContentPostGrid
+                postsLoading={postsLoading}
+                postsError={postsError}
+                paginatedPosts={paginatedPosts}
+                selectedPostIds={selectedPostIds}
+                onTogglePostSelection={togglePostSelection}
+                getPostStatus={getPostStatus}
+                getStatusClassName={getStatusClassName}
+                getAuthorName={getAuthorName}
+                getEmotionMeta={getEmotionMeta}
+                getPostImageInfo={getPostImageInfo}
+                stripHtml={stripHtml}
+                actionLoadingPostId={actionLoadingPostId}
+                onPostAction={handlePostAction}
+                onOpenPostDetail={setSelectedDetailPost}
+                filteredPostCount={filteredPosts.length}
+                currentPage={currentPage}
+                totalPageCount={totalPageCount}
+                pageNumbers={pageNumbers}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
+
+          {activeTab === "댓글" && (
+            <ContentCommentGrid
+              commentsLoading={commentsLoading}
+              commentsError={commentsError}
+              paginatedComments={paginatedComments}
+              filteredCommentCount={filteredComments.length}
+              currentPage={currentPage}
+              totalPageCount={totalPageCount}
+              pageNumbers={pageNumbers}
+              onPageChange={setCurrentPage}
+            />
+          )}
+
+          {activeTab === "해시태그" && (
+            <ContentHashtagGrid
+              hashtagsLoading={hashtagsLoading}
+              hashtagsError={hashtagsError}
+              paginatedHashtags={paginatedHashtags}
+              filteredHashtagCount={filteredHashtags.length}
+              currentPage={currentPage}
+              totalPageCount={totalPageCount}
+              pageNumbers={pageNumbers}
+              onPageChange={setCurrentPage}
+            />
+          )}
+        </div>
+
+        {activeTab === "게시글" && (
+          <ContentSidePanel
             emotionFilters={emotionFilters}
-            selectedEmotionId={selectedEmotionId}
-            onSelectedEmotionIdChange={setSelectedEmotionId}
+            emotionFilter={emotionFilter}
+            onEmotionFilterChange={setEmotionFilter}
+            startDate={startDate}
+            onStartDateChange={setStartDate}
+            endDate={endDate}
+            onEndDateChange={setEndDate}
+            onResetFilters={resetFilters}
           />
-
-          <ContentBulkActions
-            isCurrentPageAllSelected={isCurrentPageAllSelected}
-            onToggleCurrentPageSelection={toggleCurrentPageSelection}
-            selectedCount={selectedPostIds.length}
-            bulkActionLoading={bulkActionLoading}
-            onBulkAction={handleBulkAction}
-          />
-
-          <ContentPostGrid
-            postsLoading={postsLoading}
-            postsError={postsError}
-            paginatedPosts={paginatedPosts}
-            selectedPostIds={selectedPostIds}
-            onTogglePostSelection={togglePostSelection}
-            getPostStatus={getPostStatus}
-            getStatusClassName={getStatusClassName}
-            getAuthorName={getAuthorName}
-            getEmotionMeta={getEmotionMeta}
-            getPostImageInfo={getPostImageInfo}
-            stripHtml={stripHtml}
-            actionLoadingPostId={actionLoadingPostId}
-            onPostAction={handlePostAction}
-            filteredPostCount={filteredPosts.length}
-            currentPage={currentPage}
-            totalPageCount={totalPageCount}
-            pageNumbers={pageNumbers}
-            onPageChange={setCurrentPage}
-          />
-        </main>
-
-        <ContentSidePanel
-          selectedContentType={selectedContentType}
-          contentDescriptions={contentDescriptions}
-          emotionFilters={emotionFilters}
-          selectedEmotionId={selectedEmotionId}
-          onSelectedEmotionIdChange={setSelectedEmotionId}
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          onResetFilters={resetFilters}
-        />
+        )}
       </section>
+
+      {selectedDetailPost && (
+        <ContentPostDetailModal
+          post={selectedDetailPost}
+          onClose={() => setSelectedDetailPost(null)}
+          getPostStatus={getPostStatus}
+          getStatusClassName={getStatusClassName}
+          getAuthorName={getAuthorName}
+          getEmotionMeta={getEmotionMeta}
+          getPostImageInfo={getPostImageInfo}
+          stripHtml={stripHtml}
+        />
+      )}
     </>
   );
 }

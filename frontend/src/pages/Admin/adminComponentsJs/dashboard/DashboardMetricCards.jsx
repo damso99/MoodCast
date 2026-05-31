@@ -6,33 +6,37 @@ import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import { MetricCard } from "../common/MetricCard";
 import { useAuthStore } from "../../../../stores/useAuthStore";
-import styles from "../../adminComponentsCss/dashboard/AdminDashboardPage.module.css";
+import styles from "../../adminComponentsCss/dashboard/DashboardMetricCards.module.css";
 
 /* ==========================================================================
- * 관리자 대시보드 상단 지표 카드 컴포넌트
+ * 관리자 대시보드 상단 요약 카드
  * --------------------------------------------------------------------------
- * 전체 회원 수, 오늘 가입자 수, 게시글 수, 신고 대기 카드를 담당합니다.
+ * 대시보드 맨 위에 있는 전체 회원 수, 오늘 가입자 수, 게시글 수,
+ * 신고 대기 수 카드를 담당하는 컴포넌트입니다.
  *
  * 초보자 설명:
- * - useEffect 안에서 백엔드 summary API를 호출합니다.
- * - setInterval을 사용해 10초마다 숫자를 다시 가져와 최신 값에 가깝게 보여줍니다.
- * - 컴포넌트가 사라질 때 clearInterval로 반복 작업을 정리합니다.
+ * - 이 컴포넌트는 화면에 필요한 숫자를 직접 API로 가져옵니다.
+ * - 부모 페이지(AdminDashboardPage)는 "카드를 어디에 배치할지"만 담당합니다.
+ * - setInterval을 사용해 10초마다 요약 숫자를 다시 조회합니다.
+ * - 컴포넌트가 화면에서 사라질 때 clearInterval로 반복 조회를 정리합니다.
  * ========================================================================== */
 export function DashboardMetricCards() {
   const [dashboardSummary, setDashboardSummary] = useState({
     totalMemberCount: null,
     todayNewMemberCount: null,
     postCount: null,
-  }); // 상단 카드에 표시할 숫자 묶음입니다.
-  const [hasError, setHasError] = useState(false); // summary API 조회 실패 여부입니다.
-  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 토큰입니다.
+  }); // 상단 카드에 보여줄 숫자 묶음입니다.
+  const [hasError, setHasError] = useState(false); // 요약 API 조회 실패 여부입니다.
+  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
   ).replace(/\/$/, "");
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      return;
+    }
 
     const fetchDashboardSummary = () => {
       axios

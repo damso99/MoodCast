@@ -1,0 +1,300 @@
+.reportAction button,
+.sectionHead button {
+  min-width: 96px;
+  min-height: 38px;
+  border: 1px solid rgba(124, 77, 255, 0.46);
+  border-radius: 10px;
+  color: #633df2;
+  font-weight: 900;
+  background: #fff;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.reportAction button:hover,
+.sectionHead button:hover {
+  background: #f3f0ff;
+  box-shadow: 0 10px 22px rgba(124, 77, 255, 0.16);
+  transform: translateY(-1px);
+}
+
+/* 사이드 패널 본문 ----------------------------------
+ * 패널 안에서 스크롤되는 실제 내용 영역입니다.
+ */
+.drawerBody {
+  min-height: 0;
+  padding: 20px 24px;
+  overflow: auto;
+}
+
+/* 신고 상세 정보 섹션 ----------------------------------
+ * 신고 개요, 신고 사유, 신고자 목록, 대상 사용자 정보, 최근 활동을 나누는 영역입니다.
+ */
+.detailSection {
+  padding: 0 0 20px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(102, 112, 133, 0.14);
+}
+
+.detailSection:last-child {
+  border-bottom: 0;
+}
+
+.detailSection h3,
+.periodSection h3,
+.confirmTable h3,
+.checkSection h3 {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 0.95rem;
+  font-weight: 950;
+}
+
+/* 상세 정보 카드 공통 스타일 ----------------------------------
+ * 신고 개요 카드, 사용자 정보 카드, 최종 확인 대상 카드에 공통 적용됩니다.
+ */
+.overviewCard,
+.userInfoCard,
+.targetMiniCard,
+.confirmTarget {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.overviewCard dl,
+.userInfoCard dl,
+.targetMiniCard dl,
+.confirmTarget dl {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.overviewCard dt,
+.userInfoCard dt,
+.targetMiniCard dt,
+.confirmTarget dt,
+.confirmTable dt {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.overviewCard dd,
+.userInfoCard dd,
+.targetMiniCard dd,
+.confirmTarget dd,
+.confirmTable dd {
+  margin: 4px 0 0;
+  color: #111827;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.overviewCard dd span,
+.userInfoCard span,
+.targetMiniCard span,
+.confirmTarget span {
+  display: block;
+  margin-top: 3px;
+  color: #667085;
+  font-weight: 700;
+}
+
+/* 프로필/대상 썸네일 ----------------------------------
+ * 신고 대상 사용자 아이콘이 들어가는 보라색 작은 박스입니다.
+ */
+.profileThumb {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: #7c4dff;
+  background: #efe8ff;
+}
+
+.profileThumb svg {
+  width: 34px;
+  height: 34px;
+}
+
+.reasonText {
+  display: block;
+  margin-bottom: 7px;
+  color: #111827;
+  font-weight: 950;
+}
+
+/* 상세 설명 텍스트 공통 스타일 ----------------------------------
+ * 신고 사유 설명, 안내 박스 설명, 경고 박스 설명에 쓰이는 문장 스타일입니다.
+ */
+.detailSection p,
+.guideText,
+.noticeBox p,
+.warningBox p,
+.releaseBox p {
+  margin: 0;
+  color: #344054;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+/* 신고자 목록 영역 ----------------------------------
+ * 신고자 목록 제목 줄과 신고자 카드 그리드 디자인입니다.
+ */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sectionHead h3 {
+  margin: 0;
+}
+
+.reporterList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reporterList div {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f8f9ff;
+}
+
+.reporterList span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  background: #7c4dff;
+}
+
+.reporterList strong {
+  color: #111827;
+  font-size: 0.88rem;
+}
+
+.reporterList small {
+  color: #667085;
+  font-weight: 700;
+}
+
+/* 최근 활동 목록 ----------------------------------
+ * 신고 대상 사용자의 최근 게시글/댓글/공감 활동을 세로 목록으로 보여줍니다.
+ */
+.activityList {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.activityList li {
+  display: grid;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 3px solid #7c4dff;
+}
+
+.activityList strong {
+  color: #633df2;
+  font-size: 0.82rem;
+}
+
+.activityList span {
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.activityList time {
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* 사이드 패널 하단 버튼 영역 ----------------------------------
+ * 취소/다음/제재 확정 같은 하단 버튼을 2열로 배치합니다.
+ */
+.drawerFooter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 18px 24px 22px;
+  border-top: 1px solid rgba(102, 112, 133, 0.14);
+  background: #fff;
+}
+
+/* 공통 주요 버튼/보조 버튼 ----------------------------------
+ * 보라색 기본 버튼과 흰색 보조 버튼의 공통 디자인입니다.
+ */
+.primaryButton,
+.secondaryButton {
+  min-height: 46px;
+  border-radius: 12px;
+  font-weight: 950;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.primaryButton {
+  border: 0;
+  color: #fff;
+  background: linear-gradient(135deg, #7c4dff, #633df2);
+  box-shadow: 0 16px 28px rgba(124, 77, 255, 0.22);
+}
+
+.primaryButton:hover {
+  box-shadow: 0 18px 34px rgba(124, 77, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled {
+  color: #98a2b3;
+  background: #eef0f6;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  border: 1px solid rgba(124, 77, 255, 0.26);
+  color: #633df2;
+  background: #fff;
+}
+
+.secondaryButton:hover {
+  background: #f3f0ff;
+}
+
+.primaryButton:active,
+.secondaryButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.resultFooter .primaryButton {
+  min-width: 140px;
+}

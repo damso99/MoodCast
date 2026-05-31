@@ -2,6 +2,9 @@ package com.moodcast.admin.controller;
 
 import com.moodcast.admin.service.AdminService;
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminActiveUserStat;
+import com.moodcast.admin.vo.AdminContentComment;
+import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminEmotionActivity;
@@ -12,6 +15,8 @@ import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
+import com.moodcast.admin.vo.AdminStatisticsSummary;
+import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
@@ -113,6 +118,44 @@ public class AdminController {
     ) {
         log.info("[ADMIN_API] GET /admin/api/content/posts requested");
         return Map.of("posts", adminService.getAdminContentPosts(authorizationHeader));
+    }
+
+    /* ========================================================================
+     * 콘텐츠 관리 댓글 목록 조회 API
+     * ------------------------------------------------------------------------
+     * 콘텐츠 관리 페이지의 "댓글" 탭에서 댓글을 조회할 때 사용합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/content/comments
+     *
+     * 응답:
+     * - { "comments": [...] }
+     * ======================================================================== */
+    @GetMapping("/content/comments")
+    public Map<String, List<AdminContentComment>> getAdminContentComments(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        log.info("[ADMIN_API] GET /admin/api/content/comments requested");
+        return Map.of("comments", adminService.getAdminContentComments(authorizationHeader));
+    }
+
+    /* ========================================================================
+     * 콘텐츠 관리 해시태그 목록 조회 API
+     * ------------------------------------------------------------------------
+     * 콘텐츠 관리 페이지의 "해시태그" 탭에서 해시태그를 조회할 때 사용합니다.
+     *
+     * 요청 주소:
+     * - GET /admin/api/content/hashtags
+     *
+     * 응답:
+     * - { "hashtags": [...] }
+     * ======================================================================== */
+    @GetMapping("/content/hashtags")
+    public Map<String, List<AdminContentHashtag>> getAdminContentHashtags(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        log.info("[ADMIN_API] GET /admin/api/content/hashtags requested");
+        return Map.of("hashtags", adminService.getAdminContentHashtags(authorizationHeader));
     }
 
     /*
@@ -386,6 +429,22 @@ public class AdminController {
      * --------------------------------------------------------------------------
      * 가입, 탈퇴, 정지, 정지 해제 기록을 최신순으로 10개만 내려줍니다.
      */
+    /*
+     * 관리자 대시보드 시간별 활성 사용자 API
+     * --------------------------------------------------------------------------
+     * period 값은 day, week, month 중 하나이며 서비스에서 한 번 더 검증합니다.
+     */
+    @GetMapping("/dashboard/active-users")
+    public Map<String, List<AdminActiveUserStat>> getDashboardActiveUsers(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String period
+    ) {
+        return Map.of(
+                "items",
+                adminService.getDashboardActiveUsers(authorizationHeader, period)
+        );
+    }
+
     @GetMapping("/dashboard/recent-activities")
     public Map<String, List<AdminRecentActivity>> getRecentDashboardActivities(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
@@ -408,6 +467,51 @@ public class AdminController {
         return Map.of(
                 "activities",
                 adminService.getAllDashboardActivities(authorizationHeader)
+        );
+    }
+
+    /*
+     * 통계 대시보드 요약 API
+     * --------------------------------------------------------------------------
+     * 통계 대시보드의 상단 숫자 카드와 하단 요약 숫자에 사용할 데이터를 조회합니다.
+     */
+    @GetMapping("/statistics/summary")
+    public AdminStatisticsSummary getStatisticsSummary(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String period
+    ) {
+        return adminService.getStatisticsSummary(authorizationHeader, period);
+    }
+
+    /*
+     * 통계 대시보드 가입자 추이 API
+     * --------------------------------------------------------------------------
+     * 선택한 기간에 맞춰 일/주/월 단위 가입자 흐름을 차트용 배열로 반환합니다.
+     */
+    @GetMapping("/statistics/subscribers")
+    public Map<String, List<AdminStatisticsTrend>> getStatisticsSubscriberTrend(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String period
+    ) {
+        return Map.of(
+                "items",
+                adminService.getStatisticsSubscriberTrend(authorizationHeader, period)
+        );
+    }
+
+    /*
+     * 통계 대시보드 콘텐츠 활동 API
+     * --------------------------------------------------------------------------
+     * 게시글, 댓글, 공감 수를 막대 그래프에서 바로 사용할 수 있는 형태로 반환합니다.
+     */
+    @GetMapping("/statistics/content-activity")
+    public Map<String, List<AdminStatisticsTrend>> getStatisticsContentActivity(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String period
+    ) {
+        return Map.of(
+                "items",
+                adminService.getStatisticsContentActivity(authorizationHeader, period)
         );
     }
 

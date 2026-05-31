@@ -1,0 +1,57 @@
+.statusToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.statusPills,
+.viewTools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statusPills button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 14px;
+  color: #633df2;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.1);
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.statusPills .activeStatus {
+  color: #fff;
+  background: #8b5cf6;
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.24);
+}
+
+.viewTools span {
+  color: #667085;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.statusPills button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.13);
+}
+
+.statusPills button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+@media (max-width: 760px) {
+  .statusToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

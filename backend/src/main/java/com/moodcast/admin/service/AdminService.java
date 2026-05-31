@@ -3,6 +3,9 @@ package com.moodcast.admin.service;
 import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminActiveUserStat;
+import com.moodcast.admin.vo.AdminContentComment;
+import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
@@ -11,6 +14,8 @@ import com.moodcast.admin.vo.AdminMemberSuspendRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
+import com.moodcast.admin.vo.AdminStatisticsSummary;
+import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.service.LoginService;
@@ -160,6 +165,42 @@ public class AdminService {
         log.info("[ADMIN_API] selectAdminContentPosts success size={}", posts == null ? 0 : posts.size());
 
         return posts;
+    }
+
+    /* ========================================================================
+     * 콘텐츠 관리 댓글 목록 조회
+     * ------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리의 "댓글" 탭에서 사용할 댓글 데이터를 조회합니다.
+     *
+     * 초보자 설명:
+     * - 컨트롤러는 요청만 받고, 이 서비스가 먼저 관리자 권한을 확인합니다.
+     * - 권한 확인이 끝나면 DAO를 통해 comment_tbl 기준 댓글 목록을 가져옵니다.
+     * ======================================================================== */
+    public List<AdminContentComment> getAdminContentComments(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        log.info("[ADMIN_API] selectAdminContentComments start");
+        List<AdminContentComment> comments = adminDao.selectAdminContentComments();
+        log.info("[ADMIN_API] selectAdminContentComments success size={}", comments == null ? 0 : comments.size());
+
+        return comments;
+    }
+
+    /* ========================================================================
+     * 콘텐츠 관리 해시태그 목록 조회
+     * ------------------------------------------------------------------------
+     * 관리자 콘텐츠 관리의 "해시태그" 탭에서 사용할 해시태그 데이터를 조회합니다.
+     *
+     * 초보자 설명:
+     * - hashtag 테이블의 태그 이름과 post_hashtag 연결 수를 함께 가져옵니다.
+     * - 검색과 페이지네이션은 현재 프론트에서 처리하므로 최근 500개 기준으로 내려줍니다.
+     * ======================================================================== */
+    public List<AdminContentHashtag> getAdminContentHashtags(String authorizationHeader) {
+        validateAdmin(authorizationHeader);
+        log.info("[ADMIN_API] selectAdminContentHashtags start");
+        List<AdminContentHashtag> hashtags = adminDao.selectAdminContentHashtags();
+        log.info("[ADMIN_API] selectAdminContentHashtags success size={}", hashtags == null ? 0 : hashtags.size());
+
+        return hashtags;
     }
 
     /*
@@ -828,6 +869,23 @@ public class AdminService {
     }
 
     /*
+     * 관리자 대시보드 시간별 활성 사용자 조회
+     * --------------------------------------------------------------------------
+     * members.last_login_at을 기준으로 일/주/월 단위 활성 사용자 수를 조회합니다.
+     */
+    public List<AdminActiveUserStat> getDashboardActiveUsers(
+            String authorizationHeader,
+            String period
+    ) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminActiveUserStat> activeUsers = adminDao.selectDashboardActiveUsers(normalizedPeriod);
+
+        return activeUsers == null ? Collections.emptyList() : activeUsers;
+    }
+
+    /*
      * 관리자 대시보드 최근 활동 10개 조회
      * --------------------------------------------------------------------------
      * 가입, 탈퇴, 정지, 정지 해제처럼 관리자 대시보드에서 바로 확인해야 하는 활동만 최신순으로 가져옵니다.
@@ -849,6 +907,49 @@ public class AdminService {
         validateAdmin(authorizationHeader);
 
         List<AdminRecentActivity> activities = adminDao.selectAllDashboardActivities();
+
+        return activities == null ? Collections.emptyList() : activities;
+    }
+
+    /*
+     * 통계 대시보드 기간별 요약 조회
+     * --------------------------------------------------------------------------
+     * 프론트에서 선택한 일/주/월 값을 백엔드에서 한 번 더 검증한 뒤 DB에 전달합니다.
+     * 이렇게 하면 프론트가 잘못된 period 값을 보내도 SQL 조건이 깨지지 않습니다.
+     */
+    public AdminStatisticsSummary getStatisticsSummary(String authorizationHeader, String period) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        AdminStatisticsSummary summary = adminDao.selectStatisticsSummary(normalizedPeriod);
+
+        return summary == null ? new AdminStatisticsSummary(0L, 0L, 0L, 0L, 0L, 0L) : summary;
+    }
+
+    /*
+     * 통계 대시보드 가입자 추이 조회
+     * --------------------------------------------------------------------------
+     * day는 00~23시, week는 최근 7일, month는 최근 4주 단위로 가입자 흐름을 가져옵니다.
+     */
+    public List<AdminStatisticsTrend> getStatisticsSubscriberTrend(String authorizationHeader, String period) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminStatisticsTrend> trends = adminDao.selectStatisticsSubscriberTrend(normalizedPeriod);
+
+        return trends == null ? Collections.emptyList() : trends;
+    }
+
+    /*
+     * 통계 대시보드 콘텐츠 활동 조회
+     * --------------------------------------------------------------------------
+     * 게시글, 댓글, 공감 수를 같은 형태(label/value)로 내려주면 프론트 막대 그래프가 단순해집니다.
+     */
+    public List<AdminStatisticsTrend> getStatisticsContentActivity(String authorizationHeader, String period) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        List<AdminStatisticsTrend> activities = adminDao.selectStatisticsContentActivity(normalizedPeriod);
 
         return activities == null ? Collections.emptyList() : activities;
     }

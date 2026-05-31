@@ -3,7 +3,7 @@ import { ReportDetailStep } from "./ReportDetailStep";
 import { ReportOptionStep } from "./ReportOptionStep";
 import { ReportReasonStep } from "./ReportReasonStep";
 import { ReportTemporaryStep } from "./ReportTemporaryStep";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportDrawer.module.css";
 
 /* ==========================================================================
  * 신고 처리 사이드 패널 컴포넌트

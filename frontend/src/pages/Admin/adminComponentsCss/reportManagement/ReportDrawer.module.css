@@ -1,0 +1,34 @@
+/* 오른쪽 사이드 패널 배경 ----------------------------------
+ * 신고 상세/제재 처리 패널이 열릴 때 전체 화면을 덮는 어두운 배경입니다.
+ */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dimmedArea {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 24, 39, 0.64);
+}
+
+/* 오른쪽 사이드 패널 본체 ----------------------------------
+ * 신고 상세, 옵션 선택, 최종 확인 화면이 표시되는 드로어 컨테이너입니다.
+ */
+.drawer {
+  position: relative;
+  z-index: 1;
+  width: min(620px, calc(100vw - 40px));
+  height: calc(100vh - 28px);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  margin: 14px 16px 14px 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(17, 24, 39, 0.3);
+  overflow: hidden;
+}
