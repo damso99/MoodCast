@@ -2,6 +2,7 @@
 import axios from "axios";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
@@ -162,7 +163,7 @@ function getThreadSortValue(thread) {
 function ChatBody({ desktop, onRoomOpenChange }) {
   const { member, accessToken } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentMemberId = useMemo(() => {
     const memberId = Number(member?.memberId);
     return Number.isFinite(memberId) && memberId > 0
@@ -191,6 +192,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
+  const [imageViewer, setImageViewer] = useState(null);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteMode, setInviteMode] = useState("create");
   const [inviteCandidates, setInviteCandidates] = useState([]);
@@ -208,6 +210,21 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     };
   }, []);
+
+  useEffect(() => {
+    if (!imageViewer) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeImageViewer();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [imageViewer]);
 
   const clearSelectedImages = () => {
     setSelectedImages((previousImages) => {
@@ -254,6 +271,18 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
       return nextImages;
     });
+  };
+
+  const openImageViewer = (src, alt) => {
+    if (!src) {
+      return;
+    }
+
+    setImageViewer({ src, alt: alt || "이미지" });
+  };
+
+  const closeImageViewer = () => {
+    setImageViewer(null);
   };
 
   useEffect(() => {
@@ -561,6 +590,27 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     loadMessages(partnerThread);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMemberId, initialPartnerId, initialPartnerName]);
+
+  useEffect(() => {
+    if (searchParams.get("view") !== "list") {
+      return;
+    }
+
+    setActiveGroupRoom(null);
+    setActiveThread(null);
+    setIsRoomOpen(false);
+    setMessages([]);
+    setMessage("");
+    clearSelectedImages();
+    setShowScrollBottomButton(false);
+    setIsThreadMenuOpen(false);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("view");
+    nextParams.delete("ts");
+    setSearchParams(nextParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   const updateScrollBottomButton = () => {
     const messageListElement = messageListRef.current;
@@ -873,6 +923,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                             src={imageUrl}
                             alt={`첨부 이미지 ${index + 1}`}
                             loading="lazy"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`);
+                              }
+                            }}
                           />
                         ))}
                       </div>
@@ -1122,6 +1181,38 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </button>
   );
 
+  const imageViewerModal = imageViewer ? (
+    <div
+      className={styles.imageViewerOverlay}
+      role="presentation"
+      onClick={closeImageViewer}
+    >
+      <div
+        className={styles.imageViewerContent}
+        role="dialog"
+        aria-modal="true"
+        aria-label={imageViewer.alt}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className={styles.imageViewerClose}
+          aria-label="이미지 닫기"
+          title="이미지 닫기"
+          onClick={closeImageViewer}
+        >
+          <CloseRoundedIcon />
+        </button>
+        <img
+          className={styles.imageViewerImage}
+          src={imageViewer.src}
+          alt={imageViewer.alt}
+          onClick={closeImageViewer}
+        />
+      </div>
+    </div>
+  ) : null;
+
   const showCreateRoomButton = !isRoomOpen && !activeGroupRoom;
 
   if (!desktop) {
@@ -1144,6 +1235,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           </section>
           {showCreateRoomButton ? createRoomButton : null}
         </div>
+        {imageViewerModal}
         {roomCreateModal}
       </>
     );
@@ -1172,6 +1264,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         </section>
         {showCreateRoomButton ? createRoomButton : null}
       </div>
+      {imageViewerModal}
       {roomCreateModal}
     </>
   );

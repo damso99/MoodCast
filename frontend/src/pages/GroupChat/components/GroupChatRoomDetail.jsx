@@ -3,6 +3,7 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatisfiedAltRounded";
@@ -59,6 +60,7 @@ export function GroupChatRoomDetail({
   const [selectedImages, setSelectedImages] = useState([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [error, setError] = useState("");
+  const [imageViewer, setImageViewer] = useState(null);
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -74,6 +76,21 @@ export function GroupChatRoomDetail({
       selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
     };
   }, []);
+
+  useEffect(() => {
+    if (!imageViewer) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setImageViewer(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [imageViewer]);
 
   const clearSelectedImages = () => {
     setSelectedImages((previousImages) => {
@@ -118,6 +135,14 @@ export function GroupChatRoomDetail({
 
       return previousImages.filter((item) => item.id !== imageId);
     });
+  };
+
+  const openImageViewer = (src, alt) => {
+    if (!src) {
+      return;
+    }
+
+    setImageViewer({ src, alt: alt || "이미지" });
   };
 
   const scrollToBottom = (behavior = "auto") => {
@@ -392,6 +417,15 @@ export function GroupChatRoomDetail({
                                   src={imageUrl}
                                   alt={`첨부 이미지 ${index + 1}`}
                                   loading="lazy"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`);
+                                    }
+                                  }}
                                 />
                               ))}
                             </div>
@@ -415,6 +449,15 @@ export function GroupChatRoomDetail({
                                   src={imageUrl}
                                   alt={`첨부 이미지 ${index + 1}`}
                                   loading="lazy"
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === "Enter" || event.key === " ") {
+                                      event.preventDefault();
+                                      openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`);
+                                    }
+                                  }}
                                 />
                               ))}
                             </div>
@@ -445,7 +488,7 @@ export function GroupChatRoomDetail({
         <div ref={bottomRef} />
       </div>
 
-      {showScrollBottomButton ? (
+  {showScrollBottomButton ? (
         <button
           type="button"
           className={styles.scrollBottomButton}
@@ -459,6 +502,38 @@ export function GroupChatRoomDetail({
         >
           <KeyboardArrowDownRoundedIcon />
         </button>
+      ) : null}
+
+      {imageViewer ? (
+        <div
+          className={styles.imageViewerOverlay}
+          role="presentation"
+          onClick={() => setImageViewer(null)}
+        >
+          <div
+            className={styles.imageViewerContent}
+            role="dialog"
+            aria-modal="true"
+            aria-label={imageViewer.alt}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className={styles.imageViewerClose}
+              aria-label="이미지 닫기"
+              title="이미지 닫기"
+              onClick={() => setImageViewer(null)}
+            >
+              <CloseRoundedIcon />
+            </button>
+            <img
+              className={styles.imageViewerImage}
+              src={imageViewer.src}
+              alt={imageViewer.alt}
+              onClick={() => setImageViewer(null)}
+            />
+          </div>
+        </div>
       ) : null}
 
       <form className={styles.composer} onSubmit={handleSubmit}>
