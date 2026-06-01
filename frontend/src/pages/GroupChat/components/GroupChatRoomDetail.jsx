@@ -578,6 +578,20 @@ export function GroupChatRoomDetail({
           role="presentation"
           onClick={() => setImageViewer(null)}
         >
+          {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+            <button
+              type="button"
+              className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
+              aria-label="?? ???"
+              title="?? ???"
+              onClick={(event) => {
+                event.stopPropagation();
+                moveImageViewer(-1);
+              }}
+            >
+              <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
+            </button>
+          ) : null}
           <div
             className={`${styles.imageViewerContent} ${
               imageViewer.orientation === "vertical"
@@ -592,34 +606,12 @@ export function GroupChatRoomDetail({
             <button
               type="button"
               className={styles.imageViewerClose}
-              aria-label="이미지 닫기"
-              title="이미지 닫기"
+              aria-label="??? ??"
+              title="??? ??"
               onClick={() => setImageViewer(null)}
             >
               <CloseRoundedIcon />
             </button>
-            {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
-              <>
-                <button
-                  type="button"
-                  className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
-                  aria-label="이전 이미지"
-                  title="이전 이미지"
-                  onClick={() => moveImageViewer(-1)}
-                >
-                  <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
-                  aria-label="다음 이미지"
-                  title="다음 이미지"
-                  onClick={() => moveImageViewer(1)}
-                >
-                  <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
-                </button>
-              </>
-            ) : null}
             <span className={styles.imageViewerCounter}>
               {Array.isArray(imageViewer.images) && imageViewer.images.length > 0
                 ? `${imageViewer.index + 1} / ${imageViewer.images.length}`
@@ -633,6 +625,20 @@ export function GroupChatRoomDetail({
               onClick={() => setImageViewer(null)}
             />
           </div>
+          {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+            <button
+              type="button"
+              className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
+              aria-label="?? ???"
+              title="?? ???"
+              onClick={(event) => {
+                event.stopPropagation();
+                moveImageViewer(1);
+              }}
+            >
+              <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
+            </button>
+          ) : null}
         </div>
       ) : null}
 

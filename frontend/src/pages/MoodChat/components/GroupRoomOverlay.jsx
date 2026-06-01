@@ -8,11 +8,13 @@ import {
   updateGroupChatRoomRead,
 } from "../../../shared/api/groupChatApi";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
+import { parseChatContent, serializeChatContent } from "../../../shared/lib/chatContent";
 import { GroupChatRoomDetail } from "../../GroupChat/components/GroupChatRoomDetail";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 function normalizeGroupMessage(message, timeCache) {
   const messageKey = message?.messageId ?? message?.id;
+  const parsedContent = parseChatContent(message?.content ?? "");
   const cachedTime = timeCache?.get?.(messageKey);
   const computedTime = message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : "");
   const time = cachedTime || computedTime;
@@ -27,7 +29,9 @@ function normalizeGroupMessage(message, timeCache) {
     senderId: Number(message?.senderId),
     senderName: message?.senderName || "Member",
     profileImageUrl: message?.profileImageUrl || "",
-    content: message?.content || "",
+    content: parsedContent.text || "",
+    imageUrls: parsedContent.imageUrls,
+    rawContent: message?.content || "",
     time,
     createdAt: message?.createdAt || "",
     readCount: Number(message?.readCount || 0),
@@ -213,25 +217,42 @@ export function GroupRoomOverlay({
     },
   );
 
-  const handleSend = async (event) => {
-    event.preventDefault();
+  const handleSend = async (eventOrPayload = {}) => {
+    if (typeof eventOrPayload?.preventDefault === "function") {
+      eventOrPayload.preventDefault();
+    }
 
-    const trimmedMessage = message.trim();
-    if (!trimmedMessage || !room?.roomId || !currentMemberId || isSending) {
+    const payload =
+      eventOrPayload && typeof eventOrPayload === "object" && typeof eventOrPayload.preventDefault !== "function"
+        ? eventOrPayload
+        : {};
+    const trimmedMessage =
+      typeof payload.text === "string" ? payload.text.trim() : message.trim();
+    const imageUrls = Array.isArray(payload.imageUrls) ? payload.imageUrls : [];
+
+    if ((!trimmedMessage && imageUrls.length === 0) || !room?.roomId || !currentMemberId || isSending) {
       return;
     }
 
     setIsSending(true);
-    setMessage("");
 
     try {
+      const content = serializeChatContent({
+        text: trimmedMessage,
+        imageUrls,
+      });
+
+      if (!content) {
+        return;
+      }
+
       const pendingMessage = normalizeGroupMessage({
         messageId: `pending-${Date.now()}`,
         roomId: room.roomId,
         senderId: currentMemberId,
         senderName: currentMember?.memberName || currentMember?.nickname || "나",
         profileImageUrl: currentMember?.profileImageUrl || "",
-        content: trimmedMessage,
+        content,
         createdAt: new Date().toISOString(),
         readCount: 0,
         unreadCount: 0,
@@ -243,23 +264,23 @@ export function GroupRoomOverlay({
 
       const published = sendMessage(room.roomId, {
         senderId: currentMemberId,
-        content: trimmedMessage,
+        content,
       });
 
       if (!published) {
         const response = await axios.post(`${API_BASE}/chat/rooms/${room.roomId}/messages`, {
           senderId: currentMemberId,
-          content: trimmedMessage,
+          content,
         });
 
         const savedMessage = normalizeGroupMessage(response.data, groupMessageTimeCacheRef.current);
         setMessages((previousMessages) => {
-          const pendingIndex = previousMessages.findIndex(
-            (item) =>
-              item.isPending &&
-              Number(item.senderId) === Number(savedMessage.senderId) &&
-              item.content === savedMessage.content,
-          );
+            const pendingIndex = previousMessages.findIndex(
+              (item) =>
+                item.isPending &&
+                Number(item.senderId) === Number(savedMessage.senderId) &&
+                item.rawContent === savedMessage.rawContent,
+            );
 
           if (pendingIndex >= 0) {
             const nextMessages = [...previousMessages];
@@ -277,6 +298,7 @@ export function GroupRoomOverlay({
       }
 
       onRoomUpdated?.();
+      setMessage("");
     } catch (error) {
       console.error("Group message send failed", error);
     } finally {
