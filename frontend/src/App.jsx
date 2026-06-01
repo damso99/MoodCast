@@ -12,18 +12,24 @@ import { FollowingPage } from "./pages/Follow/FollowingPage";
 import { SettingsPage } from "./pages/Settings/SettingsPage";
 import { SearchPage } from "./pages/Search/SearchPage";
 import { CreatePostPage } from "./pages/CreatePost/CreatePostPage";
+import { PostDetailPage } from "./pages/PostDetail/PostDetailPage";
 import { ProfileSetupPage } from "./pages/ProfileSetup/ProfileSetupPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
 import { AdminRoutes } from "./pages/Admin/AdminPages";
 import { SignupPage } from "./pages/Auth/SignupPage";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuthStore } from "./stores/useAuthStore";
+import { RequireAuth } from "./components/common/RequireAuth";
 
 function AppRoutes() {
   const desktop = useIsDesktop();
+  const [authChecked, setAuthChecked] = useState(false);
   const { accessToken, setAuthData, clearAuthData } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const authRoute = (element) => (
+    <RequireAuth authChecked={authChecked}>{element}</RequireAuth>
+  );
 
   useEffect(() => {
     let refreshPromise = null;
@@ -128,6 +134,8 @@ function AppRoutes() {
       } catch (err) {
         console.log("로그인 상태복구 실패", err);
         clearAuthData();
+      } finally {
+        setAuthChecked(true);
       }
     };
     checkLogin();
@@ -144,34 +152,52 @@ function AppRoutes() {
       <Route path="/app/profile-setup" element={<ProfileSetupPage />} />
       <Route
         path="/app/feed"
-        element={desktop ? <HomeFeedPage /> : <MobileFeedPage />}
+        element={authRoute(desktop ? <HomeFeedPage /> : <MobileFeedPage />)}
       />
-      <Route path="/app/mobile-feed" element={<MobileFeedPage />} />
-      <Route path="/app/saved" element={<SavedPage />} />
-      <Route path="/app/mood-chat" element={<MoodChatPage />} />
-      <Route path="/app/chat" element={<MoodChatPage />} />
+      <Route path="/app/mobile-feed" element={authRoute(<MobileFeedPage />)} />
+      <Route path="/app/saved" element={authRoute(<SavedPage />)} />
+      <Route path="/app/mood-chat" element={authRoute(<MoodChatPage />)} />
+      <Route path="/app/chat" element={authRoute(<MoodChatPage />)} />
       <Route
         path="/app/group-chat"
-        element={<Navigate to="/app/mood-chat" replace />}
+        element={authRoute(<Navigate to="/app/mood-chat" replace />)}
       />
       {/* 마이페이지와 유저페이지를 ProfilePage 하나로 통합함 */}
-      <Route path="/app/profile" element={<ProfilePage />} />
-      <Route path="/app/profile-mobile" element={<ProfilePage />} />
-      <Route path="/app/profile/edit" element={<ProfileEditPage />} />
-      <Route path="/app/post/edit/:postId" element={<EditPostPage />} />
-      <Route path="/app/followers" element={<FollowersPage />} />
-      <Route path="/app/followers/:memberId" element={<FollowersPage />} />
-      <Route path="/app/following" element={<FollowingPage />} />
-      <Route path="/app/following/:memberId" element={<FollowingPage />} />
-      <Route path="/app/user/:handle" element={<ProfilePage />} />
-      <Route path="/app/settings" element={<SettingsPage />} />
-      <Route path="/app/search" element={<SearchPage />} />
-      <Route path="/app/write" element={<CreatePostPage />} />
-      <Route path="/app/create" element={<CreatePostPage />} />
-      <Route path="/app/mood" element={<Navigate to="/app/write" replace />} />
+      <Route path="/app/profile" element={authRoute(<ProfilePage />)} />
+      <Route path="/app/profile-mobile" element={authRoute(<ProfilePage />)} />
+      <Route path="/profile/:handle" element={authRoute(<ProfilePage />)} />
+      <Route path="/profile" element={authRoute(<ProfilePage />)} />
+      <Route
+        path="/app/profile/edit"
+        element={authRoute(<ProfileEditPage />)}
+      />
+      <Route
+        path="/app/post/edit/:postId"
+        element={authRoute(<EditPostPage />)}
+      />
+      <Route path="/app/followers" element={authRoute(<FollowersPage />)} />
+      <Route
+        path="/app/followers/:memberId"
+        element={authRoute(<FollowersPage />)}
+      />
+      <Route path="/app/following" element={authRoute(<FollowingPage />)} />
+      <Route
+        path="/app/following/:memberId"
+        element={authRoute(<FollowingPage />)}
+      />
+      <Route path="/app/user/:handle" element={authRoute(<ProfilePage />)} />
+      <Route path="/app/settings" element={authRoute(<SettingsPage />)} />
+      <Route path="/app/search" element={authRoute(<SearchPage />)} />
+      <Route path="/app/write" element={authRoute(<CreatePostPage />)} />
+      <Route path="/app/create" element={authRoute(<CreatePostPage />)} />
+      <Route path="/app/post/:postId" element={authRoute(<PostDetailPage />)} />
+      <Route
+        path="/app/mood"
+        element={authRoute(<Navigate to="/app/write" replace />)}
+      />
       <Route
         path="/app/community"
-        element={<Navigate to="/app/feed" replace />}
+        element={authRoute(<Navigate to="/app/feed" replace />)}
       />
       <Route path="/admin/*" element={<AdminRoutes />} />
       <Route path="*" element={<Navigate to="/app/feed" replace />} />
