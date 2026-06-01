@@ -114,6 +114,7 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
+  overflow-anchor: none;
   scrollbar-width: thin;
   scrollbar-color: rgba(124, 77, 255, 0.26) transparent;
 }
@@ -145,6 +146,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
+  min-height: 86px;
   padding: 14px;
   border-radius: 18px;
   border: 1px solid rgba(229, 231, 235, 0.92);
@@ -181,6 +183,8 @@
   gap: 4px;
   color: #98a2b3;
   font-size: 0.78rem;
+  min-width: 72px;
+  flex: 0 0 72px;
 }
 
 .group-chat-room {

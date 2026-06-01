@@ -215,13 +215,25 @@ export function GroupChatRoomDetail({
     });
   };
 
-  const scrollToBottom = (behavior = "auto") => {
-    const element = bottomRef.current;
+  const focusMessageInput = () => {
+    if (!messageInputRef.current) {
+      return;
+    }
+
+    try {
+      messageInputRef.current.focus({ preventScroll: true });
+    } catch (error) {
+      messageInputRef.current.focus();
+    }
+  };
+
+  const scrollToBottom = () => {
+    const element = messagesRef.current;
     if (!element) {
       return;
     }
 
-    element.scrollIntoView({ behavior, block: "end" });
+    element.scrollTop = element.scrollHeight;
   };
 
   const handleMessagesScroll = () => {
@@ -310,6 +322,7 @@ export function GroupChatRoomDetail({
       );
     } finally {
       setIsUploadingImages(false);
+      requestAnimationFrame(focusMessageInput);
     }
   };
 
@@ -320,9 +333,7 @@ export function GroupChatRoomDetail({
       },
     });
     setIsEmojiPickerOpen(false);
-    requestAnimationFrame(() => {
-      messageInputRef.current?.focus();
-    });
+    requestAnimationFrame(focusMessageInput);
   };
 
   return (

@@ -558,17 +558,55 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         ? groupResponse.data.map(normalizeGroupThread)
         : [];
 
-      const nextThreads = [...directThreads, ...groupThreads].sort(
-        (leftThread, rightThread) => getThreadSortValue(rightThread) - getThreadSortValue(leftThread),
-      );
+      const nextThreads = [...directThreads, ...groupThreads];
 
-      setThreads(
-        nextThreads.map((thread) =>
-          activeGroupRoom?.roomId && Number(activeGroupRoom.roomId) === Number(thread.roomId)
-            ? { ...thread, unreadCount: 0 }
-            : thread,
-        ),
-      );
+      setThreads((previousThreads) => {
+        const previousByKey = new Map(
+          previousThreads.map((thread) => [thread.threadKey, thread]),
+        );
+        const nextByKey = new Map(
+          nextThreads.map((thread) => [thread.threadKey, thread]),
+        );
+
+        const mergedThreads = previousThreads
+          .map((previousThread) => {
+            const nextThread = nextByKey.get(previousThread.threadKey);
+            if (!nextThread) {
+              return previousThread;
+            }
+
+            const isActiveGroup =
+              activeGroupRoom?.roomId &&
+              Number(activeGroupRoom.roomId) === Number(nextThread.roomId);
+
+            return {
+              ...previousThread,
+              ...nextThread,
+              unreadCount: isActiveGroup ? 0 : nextThread.unreadCount,
+            };
+          })
+          .filter((thread) => nextByKey.has(thread.threadKey));
+
+        const appendedThreads = nextThreads.filter(
+          (thread) => !previousByKey.has(thread.threadKey),
+        );
+
+        const normalizedThreads = [...mergedThreads, ...appendedThreads].map((thread) => {
+          const isActiveGroup =
+            activeGroupRoom?.roomId && Number(activeGroupRoom.roomId) === Number(thread.roomId);
+
+          return isActiveGroup ? { ...thread, unreadCount: 0 } : thread;
+        });
+
+        if (previousThreads.length === 0) {
+          return normalizedThreads.sort(
+            (leftThread, rightThread) =>
+              getThreadSortValue(rightThread) - getThreadSortValue(leftThread),
+          );
+        }
+
+        return normalizedThreads;
+      });
     } catch (requestError) {
       console.error("채팅 리스트 조회 실패", requestError);
       setThreads([]);
@@ -687,18 +725,27 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setShowScrollBottomButton(bottomGap > 24);
   };
 
-  const scrollToMessageBottom = (behavior = "smooth") => {
+  const scrollToMessageBottom = () => {
     const messageListElement = messageListRef.current;
 
     if (!messageListElement) {
       return;
     }
 
-    messageListElement.scrollTo({
-      top: messageListElement.scrollHeight,
-      behavior,
-    });
+    messageListElement.scrollTop = messageListElement.scrollHeight;
     setShowScrollBottomButton(false);
+  };
+
+  const focusMessageInput = () => {
+    if (!messageInputRef.current) {
+      return;
+    }
+
+    try {
+      messageInputRef.current.focus({ preventScroll: true });
+    } catch (error) {
+      messageInputRef.current.focus();
+    }
   };
 
   useEffect(() => {
@@ -851,9 +898,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     } finally {
       setIsSending(false);
       setIsUploadingImages(false);
-      requestAnimationFrame(() => {
-        messageInputRef.current?.focus();
-      });
+      requestAnimationFrame(focusMessageInput);
     }
   };
 
@@ -865,9 +910,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const handleEmojiSelect = (emoji) => {
     setMessage((previousMessage) => `${previousMessage}${emoji}`);
     setIsEmojiPickerOpen(false);
-    requestAnimationFrame(() => {
-      messageInputRef.current?.focus();
-    });
+    requestAnimationFrame(focusMessageInput);
   };
 
   useEffect(() => {

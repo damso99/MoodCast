@@ -304,7 +304,11 @@ export function GroupRoomOverlay({
     } finally {
       setIsSending(false);
       requestAnimationFrame(() => {
-        messageInputRef.current?.focus();
+        try {
+          messageInputRef.current?.focus({ preventScroll: true });
+        } catch (error) {
+          messageInputRef.current?.focus();
+        }
       });
     }
   };

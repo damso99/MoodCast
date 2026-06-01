@@ -112,15 +112,43 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     try {
       const response = await fetchGroupChatRooms(currentMemberId);
       const nextRooms = Array.isArray(response.data) ? response.data : [];
-      setRooms(
-        nextRooms.map((room) => {
-          const normalizedRoom = normalizeRoom(room);
-          if (activeRoom?.roomId && Number(activeRoom.roomId) === Number(normalizedRoom.roomId)) {
-            return { ...normalizedRoom, unreadCount: 0 };
-          }
-          return normalizedRoom;
-        }),
-      );
+      const normalizedRooms = nextRooms.map((room) => normalizeRoom(room));
+
+      setRooms((previousRooms) => {
+        const previousById = new Map(
+          previousRooms.map((room) => [String(room.roomId), room]),
+        );
+        const nextById = new Map(
+          normalizedRooms.map((room) => [String(room.roomId), room]),
+        );
+
+        const mergedRooms = previousRooms
+          .map((previousRoom) => {
+            const nextRoom = nextById.get(String(previousRoom.roomId));
+            if (!nextRoom) {
+              return previousRoom;
+            }
+
+            const isActive = activeRoom?.roomId && Number(activeRoom.roomId) === Number(nextRoom.roomId);
+
+            return {
+              ...previousRoom,
+              ...nextRoom,
+              unreadCount: isActive ? 0 : nextRoom.unreadCount,
+            };
+          })
+          .filter((room) => nextById.has(String(room.roomId)));
+
+        const appendedRooms = normalizedRooms.filter(
+          (room) => !previousById.has(String(room.roomId)),
+        );
+
+        if (previousRooms.length === 0) {
+          return [...mergedRooms, ...appendedRooms];
+        }
+
+        return [...mergedRooms, ...appendedRooms];
+      });
     } catch (requestError) {
       console.error("Group room list load failed", requestError);
       setRooms([]);
