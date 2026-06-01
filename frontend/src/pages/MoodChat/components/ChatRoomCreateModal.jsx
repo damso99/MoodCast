@@ -62,7 +62,7 @@ export function ChatRoomCreateModal({
         className="moodchat-modal"
         role="dialog"
         aria-modal="true"
-        aria-label={mode === 'invite' ? '梨꾪똿諛?硫ㅻ쾭 珥덈?' : '梨꾪똿諛??앹꽦'}
+        aria-label={mode === 'invite' ? '채팅방 멤버 초대' : '채팅방 생성'}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="moodchat-modalHeader">
@@ -98,11 +98,11 @@ export function ChatRoomCreateModal({
 
         <div className="moodchat-memberList">
           {isLoading ? (
-            <p className="moodchat-emptyState">?붾줈??紐⑸줉??遺덈윭?ㅻ뒗 以묒엯?덈떎.</p>
+            <p className="moodchat-emptyState">멤버 목록을 불러오는 중입니다.</p>
           ) : null}
 
           {!isLoading && filteredMembers.length === 0 ? (
-            <p className="moodchat-emptyState">?쒖떆???붾줈??紐⑸줉???놁뒿?덈떎.</p>
+            <p className="moodchat-emptyState">표시할 멤버 목록이 없습니다.</p>
           ) : null}
 
           {!isLoading
@@ -135,7 +135,7 @@ export function ChatRoomCreateModal({
                   <strong>{displayName}</strong>
                   <span>@{member.email ? member.email.split('@')[0] : memberId}</span>
                 </div>
-                <span className="moodchat-checkbox">{isSelected ? '?좏깮' : '+'}</span>
+                <span className="moodchat-checkbox">{isSelected ? '선택' : '+'}</span>
               </button>
             );
           })
@@ -144,7 +144,7 @@ export function ChatRoomCreateModal({
 
         <div className="moodchat-modalActions">
           <button type="button" className="moodchat-secondaryButton" onClick={onClose}>
-            痍⑥냼
+            취소
           </button>
           <button
             type="button"

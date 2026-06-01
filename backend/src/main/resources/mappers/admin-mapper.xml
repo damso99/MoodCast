@@ -3,26 +3,17 @@
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<!--
-      adminDashboardSummaryMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+<!-- 관리자 MyBatis 매퍼입니다. 관리자 페이지 API에서 사용하는 SQL과 결과 매핑을 정의합니다. -->
 <mapper namespace="com.moodcast.admin.dao.AdminDao">
 
-    <!--
-      adminDashboardSummaryMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminDashboardSummaryMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminDashboardSummaryMap" type="com.moodcast.admin.vo.AdminDashboardSummary">
         <result property="totalMemberCount" column="total_member_count"/>
         <result property="todayNewMemberCount" column="today_new_member_count"/>
         <result property="postCount" column="post_count"/>
     </resultMap>
 
-    <!--
-      adminMemberMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminMemberMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminMemberMap" type="com.moodcast.admin.vo.AdminMember">
         <id property="memberId" column="member_id"/>
         <result property="name" column="name"/>
@@ -40,10 +31,7 @@
         <result property="warningCount" column="warning_count"/>
     </resultMap>
 
-    <!--
-      adminContentPostMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminContentPostMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminContentPostMap" type="com.moodcast.admin.vo.AdminContentPost">
         <id property="postId" column="post_id"/>
         <result property="title" column="title"/>
@@ -59,7 +47,7 @@
         <result property="hashtagCount" column="hashtag_count"/>
     </resultMap>
 
-    <!-- 콘텐츠 관리 댓글 탭 조회 결과를 AdminContentComment VO에 연결합니다. -->
+    <!-- adminContentCommentMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminContentCommentMap" type="com.moodcast.admin.vo.AdminContentComment">
         <id property="commentId" column="comment_id"/>
         <result property="postId" column="post_id"/>
@@ -74,7 +62,7 @@
         <result property="moderationStatus" column="moderation_status"/>
     </resultMap>
 
-    <!-- 콘텐츠 관리 해시태그 탭 조회 결과를 AdminContentHashtag VO에 연결합니다. -->
+    <!-- adminContentHashtagMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminContentHashtagMap" type="com.moodcast.admin.vo.AdminContentHashtag">
         <id property="hashtagId" column="hashtag_id"/>
         <result property="hashtag" column="hashtag"/>
@@ -84,10 +72,7 @@
         <result property="moderationStatus" column="moderation_status"/>
     </resultMap>
 
-    <!--
-      adminProfileMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminProfileMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminProfileMap" type="com.moodcast.admin.vo.AdminProfile">
         <id property="memberId" column="member_id"/>
         <result property="name" column="name"/>
@@ -96,10 +81,7 @@
         <result property="profileImageUrl" column="profile_image_url"/>
     </resultMap>
 
-    <!--
-      adminMemberDetailMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminMemberDetailMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminMemberDetailMap" type="com.moodcast.admin.vo.AdminMemberDetail">
         <id property="memberId" column="member_id"/>
         <result property="email" column="email"/>
@@ -153,25 +135,19 @@
         <result property="suspendedMemberCount" column="suspended_member_count"/>
     </resultMap>
 
-    <!--
-      adminEmotionActivityMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminEmotionActivityMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminEmotionActivityMap" type="com.moodcast.admin.vo.AdminEmotionActivity">
         <id property="emotionId" column="emotion_id"/>
         <result property="activityCount" column="activity_count"/>
     </resultMap>
 
-    <!--
-      adminActiveUserStatMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminActiveUserStatMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminActiveUserStatMap" type="com.moodcast.admin.vo.AdminActiveUserStat">
         <result property="label" column="label"/>
         <result property="activeUserCount" column="active_user_count"/>
     </resultMap>
 
-    <!-- 통계 대시보드 상단 카드와 하단 요약 숫자 조회 결과입니다. -->
+    <!-- adminStatisticsSummaryMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminStatisticsSummaryMap" type="com.moodcast.admin.vo.AdminStatisticsSummary">
         <result property="totalMemberCount" column="total_member_count"/>
         <result property="newMemberCount" column="new_member_count"/>
@@ -181,16 +157,13 @@
         <result property="empathyCount" column="empathy_count"/>
     </resultMap>
 
-    <!-- 통계 대시보드 차트에서 공통으로 사용하는 label/value 형태의 조회 결과입니다. -->
+    <!-- adminStatisticsTrendMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminStatisticsTrendMap" type="com.moodcast.admin.vo.AdminStatisticsTrend">
         <result property="label" column="label"/>
         <result property="value" column="value"/>
     </resultMap>
 
-    <!--
-      adminRecentActivityMap 寃곌낵 留ㅽ븨?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- adminRecentActivityMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
     <resultMap id="adminRecentActivityMap" type="com.moodcast.admin.vo.AdminRecentActivity">
         <result property="activityType" column="activity_type"/>
         <result property="memberId" column="member_id"/>
@@ -204,19 +177,13 @@
         <result property="createdAt" column="created_at"/>
     </resultMap>
 
-    <!--
-      selectTotalMemberCount 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectTotalMemberCount 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectTotalMemberCount" resultType="long">
         select count(*)
         from members
     </select>
 
-    <!--
-      selectMembers 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectMembers 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectMembers" resultMap="adminMemberMap">
         select
             member_id,
@@ -237,10 +204,7 @@
         order by created_at desc
     </select>
 
-    <!--
-      selectAdminContentPosts 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectAdminContentPosts 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectAdminContentPosts" resultMap="adminContentPostMap">
         select
             p.post_id,
@@ -261,7 +225,7 @@
         limit 500
     </select>
 
-    <!-- 콘텐츠 관리 댓글 탭: 댓글 본문, 작성자, 연결 게시글 정보를 최신순으로 조회합니다. -->
+    <!-- selectAdminContentComments 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectAdminContentComments" resultMap="adminContentCommentMap">
         select
             c.comment_id,
@@ -332,7 +296,7 @@
         limit 1
     </select>
 
-    <!-- 콘텐츠 관리 해시태그 탭: 태그별 사용량과 최근 연결 게시글 시간을 조회합니다. -->
+    <!-- selectAdminContentHashtags 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectAdminContentHashtags" resultMap="adminContentHashtagMap">
         select
             h.hashtag_id,
@@ -424,10 +388,7 @@
         limit 1
     </select>
 
-    <!--
-      hideAdminContentPost 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- hideAdminContentPost 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="hideAdminContentPost">
         update post_tbl
         set visibility = 'PRIVATE',
@@ -436,10 +397,7 @@
           and deleted_yn = 'N'
     </update>
 
-    <!--
-      restoreHiddenAdminContentPost 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- restoreHiddenAdminContentPost 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="restoreHiddenAdminContentPost">
         update post_tbl
         set visibility = 'PUBLIC',
@@ -448,10 +406,7 @@
           and deleted_yn = 'N'
     </update>
 
-    <!--
-      softDeleteAdminContentPost 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- softDeleteAdminContentPost 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="softDeleteAdminContentPost">
         update post_tbl
         set deleted_yn = 'Y',
@@ -460,10 +415,7 @@
           and deleted_yn = 'N'
     </update>
 
-    <!--
-      restoreDeletedAdminContentPost 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- restoreDeletedAdminContentPost 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="restoreDeletedAdminContentPost">
         update post_tbl
         set deleted_yn = 'N',
@@ -473,10 +425,7 @@
           and deleted_yn = 'Y'
     </update>
 
-    <!--
-      deleteAdminPostComments 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- deleteAdminPostComments 삭제 쿼리입니다. 관리자 기능에서 연결 데이터 또는 대상 데이터를 삭제할 때 사용합니다. -->
     <delete id="deleteAdminPostComments">
         delete from comment_tbl
         where post_id = #{postId}
@@ -497,10 +446,7 @@
         where post_id = #{postId}
     </delete>
 
-    <!--
-      hardDeleteAdminContentPost 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- hardDeleteAdminContentPost 삭제 쿼리입니다. 관리자 기능에서 연결 데이터 또는 대상 데이터를 삭제할 때 사용합니다. -->
     <delete id="hardDeleteAdminContentPost">
         delete from post_tbl
         where post_id = #{postId}
@@ -626,10 +572,7 @@
         order by log.created_at desc, log.log_id desc
     </select>
 
-    <!--
-      selectMemberDetail 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectMemberDetail 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectMemberDetail" resultMap="adminMemberDetailMap">
         select
             member_id,
@@ -653,10 +596,7 @@
         limit 1
     </select>
 
-    <!--
-      searchMembersForAdminPromotion 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- searchMembersForAdminPromotion 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="searchMembersForAdminPromotion" resultMap="adminMemberMap">
         select
             member_id,
@@ -695,10 +635,7 @@
         limit 100
     </select>
 
-    <!--
-      updateMemberRoleForAdminPromotion 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- updateMemberRoleForAdminPromotion 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="updateMemberRoleForAdminPromotion">
         update members
         set role = #{role},
@@ -708,10 +645,7 @@
           and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
     </update>
 
-    <!--
-      suspendMember 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- suspendMember 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="suspendMember">
         update members
         set status = 'SUSPENDED',
@@ -722,10 +656,7 @@
           and deleted_at is null
     </update>
 
-    <!--
-      restoreSuspendedMember 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- restoreSuspendedMember 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="restoreSuspendedMember">
         update members
         set status = 'ACTIVE',
@@ -736,10 +667,7 @@
           and deleted_at is null
     </update>
 
-    <!--
-      insertAdminActionLog 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    
     <insert id="insertAdminActionLog">
         insert into admin_action_logs (
             admin_id,
@@ -758,10 +686,7 @@
         )
     </insert>
 
-    <!--
-      selectDashboardSummary 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectDashboardSummary 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectDashboardSummary" resultMap="adminDashboardSummaryMap">
         select
             (select count(*)
@@ -775,10 +700,7 @@
              where deleted_yn = 'N') as post_count
     </select>
 
-    <!--
-      selectDashboardEmotionActivity 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectDashboardEmotionActivity 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectDashboardEmotionActivity" resultMap="adminEmotionActivityMap">
         select
             p.emotion_id,
@@ -803,14 +725,7 @@
         order by p.emotion_id
     </select>
 
-    <!--
-      관리자 대시보드 시간별 활성 사용자 조회입니다.
-
-      시간대 주의:
-      - members.last_login_at은 서울 시간으로 저장합니다.
-      - RDS 세션 시간대는 UTC라서 curdate()를 쓰면 서울 기준 00~09시 사이에 날짜 경계가 어긋납니다.
-      - 그래서 모든 기간 경계는 date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))로 계산합니다.
-    -->
+    <!-- selectDashboardActiveUsers 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectDashboardActiveUsers" resultMap="adminActiveUserStatMap">
         <choose>
             <when test="period == 'week'">
@@ -929,14 +844,7 @@
             </otherwise>
         </choose>
     </select>
-    <!--
-      관리자 대시보드 최근 활동 10개 조회입니다.
-
-      시간/문자열 주의:
-      - RDS 세션 시간대가 UTC이므로 날짜 경계 조건은 curdate() 대신 서울 기준 날짜식을 사용합니다.
-      - 이전에 한글 문자열이 깨지면서 SQL 따옴표가 닫히지 않아 최근 활동 조회가 실패했습니다.
-        화면 표시용 고정 문구는 깨짐 방지를 위해 ASCII 코드값을 CHAR(... USING utf8mb4)로 생성합니다.
-    -->
+    <!-- selectRecentDashboardActivities 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectRecentDashboardActivities" resultMap="adminRecentActivityMap">
         select *
         from (
@@ -997,7 +905,7 @@
         limit 10
     </select>
 
-    <!-- 관리자 대시보드 전체 활동 조회입니다. 최근 활동과 같은 이유로 고정 한글 문구는 CHAR를 사용합니다. -->
+    <!-- selectAllDashboardActivities 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectAllDashboardActivities" resultMap="adminRecentActivityMap">
         select *
         from (
@@ -1057,15 +965,7 @@
         order by created_at desc
     </select>
 
-    <!--
-      통계 대시보드 요약 조회입니다.
-
-      초보자 설명:
-      - period가 day이면 오늘 00:00부터 내일 00:00 전까지의 데이터를 봅니다.
-      - period가 week이면 오늘 포함 최근 7일 데이터를 봅니다.
-      - period가 month이면 오늘 포함 최근 1개월 데이터를 봅니다.
-      - 전체 회원 수는 기간과 무관하게 현재 members 전체 수를 보여줍니다.
-    -->
+    <!-- selectStatisticsSummary 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectStatisticsSummary" resultMap="adminStatisticsSummaryMap">
         select
             (select count(*)
@@ -1156,7 +1056,7 @@
                )) as empathy_count
     </select>
 
-    <!-- 통계 대시보드 가입자 추이 차트 조회입니다. -->
+    <!-- selectStatisticsSubscriberTrend 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectStatisticsSubscriberTrend" resultMap="adminStatisticsTrendMap">
         <choose>
             <when test="period == 'week'">
@@ -1216,7 +1116,7 @@
         </choose>
     </select>
 
-    <!-- 통계 대시보드 콘텐츠 활동 막대 그래프 조회입니다. -->
+    <!-- selectStatisticsContentActivity 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectStatisticsContentActivity" resultMap="adminStatisticsTrendMap">
         select
             CHAR(44172, 49884, 44544 USING utf8mb4) as label,
@@ -1279,10 +1179,7 @@
           )
     </select>
 
-    <!--
-      selectAdminProfile 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- selectAdminProfile 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectAdminProfile" resultMap="adminProfileMap">
         select
             member_id,
@@ -1295,10 +1192,7 @@
         limit 1
     </select>
 
-    <!--
-      updateAdminProfile 荑쇰━?낅땲??
-      源⑥쭊 湲곗〈 二쇱꽍? ?몄퐫??臾몄젣瑜?留됯린 ?꾪빐 ?쎌쓣 ???덈뒗 ?ㅻ챸?쇰줈 ?뺣━?덉뒿?덈떎.
-    -->
+    <!-- updateAdminProfile 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="updateAdminProfile">
         update members
         set name = #{name},
