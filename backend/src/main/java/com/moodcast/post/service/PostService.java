@@ -93,13 +93,15 @@ public class PostService {
                     throw new IllegalStateException("해시태그 저장에 실패했습니다.");
                 }
                 hashtagId = hashtag.getHashtagId();
+            } else {
+                postDao.incrementHashtagUseCount(hashtagId);
             }
             postDao.insertPostHashtag(postId, hashtagId);
         }
 
         List<PostMention> mentions = normalizeMentions(postId, request.getMentions());
         persistMentions(postId, mentions);
-        sendMentionNotifications(postId, post.getTitle(), loginMember, mentions);
+        sendMentionNotifications(postId, post, loginMember, mentions);
 
         return postId;
     }
@@ -564,9 +566,24 @@ public class PostService {
             throw new IllegalStateException("게시물 수정에 실패했습니다.");
         }
 
+        Set<String> existingTags = new java.util.HashSet<>(parseHashtags(currentPost.getTags()));
+        Set<String> newTags = new java.util.HashSet<>(parseHashtags(request.getTags()));
+
+        Set<String> tagsToRemove = new java.util.HashSet<>(existingTags);
+        tagsToRemove.removeAll(newTags);
+
+        Set<String> tagsToAdd = new java.util.HashSet<>(newTags);
+        tagsToAdd.removeAll(existingTags);
+
+        for (String tagText : tagsToRemove) {
+            Long hashtagId = postDao.findHashtagIdByText(tagText);
+            if (hashtagId != null) {
+                postDao.decrementHashtagUseCount(hashtagId);
+            }
+        }
+
         postDao.deletePostHashtagsByPostId(postId);
-        List<String> hashtags = parseHashtags(request.getTags());
-        for (String hashtagText : hashtags) {
+        for (String hashtagText : newTags) {
             Long hashtagId = postDao.findHashtagIdByText(hashtagText);
             if (hashtagId == null) {
                 Hashtag hashtag = new Hashtag();
@@ -576,6 +593,8 @@ public class PostService {
                     throw new IllegalStateException("해시태그 저장에 실패했습니다.");
                 }
                 hashtagId = hashtag.getHashtagId();
+            } else if (tagsToAdd.contains(hashtagText)) {
+                postDao.incrementHashtagUseCount(hashtagId);
             }
             postDao.insertPostHashtag(postId, hashtagId);
         }

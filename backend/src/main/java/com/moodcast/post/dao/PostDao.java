@@ -20,6 +20,10 @@ public interface PostDao {
 
     int insertHashtag(Hashtag hashtag);
 
+    int incrementHashtagUseCount(@Param("hashtagId") Long hashtagId);
+
+    int decrementHashtagUseCount(@Param("hashtagId") Long hashtagId);
+
     int insertPostHashtag(@Param("postId") Long postId, @Param("hashtagId") Long hashtagId);
 
     int insertPostMention(PostMention mention);

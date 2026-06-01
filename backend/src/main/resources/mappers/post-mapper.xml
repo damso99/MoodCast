@@ -90,11 +90,25 @@
 
     <insert id="insertHashtag" parameterType="com.moodcast.post.vo.Hashtag" useGeneratedKeys="true" keyProperty="hashtagId">
         insert into hashtag (
-            hashtag
+            hashtag,
+            use_count
         ) values (
-            #{hashtag}
+            #{hashtag},
+            1
         )
     </insert>
+
+    <update id="incrementHashtagUseCount" parameterType="long">
+        update hashtag
+        set use_count = use_count + 1
+        where hashtag_id = #{hashtagId}
+    </update>
+
+    <update id="decrementHashtagUseCount" parameterType="long">
+        update hashtag
+        set use_count = greatest(use_count - 1, 0)
+        where hashtag_id = #{hashtagId}
+    </update>
 
     <insert id="insertPostHashtag" parameterType="map">
         insert into post_hashtag (
