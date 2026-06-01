@@ -75,25 +75,29 @@ export function GroupRoomOverlay({
   };
 
   const syncRoomReadState = async (roomId, lastReadMessageId) => {
+    if (!roomId || !currentMemberId) {
+      return;
+    }
+
     const numericLastReadMessageId = Number(lastReadMessageId);
-    if (
-      !roomId ||
-      !currentMemberId ||
-      !Number.isFinite(numericLastReadMessageId) ||
-      numericLastReadMessageId <= 0
-    ) {
+    const hasMessageId = Number.isFinite(numericLastReadMessageId) && numericLastReadMessageId > 0;
+
+    if (hasMessageId && lastSentReadMessageIdRef.current >= numericLastReadMessageId) {
       return;
     }
 
-    if (lastSentReadMessageIdRef.current >= numericLastReadMessageId) {
-      return;
+    if (hasMessageId) {
+      lastSentReadMessageIdRef.current = numericLastReadMessageId;
     }
 
-    lastSentReadMessageIdRef.current = numericLastReadMessageId;
-    const payload = {
-      memberId: currentMemberId,
-      lastReadMessageId: numericLastReadMessageId,
-    };
+    const payload = hasMessageId
+      ? {
+          memberId: currentMemberId,
+          lastReadMessageId: numericLastReadMessageId,
+        }
+      : {
+          memberId: currentMemberId,
+        };
 
     if (sendReadEvent(roomId, payload)) {
       notifyRoomUpdated();
@@ -126,9 +130,7 @@ export function GroupRoomOverlay({
 
       if (shouldMarkRead) {
         const lastMessageId = getLatestConfirmedMessageId(normalizedMessages);
-        if (lastMessageId) {
-          await syncRoomReadState(roomId, lastMessageId);
-        }
+        await syncRoomReadState(roomId, lastMessageId);
       }
     } catch (error) {
       console.error("Group messages load failed", error);
@@ -151,10 +153,6 @@ export function GroupRoomOverlay({
     }
 
     const lastMessageId = getLatestConfirmedMessageId(messages);
-    if (!lastMessageId) {
-      return;
-    }
-
     syncRoomReadState(room.roomId, lastMessageId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages.length, room?.roomId]);
@@ -267,7 +265,7 @@ export function GroupRoomOverlay({
       });
 
       if (!published) {
-        const response = await axios.post(`${API_BASE}/chat/rooms/${room.roomId}/messages`, {
+        const response = await axios.post(`${API_BASE}/api/chat/rooms/${room.roomId}/messages`, {
           senderId: currentMemberId,
           content,
         });
@@ -292,9 +290,7 @@ export function GroupRoomOverlay({
       }
 
       const lastMessageId = getLatestConfirmedMessageId(messages);
-      if (lastMessageId) {
-        await syncRoomReadState(room.roomId, lastMessageId);
-      }
+      await syncRoomReadState(room.roomId, lastMessageId);
 
       onRoomUpdated?.();
       return true;

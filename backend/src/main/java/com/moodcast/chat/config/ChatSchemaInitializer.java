@@ -13,13 +13,13 @@ public class ChatSchemaInitializer {
 
     @PostConstruct
     public void ensureGroupChatSchema() {
-        if (hasColumn("chat_room_member", "last_read_at")) {
-            ensureColumn("chat_room_member", "last_read_message_id", "BIGINT NULL");
-            return;
-        }
-
-        jdbcTemplate.execute("ALTER TABLE chat_room_member ADD COLUMN last_read_at DATETIME(6) NULL AFTER left_at");
+        ensureColumn("chat_room", "room_type", "VARCHAR(20) NOT NULL DEFAULT 'GROUP' AFTER room_id");
+        ensureColumn("chat_room_member", "hidden_at", "DATETIME(6) NULL AFTER joined_at");
+        ensureColumn("chat_room_member", "left_at", "DATETIME(6) NULL AFTER hidden_at");
+        ensureColumn("chat_room_member", "last_read_at", "DATETIME(6) NULL AFTER left_at");
         ensureColumn("chat_room_member", "last_read_message_id", "BIGINT NULL AFTER last_read_at");
+        ensureColumn("chat_room_member", "is_active", "TINYINT(1) NOT NULL DEFAULT 1 AFTER last_read_message_id");
+        ensureColumn("chat_message", "message_type", "VARCHAR(20) NOT NULL DEFAULT 'MESSAGE' AFTER content");
     }
 
     private void ensureColumn(String tableName, String columnName, String ddlFragment) {

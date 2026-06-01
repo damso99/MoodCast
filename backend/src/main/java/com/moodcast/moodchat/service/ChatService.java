@@ -1,11 +1,13 @@
 package com.moodcast.moodchat.service;
 
+import com.moodcast.member.dao.LoginDao;
+import com.moodcast.member.vo.Member;
 import com.moodcast.moodchat.dao.ChatDao;
-import com.moodcast.moodchat.vo.ChatVo;
 import com.moodcast.moodchat.vo.ChatThreadVo;
+import com.moodcast.moodchat.vo.ChatVo;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -19,8 +21,9 @@ public class ChatService {
     private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter CHAT_TIME_FORMATTER =
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-    @Autowired
-    private ChatDao chatDao;
+
+    private final ChatDao chatDao;
+    private final LoginDao loginDao;
 
     public ChatVo insertChat(ChatVo chatVo) {
         if (chatVo == null) {
@@ -83,5 +86,56 @@ public class ChatService {
             chat.setDeletedYn(1);
         }
         return chat;
+    }
+
+    @Transactional
+    public ChatVo leaveDirectChat(Long memberId, Long partnerId) {
+        if (memberId == null || partnerId == null) {
+            return null;
+        }
+
+        Member leavingMember = loginDao.findMemberById(memberId);
+        Member partnerMember = loginDao.findMemberById(partnerId);
+        if (leavingMember == null || partnerMember == null) {
+            return null;
+        }
+
+        chatDao.deleteDirectChatMessagesByPair(memberId, partnerId);
+
+        String displayName =
+            leavingMember.getNickname() != null && !leavingMember.getNickname().isBlank()
+                ? leavingMember.getNickname()
+                : leavingMember.getName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = "회원 " + memberId;
+        }
+
+        ChatVo systemChat = new ChatVo();
+        systemChat.setSenderId(memberId.intValue());
+        systemChat.setReceiverId(partnerId.intValue());
+        systemChat.setContent(displayName + "님이 나갔습니다.");
+        systemChat.setIsRead(1);
+        systemChat.setDeletedYn(0);
+        systemChat.setSenderDeletedYn(1);
+        systemChat.setReceiverDeletedYn(0);
+        systemChat.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(CHAT_TIME_FORMATTER));
+
+        chatDao.insertChat(systemChat);
+        return systemChat;
+    }
+
+    @Transactional
+    public int clearDirectChat(Long memberId, Long partnerId) {
+        if (memberId == null || partnerId == null) {
+            return 0;
+        }
+
+        Member leftMember = loginDao.findMemberById(memberId);
+        Member partnerMember = loginDao.findMemberById(partnerId);
+        if (leftMember == null || partnerMember == null) {
+            return 0;
+        }
+
+        return chatDao.deleteDirectChatMessagesByPair(memberId, partnerId);
     }
 }
