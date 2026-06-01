@@ -113,6 +113,12 @@ public interface AdminDao {
     /* 삭제된 댓글을 다시 표시 상태로 복구합니다. */
     int restoreAdminContentComment(@Param("commentId") Long commentId);
 
+    /* 해시태그 삭제 전에 post_hashtag 연결 레코드를 먼저 제거합니다. */
+    int deleteAdminPostHashtagsByHashtagId(@Param("hashtagId") Long hashtagId);
+
+    /* hashtag 테이블에서 해시태그를 완전 삭제합니다. */
+    int hardDeleteAdminContentHashtag(@Param("hashtagId") Long hashtagId);
+
     /* 해시태그 상태는 admin_action_logs로 관리하므로 존재 여부만 확인합니다. */
     int countAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 

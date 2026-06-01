@@ -374,6 +374,119 @@ public class AdminService {
         return post;
     }
 
+    @Transactional
+    public AdminContentComment hideAdminContentComment(String authorizationHeader, Long commentId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        AdminContentComment comment = selectRequiredAdminContentComment(commentId);
+
+        if ("Y".equals(comment.getDeletedYn())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제된 댓글은 숨김 처리할 수 없습니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "HIDE",
+                "COMMENT",
+                commentId,
+                "댓글 숨김 처리"
+        );
+
+        return selectRequiredAdminContentComment(commentId);
+    }
+
+    @Transactional
+    public AdminContentComment restoreAdminContentComment(String authorizationHeader, Long commentId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        AdminContentComment comment = selectRequiredAdminContentComment(commentId);
+
+        if ("Y".equals(comment.getDeletedYn())) {
+            int restored = adminDao.restoreAdminContentComment(commentId);
+
+            if (restored != 1) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "복구 가능한 삭제 댓글이 아닙니다.");
+            }
+        } else {
+            adminDao.insertAdminActionLog(
+                    loginMember.getMemberId(),
+                    "RESTORE",
+                    "COMMENT",
+                    commentId,
+                    "댓글 숨김 복구"
+            );
+        }
+
+        return selectRequiredAdminContentComment(commentId);
+    }
+
+    @Transactional
+    public AdminContentComment softDeleteAdminContentComment(String authorizationHeader, Long commentId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        selectRequiredAdminContentComment(commentId);
+
+        int deleted = adminDao.softDeleteAdminContentComment(commentId);
+
+        if (deleted != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "삭제 가능한 댓글이 아닙니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "DELETE_COMMENT",
+                "COMMENT",
+                commentId,
+                "댓글 삭제 처리"
+        );
+
+        return selectRequiredAdminContentComment(commentId);
+    }
+
+    @Transactional
+    public void hardDeleteAdminContentHashtag(String authorizationHeader, Long hashtagId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validateHashtagId(hashtagId);
+
+        int exists = adminDao.countAdminContentHashtagById(hashtagId);
+
+        if (exists < 1) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "해시태그를 찾을 수 없습니다.");
+        }
+
+        adminDao.deleteAdminPostHashtagsByHashtagId(hashtagId);
+        int deleted = adminDao.hardDeleteAdminContentHashtag(hashtagId);
+
+        if (deleted != 1) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "해시태그 삭제에 실패했습니다.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "HARD_DELETE_HASHTAG",
+                "HASHTAG",
+                hashtagId,
+                "해시태그 완전 삭제"
+        );
+    }
+
+    private AdminContentComment selectRequiredAdminContentComment(Long commentId) {
+        if (commentId == null) {
+            throw new IllegalArgumentException("댓글을 선택해주세요.");
+        }
+
+        AdminContentComment comment = adminDao.selectAdminContentCommentById(commentId);
+
+        if (comment == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "댓글 정보를 찾을 수 없습니다.");
+        }
+
+        return comment;
+    }
+
+    private void validateHashtagId(Long hashtagId) {
+        if (hashtagId == null) {
+            throw new IllegalArgumentException("해시태그를 선택해주세요.");
+        }
+    }
+
     /* ==========================================================================
      * 사용자 관리 하단 요약 조회
      * --------------------------------------------------------------------------

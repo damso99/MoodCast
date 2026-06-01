@@ -1,56 +1,62 @@
-﻿import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AdminLayout } from "../common/AdminLayout";
 import { EmptyState } from "../common/EmptyState";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/noticeManagement/NoticeManagementPage.module.css";
+import {
+  formatCategoryTag,
+  loadNotices,
+  NOTICE_CATEGORY,
+  NOTICE_STATUS,
+  NOTICE_WRITABLE_CATEGORIES,
+  saveNotices,
+} from "./noticeStorage";
 
 const noticeCategories = ["전체", "일반", "업데이트", "긴급", "삭제 공지"];
-const writableCategories = ["일반", "업데이트", "긴급"];
 
 const initialNoticeForm = {
   title: "",
-  category: "일반",
+  category: NOTICE_CATEGORY.GENERAL,
   content: "",
 };
 
-const initialNotices = [];
+const initialEditorMarks = {
+  bold: false,
+  underline: false,
+  unorderedList: false,
+  orderedList: false,
+  link: false,
+};
 
-/* ==========================================================================
- * 공지사항 관리 페이지
- * --------------------------------------------------------------------------
- * 관리자가 공지사항을 작성, 수정, 삭제하고 목록을 확인하는 화면입니다.
- *
- * 현재 동작 방식:
- * - 백엔드가 아직 연결되지 않았기 때문에 공지사항은 React state에 임시 저장됩니다.
- * - 작성한 공지사항은 소프트 삭제 전까지 일반 목록 테이블에 남아 있습니다.
- * - 삭제 버튼을 누른 공지는 완전히 사라지지 않고 "삭제 공지" 탭으로 이동합니다.
- * - "삭제 공지" 탭에서 완전 삭제를 누른 경우에만 목록에서 완전히 제거됩니다.
- * - 새로고침하면 프론트 state가 초기화되므로, 실제 서비스에서는 DB 저장 API가 필요합니다.
- *
- * 주요 기능:
- * - 공지사항 작성: 제목, 분류, 내용 입력 후 목록에 추가합니다.
- * - 공지사항 수정: 목록의 수정 버튼을 누르면 작성 폼에 기존 내용이 채워집니다.
- * - 공지사항 삭제: 일반 목록의 삭제 버튼을 누르면 삭제 공지 상태로 바꿉니다.
- * - 공지사항 복구: 삭제 공지 탭의 복구 버튼을 누르면 일반 목록으로 되돌립니다.
- * - 공지사항 완전 삭제: 삭제 공지 탭에서만 실제 목록에서 제거합니다.
- * - 공지사항 필터: 전체, 일반, 업데이트, 긴급, 삭제 공지 기준으로 목록을 좁혀 봅니다.
- * - 공지사항 전문 팝업: 제목 버튼을 누르면 공지사항 전체 내용이 모달로 열립니다.
- * ========================================================================== */
 export function NoticeManagementPage() {
   const [selectedCategory, setSelectedCategory] = useState("전체");
   const [noticeForm, setNoticeForm] = useState(initialNoticeForm);
-  const [notices, setNotices] = useState(initialNotices);
+  const [notices, setNotices] = useState([]);
   const [editingNoticeId, setEditingNoticeId] = useState(null);
   const [openedNotice, setOpenedNotice] = useState(null);
+  const [editorMarks, setEditorMarks] = useState(initialEditorMarks);
+  const [editorLink, setEditorLink] = useState("");
+  const editorRef = useRef(null);
+  const savedSelectionRef = useRef(null);
+  const listEnterCountRef = useRef(0);
 
-  // 공지사항 필터 ----------------------------------
+  useEffect(() => {
+    setNotices(loadNotices());
+  }, []);
+
+  useEffect(() => {
+    saveNotices(notices);
+  }, [notices]);
+
   const filteredNotices = useMemo(() => {
     if (selectedCategory === "삭제 공지") {
-      return notices.filter((notice) => notice.deletedAt);
+      return notices.filter((notice) => notice.status === NOTICE_STATUS.DELETE);
     }
 
-    const activeNotices = notices.filter((notice) => !notice.deletedAt);
+    const activeNotices = notices.filter(
+      (notice) => notice.status === NOTICE_STATUS.ACTIVE,
+    );
 
     if (selectedCategory === "전체") {
       return activeNotices;
@@ -64,34 +70,238 @@ export function NoticeManagementPage() {
   const isEditing = editingNoticeId !== null;
   const isDeletedNoticeTab = selectedCategory === "삭제 공지";
 
-  // 공지사항 입력값 변경 ----------------------------------
+  const categoryClassMap = {
+    [NOTICE_CATEGORY.GENERAL]: styles.categoryGeneral,
+    [NOTICE_CATEGORY.UPDATE]: styles.categoryUpdate,
+    [NOTICE_CATEGORY.URGENT]: styles.categoryUrgent,
+  };
+
   const handleFormChange = (event) => {
     const { name, value } = event.target;
+    setNoticeForm((prevForm) => ({ ...prevForm, [name]: value }));
+  };
+
+  const saveEditorSelection = () => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode;
+
+    if (
+      !editor ||
+      !selection ||
+      selection.rangeCount === 0 ||
+      !anchorNode ||
+      !editor.contains(anchorNode)
+    ) {
+      return;
+    }
+
+    savedSelectionRef.current = selection.getRangeAt(0).cloneRange();
+  };
+
+  const restoreEditorSelection = () => {
+    const editor = editorRef.current;
+    const range = savedSelectionRef.current;
+
+    if (!editor) {
+      return;
+    }
+
+    editor.focus();
+
+    if (!range) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  };
+
+  const updateEditorContent = () => {
+    if (!editorRef.current) {
+      return;
+    }
 
     setNoticeForm((prevForm) => ({
       ...prevForm,
-      [name]: value,
+      content: editorRef.current.innerHTML,
     }));
   };
 
-  // 공지사항 작성/수정 초기화 ----------------------------------
   const resetForm = () => {
     setNoticeForm(initialNoticeForm);
     setEditingNoticeId(null);
+    setEditorMarks(initialEditorMarks);
+    setEditorLink("");
+    savedSelectionRef.current = null;
+    listEnterCountRef.current = 0;
+
+    if (editorRef.current) {
+      editorRef.current.innerHTML = "";
+    }
   };
 
-  // 공지사항 작성 ----------------------------------
+  const ensureEditorCommandState = (command, shouldBeActive) => {
+    const isActive = document.queryCommandState(command);
+
+    if (isActive !== shouldBeActive) {
+      document.execCommand(command, false, null);
+    }
+  };
+
+  const applyEditorState = (marks = editorMarks) => {
+    restoreEditorSelection();
+
+    document.execCommand("styleWithCSS", false, true);
+    ensureEditorCommandState("bold", marks.bold);
+    ensureEditorCommandState("underline", marks.underline);
+
+    updateEditorContent();
+    saveEditorSelection();
+  };
+
+  const toggleInlineMark = (markKey) => {
+    const nextMarks = {
+      ...editorMarks,
+      [markKey]: !editorMarks[markKey],
+    };
+
+    setEditorMarks(nextMarks);
+    applyEditorState(nextMarks);
+  };
+
+  const toggleListMark = (markKey, command) => {
+    listEnterCountRef.current = 0;
+
+    const nextMarks = {
+      ...editorMarks,
+      [markKey]: !editorMarks[markKey],
+    };
+
+    setEditorMarks(nextMarks);
+    restoreEditorSelection();
+    ensureEditorCommandState(command, nextMarks[markKey]);
+    applyEditorState(nextMarks);
+    updateEditorContent();
+    saveEditorSelection();
+  };
+
+  const disableInlineMarksAfterEnter = () => {
+    const nextMarks = {
+      ...editorMarks,
+      bold: false,
+      underline: false,
+    };
+
+    setEditorMarks(nextMarks);
+    applyEditorState(nextMarks);
+  };
+
+  const toggleLinkMark = () => {
+    if (editorMarks.link) {
+      setEditorMarks((prevMarks) => ({ ...prevMarks, link: false }));
+      setEditorLink("");
+      restoreEditorSelection();
+      document.execCommand("unlink", false, null);
+      updateEditorContent();
+      saveEditorSelection();
+      return;
+    }
+
+    const link = window.prompt("링크 주소를 입력하세요.", "https://");
+    if (!link) {
+      return;
+    }
+
+    setEditorMarks((prevMarks) => ({ ...prevMarks, link: true }));
+    setEditorLink(link);
+    restoreEditorSelection();
+    document.execCommand("createLink", false, link);
+    updateEditorContent();
+    saveEditorSelection();
+  };
+
+  const handleToolbarMouseDown = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleEditorInput = () => {
+    updateEditorContent();
+    saveEditorSelection();
+  };
+
+  const handleEditorSelectionChange = () => {
+    saveEditorSelection();
+  };
+
+  const handleEditorKeyDown = (event) => {
+    if (event.key !== "Enter") {
+      listEnterCountRef.current = 0;
+      return;
+    }
+
+    const isListMode = editorMarks.unorderedList || editorMarks.orderedList;
+    if (isListMode) {
+      listEnterCountRef.current += 1;
+
+      if (listEnterCountRef.current >= 2) {
+        requestAnimationFrame(() => {
+          const nextMarks = {
+            ...editorMarks,
+            unorderedList: false,
+            orderedList: false,
+          };
+
+          setEditorMarks(nextMarks);
+          restoreEditorSelection();
+          ensureEditorCommandState("insertUnorderedList", false);
+          ensureEditorCommandState("insertOrderedList", false);
+          applyEditorState(nextMarks);
+          updateEditorContent();
+          saveEditorSelection();
+          listEnterCountRef.current = 0;
+        });
+      }
+
+      return;
+    }
+
+    listEnterCountRef.current = 0;
+
+    if (!editorMarks.bold && !editorMarks.underline) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      const nextMarks = {
+        ...editorMarks,
+        bold: false,
+        underline: false,
+      };
+      disableInlineMarksAfterEnter();
+    });
+  };
+
+  const handleBold = () => toggleInlineMark("bold");
+  const handleUnderline = () => toggleInlineMark("underline");
+  const handleBulletList = () =>
+    toggleListMark("unorderedList", "insertUnorderedList");
+  const handleNumberList = () =>
+    toggleListMark("orderedList", "insertOrderedList");
+  const handleLink = () => toggleLinkMark();
+
   const handleSubmitNotice = (event) => {
     event.preventDefault();
 
     const trimmedTitle = noticeForm.title.trim();
-    const trimmedContent = noticeForm.content.trim();
+    const plainContent = noticeForm.content.replace(/<[^>]*>/g, "").trim();
 
-    if (!trimmedTitle || !trimmedContent) {
+    if (!trimmedTitle || !plainContent) {
       return;
     }
 
-    // 공지사항 수정 ----------------------------------
     if (isEditing) {
       setNotices((prevNotices) =>
         prevNotices.map((notice) =>
@@ -100,7 +310,10 @@ export function NoticeManagementPage() {
                 ...notice,
                 title: trimmedTitle,
                 category: noticeForm.category,
-                content: trimmedContent,
+                content: noticeForm.content,
+                updatedAt: formatKoreanDate(new Date()),
+                updatedTimestamp: Date.now(),
+                version: (notice.version ?? 1) + 1,
               }
             : notice,
         ),
@@ -113,19 +326,23 @@ export function NoticeManagementPage() {
       id: Date.now(),
       title: trimmedTitle,
       category: noticeForm.category,
-      content: trimmedContent,
+      content: noticeForm.content,
+      status: NOTICE_STATUS.ACTIVE,
       createdAt: formatKoreanDate(new Date()),
+      createdTimestamp: Date.now(),
       adminName: "관리자",
+      updatedAt: null,
+      updatedTimestamp: null,
       deletedAt: null,
+      version: 1,
     };
 
     setNotices((prevNotices) => [createdNotice, ...prevNotices]);
     resetForm();
   };
 
-  // 공지사항 수정 화면 전환 ----------------------------------
   const handleEditNotice = (notice) => {
-    if (notice.deletedAt) {
+    if (notice.status === NOTICE_STATUS.DELETE) {
       return;
     }
 
@@ -135,9 +352,18 @@ export function NoticeManagementPage() {
       category: notice.category,
       content: notice.content,
     });
+    setEditorMarks(initialEditorMarks);
+    setEditorLink("");
+
+    requestAnimationFrame(() => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = notice.content;
+        editorRef.current.focus();
+        saveEditorSelection();
+      }
+    });
   };
 
-  // 공지사항 소프트 삭제 ----------------------------------
   const handleDeleteNotice = (noticeId) => {
     const deletedDate = formatKoreanDate(new Date());
 
@@ -146,6 +372,7 @@ export function NoticeManagementPage() {
         notice.id === noticeId
           ? {
               ...notice,
+              status: NOTICE_STATUS.DELETE,
               deletedAt: deletedDate,
             }
           : notice,
@@ -161,13 +388,13 @@ export function NoticeManagementPage() {
     }
   };
 
-  // 공지사항 복구 ----------------------------------
   const handleRestoreNotice = (noticeId) => {
     setNotices((prevNotices) =>
       prevNotices.map((notice) =>
         notice.id === noticeId
           ? {
               ...notice,
+              status: NOTICE_STATUS.ACTIVE,
               deletedAt: null,
             }
           : notice,
@@ -175,7 +402,6 @@ export function NoticeManagementPage() {
     );
   };
 
-  // 공지사항 완전 삭제 ----------------------------------
   const handlePermanentDeleteNotice = (noticeId) => {
     setNotices((prevNotices) =>
       prevNotices.filter((notice) => notice.id !== noticeId),
@@ -186,24 +412,52 @@ export function NoticeManagementPage() {
     }
   };
 
+  const editorButtons = [
+    { key: "bold", label: "굵게", pressed: editorMarks.bold, onClick: handleBold },
+    {
+      key: "underline",
+      label: "밑줄",
+      pressed: editorMarks.underline,
+      onClick: handleUnderline,
+    },
+    {
+      key: "unorderedList",
+      label: "목록",
+      pressed: editorMarks.unorderedList,
+      onClick: handleBulletList,
+    },
+    {
+      key: "orderedList",
+      label: "번호",
+      pressed: editorMarks.orderedList,
+      onClick: handleNumberList,
+    },
+    { key: "link", label: "링크", pressed: editorMarks.link, onClick: handleLink },
+  ];
+
   return (
     <AdminLayout
       title="공지사항 관리"
       description="공지사항을 작성, 수정, 삭제하고 목록을 관리하세요."
     >
-      {/* 공지사항 작성 ---------------------------------- */}
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h2>{isEditing ? "공지사항 수정" : "공지사항 작성"}</h2>
-          <span>
-            {isEditing
-              ? "선택한 공지사항을 수정 중입니다."
-              : "새 공지사항을 작성합니다."}
+      <section className={styles.composePanel}>
+        <div className={styles.composeHeader}>
+          <div>
+            <p className={styles.eyebrow}>Notice editor</p>
+            <h2>{isEditing ? "공지사항 수정" : "공지사항 작성"}</h2>
+            <span>
+              {isEditing
+                ? "수정 저장 시 대시보드 공지가 다시 노출됩니다."
+                : "새 공지를 작성하면 최신 공지 1건만 대시보드에 노출됩니다."}
+            </span>
+          </div>
+          <span className={styles.modeBadge}>
+            {isEditing ? "수정 중" : "새 공지"}
           </span>
         </div>
 
         <form className={styles.noticeForm} onSubmit={handleSubmitNotice}>
-          <label>
+          <label className={styles.titleField}>
             공지사항 제목
             <input
               name="title"
@@ -214,14 +468,14 @@ export function NoticeManagementPage() {
             />
           </label>
 
-          <label>
+          <label className={styles.categoryField}>
             공지사항 분류
             <select
               name="category"
               value={noticeForm.category}
               onChange={handleFormChange}
             >
-              {writableCategories.map((category) => (
+              {NOTICE_WRITABLE_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
@@ -229,15 +483,43 @@ export function NoticeManagementPage() {
             </select>
           </label>
 
-          <label className={styles.fullField}>
-            공지사항 내용
-            <textarea
-              name="content"
-              value={noticeForm.content}
-              placeholder="공지사항 내용을 입력하세요"
-              onChange={handleFormChange}
-            />
-          </label>
+          <div className={styles.fullField}>
+            <span className={styles.fieldLabel}>공지사항 내용</span>
+            <div className={styles.editorShell}>
+              <div className={styles.editorToolbar}>
+                {editorButtons.map((button) => (
+                  <button
+                    key={button.key}
+                    type="button"
+                    onMouseDown={handleToolbarMouseDown}
+                    onClick={button.onClick}
+                    aria-pressed={button.pressed}
+                    title={
+                      button.key === "link" && editorLink
+                        ? editorLink
+                        : button.label
+                    }
+                    className={button.pressed ? styles.editorButtonActive : ""}
+                  >
+                    {button.label}
+                  </button>
+                ))}
+              </div>
+              <div
+                ref={editorRef}
+                className={styles.richEditor}
+                contentEditable
+                data-placeholder="공지사항 내용을 입력하세요"
+                suppressContentEditableWarning
+                onInput={handleEditorInput}
+                onFocus={handleEditorSelectionChange}
+                onKeyUp={handleEditorSelectionChange}
+                onKeyDown={handleEditorKeyDown}
+                onMouseUp={handleEditorSelectionChange}
+                aria-label="공지사항 텍스트 에디터"
+              />
+            </div>
+          </div>
 
           <div className={styles.formActions}>
             <button type="button" onClick={resetForm}>
@@ -250,7 +532,6 @@ export function NoticeManagementPage() {
         </form>
       </section>
 
-      {/* 공지사항 필터 ---------------------------------- */}
       <section className={styles.toolbar}>
         <SegmentedControl
           labels={noticeCategories}
@@ -259,14 +540,13 @@ export function NoticeManagementPage() {
         />
       </section>
 
-      {/* 공지사항 목록 ---------------------------------- */}
       <section className={styles.panel}>
         <div className={styles.panelHead}>
           <h2>{isDeletedNoticeTab ? "삭제 공지 목록" : "공지사항 목록"}</h2>
           <span>
             {isDeletedNoticeTab
-              ? "소프트 삭제된 공지는 이 탭에서만 완전 삭제할 수 있습니다."
-              : "삭제하지 않은 공지사항은 목록 테이블에 계속 보관됩니다."}
+              ? "DELETE 상태 공지만 완전 삭제할 수 있습니다."
+              : "최신 공지 1건만 대시보드 팝업에 노출됩니다."}
           </span>
         </div>
 
@@ -290,9 +570,9 @@ export function NoticeManagementPage() {
                   <tr key={notice.id}>
                     <td>
                       <span
-                        className={`${styles.categoryBadge} ${styles[`category${notice.category}`]}`}
+                        className={`${styles.categoryBadge} ${categoryClassMap[notice.category] || ""}`}
                       >
-                        {notice.category}
+                        {formatCategoryTag(notice.category)}
                       </span>
                     </td>
                     <td>
@@ -311,7 +591,6 @@ export function NoticeManagementPage() {
                       <div className={styles.rowActions}>
                         {isDeletedNoticeTab ? (
                           <>
-                            {/* 공지사항 복구 ---------------------------------- */}
                             <button
                               type="button"
                               onClick={() => handleRestoreNotice(notice.id)}
@@ -329,14 +608,12 @@ export function NoticeManagementPage() {
                           </>
                         ) : (
                           <>
-                            {/* 공지사항 수정 ---------------------------------- */}
                             <button
                               type="button"
                               onClick={() => handleEditNotice(notice)}
                             >
                               수정
                             </button>
-                            {/* 공지사항 소프트 삭제 ---------------------------------- */}
                             <button
                               type="button"
                               onClick={() => handleDeleteNotice(notice.id)}
@@ -370,7 +647,6 @@ export function NoticeManagementPage() {
         </div>
       </section>
 
-      {/* 공지사항 전문 팝업 ---------------------------------- */}
       {openedNotice ? (
         <div
           className={styles.modalBackdrop}
@@ -387,9 +663,9 @@ export function NoticeManagementPage() {
             <div className={styles.modalHead}>
               <div>
                 <span
-                  className={`${styles.categoryBadge} ${styles[`category${openedNotice.category}`]}`}
+                  className={`${styles.categoryBadge} ${categoryClassMap[openedNotice.category] || ""}`}
                 >
-                  {openedNotice.category}
+                  {formatCategoryTag(openedNotice.category)}
                 </span>
                 <h2 id="notice-modal-title">{openedNotice.title}</h2>
               </div>
@@ -400,8 +676,14 @@ export function NoticeManagementPage() {
             <div className={styles.modalMeta}>
               <span>작성일 {openedNotice.createdAt}</span>
               <span>작성 관리자 {openedNotice.adminName}</span>
+              {openedNotice.updatedAt ? (
+                <span>수정일 {openedNotice.updatedAt}</span>
+              ) : null}
             </div>
-            <p className={styles.modalContent}>{openedNotice.content}</p>
+            <div
+              className={styles.modalContent}
+              dangerouslySetInnerHTML={{ __html: openedNotice.content }}
+            />
           </section>
         </div>
       ) : null}

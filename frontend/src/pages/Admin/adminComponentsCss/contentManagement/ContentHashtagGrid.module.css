@@ -119,6 +119,28 @@
   white-space: nowrap;
 }
 
+.cardActions {
+  display: flex;
+  gap: 8px;
+}
+
+.cardActions button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(102, 112, 133, 0.24);
+  border-radius: 10px;
+  background: #fff;
+  color: #344054;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.cardActions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .pagination {
   display: flex;
   justify-content: center;

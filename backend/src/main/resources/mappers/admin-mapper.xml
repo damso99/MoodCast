@@ -521,6 +521,16 @@
           and deleted_yn = 'Y'
     </update>
 
+    <delete id="deleteAdminPostHashtagsByHashtagId">
+        delete from post_hashtag
+        where hashtag_id = #{hashtagId}
+    </delete>
+
+    <delete id="hardDeleteAdminContentHashtag">
+        delete from hashtag
+        where hashtag_id = #{hashtagId}
+    </delete>
+
     <select id="countAdminContentHashtagById" resultType="int">
         select count(*)
         from hashtag
@@ -829,11 +839,13 @@
                     select
                         s.slot_date,
                         s.hour_index,
-                        count(distinct m.member_id) as hourly_active_count
+                        count(distinct l.member_id) as hourly_active_count
                     from day_hour_slots s
-                    left join members m
-                      on m.last_login_at &gt;= date_add(s.slot_date, interval s.hour_index hour)
-                     and m.last_login_at &lt; date_add(s.slot_date, interval (s.hour_index + 1) hour)
+                    left join login_audit_logs l
+                      on l.success = 1
+                     and l.member_id is not null
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(s.slot_date, interval s.hour_index hour)
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(s.slot_date, interval (s.hour_index + 1) hour)
                     group by s.slot_date, s.hour_index
                 )
                 select
@@ -871,11 +883,13 @@
                         s.week_index,
                         s.slot_date,
                         s.hour_index,
-                        count(distinct m.member_id) as hourly_active_count
+                        count(distinct l.member_id) as hourly_active_count
                     from day_hour_slots s
-                    left join members m
-                      on m.last_login_at &gt;= date_add(s.slot_date, interval s.hour_index hour)
-                     and m.last_login_at &lt; date_add(s.slot_date, interval (s.hour_index + 1) hour)
+                    left join login_audit_logs l
+                      on l.success = 1
+                     and l.member_id is not null
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(s.slot_date, interval s.hour_index hour)
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(s.slot_date, interval (s.hour_index + 1) hour)
                     group by s.week_index, s.slot_date, s.hour_index
                 ),
                 weekly_hour_averages as (
@@ -903,11 +917,13 @@
                 )
                 select
                     concat(lpad(h.hour_index, 2, '0'), '시') as label,
-                    cast(count(distinct m.member_id) as decimal(10, 1)) as active_user_count
+                    cast(count(distinct l.member_id) as decimal(10, 1)) as active_user_count
                 from hour_numbers h
-                left join members m
-                  on m.last_login_at &gt;= date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval h.hour_index hour)
-                 and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval (h.hour_index + 1) hour)
+                left join login_audit_logs l
+                  on l.success = 1
+                 and l.member_id is not null
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval h.hour_index hour)
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval (h.hour_index + 1) hour)
                 group by h.hour_index
                 order by h.hour_index
             </otherwise>
@@ -1070,21 +1086,22 @@
                      and m.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
                      and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as new_member_count,
-            (select count(distinct m.member_id)
-             from members m
-             where m.last_login_at is not null
+            (select count(distinct l.member_id)
+             from login_audit_logs l
+             where l.success = 1
+               and l.member_id is not null
                and (
                     (#{period} = 'day'
-                     and m.last_login_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                     and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'week'
-                     and m.last_login_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                     and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                     or
                     (#{period} = 'month'
-                     and m.last_login_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                     and m.last_login_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
+                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
                )) as active_user_count,
             (select count(*)
              from post_tbl p
