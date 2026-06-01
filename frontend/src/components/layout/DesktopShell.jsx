@@ -32,7 +32,7 @@ async function fetchPosts(backserver) {
   return cachedPostsPromise;
 }
 
-function DesktopShell({ children }) {
+function DesktopShell({ children, periodFilter, emotionFilter, onPeriodFilterChange, onEmotionFilterChange }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [posts, setPosts] = useState(() => cachedPosts || []);
   const [loadingPosts, setLoadingPosts] = useState(() => !cachedPosts);
@@ -88,7 +88,14 @@ function DesktopShell({ children }) {
         <div className={styles.right}>
           <TopUtilityIcons onSearch={handleSearchOpen} />
           <div className={styles.rightScrollArea}>
-            <RightRail posts={posts} isLoading={loadingPosts && !posts.length} />
+            <RightRail
+              posts={posts}
+              isLoading={loadingPosts && !posts.length}
+              periodFilter={periodFilter}
+              emotionFilter={emotionFilter}
+              onPeriodFilterChange={onPeriodFilterChange}
+              onEmotionFilterChange={onEmotionFilterChange}
+            />
           </div>
         </div>
       </aside>

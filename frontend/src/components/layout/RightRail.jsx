@@ -95,17 +95,30 @@ function formatTagCount(value) {
   return String(count);
 }
 
-function RightRailBase({ posts = [], isLoading = false }) {
-  const [selectedMoodRange, setSelectedMoodRange] = useState('all');
+function RightRailBase({ posts = [], isLoading = false, periodFilter, emotionFilter, onPeriodFilterChange, onEmotionFilterChange }) {
+  const [internalMoodRange, setInternalMoodRange] = useState('all');
   const [trendingTags, setTrendingTags] = useState([]);
   const [loadingTags, setLoadingTags] = useState(true);
   const [expandedTags, setExpandedTags] = useState(false);
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
 
+  // controlled 모드(외부 props)와 uncontrolled 모드(내부 state) 모두 지원
+  const isControlled = periodFilter !== undefined && onPeriodFilterChange !== undefined;
+  const activeMoodRange = isControlled ? periodFilter : internalMoodRange;
+  const handleRangeChange = isControlled ? onPeriodFilterChange : setInternalMoodRange;
+
+  const activeEmotionFilter = emotionFilter ?? null;
+  const hasEmotionFilter = emotionFilter !== undefined && onEmotionFilterChange !== undefined;
+
+  const handleEmotionClick = (item) => {
+    if (!hasEmotionFilter || item.count === 0) return;
+    onEmotionFilterChange(item.id);
+  };
+
   const moodStats = useMemo(() => {
-    const filteredPosts = filterPostsByRange(posts, selectedMoodRange);
+    const filteredPosts = filterPostsByRange(posts, activeMoodRange);
     return buildEmotionStats(filteredPosts);
-  }, [posts, selectedMoodRange]);
+  }, [posts, activeMoodRange]);
 
   useEffect(() => {
     let isMounted = true;
@@ -148,24 +161,47 @@ function RightRailBase({ posts = [], isLoading = false }) {
       <section className={styles.card}>
         <div className={styles.header}>
           <strong>감정 통계</strong>
-          <RangeFilter label="감정 통계" value={selectedMoodRange} onChange={setSelectedMoodRange} />
+          <RangeFilter label="감정 통계" value={activeMoodRange} onChange={handleRangeChange} />
         </div>
 
         {isLoading ? (
           <div className={styles.loadingText}>게시글 감정 통계를 불러오는 중입니다.</div>
         ) : (
           <div className={styles.moodList}>
-            {moodStats.map((item) => (
-              <div key={item.id} className={styles.moodCard}>
-                <div className={styles.moodTopRow}>
-                  <EmotionBadge emotion={item} count={item.count} />
-                  <span className={styles.percent}>{item.percent}%</span>
+            {moodStats.map((item) => {
+              const isSelected = hasEmotionFilter && activeEmotionFilter === item.id;
+              const isAnySelected = hasEmotionFilter && activeEmotionFilter !== null;
+              const isDimmed = isAnySelected && !isSelected;
+              const isDisabled = hasEmotionFilter && item.count === 0;
+
+              const cardClass = [
+                styles.moodCard,
+                hasEmotionFilter ? styles.moodCardClickable : '',
+                isSelected ? styles.moodCardSelected : '',
+                isDimmed ? styles.moodCardDimmed : '',
+                isDisabled ? styles.moodCardDisabled : '',
+              ].filter(Boolean).join(' ');
+
+              return (
+                <div
+                  key={item.id}
+                  className={cardClass}
+                  onClick={() => handleEmotionClick(item)}
+                  role={hasEmotionFilter && item.count > 0 ? 'button' : undefined}
+                  tabIndex={hasEmotionFilter && item.count > 0 ? 0 : undefined}
+                  onKeyDown={hasEmotionFilter && item.count > 0 ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleEmotionClick(item); } : undefined}
+                  aria-pressed={hasEmotionFilter ? isSelected : undefined}
+                >
+                  <div className={styles.moodTopRow}>
+                    <EmotionBadge emotion={item} count={item.count} />
+                    <span className={styles.percent}>{item.percent}%</span>
+                  </div>
+                  <div className={styles.bar}>
+                    <i style={{ width: `${item.percent}%`, background: item.color }} />
+                  </div>
                 </div>
-                <div className={styles.bar}>
-                  <i style={{ width: `${item.percent}%`, background: item.color }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

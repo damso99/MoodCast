@@ -147,13 +147,37 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(17, 24, 39, 0.05);
-  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 
 .moodCard:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.56);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.moodCardClickable {
+  cursor: pointer;
+}
+
+.moodCardSelected {
+  background: rgba(124, 77, 255, 0.1);
+  border-color: rgba(124, 77, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(124, 77, 255, 0.1);
+}
+
+.moodCardSelected:hover {
+  background: rgba(124, 77, 255, 0.14);
+}
+
+.moodCardDimmed {
+  opacity: 0.45;
+}
+
+.moodCardDisabled {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.3;
 }
 
 .moodTopRow {
