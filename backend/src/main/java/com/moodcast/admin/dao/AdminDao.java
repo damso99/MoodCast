@@ -50,8 +50,14 @@ public interface AdminDao {
     /* 콘텐츠 관리 댓글 탭에서 사용할 댓글 목록을 조회합니다. */
     List<AdminContentComment> selectAdminContentComments();
 
+    /* 댓글 상태 변경 후 화면 카드 한 건을 갱신하기 위해 최신 댓글 정보를 조회합니다. */
+    AdminContentComment selectAdminContentCommentById(@Param("commentId") Long commentId);
+
     /* 콘텐츠 관리 해시태그 탭에서 사용할 해시태그 목록을 조회합니다. */
     List<AdminContentHashtag> selectAdminContentHashtags();
+
+    /* 해시태그 상태 변경 후 화면 카드 한 건을 갱신하기 위해 최신 해시태그 정보를 조회합니다. */
+    AdminContentHashtag selectAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 
     /*
      * 관리자 콘텐츠 관리에서 게시글 작업 후 최신 상태를 다시 조회합니다.
@@ -100,6 +106,21 @@ public interface AdminDao {
      * 로그 테이블은 append-only 정책이므로 삭제하지 않습니다.
      */
     int hardDeleteAdminContentPost(@Param("postId") Long postId);
+
+    /* 댓글 삭제는 comment_tbl.deleted_yn을 Y로 바꾸는 soft delete입니다. */
+    int softDeleteAdminContentComment(@Param("commentId") Long commentId);
+
+    /* 삭제된 댓글을 다시 표시 상태로 복구합니다. */
+    int restoreAdminContentComment(@Param("commentId") Long commentId);
+
+    /* 해시태그 삭제 전에 post_hashtag 연결 레코드를 먼저 제거합니다. */
+    int deleteAdminPostHashtagsByHashtagId(@Param("hashtagId") Long hashtagId);
+
+    /* hashtag 테이블에서 해시태그를 완전 삭제합니다. */
+    int hardDeleteAdminContentHashtag(@Param("hashtagId") Long hashtagId);
+
+    /* 해시태그 상태는 admin_action_logs로 관리하므로 존재 여부만 확인합니다. */
+    int countAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 
     /* 사용자 관리 하단의 전체/일반/관리자/정지 회원 수를 한 번에 조회합니다. */
     AdminUserManagementSummary selectUserManagementSummaryCounts();

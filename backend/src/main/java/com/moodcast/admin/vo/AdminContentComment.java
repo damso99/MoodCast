@@ -29,6 +29,8 @@ public class AdminContentComment {
 
     private String deletedYn; // comment_tbl.deleted_yn: 댓글 삭제 여부입니다. Y면 삭제된 댓글입니다.
 
+    private String moderationStatus; // 관리자 화면에서 표시할 상태입니다. PUBLIC, HIDDEN, DELETED 중 하나입니다.
+
     private String createdAt; // comment_tbl.created_at: 화면 표시용 작성일입니다.
 
     private Long memberId; // members.member_id: 댓글 작성자 회원 번호입니다.

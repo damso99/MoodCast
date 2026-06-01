@@ -108,9 +108,17 @@
         limit 1
     </select>
 
+    <!--
+      로그인 시간 저장입니다.
+
+      시간대 주의:
+      - RDS/MySQL 세션 시간대가 UTC라서 NOW(6)를 그대로 저장하면 서울 시간보다 9시간 빠르게 기록됩니다.
+      - 관리자 대시보드의 시간별 활성 사용자 그래프는 members.last_login_at을 서울 시간 기준으로 집계하므로,
+        로그인 성공 시점도 CONVERT_TZ(NOW(6), '+00:00', '+09:00')로 저장합니다.
+    -->
     <update id="updateLastLoginAt">
         update members
-        set last_login_at = now(6)
+        set last_login_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
     </update>
 

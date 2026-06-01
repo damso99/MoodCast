@@ -1,28 +1,23 @@
 import styles from "../../adminComponentsCss/contentManagement/ContentCommentGrid.module.css";
 
-/* ==========================================================================
- * 콘텐츠 관리 댓글 목록 컴포넌트
- * --------------------------------------------------------------------------
- * 댓글 탭에서 조회된 댓글을 카드 형태로 보여주고 페이지네이션을 담당합니다.
- *
- * 초보자 설명:
- * - commentsLoading/commentsError는 API 상태를 화면에 보여주기 위한 값입니다.
- * - paginatedComments는 전체 댓글 중 현재 페이지에 보여줄 12개만 담긴 배열입니다.
- * - pageNumbers는 화면에 보여줄 페이지 번호 목록입니다.
- * ========================================================================== */
+/**
+ * 콘텐츠 관리 > 댓글 탭 목록 컴포넌트입니다.
+ * 댓글 카드 출력, 상태 뱃지, 관리 버튼(숨김/복구/삭제), 페이지네이션을 담당합니다.
+ */
 export function ContentCommentGrid({
   commentsLoading,
   commentsError,
   paginatedComments,
+  actionLoadingCommentId,
+  onCommentAction,
   filteredCommentCount,
   currentPage,
   totalPageCount,
   pageNumbers,
   onPageChange,
 }) {
-  const getAuthorName = (comment) => {
-    return comment.authorNickname || comment.authorName || "작성자 없음";
-  };
+  const getAuthorName = (comment) =>
+    comment.authorNickname || comment.authorName || "작성자 없음";
 
   return (
     <>
@@ -43,43 +38,80 @@ export function ContentCommentGrid({
             <span>검색어를 바꾸거나 다른 탭을 확인해주세요.</span>
           </div>
         ) : (
-          paginatedComments.map((comment) => (
-            <article className={styles.simpleCard} key={comment.commentId}>
-              <div className={styles.simpleCardHeader}>
-                <strong>댓글 #{comment.commentId}</strong>
-                <span
-                  className={`${styles.statusBadge} ${
-                    comment.deletedYn === "Y"
-                      ? styles.statusDeleted
-                      : styles.statusPublic
-                  }`}
-                >
-                  {comment.deletedYn === "Y" ? "삭제" : "표시"}
-                </span>
-              </div>
+          paginatedComments.map((comment) => {
+            const isDeleted = comment.deletedYn === "Y";
+            const isHidden = comment.moderationStatus === "HIDDEN";
+            const isActionLoading = actionLoadingCommentId === comment.commentId;
 
-              <p className={styles.simpleContent}>{comment.content || "댓글 내용 없음"}</p>
+            return (
+              <article className={styles.simpleCard} key={comment.commentId}>
+                <div className={styles.simpleCardHeader}>
+                  <strong>댓글 #{comment.commentId}</strong>
+                  <span
+                    className={`${styles.statusBadge} ${
+                      isDeleted
+                        ? styles.statusDeleted
+                        : isHidden
+                          ? styles.statusHidden
+                          : styles.statusPublic
+                    }`}
+                  >
+                    {isDeleted ? "삭제" : isHidden ? "숨김" : "표시"}
+                  </span>
+                </div>
 
-              <dl className={styles.simpleMetaList}>
-                <div>
-                  <dt>작성자</dt>
-                  <dd>{getAuthorName(comment)}</dd>
+                <p className={styles.simpleContent}>
+                  {comment.content || "댓글 내용 없음"}
+                </p>
+
+                <dl className={styles.simpleMetaList}>
+                  <div>
+                    <dt>작성자</dt>
+                    <dd>{getAuthorName(comment)}</dd>
+                  </div>
+                  <div>
+                    <dt>게시글</dt>
+                    <dd>{comment.postTitle || "제목 없음"}</dd>
+                  </div>
+                  <div>
+                    <dt>작성일</dt>
+                    <dd>{comment.createdAt || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>댓글 유형</dt>
+                    <dd>{comment.parentId ? "답글" : "원댓글"}</dd>
+                  </div>
+                </dl>
+
+                <div className={styles.cardActions}>
+                  {isDeleted || isHidden ? (
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => onCommentAction(comment, "restore")}
+                    >
+                      복구
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isActionLoading}
+                      onClick={() => onCommentAction(comment, "hide")}
+                    >
+                      숨김
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isActionLoading || isDeleted}
+                    onClick={() => onCommentAction(comment, "delete")}
+                  >
+                    삭제
+                  </button>
                 </div>
-                <div>
-                  <dt>게시글</dt>
-                  <dd>{comment.postTitle || "제목 없음"}</dd>
-                </div>
-                <div>
-                  <dt>작성일</dt>
-                  <dd>{comment.createdAt || "-"}</dd>
-                </div>
-                <div>
-                  <dt>댓글 유형</dt>
-                  <dd>{comment.parentId ? "답글" : "원댓글"}</dd>
-                </div>
-              </dl>
-            </article>
-          ))
+              </article>
+            );
+          })
         )}
       </section>
 
@@ -107,9 +139,7 @@ export function ContentCommentGrid({
             <button
               type="button"
               disabled={currentPage === totalPageCount}
-              onClick={() =>
-                onPageChange(Math.min(totalPageCount, currentPage + 1))
-              }
+              onClick={() => onPageChange(Math.min(totalPageCount, currentPage + 1))}
             >
               다음
             </button>

@@ -1,18 +1,15 @@
 import styles from "../../adminComponentsCss/contentManagement/ContentHashtagGrid.module.css";
 
-/* ==========================================================================
- * 콘텐츠 관리 해시태그 목록 컴포넌트
- * --------------------------------------------------------------------------
- * 해시태그 탭에서 조회된 해시태그를 카드 형태로 보여주고 페이지네이션을 담당합니다.
- *
- * 초보자 설명:
- * - paginatedHashtags는 현재 페이지에서 보여줄 해시태그만 담긴 배열입니다.
- * - postCount는 실제 게시글과 연결된 수, useCount는 해시태그 테이블의 누적 사용 수입니다.
- * ========================================================================== */
+/**
+ * 콘텐츠 관리 > 해시태그 탭 목록 컴포넌트입니다.
+ * 해시태그 카드 출력과 단순 삭제 버튼(하드 삭제), 페이지네이션을 담당합니다.
+ */
 export function ContentHashtagGrid({
   hashtagsLoading,
   hashtagsError,
   paginatedHashtags,
+  actionLoadingHashtagId,
+  onHashtagDelete,
   filteredHashtagCount,
   currentPage,
   totalPageCount,
@@ -38,31 +35,45 @@ export function ContentHashtagGrid({
             <span>검색어를 바꾸거나 다른 탭을 확인해주세요.</span>
           </div>
         ) : (
-          paginatedHashtags.map((hashtag) => (
-            <article className={styles.simpleCard} key={hashtag.hashtagId}>
-              <div className={styles.simpleCardHeader}>
-                <strong>#{hashtag.hashtag}</strong>
-                <span className={`${styles.statusBadge} ${styles.statusPublic}`}>
-                  사용 중
-                </span>
-              </div>
+          paginatedHashtags.map((hashtag) => {
+            const isDeleting = actionLoadingHashtagId === hashtag.hashtagId;
 
-              <dl className={styles.simpleMetaList}>
-                <div>
-                  <dt>연결 게시글</dt>
-                  <dd>{Number(hashtag.postCount || 0).toLocaleString()}개</dd>
+            return (
+              <article className={styles.simpleCard} key={hashtag.hashtagId}>
+                <div className={styles.simpleCardHeader}>
+                  <strong>#{hashtag.hashtag}</strong>
+                  <span className={`${styles.statusBadge} ${styles.statusPublic}`}>
+                    사용 중
+                  </span>
                 </div>
-                <div>
-                  <dt>누적 사용</dt>
-                  <dd>{Number(hashtag.useCount || 0).toLocaleString()}회</dd>
+
+                <dl className={styles.simpleMetaList}>
+                  <div>
+                    <dt>연결 게시글</dt>
+                    <dd>{Number(hashtag.postCount || 0).toLocaleString()}개</dd>
+                  </div>
+                  <div>
+                    <dt>누적 사용</dt>
+                    <dd>{Number(hashtag.useCount || 0).toLocaleString()}회</dd>
+                  </div>
+                  <div>
+                    <dt>최근 사용일</dt>
+                    <dd>{hashtag.latestPostCreatedAt || "-"}</dd>
+                  </div>
+                </dl>
+
+                <div className={styles.cardActions}>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => onHashtagDelete(hashtag)}
+                  >
+                    삭제
+                  </button>
                 </div>
-                <div>
-                  <dt>최근 사용일</dt>
-                  <dd>{hashtag.latestPostCreatedAt || "-"}</dd>
-                </div>
-              </dl>
-            </article>
-          ))
+              </article>
+            );
+          })
         )}
       </section>
 
@@ -90,9 +101,7 @@ export function ContentHashtagGrid({
             <button
               type="button"
               disabled={currentPage === totalPageCount}
-              onClick={() =>
-                onPageChange(Math.min(totalPageCount, currentPage + 1))
-              }
+              onClick={() => onPageChange(Math.min(totalPageCount, currentPage + 1))}
             >
               다음
             </button>

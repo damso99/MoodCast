@@ -28,4 +28,6 @@ public class AdminContentHashtag {
     private Long postCount; // post_hashtag 기준 실제 연결된 게시글 수입니다.
 
     private String latestPostCreatedAt; // 해당 해시태그가 연결된 게시글 중 가장 최근 작성일입니다.
+
+    private String moderationStatus; // 관리자 화면에서 표시할 상태입니다. PUBLIC, HIDDEN, DELETED 중 하나입니다.
 }

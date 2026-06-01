@@ -158,6 +158,48 @@ public class AdminController {
         return Map.of("hashtags", adminService.getAdminContentHashtags(authorizationHeader));
     }
 
+    @PutMapping("/content/comments/{commentId}/hide")
+    public Map<String, Object> hideAdminContentComment(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long commentId
+    ) {
+        return Map.of(
+                "success", true,
+                "comment", adminService.hideAdminContentComment(authorizationHeader, commentId)
+        );
+    }
+
+    @PutMapping("/content/comments/{commentId}/restore")
+    public Map<String, Object> restoreAdminContentComment(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long commentId
+    ) {
+        return Map.of(
+                "success", true,
+                "comment", adminService.restoreAdminContentComment(authorizationHeader, commentId)
+        );
+    }
+
+    @PutMapping("/content/comments/{commentId}/delete")
+    public Map<String, Object> softDeleteAdminContentComment(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long commentId
+    ) {
+        return Map.of(
+                "success", true,
+                "comment", adminService.softDeleteAdminContentComment(authorizationHeader, commentId)
+        );
+    }
+
+    @DeleteMapping("/content/hashtags/{hashtagId}")
+    public Map<String, Object> hardDeleteAdminContentHashtag(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long hashtagId
+    ) {
+        adminService.hardDeleteAdminContentHashtag(authorizationHeader, hashtagId);
+        return Map.of("success", true);
+    }
+
     /*
      * 게시글 숨김 처리 API
      * --------------------------------------------------------------------------
