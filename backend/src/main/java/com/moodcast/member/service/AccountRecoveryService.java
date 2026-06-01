@@ -8,6 +8,7 @@ import com.moodcast.member.dto.recovery.FindEmailResult;
 import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
+import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.vo.Member;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -224,8 +225,29 @@ public class AccountRecoveryService {
         return new PhoneAuthSendResult(phone, authCode);
     }
 
-    // 인증번호 확인 후 비밀번호를 재설정하고 모든 refresh 세션을 폐기함
+    // 비밀번호 재설정 전에 휴대폰 인증번호를 확인 완료 상태로 바꿈
     @Transactional(noRollbackFor = IllegalArgumentException.class)
+    public void verifyPasswordResetCode(PasswordResetVerifyRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("비밀번호 재설정 정보를 입력해주세요.");
+        }
+
+        String email = memberValidationService.normalizeEmail(request.getEmail());
+        String phone = normalizePhone(request.getPhone());
+
+        Member member = loginDao.findMemberByEmailAndPhone(email, phone);
+        checkActiveMember(member);
+
+        String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
+        if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
+        }
+
+        checkAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
+    }
+
+    // 인증 확인이 끝난 계정의 비밀번호를 재설정하고 모든 refresh 세션을 폐기함
+    @Transactional
     public void resetPassword(PasswordResetRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("비밀번호 재설정 정보를 입력해주세요.");
@@ -243,6 +265,10 @@ public class AccountRecoveryService {
             throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
         }
 
+        if (!authCodeRedisService.isVerified(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone)) {
+            throw new IllegalArgumentException("휴대폰 인증을 먼저 완료해주세요.");
+        }
+
         if (passwordEncoder.matches(request.getNewPassword(), currentPasswordHash)) {
             throw new IllegalArgumentException("현재 비밀번호와 다른 비밀번호를 사용해주세요.");
         }
@@ -253,8 +279,6 @@ public class AccountRecoveryService {
                 throw new IllegalArgumentException("최근 사용한 비밀번호는 다시 사용할 수 없습니다.");
             }
         }
-
-        checkAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
 
         int updateResult = loginDao.updatePasswordHash(member.getMemberId(), passwordEncoder.encode(request.getNewPassword()));
         if (updateResult != 1) {

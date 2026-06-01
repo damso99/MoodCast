@@ -11,6 +11,7 @@ import com.moodcast.member.dto.recovery.FindEmailResult;
 import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
+import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
@@ -250,6 +251,18 @@ public class LoginController {
                         "message", "인증번호가 발송되었습니다.",
                         "phone", result.getPhone(),
                         "authCode", result.getAuthCode()
+                )
+        );
+    }
+
+    @PostMapping("recovery/password/verify")
+    public ResponseEntity<?> verifyPasswordResetCode(@RequestBody PasswordResetVerifyRequest request) {
+        accountRecoveryService.verifyPasswordResetCode(request);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "휴대폰 인증이 완료되었습니다."
                 )
         );
     }

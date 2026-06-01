@@ -13,6 +13,7 @@ export const AccountRecoveryPage = () => {
   const [mode, setMode] = useState(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [foundAccount, setFoundAccount] = useState(null);
+  const [passwordCodeVerified, setPasswordCodeVerified] = useState(false);
   const [toast, setToast] = useState({
     show: false,
     type: "",
@@ -51,6 +52,7 @@ export const AccountRecoveryPage = () => {
     setMode(nextMode);
     setSearchParams({ mode: nextMode });
     setFoundAccount(null);
+    setPasswordCodeVerified(false);
   };
 
   const inputFindEmail = (e) => {
@@ -62,10 +64,16 @@ export const AccountRecoveryPage = () => {
   };
 
   const inputPassword = (e) => {
+    const shouldResetVerification = ["email", "phone", "authCode"].includes(e.target.name);
+
     setPasswordForm({
       ...passwordForm,
       [e.target.name]: e.target.value,
     });
+
+    if (shouldResetVerification) {
+      setPasswordCodeVerified(false);
+    }
   };
 
   const sendFindEmailCode = () => {
@@ -113,6 +121,7 @@ export const AccountRecoveryPage = () => {
 
   const sendPasswordCode = () => {
     setIsLoading(true);
+    setPasswordCodeVerified(false);
 
     axios
       .post(`${BACKSERVER}/auth/recovery/password/send-phone-code`, {
@@ -127,6 +136,28 @@ export const AccountRecoveryPage = () => {
       })
       .catch((err) => {
         showToast("error", err.response?.data?.message || "인증번호 발송에 실패했습니다.");
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
+  const verifyPasswordCode = () => {
+    setIsLoading(true);
+
+    axios
+      .post(`${BACKSERVER}/auth/recovery/password/verify`, {
+        email: passwordForm.email,
+        phone: passwordForm.phone,
+        authCode: passwordForm.authCode,
+      })
+      .then((res) => {
+        setPasswordCodeVerified(true);
+        showToast("success", res.data.message || "휴대폰 인증이 완료되었습니다.");
+      })
+      .catch((err) => {
+        setPasswordCodeVerified(false);
+        showToast("error", err.response?.data?.message || "인증번호 확인에 실패했습니다.");
       })
       .finally(() => {
         setIsLoading(false);
@@ -199,17 +230,22 @@ export const AccountRecoveryPage = () => {
               />
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="findEmailPhone">
-                휴대폰 번호 <b>*</b>
-              </label>
-              <input
-                id="findEmailPhone"
-                name="phone"
-                value={findEmailForm.phone}
-                onChange={inputFindEmail}
-                placeholder="01012345678"
-              />
+            <div className={styles.codeRow}>
+              <div className={styles.field}>
+                <label htmlFor="findEmailPhone">
+                  휴대폰 번호 <b>*</b>
+                </label>
+                <input
+                  id="findEmailPhone"
+                  name="phone"
+                  value={findEmailForm.phone}
+                  onChange={inputFindEmail}
+                  placeholder="01012345678"
+                />
+              </div>
+              <button type="button" className={styles.secondary} onClick={sendFindEmailCode} disabled={isLoading}>
+                번호 받기
+              </button>
             </div>
 
             <div className={styles.codeRow}>
@@ -225,8 +261,8 @@ export const AccountRecoveryPage = () => {
                   placeholder="6자리"
                 />
               </div>
-              <button type="button" className={styles.secondary} onClick={sendFindEmailCode} disabled={isLoading}>
-                번호 받기
+              <button type="submit" className={styles.secondary} disabled={isLoading}>
+                인증 확인
               </button>
             </div>
 
@@ -237,9 +273,6 @@ export const AccountRecoveryPage = () => {
               </p>
             ) : null}
 
-            <button type="submit" className={styles.primary} disabled={isLoading}>
-              {isLoading ? "확인 중..." : "아이디 찾기"}
-            </button>
           </form>
         ) : (
           <form className={styles.form} onSubmit={resetPassword}>
@@ -257,17 +290,22 @@ export const AccountRecoveryPage = () => {
               />
             </div>
 
-            <div className={styles.field}>
-              <label htmlFor="resetPhone">
-                휴대폰 번호 <b>*</b>
-              </label>
-              <input
-                id="resetPhone"
-                name="phone"
-                value={passwordForm.phone}
-                onChange={inputPassword}
-                placeholder="01012345678"
-              />
+            <div className={styles.codeRow}>
+              <div className={styles.field}>
+                <label htmlFor="resetPhone">
+                  휴대폰 번호 <b>*</b>
+                </label>
+                <input
+                  id="resetPhone"
+                  name="phone"
+                  value={passwordForm.phone}
+                  onChange={inputPassword}
+                  placeholder="01012345678"
+                />
+              </div>
+              <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading}>
+                번호 발송
+              </button>
             </div>
 
             <div className={styles.codeRow}>
@@ -283,10 +321,12 @@ export const AccountRecoveryPage = () => {
                   placeholder="6자리"
                 />
               </div>
-              <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading}>
-                번호 받기
+              <button type="button" className={styles.secondary} onClick={verifyPasswordCode} disabled={isLoading}>
+                인증 확인
               </button>
             </div>
+
+            {passwordCodeVerified ? <p className={styles.message}>휴대폰 인증이 완료되었습니다.</p> : null}
 
             <div className={styles.field}>
               <label htmlFor="newPassword">
@@ -299,6 +339,7 @@ export const AccountRecoveryPage = () => {
                 value={passwordForm.newPassword}
                 onChange={inputPassword}
                 placeholder="영문, 숫자, 특수문자 포함 8~20자"
+                disabled={!passwordCodeVerified}
               />
             </div>
 
@@ -313,10 +354,11 @@ export const AccountRecoveryPage = () => {
                 value={passwordForm.newPasswordConfirm}
                 onChange={inputPassword}
                 placeholder="새 비밀번호를 다시 입력하세요"
+                disabled={!passwordCodeVerified}
               />
             </div>
 
-            <button type="submit" className={styles.primary} disabled={isLoading}>
+            <button type="submit" className={styles.primary} disabled={isLoading || !passwordCodeVerified}>
               {isLoading ? "변경 중..." : "비밀번호 재설정"}
             </button>
           </form>
