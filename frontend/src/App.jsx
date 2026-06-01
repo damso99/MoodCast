@@ -28,6 +28,7 @@ function AppRoutes() {
   const navigate = useNavigate();
   const { accessToken, setAuthData, clearAuthData } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const authRoute = (element) => <RequireAuth>{element}</RequireAuth>;
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
