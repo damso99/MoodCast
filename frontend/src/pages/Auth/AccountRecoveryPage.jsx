@@ -9,6 +9,8 @@ import styles from "./LoginPage.module.css";
 const phoneRegex = /^010[0-9]{8}$/;
 const passwordRegex =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
+const passwordPolicyMessage =
+  "비밀번호는 영문, 숫자, 특수문자(? ! @ # $ % ^ & *)를 포함한 8~20자입니다.";
 
 export const AccountRecoveryPage = () => {
   const navigate = useNavigate();
@@ -75,13 +77,15 @@ export const AccountRecoveryPage = () => {
 
   const inputPassword = (e) => {
     const shouldResetVerification = ["email", "phone", "authCode"].includes(e.target.name);
-
-    setPasswordForm({
+    const nextValue = e.target.value;
+    const nextPasswordForm = {
       ...passwordForm,
-      [e.target.name]: e.target.value,
-    });
+      [e.target.name]: nextValue,
+    };
 
-    if (shouldResetVerification) {
+    setPasswordForm(nextPasswordForm);
+
+    if (shouldResetVerification && passwordCodeVerified) {
       setPasswordCodeVerified(false);
     }
   };
@@ -213,12 +217,20 @@ export const AccountRecoveryPage = () => {
       return;
     }
 
-    if (!passwordRegex.test(passwordForm.newPassword)) {
-      showToast("error", "비밀번호는 영문, 숫자, 특수문자를 포함한 8~20자입니다.");
+    const resetPayload = {
+      email: passwordForm.email.trim().toLowerCase(),
+      phone: passwordForm.phone.trim(),
+      authCode: passwordForm.authCode.trim(),
+      newPassword: passwordForm.newPassword.trim(),
+      newPasswordConfirm: passwordForm.newPasswordConfirm.trim(),
+    };
+
+    if (!passwordRegex.test(resetPayload.newPassword)) {
+      showToast("error", passwordPolicyMessage);
       return;
     }
 
-    if (passwordForm.newPassword !== passwordForm.newPasswordConfirm) {
+    if (resetPayload.newPassword !== resetPayload.newPasswordConfirm) {
       showToast("error", "새 비밀번호가 일치하지 않습니다.");
       return;
     }
@@ -226,7 +238,7 @@ export const AccountRecoveryPage = () => {
     setIsLoading(true);
 
     axios
-      .post(`${BACKSERVER}/auth/recovery/password/reset`, passwordForm)
+      .post(`${BACKSERVER}/auth/recovery/password/reset`, resetPayload)
       .then((res) => {
         showToast("success", res.data.message || "비밀번호가 재설정되었습니다.");
         setResetSuccessModalOpen(true);
@@ -350,6 +362,7 @@ export const AccountRecoveryPage = () => {
                 value={passwordForm.email}
                 onChange={inputPassword}
                 placeholder="이메일 주소를 입력하세요"
+                readOnly={passwordCodeVerified}
               />
             </div>
 
@@ -364,10 +377,11 @@ export const AccountRecoveryPage = () => {
                   value={passwordForm.phone}
                   onChange={inputPassword}
                   placeholder="01012345678"
+                  readOnly={passwordCodeVerified}
                 />
               </div>
-              <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading}>
-                인증번호 발송
+              <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading || passwordCodeVerified}>
+                {passwordCodeVerified ? "인증완료" : "인증번호 발송"}
               </button>
             </div>
 
@@ -382,10 +396,11 @@ export const AccountRecoveryPage = () => {
                   value={passwordForm.authCode}
                   onChange={inputPassword}
                   placeholder="6자리"
+                  readOnly={passwordCodeVerified}
                 />
               </div>
-              <button type="button" className={styles.secondary} onClick={verifyPasswordCode} disabled={isLoading}>
-                인증 확인
+              <button type="button" className={styles.secondary} onClick={verifyPasswordCode} disabled={isLoading || passwordCodeVerified}>
+                {passwordCodeVerified ? "확인완료" : "인증 확인"}
               </button>
             </div>
 
