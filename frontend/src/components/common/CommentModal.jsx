@@ -15,7 +15,7 @@ import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { defaultAvatarSrc } from "../../shared/lib/defaultAvatar";
 import { fetchMentionCandidates } from "../../shared/api/followApi";
-import { MentionContent } from "./MentionContent";
+import { RichTextContent } from "../../shared/ui/rich-text/RichTextContent";
 import {
   getActiveMentionStateFromText,
   insertMentionIntoText,
@@ -587,7 +587,7 @@ export function CommentModal({
           </div>
         ) : (
           <p className={styles.commentText}>
-            <MentionContent
+            <RichTextContent
               content={item.content ?? item.text ?? ""}
               mentions={item.mentions ?? []}
               onMentionClick={(mention) => {
@@ -806,7 +806,9 @@ export function CommentModal({
 
         <div className={styles.body}>
           <section className={styles.postSection}>
-            <p className={styles.postText}>{post.text}</p>
+            <p className={styles.postText}>
+              <RichTextContent content={post.text} className={styles.postTextContent} />
+            </p>
             {post.imageSrc ? (
               <div
                 className={styles.postImageArea}

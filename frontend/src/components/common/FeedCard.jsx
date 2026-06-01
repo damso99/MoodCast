@@ -813,7 +813,9 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
           <div className={styles.preview}>
             <strong>{post.previewComment.author}</strong>
             <span>{post.previewComment.time}</span>
-            <p>{post.previewComment.text}</p>
+            <p>
+              <RichTextContent content={post.previewComment.text} className={styles.previewText} />
+            </p>
           </div>
         ) : null}
       </article>
