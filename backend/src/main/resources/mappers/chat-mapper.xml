@@ -94,9 +94,9 @@
                    #{content},
                    COALESCE(#{isRead}, 0),
                    #{createdAt},
-                   0,
-                   0,
-                   0
+                   COALESCE(#{deletedYn}, 0),
+                   COALESCE(#{senderDeletedYn}, 0),
+                   COALESCE(#{receiverDeletedYn}, 0)
                )
     </insert>
 
@@ -140,4 +140,37 @@
           and receiver_id = #{memberId}
           and deleted_yn = 0
     </update>
+
+    <update id="hideDirectChatMessagesAsSender">
+        update chat_tbl
+        set sender_deleted_yn = 1,
+            deleted_yn = case
+                when receiver_deleted_yn = 1 then 1
+                else deleted_yn
+            end
+        where sender_id = #{memberId}
+          and receiver_id = #{partnerId}
+          and deleted_yn = 0
+    </update>
+
+    <update id="hideDirectChatMessagesAsReceiver">
+        update chat_tbl
+        set receiver_deleted_yn = 1,
+            deleted_yn = case
+                when sender_deleted_yn = 1 then 1
+                else deleted_yn
+            end
+        where sender_id = #{partnerId}
+          and receiver_id = #{memberId}
+          and deleted_yn = 0
+    </update>
+
+    <delete id="deleteDirectChatMessagesByPair">
+        delete from chat_tbl
+        where (
+            (sender_id = #{memberId} and receiver_id = #{partnerId})
+            or
+            (sender_id = #{partnerId} and receiver_id = #{memberId})
+        )
+    </delete>
 </mapper>

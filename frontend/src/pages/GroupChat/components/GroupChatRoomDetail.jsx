@@ -64,11 +64,13 @@ export function GroupChatRoomDetail({
   const [error, setError] = useState("");
   const [imageViewer, setImageViewer] = useState(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [messageActionMenu, setMessageActionMenu] = useState(null);
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
   const messageInputRef = useRef(null);
   const selectedImagesRef = useRef([]);
+  const messagePressTimerRef = useRef(null);
   const isUserNearBottomRef = useRef(true);
 
   useEffect(() => {
@@ -226,6 +228,107 @@ export function GroupChatRoomDetail({
       messageInputRef.current.focus();
     }
   };
+
+  const clearMessagePressTimer = () => {
+    if (messagePressTimerRef.current) {
+      window.clearTimeout(messagePressTimerRef.current);
+      messagePressTimerRef.current = null;
+    }
+  };
+
+  const closeMessageActionMenu = () => {
+    setMessageActionMenu(null);
+  };
+
+  const openMessageActionMenu = (event, item, text) => {
+    const menuWidth = 176;
+    const menuHeight = 112;
+    const nextX = Math.min(event.clientX || 0, window.innerWidth - menuWidth - 12);
+    const nextY = Math.min(event.clientY || 0, window.innerHeight - menuHeight - 12);
+
+    setMessageActionMenu({
+      x: Math.max(12, nextX),
+      y: Math.max(12, nextY),
+      item,
+      text: text || "",
+    });
+  };
+
+  const handleMessagePressStart = (event, item, text) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    clearMessagePressTimer();
+    const clientX = event.clientX;
+    const clientY = event.clientY;
+    messagePressTimerRef.current = window.setTimeout(() => {
+      openMessageActionMenu({ clientX, clientY }, item, text);
+    }, 450);
+  };
+
+  const handleMessagePressEnd = () => {
+    clearMessagePressTimer();
+  };
+
+  const handleMessageContextMenu = (event, item, text) => {
+    event.preventDefault();
+    clearMessagePressTimer();
+    openMessageActionMenu(event, item, text);
+  };
+
+  const handleCopyMessageText = async () => {
+    const text = messageActionMenu?.text || "";
+    if (!text) {
+      closeMessageActionMenu();
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (copyError) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    } finally {
+      closeMessageActionMenu();
+    }
+  };
+
+  const handleDeleteMessageAction = () => {
+    if (!messageActionMenu?.item) {
+      closeMessageActionMenu();
+      return;
+    }
+
+    onDeleteMessage?.(messageActionMenu.item);
+    closeMessageActionMenu();
+  };
+
+  useEffect(() => {
+    if (!messageActionMenu) {
+      return undefined;
+    }
+
+    const handleOutside = () => closeMessageActionMenu();
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeMessageActionMenu();
+      }
+    };
+
+    window.addEventListener("pointerdown", handleOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("pointerdown", handleOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [messageActionMenu]);
 
   const scrollToBottom = () => {
     const element = messagesRef.current;
@@ -442,6 +545,31 @@ export function GroupChatRoomDetail({
       >
         {messages.length === 0 ? <p className={styles.emptyState}>아직 메시지가 없습니다.</p> : null}
         {messages.map((item) => {
+          if (item.eventType === "CHAT_SYSTEM") {
+            const isLeaveMessage =
+              typeof item.content === "string" && item.content.includes("나갔습니다");
+
+            return (
+              <div key={item.messageId} className={styles.systemMessageRow}>
+                <span className={styles.systemMessageText}>
+                  <RichTextContent content={item.content} className={styles.richTextContent} />
+                </span>
+                {isLeaveMessage && onLeaveRoom ? (
+                  <button
+                    type="button"
+                    className={styles.systemMessageActionButton}
+                    onClick={onLeaveRoom}
+                  >
+                    채팅방 나가기
+                  </button>
+                ) : null}
+                <span className={styles.systemMessageTime}>
+                  {item.time || formatKoreanTime(item.createdAt) || ""}
+                </span>
+              </div>
+            );
+          }
+
           const isMine = Number(item.senderId) === Number(currentMemberId);
           const senderName = item.senderName || "회원";
           const senderInitial = senderName.charAt(0).toUpperCase();
@@ -480,24 +608,24 @@ export function GroupChatRoomDetail({
               <div className={`${styles.messageItem} ${isMine ? styles.me : styles.them}`}>
                 {!isMine ? <span className={styles.senderLabel}>{senderName}</span> : null}
                 <div className={styles.bubbleWrap}>
-                  {isMine ? (
-                    <button
-                      type="button"
-                      className={styles.deleteButton}
-                      aria-label="메시지 삭제"
-                      title="메시지 삭제"
-                      onClick={() => onDeleteMessage?.(item)}
-                    >
-                      <DeleteOutlineRoundedIcon />
-                    </button>
-                  ) : null}
                   <div className={styles.bubbleLine}>
                     {isMine ? (
                       <>
                         {unreadCount > 0 ? (
                           <span className={styles.unreadMarker}>{unreadCount}</span>
                         ) : null}
-                        <div className={`${styles.bubble} ${styles.me}`}>
+                        <div
+                          className={`${styles.bubble} ${styles.me}`}
+                          onPointerDown={(event) =>
+                            handleMessagePressStart(event, item, item.content || "")
+                          }
+                          onPointerUp={handleMessagePressEnd}
+                          onPointerLeave={handleMessagePressEnd}
+                          onPointerCancel={handleMessagePressEnd}
+                          onContextMenu={(event) =>
+                            handleMessageContextMenu(event, item, item.content || "")
+                          }
+                        >
                           {item.content ? (
                             <p>
                               <RichTextContent content={item.content} className={styles.richTextContent} />
@@ -533,7 +661,18 @@ export function GroupChatRoomDetail({
                       </>
                     ) : (
                       <>
-                        <div className={`${styles.bubble} ${styles.them}`}>
+                        <div
+                          className={`${styles.bubble} ${styles.them}`}
+                          onPointerDown={(event) =>
+                            handleMessagePressStart(event, item, item.content || "")
+                          }
+                          onPointerUp={handleMessagePressEnd}
+                          onPointerLeave={handleMessagePressEnd}
+                          onPointerCancel={handleMessagePressEnd}
+                          onContextMenu={(event) =>
+                            handleMessageContextMenu(event, item, item.content || "")
+                          }
+                        >
                           {item.content ? (
                             <p>
                               <RichTextContent content={item.content} className={styles.richTextContent} />
@@ -590,6 +729,31 @@ export function GroupChatRoomDetail({
         })}
         <div ref={bottomRef} />
       </div>
+
+      {messageActionMenu ? (
+        <div
+          className={styles.messageActionMenu}
+          style={{ left: `${messageActionMenu.x}px`, top: `${messageActionMenu.y}px` }}
+          role="menu"
+          aria-label="메시지 작업 메뉴"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <button
+            type="button"
+            className={styles.messageActionMenuItem}
+            onClick={handleCopyMessageText}
+          >
+            텍스트 복사
+          </button>
+          <button
+            type="button"
+            className={`${styles.messageActionMenuItem} ${styles.messageActionMenuItemDanger}`}
+            onClick={handleDeleteMessageAction}
+          >
+            삭제
+          </button>
+        </div>
+      ) : null}
 
   {showScrollBottomButton ? (
         <button
