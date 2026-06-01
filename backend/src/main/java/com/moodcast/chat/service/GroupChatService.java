@@ -4,8 +4,8 @@ import com.moodcast.chat.dto.ChatRoomCreateRequestDto;
 import com.moodcast.chat.dto.ChatRoomMemberInviteRequestDto;
 import com.moodcast.chat.dto.ChatRoomMemberResponseDto;
 import com.moodcast.chat.dto.ChatRoomMessageResponseDto;
-import com.moodcast.chat.dto.ChatRoomResponseDto;
 import com.moodcast.chat.dto.ChatRoomMessageSendRequestDto;
+import com.moodcast.chat.dto.ChatRoomResponseDto;
 import com.moodcast.chat.mapper.GroupChatMapper;
 import com.moodcast.chat.vo.ChatMessageVo;
 import com.moodcast.chat.vo.ChatRoomMemberVo;
@@ -37,21 +37,23 @@ public class GroupChatService {
     public ChatRoomResponseDto createChatRoom(ChatRoomCreateRequestDto request) {
         validateRoomCreateRequest(request);
 
+        Set<Long> memberIds = new LinkedHashSet<>();
+        memberIds.add(request.getCreatorId());
+        if (request.getMemberIds() != null) {
+            memberIds.addAll(
+                    request.getMemberIds().stream()
+                            .filter(Objects::nonNull)
+                            .filter(memberId -> memberId > 0)
+                            .collect(Collectors.toList())
+            );
+        }
+
         ChatRoomVo chatRoomVo = new ChatRoomVo();
         chatRoomVo.setRoomName(normalizeRoomName(request.getRoomName()));
         chatRoomVo.setRoomDescription(normalizeRoomDescription(request.getRoomDescription()));
         chatRoomVo.setCreatedBy(request.getCreatorId());
         chatRoomVo.setDeletedYn("N");
         groupChatMapper.insertChatRoom(chatRoomVo);
-
-        Set<Long> memberIds = new LinkedHashSet<>();
-        memberIds.add(request.getCreatorId());
-        if (request.getMemberIds() != null) {
-            memberIds.addAll(request.getMemberIds().stream()
-                    .filter(Objects::nonNull)
-                    .filter(memberId -> memberId > 0)
-                    .collect(Collectors.toList()));
-        }
 
         for (Long memberId : memberIds) {
             ChatRoomMemberVo roomMemberVo = new ChatRoomMemberVo();
@@ -70,8 +72,10 @@ public class GroupChatService {
             return List.of();
         }
 
-        List<ChatRoomVo> rooms = groupChatMapper.selectChatRoomsByMemberId(memberId);
-        return rooms.stream().map(this::toRoomResponse).collect(Collectors.toList());
+        return groupChatMapper.selectChatRoomsByMemberId(memberId)
+                .stream()
+                .map(this::toRoomResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
@@ -79,19 +83,36 @@ public class GroupChatService {
         return getMessagesByRoomId(roomId, null);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<ChatRoomMessageResponseDto> getMessagesByRoomId(Long roomId, Long memberId) {
         if (roomId == null || roomId <= 0) {
             return List.of();
         }
 
-        List<ChatMessageVo> messages = groupChatMapper.selectChatMessagesByRoomId(roomId, memberId);
-        return messages.stream().map(this::toMessageResponse).collect(Collectors.toList());
+        if (memberId != null && memberId > 0) {
+            ChatRoomMemberVo roomMember = groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(roomId, memberId);
+            if (roomMember == null) {
+                return List.of();
+            }
+            if (roomMember.getIsActive() != null && roomMember.getIsActive() == 0) {
+                return List.of();
+            }
+        }
+
+        return groupChatMapper.selectChatMessagesByRoomId(roomId, memberId)
+                .stream()
+                .map(this::toMessageResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional
     public void markRoomAsRead(Long roomId, Long memberId, Long lastReadMessageId) {
-        if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0 || lastReadMessageId == null || lastReadMessageId <= 0) {
+        if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0) {
+            return;
+        }
+
+        if (lastReadMessageId == null || lastReadMessageId <= 0) {
+            groupChatMapper.touchRoomReadState(roomId, memberId);
             return;
         }
 
@@ -100,16 +121,7 @@ public class GroupChatService {
 
     @Transactional
     public void updateLastReadMessageId(Long roomId, int memberId, Long lastReadMessageId) {
-        if (roomId == null || roomId <= 0 || memberId <= 0 || lastReadMessageId == null || lastReadMessageId <= 0) {
-            return;
-        }
-
-        ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, (long) memberId);
-        if (activeMember == null) {
-            return;
-        }
-
-        int updatedRows = groupChatMapper.updateLastReadMessageId(roomId, (long) memberId, lastReadMessageId);
+        markRoomAsRead(roomId, (long) memberId, lastReadMessageId);
     }
 
     @Transactional
@@ -140,20 +152,54 @@ public class GroupChatService {
     }
 
     @Transactional
-    public void leaveRoom(Long roomId, Long memberId) {
+    public void hideRoom(Long roomId, Long memberId) {
         if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0) {
             throw new IllegalArgumentException("채팅방 정보가 올바르지 않습니다.");
         }
 
-        ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, memberId);
-        if (activeMember == null) {
+        ChatRoomMemberVo roomMember = groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(roomId, memberId);
+        if (roomMember == null) {
             throw new IllegalArgumentException("참여 중인 채팅방이 아닙니다.");
         }
 
-        groupChatMapper.softDeleteChatRoomMember(roomId, memberId);
+        groupChatMapper.hideChatRoomMember(roomId, memberId);
+    }
+
+    @Transactional
+    public ChatRoomMessageResponseDto leaveRoom(Long roomId, Long memberId) {
+        if (roomId == null || roomId <= 0 || memberId == null || memberId <= 0) {
+            throw new IllegalArgumentException("채팅방 정보가 올바르지 않습니다.");
+        }
+
+        ChatRoomMemberVo roomMember = groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(roomId, memberId);
+        if (roomMember == null) {
+            throw new IllegalArgumentException("참여 중인 채팅방이 아닙니다.");
+        }
+
+        int activeMemberCount = groupChatMapper.countActiveChatRoomMembers(roomId);
+        if (activeMemberCount <= 2) {
+            groupChatMapper.hideChatRoomMember(roomId, memberId);
+            return null;
+        }
+
+        if (roomMember.getIsActive() != null && roomMember.getIsActive() == 0) {
+            return null;
+        }
+
+        groupChatMapper.leaveChatRoomMember(roomId, memberId);
+
+        ChatMessageVo systemMessage = buildSystemMessage(roomId, memberId, buildLeaveMessage(roomMember));
+        groupChatMapper.insertSystemChatMessage(systemMessage);
+
         if (groupChatMapper.countActiveChatRoomMembers(roomId) == 0) {
             groupChatMapper.softDeleteChatRoomIfEmpty(roomId);
         }
+
+        ChatMessageVo savedMessage = groupChatMapper.selectChatMessageById(systemMessage.getMessageId());
+        if (savedMessage != null) {
+            savedMessage.setEventType("CHAT_SYSTEM");
+        }
+        return toMessageResponse(savedMessage);
     }
 
     @Transactional
@@ -172,16 +218,16 @@ public class GroupChatService {
 
         ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, request.getSenderId());
         if (activeMember == null) {
-            throw new IllegalArgumentException("채팅방에 참여 중인 사용자만 메시지를 보낼 수 있습니다.");
+            throw new IllegalArgumentException("참여 중인 사용자만 메시지를 보낼 수 있습니다.");
         }
 
         ChatMessageVo chatMessageVo = new ChatMessageVo();
         chatMessageVo.setRoomId(roomId);
         chatMessageVo.setSenderId(request.getSenderId());
         chatMessageVo.setContent(content);
-        chatMessageVo.setCreatedAt(LocalDateTime.now(KOREA_ZONE).format(CHAT_TIME_FORMATTER));
+        chatMessageVo.setMessageType("MESSAGE");
+        chatMessageVo.setCreatedAt(nowText());
         chatMessageVo.setDeletedYn("N");
-        chatMessageVo.setEventType("CHAT_MESSAGE"); // 추가
         groupChatMapper.insertChatMessage(chatMessageVo);
 
         ChatMessageVo savedMessage = groupChatMapper.selectChatMessageById(chatMessageVo.getMessageId());
@@ -199,7 +245,7 @@ public class GroupChatService {
 
         ChatRoomMemberVo activeMember = groupChatMapper.selectActiveChatRoomMember(roomId, memberId);
         if (activeMember == null) {
-            throw new IllegalArgumentException("채팅방에 참여 중인 사용자만 메시지를 삭제할 수 있습니다.");
+            throw new IllegalArgumentException("참여 중인 사용자만 메시지를 삭제할 수 있습니다.");
         }
 
         ChatMessageVo targetMessage = groupChatMapper.selectChatMessageById(messageId);
@@ -228,8 +274,8 @@ public class GroupChatService {
             return List.of();
         }
 
-        List<ChatRoomMemberVo> members = groupChatMapper.selectChatRoomMembersByRoomId(roomId);
-        return members.stream()
+        return groupChatMapper.selectChatRoomMembersByRoomId(roomId)
+                .stream()
                 .map(member -> new ChatRoomMemberResponseDto(
                         member.getMemberId(),
                         member.getMemberName(),
@@ -269,6 +315,7 @@ public class GroupChatService {
         if (room == null) {
             return null;
         }
+
         return new ChatRoomResponseDto(
                 room.getRoomId(),
                 room.getRoomName(),
@@ -286,6 +333,7 @@ public class GroupChatService {
         if (message == null) {
             return null;
         }
+
         return new ChatRoomMessageResponseDto(
                 message.getMessageId(),
                 message.getRoomId(),
@@ -300,6 +348,22 @@ public class GroupChatService {
         );
     }
 
+    private ChatMessageVo buildSystemMessage(Long roomId, Long senderId, String content) {
+        ChatMessageVo chatMessageVo = new ChatMessageVo();
+        chatMessageVo.setRoomId(roomId);
+        chatMessageVo.setSenderId(senderId);
+        chatMessageVo.setContent(content);
+        chatMessageVo.setMessageType("SYSTEM");
+        chatMessageVo.setCreatedAt(nowText());
+        chatMessageVo.setDeletedYn("N");
+        return chatMessageVo;
+    }
+
+    private String buildLeaveMessage(ChatRoomMemberVo roomMember) {
+        String memberName = normalizeDisplayName(roomMember == null ? null : roomMember.getMemberName());
+        return memberName + "님이 나갔습니다.";
+    }
+
     private String normalizeRoomName(String roomName) {
         return roomName == null ? "" : roomName.trim();
     }
@@ -310,5 +374,18 @@ public class GroupChatService {
 
     private String normalizeMessageContent(String content) {
         return content == null ? "" : content.trim();
+    }
+
+    private String normalizeDisplayName(String displayName) {
+        if (displayName == null) {
+            return "회원";
+        }
+
+        String trimmed = displayName.trim();
+        return trimmed.isEmpty() ? "회원" : trimmed;
+    }
+
+    private String nowText() {
+        return LocalDateTime.now(KOREA_ZONE).format(CHAT_TIME_FORMATTER);
     }
 }

@@ -36,4 +36,19 @@ public interface ChatDao {
         @Param("chatId") Long chatId,
         @Param("memberId") Long memberId
     );
+
+    int hideDirectChatMessagesAsSender(
+        @Param("memberId") Long memberId,
+        @Param("partnerId") Long partnerId
+    );
+
+    int hideDirectChatMessagesAsReceiver(
+        @Param("memberId") Long memberId,
+        @Param("partnerId") Long partnerId
+    );
+
+    int deleteDirectChatMessagesByPair(
+        @Param("memberId") Long memberId,
+        @Param("partnerId") Long partnerId
+    );
 }

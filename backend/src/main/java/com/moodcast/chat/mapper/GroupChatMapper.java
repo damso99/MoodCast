@@ -14,7 +14,9 @@ public interface GroupChatMapper {
 
     int upsertChatRoomMember(ChatRoomMemberVo chatRoomMemberVo);
 
-    int softDeleteChatRoomMember(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
+    int hideChatRoomMember(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
+
+    int leaveChatRoomMember(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 
     int softDeleteChatRoomIfEmpty(@Param("roomId") Long roomId);
 
@@ -24,9 +26,13 @@ public interface GroupChatMapper {
             @Param("lastReadMessageId") Long lastReadMessageId
     );
 
+    int touchRoomReadState(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
+
     ChatRoomVo selectChatRoomById(@Param("roomId") Long roomId);
 
     List<ChatRoomVo> selectChatRoomsByMemberId(@Param("memberId") Long memberId);
+
+    ChatRoomMemberVo selectChatRoomMemberByRoomIdAndMemberId(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 
     ChatRoomMemberVo selectActiveChatRoomMember(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 
@@ -39,6 +45,8 @@ public interface GroupChatMapper {
     ChatMessageVo selectChatMessageById(@Param("messageId") Long messageId);
 
     int softDeleteChatMessage(@Param("messageId") Long messageId);
+
+    int insertSystemChatMessage(ChatMessageVo chatMessageVo);
 
     List<ChatMessageVo> selectChatMessagesByRoomId(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 }

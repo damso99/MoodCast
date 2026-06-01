@@ -89,4 +89,37 @@ public class ChatController {
 
         return ResponseEntity.ok(deletedChat);
     }
+
+    @PostMapping("/leave")
+    public ResponseEntity<?> leaveDirectChat(
+        @RequestParam Long memberId,
+        @RequestParam Long partnerId
+    ) {
+        ChatVo systemChat = chatService.leaveDirectChat(memberId, partnerId);
+        if (systemChat == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        ChatMessageDto leaveMessage = new ChatMessageDto();
+        leaveMessage.setChatId(systemChat.getChatId());
+        leaveMessage.setSenderId(systemChat.getSenderId());
+        leaveMessage.setReceiverId(systemChat.getReceiverId());
+        leaveMessage.setContent(systemChat.getContent());
+        leaveMessage.setCreatedAt(systemChat.getCreatedAt());
+        leaveMessage.setIsRead(systemChat.getIsRead());
+        leaveMessage.setEventType("CHAT_SYSTEM");
+
+        messagingTemplate.convertAndSend("/sub/chat/" + partnerId, leaveMessage);
+
+        return ResponseEntity.ok(systemChat);
+    }
+
+    @DeleteMapping("/leave")
+    public ResponseEntity<?> clearDirectChat(
+        @RequestParam Long memberId,
+        @RequestParam Long partnerId
+    ) {
+        int deletedCount = chatService.clearDirectChat(memberId, partnerId);
+        return ResponseEntity.ok(deletedCount);
+    }
 }
