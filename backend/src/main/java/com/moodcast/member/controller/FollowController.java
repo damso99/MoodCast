@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @CrossOrigin(
-        origins = {"http://localhost:5173", "http://127.0.0.1:5173"},
+        origins = {"http://localhost:5173", "http://127.0.0.1:5173", "http://3.39.49.9:5173"},
         allowCredentials = "true"
 )
 @RequestMapping("/api/follows")

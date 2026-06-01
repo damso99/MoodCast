@@ -1,5 +1,6 @@
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { formatKoreanTime } from '../../../shared/lib/dateTime';
+import { formatChatPreview } from '../../../shared/lib/chatContent';
 
 export function GroupChatRoomList({
   rooms,
@@ -62,7 +63,7 @@ export function GroupChatRoomList({
           >
             <div className="group-chat-room-main">
               <strong>{room.roomName}</strong>
-              <p>{room.lastMessage || room.roomDescription || '새로운 대화를 시작해보세요.'}</p>
+              <p>{formatChatPreview(room.lastMessage) || room.roomDescription || '새로운 대화를 시작해보세요.'}</p>
             </div>
             <div className="group-chat-room-meta">
               <span>{room.memberCount || 0}명</span>
