@@ -1246,6 +1246,20 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       role="presentation"
       onClick={closeImageViewer}
     >
+      {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+        <button
+          type="button"
+          className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
+          aria-label="이전 이미지"
+          title="이전 이미지"
+          onClick={(event) => {
+            event.stopPropagation();
+            moveImageViewer(-1);
+          }}
+        >
+          <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
+        </button>
+      ) : null}
       <div
         className={`${styles.imageViewerContent} ${
           imageViewer.orientation === "vertical"
@@ -1266,28 +1280,6 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         >
           <CloseRoundedIcon />
         </button>
-        {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
-          <>
-                <button
-                  type="button"
-                  className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
-                  aria-label="이전 이미지"
-                  title="이전 이미지"
-                  onClick={() => moveImageViewer(-1)}
-                >
-                  <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
-                  aria-label="다음 이미지"
-                  title="다음 이미지"
-                  onClick={() => moveImageViewer(1)}
-                >
-                  <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
-                </button>
-          </>
-        ) : null}
         <span className={styles.imageViewerCounter}>
           {Array.isArray(imageViewer.images) && imageViewer.images.length > 0
             ? `${imageViewer.index + 1} / ${imageViewer.images.length}`
@@ -1301,6 +1293,20 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           onClick={closeImageViewer}
         />
       </div>
+      {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+        <button
+          type="button"
+          className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
+          aria-label="다음 이미지"
+          title="다음 이미지"
+          onClick={(event) => {
+            event.stopPropagation();
+            moveImageViewer(1);
+          }}
+        >
+          <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
+        </button>
+      ) : null}
     </div>
   ) : null;
 

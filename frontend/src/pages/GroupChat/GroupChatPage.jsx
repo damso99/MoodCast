@@ -405,7 +405,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
         senderId: currentMemberId,
         senderName: member?.nickname || member?.name || "나",
         profileImageUrl: member?.profileImageUrl || "",
-        content: trimmedValue,
+        content,
         createdAt: new Date().toISOString(),
         readCount: 0,
         unreadCount: 0,
@@ -417,13 +417,13 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
 
       const published = sendMessage(activeRoom.roomId, {
         senderId: currentMemberId,
-        content: trimmedValue,
+        content,
       });
 
       if (!published) {
         const response = await axios.post(`${API_BASE}/chat/rooms/${activeRoom.roomId}/messages`, {
           senderId: currentMemberId,
-          content: trimmedValue,
+          content,
         });
 
         const savedMessage = normalizeMessage(response.data, groupMessageTimeCacheRef.current);
