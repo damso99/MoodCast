@@ -1,6 +1,7 @@
 package com.moodcast.member.service;
 
 import com.moodcast.member.dao.SignupDao;
+import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.signup.SignupRequest;
 import com.moodcast.member.dto.signup.SignupTermsAgreementRequest;
 import com.moodcast.member.vo.Member;
@@ -268,13 +269,13 @@ public class SignupService {
 
     // 휴대폰 인증코드
     @Transactional
-    public String sendPhoneAuthCode(String phone) {
+    public PhoneAuthSendResult sendPhoneAuthCode(String phone) {
         return sendPhoneAuthCode(phone, "UNKNOWN");
     }
 
     // 휴대폰 인증코드
     @Transactional
-    public String sendPhoneAuthCode(String phone, String clientIp) {
+    public PhoneAuthSendResult sendPhoneAuthCode(String phone, String clientIp) {
         phone = normalizePhone(phone);
         checkPhoneDuplicate(phone);
 
@@ -289,7 +290,7 @@ public class SignupService {
 
         // phoneService.sendSignupAuthCode(phone, authCode); 포인트 없어서 일단 주석
         System.out.println("휴대폰 인증번호: " + authCode);
-        return phone;
+        return new PhoneAuthSendResult(phone, authCode);
     }
 
     // 이메일 인증코드 확인
