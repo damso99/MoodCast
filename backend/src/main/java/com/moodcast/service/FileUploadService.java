@@ -46,6 +46,7 @@ public class FileUploadService {
     // 2) DB에 남은 로컬 이미지 링크 정리
     private static final String USER_IMAGE_FOLDER = "user-images";
     private static final String POST_IMAGE_FOLDER = "post-images";
+    private static final String CHAT_IMAGE_FOLDER = "chat-images";
 
     // S3와 통신하는 클라이언트임. 실제로 S3에 올리거나 지울 때 사용함.
     private final S3Client s3Client;
@@ -135,6 +136,23 @@ public class FileUploadService {
         } catch (IOException e) {
             throw new IllegalStateException("파일 업로드에 실패했습니다.", e);
         }
+    }
+
+    public List<Map<String, String>> uploadImages(List<MultipartFile> files, String folderType, String baseUrl) {
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("파일이 비어있습니다.");
+        }
+
+        if (files.size() > 5) {
+            throw new IllegalArgumentException("이미지는 최대 5개까지 업로드할 수 있습니다.");
+        }
+
+        List<Map<String, String>> uploadedFiles = new ArrayList<>();
+        for (MultipartFile file : files) {
+            uploadedFiles.add(uploadImage(file, folderType, baseUrl));
+        }
+
+        return uploadedFiles;
     }
 
     // 파일명을 받아 S3에서 삭제함.
@@ -699,6 +717,7 @@ public class FileUploadService {
         return switch (normalized) {
             case "user", "profile", "user-images", "profile-images" -> USER_IMAGE_FOLDER;
             case "post", "feed", "post-images" -> POST_IMAGE_FOLDER;
+            case "chat", "chat-images" -> CHAT_IMAGE_FOLDER;
             default -> POST_IMAGE_FOLDER;
         };
     }

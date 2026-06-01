@@ -9,6 +9,7 @@ import SentimentSatisfiedAltRoundedIcon from "@mui/icons-material/SentimentSatis
 import styles from "../../MoodChat/MoodChatPage.module.css";
 import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
+import { uploadChatImages } from "../../../shared/api/fileUploadApi";
 
 function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
@@ -30,6 +31,14 @@ function isNearBottom(element) {
   return distance < 80;
 }
 
+function createImageEntries(files) {
+  return files.map((file, index) => ({
+    id: `${file.name}-${file.lastModified}-${index}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+  }));
+}
+
 export function GroupChatRoomDetail({
   activeRoom,
   messages,
@@ -47,9 +56,69 @@ export function GroupChatRoomDetail({
 }) {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [error, setError] = useState("");
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const selectedImagesRef = useRef([]);
   const isUserNearBottomRef = useRef(true);
+
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  const clearSelectedImages = () => {
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    event.target.value = "";
+
+    if (files.length === 0) {
+      return;
+    }
+
+    if (files.length > 5) {
+      setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      return;
+    }
+
+    setError("");
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return createImageEntries(files);
+    });
+  };
+
+  const removeSelectedImage = (imageId) => {
+    setSelectedImages((previousImages) => {
+      const removedImage = previousImages.find((item) => item.id === imageId);
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.previewUrl);
+      }
+
+      return previousImages.filter((item) => item.id !== imageId);
+    });
+  };
 
   const scrollToBottom = (behavior = "auto") => {
     const element = bottomRef.current;
@@ -94,6 +163,14 @@ export function GroupChatRoomDetail({
     setShowScrollBottomButton(true);
   }, [messages.length, activeRoom?.roomId]);
 
+  useEffect(() => {
+    if (!activeRoom?.roomId) {
+      clearSelectedImages();
+      setError("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoom?.roomId]);
+
   if (!activeRoom) {
     return null;
   }
@@ -102,6 +179,43 @@ export function GroupChatRoomDetail({
   const roomInitial = roomTitle.charAt(0).toUpperCase();
   const roomSubtitle = getRoomSubtitle(activeRoom, connected);
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const trimmedMessage = messageValue.trim();
+
+    if ((!trimmedMessage && selectedImages.length === 0) || !activeRoom || !currentMemberId) {
+      return;
+    }
+
+    try {
+      if (selectedImages.length > 0) {
+        setIsUploadingImages(true);
+      }
+
+      let uploadedImageUrls = [];
+      if (selectedImages.length > 0) {
+        uploadedImageUrls = await uploadChatImages(selectedImages.map((item) => item.file));
+      }
+
+      await onSubmitMessage({
+        text: trimmedMessage,
+        imageUrls: uploadedImageUrls,
+      });
+      clearSelectedImages();
+    } catch (requestError) {
+      console.error("그룹 채팅 메시지 전송 실패", requestError);
+      setError(
+        requestError?.response?.data?.message ||
+          (selectedImages.length > 0
+            ? "이미지 업로드 또는 전송에 실패했습니다."
+            : "메시지 전송에 실패했습니다."),
+      );
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
   return (
     <div className={styles.room}>
       <div className={styles.roomHeader}>
@@ -109,7 +223,7 @@ export function GroupChatRoomDetail({
           type="button"
           className={styles.backButton}
           onClick={onBack}
-          aria-label="이전으로 가기"
+          aria-label="뒤로 가기"
         >
           <ArrowBackRoundedIcon />
         </button>
@@ -192,7 +306,7 @@ export function GroupChatRoomDetail({
                     fontWeight: 600,
                   }}
                 >
-                  채팅방 나가기
+                  대화방 나가기
                 </button>
               </div>
             ) : null}
@@ -200,15 +314,20 @@ export function GroupChatRoomDetail({
         </div>
       </div>
 
-      <div ref={messagesRef} className={styles.messages} aria-live="polite" onScroll={handleMessagesScroll}>
+      <div
+        ref={messagesRef}
+        className={styles.messages}
+        aria-live="polite"
+        onScroll={handleMessagesScroll}
+      >
         {messages.length === 0 ? <p className={styles.emptyState}>아직 메시지가 없습니다.</p> : null}
-
         {messages.map((item) => {
           const isMine = Number(item.senderId) === Number(currentMemberId);
-          const senderName = item.senderName || "참여자";
+          const senderName = item.senderName || "회원";
           const senderInitial = senderName.charAt(0).toUpperCase();
           const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
           const unreadCount = Number(item.unreadCount || 0);
+          const imageUrls = Array.isArray(item.imageUrls) ? item.imageUrls : [];
 
           return (
             <div
@@ -255,18 +374,57 @@ export function GroupChatRoomDetail({
                   <div className={styles.bubbleLine}>
                     {isMine ? (
                       <>
-                        {unreadCount > 0 ? <span className={styles.unreadMarker}>{unreadCount}</span> : null}
+                        {unreadCount > 0 ? (
+                          <span className={styles.unreadMarker}>{unreadCount}</span>
+                        ) : null}
                         <div className={`${styles.bubble} ${styles.me}`}>
-                          <p>{item.content}</p>
+                          {item.content ? <p>{item.content}</p> : null}
+                          {imageUrls.length > 0 ? (
+                            <div
+                              className={`${styles.messageMediaGrid} ${
+                                imageUrls.length === 1 ? styles.singleMessageMediaGrid : ""
+                              }`}
+                            >
+                              {imageUrls.map((imageUrl, index) => (
+                                <img
+                                  key={`${imageUrl}-${index}`}
+                                  className={styles.messageMediaImage}
+                                  src={imageUrl}
+                                  alt={`첨부 이미지 ${index + 1}`}
+                                  loading="lazy"
+                                />
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       </>
                     ) : (
                       <>
                         <div className={`${styles.bubble} ${styles.them}`}>
-                          <p>{item.content}</p>
+                          {item.content ? <p>{item.content}</p> : null}
+                          {imageUrls.length > 0 ? (
+                            <div
+                              className={`${styles.messageMediaGrid} ${
+                                imageUrls.length === 1 ? styles.singleMessageMediaGrid : ""
+                              }`}
+                            >
+                              {imageUrls.map((imageUrl, index) => (
+                                <img
+                                  key={`${imageUrl}-${index}`}
+                                  className={styles.messageMediaImage}
+                                  src={imageUrl}
+                                  alt={`첨부 이미지 ${index + 1}`}
+                                  loading="lazy"
+                                />
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                         {unreadCount > 0 ? (
-                          <span className={styles.unreadMarker} style={{ marginLeft: "6px", marginBottom: "4px" }}>
+                          <span
+                            className={styles.unreadMarker}
+                            style={{ marginLeft: "6px", marginBottom: "4px" }}
+                          >
                             {unreadCount}
                           </span>
                         ) : null}
@@ -303,38 +461,80 @@ export function GroupChatRoomDetail({
         </button>
       ) : null}
 
-      <form className={styles.composer} onSubmit={onSubmitMessage}>
-        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
-          <AddRoundedIcon />
-          <input type="file" accept="image/*" />
-        </label>
-        <div className={styles.inputShell}>
-          <input
-            ref={messageInputRef}
-            placeholder="메시지를 입력하세요..."
-            value={messageValue}
-            onChange={onMessageChange}
-            disabled={!activeRoom}
-          />
+      <form className={styles.composer} onSubmit={handleSubmit}>
+        {selectedImages.length > 0 ? (
+          <div className={styles.composerPreview}>
+            <div className={styles.composerPreviewHead}>
+              <span>첨부 이미지 {selectedImages.length}/5</span>
+              <button type="button" onClick={clearSelectedImages}>
+                전체 삭제
+              </button>
+            </div>
+            <div
+              className={`${styles.composerPreviewGrid} ${
+                selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+              }`}
+            >
+              {selectedImages.map((image) => (
+                <div key={image.id} className={styles.composerPreviewItem}>
+                  <img src={image.previewUrl} alt={image.file.name} />
+                  <button
+                    type="button"
+                    className={styles.composerPreviewRemoveButton}
+                    onClick={() => removeSelectedImage(image.id)}
+                    aria-label="첨부 이미지 삭제"
+                    title="첨부 이미지 삭제"
+                  >
+                    <DeleteOutlineRoundedIcon />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {error ? <p className={styles.errorText}>{error}</p> : null}
+
+        <div className={styles.composerRow}>
+          <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+            <AddRoundedIcon />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleImageSelection}
+              disabled={!activeRoom || isUploadingImages}
+            />
+          </label>
+          <div className={styles.inputShell}>
+            <input
+              ref={messageInputRef}
+              placeholder="메시지를 입력하세요..."
+              value={messageValue}
+              onChange={onMessageChange}
+              disabled={!activeRoom || isUploadingImages}
+            />
+            <button
+              type="button"
+              className={styles.emojiButton}
+              aria-label="이모지"
+              title="이모지"
+              disabled={!activeRoom || isUploadingImages}
+            >
+              <SentimentSatisfiedAltRoundedIcon />
+            </button>
+          </div>
           <button
-            type="button"
-            className={styles.emojiButton}
-            aria-label="이모지"
-            title="이모지"
-            disabled={!activeRoom}
+            type="submit"
+            className={styles.sendButton}
+            aria-label="메시지 보내기"
+            title="메시지 보내기"
+            disabled={!activeRoom || isUploadingImages}
           >
-            <SentimentSatisfiedAltRoundedIcon />
+            <SendRoundedIcon />
           </button>
         </div>
-        <button
-          type="submit"
-          className={styles.sendButton}
-          aria-label="메시지 보내기"
-          title="메시지 보내기"
-          disabled={!activeRoom}
-        >
-          <SendRoundedIcon />
-        </button>
       </form>
     </div>
   );

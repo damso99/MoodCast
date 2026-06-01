@@ -34,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -48,7 +49,7 @@ import java.util.Map;
  */
 @RestController
 @CrossOrigin(
-        origins = {"http://localhost:5173", "http://127.0.0.1:5173"},
+        origins = {"http://localhost:5173", "http://127.0.0.1:5173", "http://3.39.49.9:5173"},
         allowedHeaders = "*",
         methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.OPTIONS},
         allowCredentials = "true"
@@ -88,6 +89,21 @@ public class FileUploadController {
             HttpServletRequest request
     ) {
         return ResponseEntity.ok(fileUploadService.uploadImage(file, folderType, baseUrl(request)));
+    }
+
+    /**
+     * [이미지 다중 업로드 API] POST /upload/batch
+     *
+     * 채팅처럼 여러 이미지를 한 번에 올려야 하는 경우에 사용합니다.
+     * 최대 5개까지만 허용합니다.
+     */
+    @PostMapping("/batch")
+    public ResponseEntity<List<Map<String, String>>> uploadBatch(
+            @RequestParam("files") List<MultipartFile> files,
+            @RequestParam(defaultValue = "chat-images") String folderType,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.ok(fileUploadService.uploadImages(files, folderType, baseUrl(request)));
     }
 
     /**

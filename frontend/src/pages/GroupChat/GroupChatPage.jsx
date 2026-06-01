@@ -6,6 +6,7 @@ import { MobileShell } from "../../components/layout/MobileShell";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { formatKoreanTime } from "../../shared/lib/dateTime";
+import { parseChatContent, serializeChatContent } from "../../shared/lib/chatContent";
 import {
   createGroupChatRoom,
   deleteGroupChatMessage,
@@ -37,6 +38,7 @@ function normalizeRoom(room) {
 
 function normalizeMessage(message, timeCache) {
   const messageKey = message?.messageId ?? message?.id;
+  const parsedContent = parseChatContent(message?.content ?? "");
   const cachedTime = timeCache?.get?.(messageKey);
   const computedTime = message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : "");
   const time = cachedTime || computedTime;
@@ -51,7 +53,9 @@ function normalizeMessage(message, timeCache) {
     senderId: Number(message?.senderId),
     senderName: message?.senderName || "Member",
     profileImageUrl: message?.profileImageUrl || "",
-    content: message?.content || "",
+    content: parsedContent.text || message?.content || "",
+    imageUrls: parsedContent.imageUrls,
+    rawContent: message?.content || "",
     time,
     createdAt: message?.createdAt || "",
     readCount: Number(message?.readCount || 0),
@@ -369,18 +373,32 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
-  const handleSubmitMessage = async (event) => {
-    event.preventDefault();
+  const handleSubmitMessage = async (payload = {}) => {
+    const trimmedValue =
+      typeof payload?.text === "string" ? payload.text.trim() : messageValue.trim();
+    const imageUrls = Array.isArray(payload?.imageUrls) ? payload.imageUrls : [];
 
-    const trimmedValue = messageValue.trim();
-    if (!trimmedValue || !activeRoom?.roomId || !currentMemberId || isSending) {
+    if (
+      (!trimmedValue && imageUrls.length === 0) ||
+      !activeRoom?.roomId ||
+      !currentMemberId ||
+      isSending
+    ) {
       return;
     }
 
     setIsSending(true);
-    setMessageValue("");
 
     try {
+      const content = serializeChatContent({
+        text: trimmedValue,
+        imageUrls,
+      });
+
+      if (!content) {
+        setError("메시지나 이미지를 입력해주세요.");
+        return;
+      }
       const pendingMessage = normalizeMessage({
         messageId: `pending-${Date.now()}`,
         roomId: activeRoom.roomId,

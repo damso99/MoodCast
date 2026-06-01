@@ -15,12 +15,14 @@ import { notifyChatUnreadChanged } from "../../hooks/useUnreadChatCount";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { formatKoreanTime } from "../../shared/lib/dateTime";
+import { formatChatPreview, parseChatContent, serializeChatContent } from "../../shared/lib/chatContent";
 import { fetchChatInviteCandidates } from "../../shared/api/chatInviteApi";
 import { fetchGroupChatRooms } from "../../shared/api/groupChatApi";
 import {
   createGroupChatRoom,
   inviteGroupChatMembers,
 } from "../../shared/api/groupChatApi";
+import { uploadChatImages } from "../../shared/api/fileUploadApi";
 import { ChatRoomCreateModal } from "./components/ChatRoomCreateModal";
 import { GroupRoomOverlay } from "./components/GroupRoomOverlay";
 import styles from "./MoodChatPage.module.css";
@@ -29,6 +31,7 @@ const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
 function normalizeIncomingMessage(message, currentUserId, timeCache) {
   const senderId = Number(message?.senderId);
+  const parsedContent = parseChatContent(message?.content ?? "");
   const messageKey =
     message?.chatId ??
     message?.id ??
@@ -44,7 +47,9 @@ function normalizeIncomingMessage(message, currentUserId, timeCache) {
   return {
     id: messageKey,
     sender: senderId === currentUserId ? "me" : "them",
-    text: message?.content ?? message?.text ?? "",
+    text: parsedContent.text || message?.text || "",
+    imageUrls: parsedContent.imageUrls,
+    rawContent: message?.content ?? "",
     time: displayTime,
     senderId,
     receiverId: Number(message?.receiverId),
@@ -101,6 +106,14 @@ function buildDirectThread(memberItem) {
     unreadCount: 0,
     memberCount: 2,
   };
+}
+
+function buildImageEntries(files) {
+  return files.map((file, index) => ({
+    id: `${file.name}-${file.lastModified}-${index}`,
+    file,
+    previewUrl: URL.createObjectURL(file),
+  }));
 }
 
 function normalizeDirectThread(thread) {
@@ -163,15 +176,19 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const initialPartnerName = searchParams.get("partnerName") || "";
   const messageListRef = useRef(null);
   const messageInputRef = useRef(null);
+  const imageInputRef = useRef(null);
   const directMessageTimeCacheRef = useRef(new Map());
+  const selectedImagesRef = useRef([]);
   const [threads, setThreads] = useState([]);
   const [activeThread, setActiveThread] = useState(null);
   const [isRoomOpen, setIsRoomOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
+  const [selectedImages, setSelectedImages] = useState([]);
   const [isLoadingThreads, setIsLoadingThreads] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -181,6 +198,63 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [isLoadingInviteCandidates, setIsLoadingInviteCandidates] = useState(false);
   const [activeGroupRoom, setActiveGroupRoom] = useState(null);
   const [isThreadMenuOpen, setIsThreadMenuOpen] = useState(false);
+
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  const clearSelectedImages = () => {
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    event.target.value = "";
+
+    if (files.length === 0) {
+      return;
+    }
+
+    if (files.length > 5) {
+      setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      return;
+    }
+
+    setError("");
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return buildImageEntries(files);
+    });
+  };
+
+  const removeSelectedImage = (imageId) => {
+    setSelectedImages((previousImages) => {
+      const nextImages = previousImages.filter((item) => item.id !== imageId);
+      const removedImage = previousImages.find((item) => item.id === imageId);
+
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.previewUrl);
+      }
+
+      return nextImages;
+    });
+  };
 
   useEffect(() => {
     if (!accessToken || !currentMemberId) {
@@ -459,6 +533,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       setIsRoomOpen(false);
       setMessages([]);
       setMessage("");
+      clearSelectedImages();
       setError("");
       setShowScrollBottomButton(false);
       return;
@@ -481,6 +556,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(partnerThread);
     setIsRoomOpen(true);
     setMessage("");
+    clearSelectedImages();
     setShowScrollBottomButton(false);
     loadMessages(partnerThread);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -534,6 +610,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(thread);
     setIsRoomOpen(true);
     setMessage("");
+    clearSelectedImages();
     setShowScrollBottomButton(false);
     setIsThreadMenuOpen(false);
     loadMessages(thread);
@@ -555,6 +632,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(null);
     setMessages([]);
     setMessage("");
+    clearSelectedImages();
     setShowScrollBottomButton(false);
     setError("");
   };
@@ -587,6 +665,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setActiveThread(null);
     setMessages([]);
     setMessage("");
+    clearSelectedImages();
     setError("");
     setShowScrollBottomButton(false);
     setIsThreadMenuOpen(false);
@@ -603,20 +682,38 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const handleSend = async () => {
     const trimmedMessage = message.trim();
 
-    if (!trimmedMessage || !activeThread || !currentMemberId || isSending) {
+    if (
+      (!trimmedMessage && selectedImages.length === 0) ||
+      !activeThread ||
+      !currentMemberId ||
+      isSending ||
+      isUploadingImages
+    ) {
       return;
     }
 
     setIsSending(true);
     setError("");
-    setMessage("");
-    requestAnimationFrame(() => {
-      messageInputRef.current?.focus();
-    });
 
     try {
+      let uploadedImageUrls = [];
+      if (selectedImages.length > 0) {
+        setIsUploadingImages(true);
+        uploadedImageUrls = await uploadChatImages(selectedImages.map((item) => item.file));
+      }
+
+      const content = serializeChatContent({
+        text: trimmedMessage,
+        imageUrls: uploadedImageUrls,
+      });
+
+      if (!content) {
+        setError("메시지나 이미지를 입력해주세요.");
+        return;
+      }
+
       const isPublished = sendMessage({
-        content: trimmedMessage,
+        content,
         senderId: currentMemberId,
         receiverId: activeThread.partnerMemberId,
         isRead: 0,
@@ -624,7 +721,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
       if (!isPublished) {
         await axios.post(`${API_BASE}/chat/send`, {
-          content: trimmedMessage,
+          content,
           senderId: currentMemberId,
           receiverId: activeThread.partnerMemberId,
           isRead: 0,
@@ -632,12 +729,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         await loadMessages(activeThread);
       }
 
+      setMessage("");
+      clearSelectedImages();
       await loadThreads();
     } catch (requestError) {
       console.error("메시지 전송 실패", requestError);
       setError("메시지 전송에 실패했습니다.");
     } finally {
       setIsSending(false);
+      setIsUploadingImages(false);
       requestAnimationFrame(() => {
         messageInputRef.current?.focus();
       });
@@ -691,7 +791,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                 {isGroupThread ? `그룹 · ${thread.memberCount || 0}명` : "1:1"}
               </span>
               <p className={styles.threadPreview}>
-                {thread.lastMessage || "메시지가 없습니다."}
+                {formatChatPreview(thread.lastMessage) || "메시지가 없습니다."}
               </p>
             </div>
             <div className={styles.threadMeta}>
@@ -759,7 +859,24 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                     <span className={styles.unreadMarker}>1</span>
                   ) : null}
                   <div className={styles.bubble}>
-                    <p>{item.text}</p>
+                    {item.text ? <p>{item.text}</p> : null}
+                    {Array.isArray(item.imageUrls) && item.imageUrls.length > 0 ? (
+                      <div
+                        className={`${styles.messageMediaGrid} ${
+                          item.imageUrls.length === 1 ? styles.singleMessageMediaGrid : ""
+                        }`}
+                      >
+                        {item.imageUrls.map((imageUrl, index) => (
+                          <img
+                            key={`${imageUrl}-${index}`}
+                            className={styles.messageMediaImage}
+                            src={imageUrl}
+                            alt={`첨부 이미지 ${index + 1}`}
+                            loading="lazy"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 <span className={styles.messageTime}>{item.time}</span>
@@ -773,41 +890,76 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
   const composer = (
     <form className={styles.composer} onSubmit={handleSubmit}>
-      <label
-        className={styles.addButton}
-        aria-label="이미지 추가"
-        title="이미지 추가"
-      >
-        <AddRoundedIcon />
-        <input type="file" accept="image/*" />
-      </label>
-      <div className={styles.inputShell}>
-        <input
-          ref={messageInputRef}
-          placeholder="메시지를 입력하세요..."
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          disabled={!activeThread}
-        />
+      {selectedImages.length > 0 ? (
+        <div className={styles.composerPreview}>
+          <div className={styles.composerPreviewHead}>
+            <span>첨부 이미지 {selectedImages.length}/5</span>
+            <button type="button" onClick={clearSelectedImages}>
+              전체 삭제
+            </button>
+          </div>
+          <div
+            className={`${styles.composerPreviewGrid} ${
+              selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+            }`}
+          >
+            {selectedImages.map((image) => (
+              <div key={image.id} className={styles.composerPreviewItem}>
+                <img src={image.previewUrl} alt={image.file.name} />
+                <button
+                  type="button"
+                  className={styles.composerPreviewRemoveButton}
+                  onClick={() => removeSelectedImage(image.id)}
+                  aria-label="첨부 이미지 삭제"
+                  title="첨부 이미지 삭제"
+                >
+                  <DeleteOutlineRoundedIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <div className={styles.composerRow}>
+        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+          <AddRoundedIcon />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelection}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+        </label>
+        <div className={styles.inputShell}>
+          <input
+            ref={messageInputRef}
+            placeholder="메시지를 입력하세요..."
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+          <button
+            type="button"
+            className={styles.emojiButton}
+            aria-label="이모지"
+            title="이모지"
+            disabled={!activeThread || isSending || isUploadingImages}
+          >
+            <SentimentSatisfiedAltRoundedIcon />
+          </button>
+        </div>
         <button
-          type="button"
-          className={styles.emojiButton}
-          aria-label="이모지"
-          title="이모지"
-          disabled={!activeThread}
+          type="submit"
+          className={styles.sendButton}
+          aria-label="메시지 보내기"
+          title="메시지 보내기"
+          disabled={isSending || isUploadingImages || !activeThread}
         >
-          <SentimentSatisfiedAltRoundedIcon />
+          <SendRoundedIcon />
         </button>
       </div>
-      <button
-        type="submit"
-        className={styles.sendButton}
-        aria-label="메시지 보내기"
-        title="메시지 보내기"
-        disabled={isSending || !activeThread}
-      >
-        <SendRoundedIcon />
-      </button>
     </form>
   );
 
