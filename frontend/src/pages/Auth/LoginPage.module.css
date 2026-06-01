@@ -332,20 +332,63 @@
 @media (max-width: 520px) {
   .page {
     place-items: start center;
-    padding: 18px 12px;
+    padding: 14px 10px;
   }
 
   .card {
-    padding: 26px 18px 24px;
+    padding: 24px 16px 22px;
     border-radius: 20px;
+    gap: 18px;
+  }
+
+  .header h1 {
+    font-size: 1.42rem;
   }
 
   .options {
+    gap: 12px;
+  }
+
+  .optionRow {
     align-items: flex-start;
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .findLinks {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .findLinks button,
+  .signupText button {
+    min-height: 36px;
+    padding: 0 4px;
   }
 
   .codeRow {
     grid-template-columns: 1fr;
+  }
+
+  .secondary {
+    width: 100%;
+  }
+
+  .field input,
+  .primary,
+  .socialButton,
+  .secondary {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 360px) {
+  .card {
+    padding-inline: 14px;
+  }
+
+  .divider {
+    gap: 9px;
+    font-size: 0.74rem;
   }
 }
