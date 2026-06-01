@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -229,11 +230,16 @@ public class OAuthService {
             body.add("client_secret", kakaoClientSecret);
         }
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                "https://kauth.kakao.com/oauth/token",
-                new HttpEntity<>(body, headers),
-                Map.class
-        );
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.postForEntity(
+                    "https://kauth.kakao.com/oauth/token",
+                    new HttpEntity<>(body, headers),
+                    Map.class
+            );
+        } catch (RestClientResponseException e) {
+            throw new IllegalArgumentException("카카오 access token 발급에 실패했습니다. " + e.getResponseBodyAsString());
+        }
 
         Object accessToken = response.getBody() == null ? null : response.getBody().get("access_token");
         if (accessToken == null) {
@@ -247,12 +253,17 @@ public class OAuthService {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(kakaoAccessToken);
 
-        ResponseEntity<Map> response = restTemplate.exchange(
-                "https://kapi.kakao.com/v2/user/me",
-                HttpMethod.GET,
-                new HttpEntity<>(headers),
-                Map.class
-        );
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.exchange(
+                    "https://kapi.kakao.com/v2/user/me",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+            );
+        } catch (RestClientResponseException e) {
+            throw new IllegalArgumentException("카카오 사용자 정보를 가져오지 못했습니다. " + e.getResponseBodyAsString());
+        }
 
         if (response.getBody() == null) {
             throw new IllegalArgumentException("카카오 사용자 정보를 가져오지 못했습니다.");
