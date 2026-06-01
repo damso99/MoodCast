@@ -10,6 +10,7 @@ import {
   KAKAO_OAUTH_STATE_KEY,
   SOCIAL_SIGNUP_PENDING_KEY,
 } from "./socialAuth";
+import { getApiMessage, getToastDuration } from "./authFeedback";
 import styles from "./LoginPage.module.css";
 
 export const SocialCallbackPage = () => {
@@ -21,7 +22,7 @@ export const SocialCallbackPage = () => {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   const showToast = (type, message) => {
-    setToast({ show: true, type, message });
+    setToast({ show: true, type, message, duration: getToastDuration(type) });
   };
 
   useEffect(() => {
@@ -76,9 +77,7 @@ export const SocialCallbackPage = () => {
         .catch((err) => {
           showToast(
             "error",
-            err.response?.data?.message ||
-              err.message ||
-              "카카오 계정 연결 중 오류가 발생했습니다.",
+            getApiMessage(err, err.message || "카카오 계정 연결 정보를 확인해주세요."),
           );
           setTimeout(() => navigate("/app/settings", { replace: true }), 1600);
         });
@@ -117,9 +116,7 @@ export const SocialCallbackPage = () => {
       .catch((err) => {
         showToast(
           "error",
-          err.response?.data?.message ||
-            err.message ||
-            "카카오 로그인 중 오류가 발생했습니다.",
+          getApiMessage(err, err.message || "카카오 로그인 설정을 확인해주세요."),
         );
         setTimeout(() => navigate("/auth/login", { replace: true }), 1600);
       });

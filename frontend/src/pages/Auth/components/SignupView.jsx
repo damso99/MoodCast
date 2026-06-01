@@ -2,6 +2,7 @@ import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import AuthConfirmModal from "./AuthConfirmModal";
 import AuthToast from "./AuthToast";
 import styles from "../SignupPage.module.css";
 
@@ -40,6 +41,8 @@ export const SignupView = ({
   phoneExpireTime,
   termsLoading,
   signupSubmitting,
+  signupCompleteModalOpen,
+  goSignupCompleteLogin,
 }) => {
   const phoneExpireMinute = Math.floor(phoneExpireTime / 60);
   const phoneExpireSecond = String(phoneExpireTime % 60).padStart(2, "0");
@@ -72,6 +75,14 @@ export const SignupView = ({
   return (
     <main className={styles.page}>
       <AuthToast toast={toast} />
+      <AuthConfirmModal
+        open={signupCompleteModalOpen}
+        title="회원가입 완료"
+        description="MoodCast 가입이 완료되었습니다. 로그인 후 피드와 감정 기록 기능을 이용할 수 있습니다."
+        confirmOnly
+        confirmText="로그인하러 가기"
+        onConfirm={goSignupCompleteLogin}
+      />
 
       <section className={styles.authCard}>
         <header className={styles.brandHeader}>

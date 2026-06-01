@@ -72,7 +72,7 @@ public class SignupService {
         }
 
         if (!EMAIL_PATTERN.matcher(email).matches()) {
-            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다.");
+            throw new IllegalArgumentException("이메일 형식이 올바르지 않습니다. 예: moodcast@example.com");
         }
         return email;
     }
@@ -101,7 +101,7 @@ public class SignupService {
         nickname = nickname.trim();
 
         if (!NICKNAME_PATTERN.matcher(nickname).matches()) {
-            throw new IllegalArgumentException("닉네임은 한글, 영문, 숫자 2~12자로 입력해주세요.");
+            throw new IllegalArgumentException("닉네임은 한글, 영문, 숫자만 사용해 2~12자로 입력해주세요.");
         }
 
         return nickname;
@@ -136,7 +136,7 @@ public class SignupService {
             throw new IllegalArgumentException("전화번호를 입력해주세요.");
         }
         if (!PHONE_PATTERN.matcher(phone).matches()) {
-            throw new IllegalArgumentException("전화번호 형식이 올바르지 않습니다.");
+            throw new IllegalArgumentException("휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
         }
         return phone;
     }
@@ -146,7 +146,7 @@ public class SignupService {
         int emailCount = signupDao.countByEmail(email);
 
         if (emailCount > 0) {
-            throw new IllegalArgumentException("이미 사용중인 이메일입니다.");
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
     }
 
@@ -154,7 +154,7 @@ public class SignupService {
     public void checkPhoneDuplicate(String phone) {
         int phoneCount = signupDao.countByPhone(phone);
         if (phoneCount > 0) {
-            throw new IllegalArgumentException("이미 사용중인 전화번호입니다.");
+            throw new IllegalArgumentException("이미 사용 중인 휴대폰 번호입니다.");
         }
     }
 
@@ -162,7 +162,7 @@ public class SignupService {
     public void checkNicknameDuplicate(String nickname) {
         int nicknameCount = signupDao.countByNickname(nickname);
         if (nicknameCount > 0) {
-            throw new IllegalArgumentException("이미 사용중인 닉네임입니다.");
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다.");
         }
     }
 
@@ -218,7 +218,7 @@ public class SignupService {
         boolean isVerified = authCodeRedisService.isVerified("SIGNUP", "EMAIL", email);
 
         if (!isVerified) {
-            throw new IllegalArgumentException("이메일 인증 시간이 만료되었습니다. 다시 시도해주세요");
+            throw new IllegalArgumentException("이메일 인증 시간이 만료되었습니다. 인증번호를 다시 요청해주세요.");
         }
     }
 
@@ -227,7 +227,7 @@ public class SignupService {
         boolean isVerified = authCodeRedisService.isVerified("SIGNUP", "PHONE", phone);
 
         if (!isVerified) {
-            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 다시 시도해주세요");
+            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 인증번호를 다시 요청해주세요.");
         }
     }
 
@@ -257,10 +257,10 @@ public class SignupService {
             emailService.sendSignupAuthCode(email, authCode);
         } catch (MailException e) { // 메일 서버 인증 실패, SMTP 문제, 계정 문제, 수신 주소 문제 등등 Spring Mail 계열 에러
             authCodeRedisService.clearAuth("SIGNUP", "EMAIL", email);
-            throw new IllegalStateException("이메일 발송에 실패했습니다. 500 Server");
+            throw new IllegalStateException("이메일 인증번호를 발송하지 못했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해주세요.");
         } catch (IllegalStateException e) {
             authCodeRedisService.clearAuth("SIGNUP", "EMAIL", email);
-            throw new IllegalStateException("이메일 발송 중 오류가 발생했습니다. 500 Server");
+            throw new IllegalStateException("이메일 인증번호 발송 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
 
 

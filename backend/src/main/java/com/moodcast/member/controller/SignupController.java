@@ -41,7 +41,7 @@ public class SignupController {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "message", "인증번호가 발송되었습니다.",
+                            "message", "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
                             "email", email
                     )
             );
@@ -55,7 +55,7 @@ public class SignupController {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "message", "인증이 완료되었습니다."
+                            "message", "이메일 인증이 완료되었습니다."
                     )
             );
     }
@@ -71,7 +71,7 @@ public class SignupController {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "message", "인증번호가 발송되었습니다.",
+                            "message", "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
                             "phone", result.getPhone(),
                             "authCode", result.getAuthCode()
                     )
@@ -85,7 +85,7 @@ public class SignupController {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "message", "인증이 완료되었습니다."
+                            "message", "휴대폰 인증이 완료되었습니다."
                     )
             );
     }
@@ -159,7 +159,7 @@ public class SignupController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "회원가입이 완료되었습니다."
+                        "message", "회원가입이 완료되었습니다. 로그인 후 MoodCast를 이용해주세요."
                 )
         );
     }

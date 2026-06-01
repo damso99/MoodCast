@@ -6,6 +6,8 @@ import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { startKakaoLink } from '../Auth/socialAuth';
 import AuthToast from '../Auth/components/AuthToast';
+import AuthConfirmModal from '../Auth/components/AuthConfirmModal';
+import { getToastDuration } from '../Auth/authFeedback';
 import styles from './SettingsPage.module.css';
 
 const sections = ['계정', '알림', '보안'];
@@ -15,11 +17,13 @@ export function SettingsPage() {
   const { accessToken } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const [kakaoLinked, setKakaoLinked] = useState(false);
+  const [kakaoLinkModalOpen, setKakaoLinkModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: '', message: '' });
 
   const showToast = (type, message) => {
-    setToast({ show: true, type, message });
-    setTimeout(() => setToast({ show: false, type: '', message: '' }), 2500);
+    const duration = getToastDuration(type);
+    setToast({ show: true, type, message, duration });
+    setTimeout(() => setToast({ show: false, type: '', message: '' }), duration);
   };
 
   const handleKakaoLink = () => {
@@ -28,7 +32,12 @@ export function SettingsPage() {
       return;
     }
 
+    setKakaoLinkModalOpen(true);
+  };
+
+  const confirmKakaoLink = () => {
     try {
+      setKakaoLinkModalOpen(false);
       startKakaoLink();
     } catch (error) {
       showToast('error', error.message);
@@ -57,6 +66,15 @@ export function SettingsPage() {
   const content = (
     <section className={styles.wrap}>
       <AuthToast toast={toast} />
+      <AuthConfirmModal
+        open={kakaoLinkModalOpen}
+        title="카카오 계정을 연결할까요?"
+        description="현재 MoodCast 계정에 카카오 로그인을 추가합니다. 연결 후에는 같은 이메일의 카카오 계정으로도 로그인할 수 있습니다."
+        cancelText="취소"
+        confirmText="연결하기"
+        onCancel={() => setKakaoLinkModalOpen(false)}
+        onConfirm={confirmKakaoLink}
+      />
       <div className={styles.hero}>
         <strong>설정</strong>
         <p>계정, 알림, 보안 관련 옵션을 한곳에서 관리할 수 있습니다.</p>

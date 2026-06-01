@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import AuthToast from "./components/AuthToast";
+import AuthConfirmModal from "./components/AuthConfirmModal";
+import { getApiMessage, getToastDuration } from "./authFeedback";
 import styles from "./LoginPage.module.css";
+
+const phoneRegex = /^010[0-9]{8}$/;
+const passwordRegex =
+  /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
 
 export const AccountRecoveryPage = () => {
   const navigate = useNavigate();
@@ -14,6 +20,7 @@ export const AccountRecoveryPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [foundAccount, setFoundAccount] = useState(null);
   const [passwordCodeVerified, setPasswordCodeVerified] = useState(false);
+  const [resetSuccessModalOpen, setResetSuccessModalOpen] = useState(false);
   const [toast, setToast] = useState({
     show: false,
     type: "",
@@ -33,10 +40,13 @@ export const AccountRecoveryPage = () => {
   });
 
   const showToast = (type, message) => {
+    const duration = getToastDuration(type);
+
     setToast({
       show: true,
       type: type,
       message: message,
+      duration: duration,
     });
 
     setTimeout(() => {
@@ -45,7 +55,7 @@ export const AccountRecoveryPage = () => {
         type: "",
         message: "",
       });
-    }, 2500);
+    }, duration);
   };
 
   const changeMode = (nextMode) => {
@@ -77,6 +87,16 @@ export const AccountRecoveryPage = () => {
   };
 
   const sendFindEmailCode = () => {
+    if (!findEmailForm.name.trim()) {
+      showToast("error", "이름을 입력해주세요.");
+      return;
+    }
+
+    if (!phoneRegex.test(findEmailForm.phone.trim())) {
+      showToast("error", "휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
+      return;
+    }
+
     setIsLoading(true);
 
     axios
@@ -88,10 +108,10 @@ export const AccountRecoveryPage = () => {
         if (res.data.authCode) {
           console.log("아이디 찾기 인증번호:", res.data.authCode);
         }
-        showToast("success", res.data.message || "인증번호가 발송되었습니다.");
+        showToast("success", res.data.message || "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
-        showToast("error", err.response?.data?.message || "인증번호 발송에 실패했습니다.");
+        showToast("error", getApiMessage(err, "이름과 휴대폰 번호를 다시 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -100,6 +120,12 @@ export const AccountRecoveryPage = () => {
 
   const verifyFindEmail = (e) => {
     e.preventDefault();
+
+    if (!findEmailForm.authCode.trim()) {
+      showToast("error", "인증번호를 입력해주세요.");
+      return;
+    }
+
     setIsLoading(true);
 
     axios
@@ -112,7 +138,7 @@ export const AccountRecoveryPage = () => {
         showToast("success", res.data.message || "계정을 찾았습니다.");
       })
       .catch((err) => {
-        showToast("error", err.response?.data?.message || "계정 찾기에 실패했습니다.");
+        showToast("error", getApiMessage(err, "인증번호를 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -120,6 +146,16 @@ export const AccountRecoveryPage = () => {
   };
 
   const sendPasswordCode = () => {
+    if (!passwordForm.email.trim()) {
+      showToast("error", "이메일을 입력해주세요.");
+      return;
+    }
+
+    if (!phoneRegex.test(passwordForm.phone.trim())) {
+      showToast("error", "휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
+      return;
+    }
+
     setIsLoading(true);
     setPasswordCodeVerified(false);
 
@@ -132,10 +168,10 @@ export const AccountRecoveryPage = () => {
         if (res.data.authCode) {
           console.log("비밀번호 재설정 인증번호:", res.data.authCode);
         }
-        showToast("success", res.data.message || "인증번호가 발송되었습니다.");
+        showToast("success", res.data.message || "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
-        showToast("error", err.response?.data?.message || "인증번호 발송에 실패했습니다.");
+        showToast("error", getApiMessage(err, "이메일과 휴대폰 번호를 다시 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -143,6 +179,11 @@ export const AccountRecoveryPage = () => {
   };
 
   const verifyPasswordCode = () => {
+    if (!passwordForm.authCode.trim()) {
+      showToast("error", "인증번호를 입력해주세요.");
+      return;
+    }
+
     setIsLoading(true);
 
     axios
@@ -157,7 +198,7 @@ export const AccountRecoveryPage = () => {
       })
       .catch((err) => {
         setPasswordCodeVerified(false);
-        showToast("error", err.response?.data?.message || "인증번호 확인에 실패했습니다.");
+        showToast("error", getApiMessage(err, "인증번호를 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -166,18 +207,32 @@ export const AccountRecoveryPage = () => {
 
   const resetPassword = (e) => {
     e.preventDefault();
+
+    if (!passwordCodeVerified) {
+      showToast("error", "휴대폰 인증을 먼저 완료해주세요.");
+      return;
+    }
+
+    if (!passwordRegex.test(passwordForm.newPassword)) {
+      showToast("error", "비밀번호는 영문, 숫자, 특수문자를 포함한 8~20자입니다.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.newPasswordConfirm) {
+      showToast("error", "새 비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
     setIsLoading(true);
 
     axios
       .post(`${BACKSERVER}/auth/recovery/password/reset`, passwordForm)
       .then((res) => {
         showToast("success", res.data.message || "비밀번호가 재설정되었습니다.");
-        setTimeout(() => {
-          navigate("/auth/login");
-        }, 900);
+        setResetSuccessModalOpen(true);
       })
       .catch((err) => {
-        showToast("error", err.response?.data?.message || "비밀번호 재설정에 실패했습니다.");
+        showToast("error", getApiMessage(err, "새 비밀번호 조건을 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -187,6 +242,14 @@ export const AccountRecoveryPage = () => {
   return (
     <main className={styles.page}>
       <AuthToast toast={toast} />
+      <AuthConfirmModal
+        open={resetSuccessModalOpen}
+        title="비밀번호 재설정 완료"
+        description="새 비밀번호로 다시 로그인해주세요. 기존 로그인 세션은 모두 만료됩니다."
+        confirmOnly
+        confirmText="로그인하러 가기"
+        onConfirm={() => navigate("/auth/login", { replace: true })}
+      />
 
       <section className={styles.card}>
         <header className={styles.header}>
@@ -244,7 +307,7 @@ export const AccountRecoveryPage = () => {
                 />
               </div>
               <button type="button" className={styles.secondary} onClick={sendFindEmailCode} disabled={isLoading}>
-                번호 받기
+                인증번호 발송
               </button>
             </div>
 
@@ -304,7 +367,7 @@ export const AccountRecoveryPage = () => {
                 />
               </div>
               <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading}>
-                번호 발송
+                인증번호 발송
               </button>
             </div>
 

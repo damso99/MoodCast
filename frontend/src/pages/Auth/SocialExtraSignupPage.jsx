@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
+import AuthConfirmModal from "./components/AuthConfirmModal";
 import AuthToast from "./components/AuthToast";
+import { getApiMessage, getToastDuration } from "./authFeedback";
 import { SOCIAL_SIGNUP_PENDING_KEY } from "./socialAuth";
 import styles from "./SignupPage.module.css";
 
@@ -27,11 +29,13 @@ export const SocialExtraSignupPage = () => {
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [termsList, setTermsList] = useState([]);
   const [agreements, setAgreements] = useState({});
+  const [signupCompleteModalOpen, setSignupCompleteModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
 
   const showToast = (type, message) => {
-    setToast({ show: true, type, message });
-    setTimeout(() => setToast({ show: false, type: "", message: "" }), 2500);
+    const duration = getToastDuration(type);
+    setToast({ show: true, type, message, duration });
+    setTimeout(() => setToast({ show: false, type: "", message: "" }), duration);
   };
 
   useEffect(() => {
@@ -63,7 +67,7 @@ export const SocialExtraSignupPage = () => {
         );
       })
       .catch(() => {
-        showToast("error", "약관 정보를 불러오지 못했습니다.");
+        showToast("error", "약관 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.");
       });
   }, [BACKSERVER, navigate]);
 
@@ -95,12 +99,12 @@ export const SocialExtraSignupPage = () => {
         if (res.data.authCode) {
           console.log("휴대폰 인증번호:", res.data.authCode);
         }
-        showToast("success", "인증번호가 발송되었습니다.");
+        showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
         showToast(
           "error",
-          err.response?.data?.message || "인증번호 발송에 실패했습니다.",
+          getApiMessage(err, "휴대폰 번호와 요청 제한을 확인해주세요."),
         );
       })
       .finally(() => {
@@ -109,19 +113,24 @@ export const SocialExtraSignupPage = () => {
   };
 
   const checkPhoneAuthCode = () => {
+    if (!form.phoneCode.trim()) {
+      showToast("error", "휴대폰 인증번호를 입력해주세요.");
+      return;
+    }
+
     axios
       .post(`${BACKSERVER}/signup/auth/phone/verify`, {
         phone: form.phone.trim(),
         authCode: form.phoneCode.trim(),
       })
-      .then(() => {
+      .then((res) => {
         setPhoneAuth(3);
-        showToast("success", "휴대폰 인증이 완료되었습니다.");
+        showToast("success", res.data?.message || "휴대폰 인증이 완료되었습니다.");
       })
       .catch((err) => {
         showToast(
           "error",
-          err.response?.data?.message || "인증번호 확인에 실패했습니다.",
+          getApiMessage(err, "휴대폰 인증번호를 확인해주세요."),
         );
       });
   };
@@ -140,7 +149,7 @@ export const SocialExtraSignupPage = () => {
     }
 
     if (form.nickname.trim() && !nicknameRegex.test(form.nickname.trim())) {
-      showToast("error", "닉네임은 한글/영문/숫자 2~12자로 입력해주세요.");
+      showToast("error", "닉네임은 한글, 영문, 숫자만 사용해 2~12자로 입력해주세요.");
       return;
     }
 
@@ -178,12 +187,12 @@ export const SocialExtraSignupPage = () => {
       .then((res) => {
         window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
         setAuthData(res.data.accessToken, res.data.member);
-        navigate("/app/feed", { replace: true });
+        setSignupCompleteModalOpen(true);
       })
       .catch((err) => {
         showToast(
           "error",
-          err.response?.data?.message || "소셜 회원가입에 실패했습니다.",
+          getApiMessage(err, "소셜 회원가입 정보를 다시 확인해주세요."),
         );
       })
       .finally(() => {
@@ -194,6 +203,14 @@ export const SocialExtraSignupPage = () => {
   return (
     <main className={styles.page}>
       <AuthToast toast={toast} />
+      <AuthConfirmModal
+        open={signupCompleteModalOpen}
+        title="소셜 회원가입 완료"
+        description="카카오 계정과 MoodCast 계정이 연결되었습니다. 이제 카카오 로그인으로도 이용할 수 있습니다."
+        confirmOnly
+        confirmText="피드로 이동"
+        onConfirm={() => navigate("/app/feed", { replace: true })}
+      />
       <section className={styles.authCard}>
         <header className={styles.brandHeader}>
           <div className={styles.brand}>
@@ -230,7 +247,7 @@ export const SocialExtraSignupPage = () => {
               name="nickname"
               value={form.nickname}
               onChange={inputForm}
-              placeholder="한글/영문/숫자 2~12자"
+              placeholder="한글, 영문, 숫자 2~12자"
             />
           </div>
 

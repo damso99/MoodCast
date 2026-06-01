@@ -73,13 +73,13 @@ public class AccountRecoveryService {
 
     private String normalizePhone(String phone) {
         if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("전화번호를 입력해주세요.");
+            throw new IllegalArgumentException("휴대폰 번호를 입력해주세요.");
         }
 
         phone = phone.trim();
 
         if (!PHONE_PATTERN.matcher(phone).matches()) {
-            throw new IllegalArgumentException("전화번호 형식이 올바르지 않습니다.");
+            throw new IllegalArgumentException("휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
         }
 
         return phone;
@@ -90,12 +90,22 @@ public class AccountRecoveryService {
         return String.valueOf(number);
     }
 
-    private void checkActiveMember(Member member) {
-        if (member == null || "SUSPENDED".equals(member.getStatus())
-                || "WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null
-                || !Integer.valueOf(1).equals(member.getEmailVerified())
+    private void checkRecoverableMember(Member member, String notFoundMessage) {
+        if (member == null) {
+            throw new IllegalArgumentException(notFoundMessage);
+        }
+
+        if ("SUSPENDED".equals(member.getStatus())) {
+            throw new IllegalArgumentException("현재 이용이 제한된 계정입니다. 계정 상태를 확인해주세요.");
+        }
+
+        if ("WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null) {
+            throw new IllegalArgumentException("탈퇴 처리된 계정입니다. 다른 계정으로 로그인해주세요.");
+        }
+
+        if (!Integer.valueOf(1).equals(member.getEmailVerified())
                 || !Integer.valueOf(1).equals(member.getPhoneVerified())) {
-            throw new IllegalArgumentException("입력한 정보와 일치하는 계정을 찾을 수 없습니다.");
+            throw new IllegalArgumentException("인증이 완료되지 않은 계정입니다. 회원가입 정보를 다시 확인해주세요.");
         }
     }
 
@@ -162,7 +172,7 @@ public class AccountRecoveryService {
         String phone = normalizePhone(request.getPhone());
 
         Member member = loginDao.findMemberByNameAndPhone(name, phone);
-        checkActiveMember(member);
+        checkRecoverableMember(member, "이름과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
 
         authCodeRedisService.checkCooldown(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
         authCodeRedisService.checkAndIncreaseIpSendCount(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, clientIp);
@@ -186,7 +196,7 @@ public class AccountRecoveryService {
         String phone = normalizePhone(request.getPhone());
 
         Member member = loginDao.findMemberByNameAndPhone(name, phone);
-        checkActiveMember(member);
+        checkRecoverableMember(member, "이름과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
         checkAuthCode(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
 
         authCodeRedisService.clearAuth(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
@@ -207,11 +217,11 @@ public class AccountRecoveryService {
         String phone = normalizePhone(request.getPhone());
 
         Member member = loginDao.findMemberByEmailAndPhone(email, phone);
-        checkActiveMember(member);
+        checkRecoverableMember(member, "이메일과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
 
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("카카오로 가입한 계정입니다. 로그인 화면에서 카카오 로그인을 이용해주세요.");
         }
 
         authCodeRedisService.checkCooldown(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
@@ -236,11 +246,11 @@ public class AccountRecoveryService {
         String phone = normalizePhone(request.getPhone());
 
         Member member = loginDao.findMemberByEmailAndPhone(email, phone);
-        checkActiveMember(member);
+        checkRecoverableMember(member, "이메일과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
 
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("카카오로 가입한 계정입니다. 로그인 화면에서 카카오 로그인을 이용해주세요.");
         }
 
         checkAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
@@ -258,11 +268,11 @@ public class AccountRecoveryService {
         checkNewPassword(request.getNewPassword(), request.getNewPasswordConfirm());
 
         Member member = loginDao.findMemberByEmailAndPhone(email, phone);
-        checkActiveMember(member);
+        checkRecoverableMember(member, "이메일과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
 
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("카카오로 가입한 계정입니다. 로그인 화면에서 카카오 로그인을 이용해주세요.");
         }
 
         if (!authCodeRedisService.isVerified(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone)) {

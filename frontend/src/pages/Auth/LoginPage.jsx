@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
+import { getApiMessage, getToastDuration } from "./authFeedback";
 import { startKakaoLogin } from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
@@ -41,10 +42,13 @@ export const LoginPage = () => {
   }, []);
 
   const showToast = (type, message) => {
+    const duration = getToastDuration(type);
+
     setToast({
       show: true,
       type: type,
       message: message,
+      duration: duration,
     });
 
     setTimeout(() => {
@@ -53,7 +57,7 @@ export const LoginPage = () => {
         type: "",
         message: "",
       });
-    }, 2500);
+    }, duration);
   };
 
   const inputMember = (e) => {
@@ -115,7 +119,7 @@ export const LoginPage = () => {
         console.log(err);
         showToast(
           "error",
-          err.response?.data?.message || "로그인 중 오류가 발생했습니다.",
+          getApiMessage(err, "로그인 정보를 확인해주세요."),
         );
       })
       .finally(() => {
@@ -124,7 +128,7 @@ export const LoginPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 백엔드 연결 후 사용할 수 있습니다.`);
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 로그인을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {

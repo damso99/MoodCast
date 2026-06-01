@@ -217,7 +217,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "인증번호가 발송되었습니다.",
+                        "message", "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
                         "phone", result.getPhone(),
                         "authCode", result.getAuthCode()
                 )
@@ -231,7 +231,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "계정을 찾았습니다.",
+                        "message", "가입 계정을 찾았습니다.",
                         "email", result.getEmail(),
                         "kakaoLinked", result.isKakaoLinked()
                 )
@@ -248,7 +248,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "인증번호가 발송되었습니다.",
+                        "message", "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
                         "phone", result.getPhone(),
                         "authCode", result.getAuthCode()
                 )
@@ -262,7 +262,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "휴대폰 인증이 완료되었습니다."
+                        "message", "휴대폰 인증이 완료되었습니다. 새 비밀번호를 입력해주세요."
                 )
         );
     }

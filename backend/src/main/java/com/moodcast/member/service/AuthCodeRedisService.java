@@ -42,7 +42,7 @@ public class AuthCodeRedisService {
         Boolean exists = redisTemplate.hasKey(key("cooldown", purpose, targetType, targetValue));
         // 키 있으면 쿨타임 남음
         if (Boolean.TRUE.equals(exists)) {
-            throw new IllegalArgumentException("인증번호 요청 60초 이후 재요청이 가능합니다.");
+            throw new IllegalArgumentException("인증번호는 60초에 한 번만 요청할 수 있습니다. 잠시 후 다시 시도해주세요.");
         }
     }
 
@@ -59,7 +59,7 @@ public class AuthCodeRedisService {
 
         // 일일 요청횟수 초과
         if (count != null && count > DAILY_SEND_LIMIT) {
-            throw new IllegalArgumentException("일일 인증번호 발송 횟수를 초과했습니다.");
+            throw new IllegalArgumentException("오늘 인증번호 요청 횟수를 초과했습니다. 내일 다시 시도해주세요.");
         }
     }
 
@@ -73,7 +73,7 @@ public class AuthCodeRedisService {
         }
 
         if (count != null && count > IP_DAILY_SEND_LIMIT) {
-            throw new IllegalArgumentException("일일 인증번호 발송 횟수를 초과했습니다.");
+            throw new IllegalArgumentException("현재 네트워크에서 인증번호 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.");
         }
     }
 

@@ -129,19 +129,19 @@ public class OAuthService {
         String phone = normalizePhone(request.getPhone());
 
         if (signupDao.countByEmail(email) > 0) {
-            throw new IllegalArgumentException("이미 사용중인 이메일입니다.");
+            throw new IllegalArgumentException("카카오 이메일로 이미 가입된 계정이 있습니다. 로그인 화면에서 다시 시도해주세요.");
         }
 
         if (signupDao.countByPhone(phone) > 0) {
-            throw new IllegalArgumentException("이미 사용중인 전화번호입니다.");
+            throw new IllegalArgumentException("이미 다른 계정에서 사용 중인 휴대폰 번호입니다.");
         }
 
         if (nickname != null && signupDao.countByNickname(nickname) > 0) {
-            throw new IllegalArgumentException("이미 사용중인 닉네임입니다.");
+            throw new IllegalArgumentException("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
         }
 
         if (!authCodeRedisService.isVerified("SIGNUP", "PHONE", phone)) {
-            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 다시 시도해주세요");
+            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 인증번호를 다시 요청해주세요.");
         }
 
         checkRequiredTermsAgreed(request.getAgreements());
@@ -190,7 +190,7 @@ public class OAuthService {
 
         SocialUserInfo socialUserInfo = requestKakaoUserInfo(request);
         if (!member.getEmail().equalsIgnoreCase(socialUserInfo.getEmail())) {
-            throw new IllegalArgumentException("현재 로그인 계정 이메일과 카카오 이메일이 일치하지 않습니다.");
+            throw new IllegalArgumentException("현재 로그인한 이메일과 카카오 계정 이메일이 다릅니다. 같은 이메일의 카카오 계정만 연결할 수 있습니다.");
         }
 
         if (oAuthDao.countByMemberIdAndProvider(memberId, KAKAO) > 0) {
@@ -202,7 +202,7 @@ public class OAuthService {
                 socialUserInfo.getProviderUserId()
         );
         if (connectedAccount != null) {
-            throw new IllegalArgumentException("이미 다른 회원에게 연결된 카카오 계정입니다.");
+            throw new IllegalArgumentException("이미 다른 MoodCast 계정에 연결된 카카오 계정입니다.");
         }
 
         PendingSocialSignup pendingSocialSignup = new PendingSocialSignup();
@@ -240,11 +240,11 @@ public class OAuthService {
         }
 
         if (request.getRedirectUri() == null || request.getRedirectUri().trim().isEmpty()) {
-            throw new IllegalArgumentException("카카오 redirectUri가 없습니다.");
+            throw new IllegalArgumentException("카카오 로그인 요청 정보가 올바르지 않습니다. 다시 시도해주세요.");
         }
 
         if (kakaoClientId == null || kakaoClientId.trim().isEmpty()) {
-            throw new IllegalStateException("카카오 client id 설정이 없습니다.");
+            throw new IllegalStateException("카카오 로그인 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.");
         }
 
         String kakaoAccessToken = requestKakaoAccessToken(request.getCode(), request.getRedirectUri());
@@ -283,12 +283,12 @@ public class OAuthService {
                     Map.class
             );
         } catch (RestClientResponseException e) {
-            throw new IllegalArgumentException("카카오 access token 발급에 실패했습니다. " + e.getResponseBodyAsString());
+            throw new IllegalArgumentException("카카오 로그인 인증에 실패했습니다. 카카오 개발자 설정의 Redirect URI를 확인해주세요.");
         }
 
         Object accessToken = response.getBody() == null ? null : response.getBody().get("access_token");
         if (accessToken == null) {
-            throw new IllegalArgumentException("카카오 access token 발급에 실패했습니다.");
+            throw new IllegalArgumentException("카카오 로그인 인증에 실패했습니다. 잠시 후 다시 시도해주세요.");
         }
 
         return accessToken.toString();
@@ -307,7 +307,7 @@ public class OAuthService {
                     Map.class
             );
         } catch (RestClientResponseException e) {
-            throw new IllegalArgumentException("카카오 사용자 정보를 가져오지 못했습니다. " + e.getResponseBodyAsString());
+            throw new IllegalArgumentException("카카오 사용자 정보를 가져오지 못했습니다. 카카오 계정 설정을 확인해주세요.");
         }
 
         if (response.getBody() == null) {
@@ -368,12 +368,12 @@ public class OAuthService {
 
     private String normalizePhone(String phone) {
         if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("전화번호를 입력해주세요.");
+            throw new IllegalArgumentException("휴대폰 번호를 입력해주세요.");
         }
 
         phone = phone.trim();
         if (!PHONE_PATTERN.matcher(phone).matches()) {
-            throw new IllegalArgumentException("전화번호 형식이 올바르지 않습니다.");
+            throw new IllegalArgumentException("휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
         }
 
         return phone;
