@@ -22,6 +22,13 @@
   color: #667085;
 }
 
+.cardText {
+  margin: 8px 0 0;
+  color: #667085;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .grid {
   display: grid;
   gap: 14px;
