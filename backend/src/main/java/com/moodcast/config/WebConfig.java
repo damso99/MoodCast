@@ -32,7 +32,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         if (!localUploadResourceEnabled) {
-            return;
+            return; // 기본값 false: 로컬 uploads 리소스 핸들러는 legacy 호환용으로만 사용
         }
 
         // 절대/상대 경로 모두 처리 (Mac/Windows 무관)

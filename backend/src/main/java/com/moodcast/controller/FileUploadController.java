@@ -9,12 +9,14 @@ package com.moodcast.controller;
  * 위임하고, Controller는 최대한 얇게(thin) 유지하는 게 좋은 설계임.
  *
  * 📌 주요 엔드포인트 정리
- *   POST   /upload                      — 이미지 파일을 S3에 업로드
+ *   POST   /upload                      — 이미지 파일을 S3에 업로드 (현재 운영 중인 업로드 API)
  *   DELETE /upload/{filename}           — S3에서 이미지 삭제
  *   GET    /upload/view?key=...         — S3 이미지를 읽어서 브라우저에 전달
- *   GET    /upload/uploads/**           — 예전 로컬 경로 호환용 (레거시)
- *   POST   /upload/migrate-local        — 로컬 파일을 S3로 이관 (운영 도구)
- *   POST   /upload/rewrite-s3-links     — DB에 남은 구버전 URL을 S3 URL로 교체 (운영 도구)
+ *
+ *   [legacy/maintenance only]
+ *   GET    /upload/uploads/**           — 예전 로컬 경로 호환용 (legacy)
+ *   POST   /upload/migrate-local        — 로컬 파일을 S3로 이관하는 운영 도구
+ *   POST   /upload/rewrite-s3-links     — DB에 남은 구버전 URL을 S3 URL로 교체하는 운영 도구
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -124,14 +126,10 @@ public class FileUploadController {
     }
 
     /**
-     * [레거시 URL 호환 API] GET /upload/uploads/파일명
+     * [legacy compatibility] GET /upload/uploads/파일명
      *
-     * 예전에는 이미지를 서버 로컬 폴더(uploads/)에 저장하고
-     * /uploads/파일명 형태의 URL을 DB에 저장했었음.
-     * 이미지를 S3로 옮긴 뒤에도 기존 URL로 접근하면 이 엔드포인트가 받아서
-     * S3에서 찾아 내려줌 → 구버전 데이터도 정상 표시 가능함.
-     *
-     * (/** 와일드카드는 /uploads/a/b/c 같은 경로도 전부 매칭함)
+     * S3 전환 이전에 로컬 서버 uploads/ 폴더에 저장된 이미지 URL을 지원하기 위한 엔드포인트.
+     * 현재 운영 중인 업로드 흐름은 /upload 와 /upload/view 기반의 S3 저장 방식임.
      */
     @GetMapping("/uploads/**")
     public ResponseEntity<byte[]> legacyUploads(HttpServletRequest request) {
@@ -144,10 +142,10 @@ public class FileUploadController {
     }
 
     /**
-     * [운영 도구] POST /upload/migrate-local?deleteAfterUpload=true
+     * [maintenance tool] POST /upload/migrate-local?deleteAfterUpload=true
      *
-     * EC2 서버의 로컬 uploads/ 폴더에 남아 있는 파일들을 S3로 이관함.
-     * 배포 환경 전환 시 한 번만 실행하면 되는 일회성 작업임.
+     * 로컬 서버의 legacy uploads/ 폴더에 남아 있는 파일들을 S3로 이관하는 운영 도구.
+     * 일반 사용자 업로드 플로우에서는 호출되지 않으며 이관용으로만 사용됨.
      *
      * @param deleteAfterUpload true면 S3 업로드 성공 후 로컬 파일도 삭제함
      * @return 이관 결과 (성공한 파일 목록, DB 업데이트 건수 등)
@@ -157,7 +155,7 @@ public class FileUploadController {
             @RequestParam(defaultValue = "false") boolean deleteAfterUpload,
             HttpServletRequest request
     ) {
-        return ResponseEntity.ok(fileUploadService.migrateLocalUploadsAndDatabase(deleteAfterUpload));
+        return ResponseEntity.ok(fileUploadService.migrateLegacyLocalUploadsAndDatabase(deleteAfterUpload));
     }
 
     /**
