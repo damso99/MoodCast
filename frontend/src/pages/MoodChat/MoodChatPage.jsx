@@ -163,7 +163,7 @@ function getThreadSortValue(thread) {
 function ChatBody({ desktop, onRoomOpenChange }) {
   const { member, accessToken } = useAuthStore();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const currentMemberId = useMemo(() => {
     const memberId = Number(member?.memberId);
     return Number.isFinite(memberId) && memberId > 0
@@ -590,6 +590,27 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     loadMessages(partnerThread);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentMemberId, initialPartnerId, initialPartnerName]);
+
+  useEffect(() => {
+    if (searchParams.get("view") !== "list") {
+      return;
+    }
+
+    setActiveGroupRoom(null);
+    setActiveThread(null);
+    setIsRoomOpen(false);
+    setMessages([]);
+    setMessage("");
+    clearSelectedImages();
+    setShowScrollBottomButton(false);
+    setIsThreadMenuOpen(false);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("view");
+    nextParams.delete("ts");
+    setSearchParams(nextParams, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, setSearchParams]);
 
   const updateScrollBottomButton = () => {
     const messageListElement = messageListRef.current;
