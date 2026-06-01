@@ -3,13 +3,11 @@
 <mapper namespace="com.moodcast.chat.mapper.GroupChatMapper">
     <insert id="insertChatRoom" parameterType="com.moodcast.chat.vo.ChatRoomVo" useGeneratedKeys="true" keyProperty="roomId">
         INSERT INTO chat_room (
-            room_type,
             room_name,
             room_description,
             created_by,
             deleted_yn
         ) VALUES (
-            COALESCE(#{roomType}, 'GROUP'),
             #{roomName},
             #{roomDescription},
             #{createdBy},
@@ -116,7 +114,6 @@
     <select id="selectChatRoomById" resultType="com.moodcast.chat.vo.ChatRoomVo">
         SELECT
             r.room_id AS roomId,
-            r.room_type AS roomType,
             r.room_name AS roomName,
             r.room_description AS roomDescription,
             r.created_by AS createdBy,
@@ -158,7 +155,6 @@
     <select id="selectChatRoomsByMemberId" resultType="com.moodcast.chat.vo.ChatRoomVo">
         SELECT
             r.room_id AS roomId,
-            r.room_type AS roomType,
             r.room_name AS roomName,
             r.room_description AS roomDescription,
             r.created_by AS createdBy,

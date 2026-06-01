@@ -49,7 +49,6 @@ public class GroupChatService {
         }
 
         ChatRoomVo chatRoomVo = new ChatRoomVo();
-        chatRoomVo.setRoomType(memberIds.size() <= 1 ? "DIRECT" : "GROUP");
         chatRoomVo.setRoomName(normalizeRoomName(request.getRoomName()));
         chatRoomVo.setRoomDescription(normalizeRoomDescription(request.getRoomDescription()));
         chatRoomVo.setCreatedBy(request.getCreatorId());
@@ -177,9 +176,8 @@ public class GroupChatService {
             throw new IllegalArgumentException("참여 중인 채팅방이 아닙니다.");
         }
 
-        ChatRoomVo room = requireRoomSummary(roomId);
         int activeMemberCount = groupChatMapper.countActiveChatRoomMembers(roomId);
-        if (isDirectRoom(room, activeMemberCount)) {
+        if (activeMemberCount <= 2) {
             groupChatMapper.hideChatRoomMember(roomId, memberId);
             return null;
         }
@@ -359,22 +357,6 @@ public class GroupChatService {
         chatMessageVo.setCreatedAt(nowText());
         chatMessageVo.setDeletedYn("N");
         return chatMessageVo;
-    }
-
-    private boolean isDirectRoom(ChatRoomVo room, int activeMemberCount) {
-        if (room == null) {
-            return activeMemberCount <= 2;
-        }
-
-        if ("DIRECT".equalsIgnoreCase(room.getRoomType())) {
-            return true;
-        }
-
-        if ("GROUP".equalsIgnoreCase(room.getRoomType())) {
-            return false;
-        }
-
-        return activeMemberCount <= 2;
     }
 
     private String buildLeaveMessage(ChatRoomMemberVo roomMember) {
