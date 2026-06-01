@@ -43,14 +43,20 @@
   padding: 0 10px 0 12px;
   border: 1px solid rgba(124, 77, 255, 0.14);
   border-radius: 999px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.64));
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.86),
+    rgba(255, 255, 255, 0.64)
+  );
   color: #3b2d6b;
   font-size: 0.84rem;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .filterButton:hover {
@@ -84,6 +90,7 @@
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(17, 24, 39, 0.08);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  -webkit-backdrop-filter: blur(18px);
   backdrop-filter: blur(18px);
 }
 
@@ -107,7 +114,9 @@
   font-size: 0.86rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.16s ease, color 0.16s ease;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
   text-align: left;
 }
 
@@ -147,13 +156,41 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.4);
   border: 1px solid rgba(17, 24, 39, 0.05);
-  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .moodCard:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.56);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+
+.moodCardClickable {
+  cursor: pointer;
+}
+
+.moodCardSelected {
+  background: rgba(124, 77, 255, 0.1);
+  border-color: rgba(124, 77, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(124, 77, 255, 0.1);
+}
+
+.moodCardSelected:hover {
+  background: rgba(124, 77, 255, 0.14);
+}
+
+.moodCardDimmed {
+  opacity: 0.45;
+}
+
+.moodCardDisabled {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.3;
 }
 
 .moodTopRow {
@@ -194,6 +231,35 @@
   grid-template-columns: 22px 1fr;
   gap: 12px;
   align-items: start;
+  border-radius: 14px;
+  padding: 8px;
+  transition:
+    background-color 0.18s ease,
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.trendRowClickable {
+  cursor: pointer;
+}
+
+.trendRowClickable:hover {
+  background: rgba(124, 77, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.trendRowSelected {
+  background: rgba(124, 77, 255, 0.12);
+}
+
+.trendRowDimmed {
+  opacity: 0.45;
+}
+
+.trendRowDisabled {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.35;
 }
 
 .rank {

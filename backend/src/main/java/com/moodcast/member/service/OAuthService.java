@@ -171,6 +171,51 @@ public class OAuthService {
         return loginService.issueLoginTokens(savedMember);
     }
 
+    // 현재 로그인 회원이 카카오 계정을 연결했는지 확인함
+    public boolean isKakaoLinked(String authorizationHeader) {
+        Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
+        return oAuthDao.countByMemberIdAndProvider(memberId, KAKAO) > 0;
+    }
+
+    // 로그인된 일반 회원에게 카카오 계정을 연결함
+    @Transactional
+    public Member linkKakaoAccount(String authorizationHeader, KakaoLoginRequest request) {
+        Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
+        Member member = loginDao.findMemberById(memberId);
+        if (member == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        loginService.checkLoginAllowed(member);
+
+        SocialUserInfo socialUserInfo = requestKakaoUserInfo(request);
+        if (!member.getEmail().equalsIgnoreCase(socialUserInfo.getEmail())) {
+            throw new IllegalArgumentException("현재 로그인 계정 이메일과 카카오 이메일이 일치하지 않습니다.");
+        }
+
+        if (oAuthDao.countByMemberIdAndProvider(memberId, KAKAO) > 0) {
+            throw new IllegalArgumentException("이미 카카오 계정이 연결되어 있습니다.");
+        }
+
+        OAuthAccount connectedAccount = oAuthDao.findByProviderAndProviderUserId(
+                KAKAO,
+                socialUserInfo.getProviderUserId()
+        );
+        if (connectedAccount != null) {
+            throw new IllegalArgumentException("이미 다른 회원에게 연결된 카카오 계정입니다.");
+        }
+
+        PendingSocialSignup pendingSocialSignup = new PendingSocialSignup();
+        pendingSocialSignup.setProvider(KAKAO);
+        pendingSocialSignup.setProviderUserId(socialUserInfo.getProviderUserId());
+        pendingSocialSignup.setProviderEmail(socialUserInfo.getEmail());
+        pendingSocialSignup.setProviderNickname(socialUserInfo.getNickname());
+        pendingSocialSignup.setProfileImageUrl(socialUserInfo.getProfileImageUrl());
+
+        insertOAuthAccount(memberId, pendingSocialSignup);
+        return member;
+    }
+
     private void insertOAuthAccount(Long memberId, PendingSocialSignup pendingSocialSignup) {
         if (oAuthDao.countByMemberIdAndProvider(memberId, pendingSocialSignup.getProvider()) > 0) {
             throw new IllegalArgumentException("이미 연결된 소셜 계정입니다.");
