@@ -12,7 +12,7 @@ const startKakaoOAuth = (mode) => {
   const clientId = import.meta.env.VITE_KAKAO_CLIENT_ID;
 
   if (!clientId) {
-    throw new Error("카카오 REST API 키가 설정되지 않았습니다.");
+    throw new Error("카카오 로그인 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.");
   }
 
   const state =

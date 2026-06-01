@@ -30,7 +30,7 @@ public class LoginAttemptRedisService {
         String locked = redisTemplate.opsForValue().get(lockKey(email));
 
         if (locked != null) {
-            throw new IllegalArgumentException("로그인 실패 횟수가 초과되었습니다. 잠시 후 다시 시도해주세요.");
+            throw new IllegalArgumentException("비밀번호 입력 실패가 5회를 초과했습니다. 30분 후 다시 시도해주세요.");
         }
     }
 
@@ -46,7 +46,7 @@ public class LoginAttemptRedisService {
             redisTemplate.opsForValue().set(lockKey(email), "LOCKED", LOCK_TTL);
             redisTemplate.delete(failKey(email));
 
-            throw new IllegalArgumentException("로그인 실패 횟수가 초과되었습니다. 잠시 후 다시 시도해주세요.");
+            throw new IllegalArgumentException("비밀번호 입력 실패가 5회를 초과했습니다. 30분 후 다시 시도해주세요.");
         }
     }
 

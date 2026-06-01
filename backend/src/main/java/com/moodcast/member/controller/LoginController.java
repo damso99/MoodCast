@@ -6,10 +6,18 @@ import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
 import com.moodcast.member.dto.password.PasswordChangeRequest;
+import com.moodcast.member.dto.recovery.FindEmailCodeRequest;
+import com.moodcast.member.dto.recovery.FindEmailResult;
+import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
+import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
+import com.moodcast.member.dto.recovery.PasswordResetRequest;
+import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
+import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
 import com.moodcast.member.dto.follow.FollowItemResponse;
+import com.moodcast.member.service.AccountRecoveryService;
 import com.moodcast.member.service.LoginAuditService;
 import com.moodcast.member.service.LoginService;
 import com.moodcast.member.service.JwtService;
@@ -35,6 +43,9 @@ public class LoginController {
 
     @Autowired
     private LoginAuditService loginAuditService;
+
+    @Autowired
+    private AccountRecoveryService accountRecoveryService;
 
     private String getClientIp(HttpServletRequest request) {
         String forwardedFor = request.getHeader("X-Forwarded-For");
@@ -194,6 +205,92 @@ public class LoginController {
                                 "message", "비밀번호가 변경되었습니다. 다시 로그인해주세요."
                         )
                 );
+    }
+
+    @PostMapping("recovery/email/send-phone-code")
+    public ResponseEntity<?> sendFindEmailPhoneCode(
+            @RequestBody FindEmailCodeRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        PhoneAuthSendResult result = accountRecoveryService.sendFindEmailPhoneCode(request, getClientIp(httpRequest));
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
+                        "phone", result.getPhone(),
+                        "authCode", result.getAuthCode()
+                )
+        );
+    }
+
+    @PostMapping("recovery/email/verify")
+    public ResponseEntity<?> verifyFindEmailCode(@RequestBody FindEmailVerifyRequest request) {
+        FindEmailResult result = accountRecoveryService.verifyFindEmailCode(request);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "가입 계정을 찾았습니다.",
+                        "email", result.getEmail(),
+                        "kakaoLinked", result.isKakaoLinked()
+                )
+        );
+    }
+
+    @PostMapping("recovery/password/send-phone-code")
+    public ResponseEntity<?> sendPasswordResetPhoneCode(
+            @RequestBody PasswordResetCodeRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        PhoneAuthSendResult result = accountRecoveryService.sendPasswordResetPhoneCode(request, getClientIp(httpRequest));
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
+                        "phone", result.getPhone(),
+                        "authCode", result.getAuthCode()
+                )
+        );
+    }
+
+    @PostMapping("recovery/password/verify")
+    public ResponseEntity<?> verifyPasswordResetCode(@RequestBody PasswordResetVerifyRequest request) {
+        accountRecoveryService.verifyPasswordResetCode(request);
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "휴대폰 인증이 완료되었습니다. 새 비밀번호를 입력해주세요."
+                )
+        );
+    }
+
+    @PostMapping("recovery/password/reset")
+    public ResponseEntity<?> resetPassword(
+            @RequestBody PasswordResetRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        accountRecoveryService.resetPassword(request);
+
+        loginAuditService.record(
+                null,
+                request == null || request.getEmail() == null ? null : request.getEmail().trim().toLowerCase(),
+                null,
+                "PASSWORD_CHANGE",
+                true,
+                null,
+                getClientIp(httpRequest),
+                getUserAgent(httpRequest)
+        );
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "비밀번호가 재설정되었습니다. 다시 로그인해주세요."
+                )
+        );
     }
 
     @PostMapping("withdraw")

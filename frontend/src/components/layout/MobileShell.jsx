@@ -1,12 +1,33 @@
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { SearchModal } from '../common/SearchModal';
 import { BottomNav } from './BottomNav';
 import styles from './MobileShell.module.css';
 
 export function MobileShell({ title, children, hideSearch = false, fixedContent = false, hideBottomNav = false }) {
+  const navigate = useNavigate();
+  const { isLoggedIn, member } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+
+  const goProfile = () => {
+    setNotificationOpen(false);
+
+    if (!isLoggedIn) {
+      navigate('/auth/login');
+      return;
+    }
+
+    if (member?.memberId) {
+      navigate(`/app/user/${member.memberId}`);
+      return;
+    }
+
+    navigate('/app/profile');
+  };
 
   // 모바일 전용 레이아웃: 상단 바, 콘텐츠, 하단 탭 네비게이션을 구성합니다.
   return (
@@ -25,13 +46,21 @@ export function MobileShell({ title, children, hideSearch = false, fixedContent 
               type="button"
               className={styles.iconButton}
               aria-label="알림"
+              aria-expanded={notificationOpen}
+              onClick={() => setNotificationOpen((value) => !value)}
             >
               <NotificationsNoneOutlinedIcon />
             </button>
-            <button type="button" className={styles.avatarButton} aria-label="프로필">
-              <img src="/MoodCast-logo.svg" alt="" />
+            <button type="button" className={styles.avatarButton} aria-label="프로필로 이동" onClick={goProfile}>
+              <img src={member?.profileImageUrl || '/MoodCast-logo.svg'} alt="" />
             </button>
           </div>
+          {notificationOpen ? (
+            <div className={styles.notificationCard}>
+              <strong>알림</strong>
+              <p>새로운 알림이 없습니다.</p>
+            </div>
+          ) : null}
         </header>
         <div
           className={`${styles.content} ${hideSearch ? styles.compactContent : ''} ${fixedContent ? styles.fixedContent : ''}`}

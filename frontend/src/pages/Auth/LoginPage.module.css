@@ -161,6 +161,70 @@
   font-weight: 800;
 }
 
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #f5f2ff;
+}
+
+.tabs button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  color: #726985;
+  background: transparent;
+  font-weight: 900;
+}
+
+.tabs .tabActive {
+  color: #fff;
+  background: #7b3ff2;
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.18);
+}
+
+.codeRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: end;
+  gap: 10px;
+}
+
+.secondary {
+  min-height: 50px;
+  border: 1px solid #ddd8ff;
+  border-radius: 14px;
+  color: #7b3ff2;
+  background: #f6f2ff;
+  font-weight: 900;
+}
+
+.secondary:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.resultBox {
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid #ddd8ff;
+  border-radius: 14px;
+  color: #30274f;
+  background: #faf8ff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.resultBox span {
+  display: block;
+  margin-top: 6px;
+  color: #7b3ff2;
+  font-size: 0.82rem;
+}
+
 .primary,
 .socialButton {
   display: inline-flex;
@@ -268,16 +332,63 @@
 @media (max-width: 520px) {
   .page {
     place-items: start center;
-    padding: 18px 12px;
+    padding: 14px 10px;
   }
 
   .card {
-    padding: 26px 18px 24px;
+    padding: 24px 16px 22px;
     border-radius: 20px;
+    gap: 18px;
+  }
+
+  .header h1 {
+    font-size: 1.42rem;
   }
 
   .options {
+    gap: 12px;
+  }
+
+  .optionRow {
     align-items: flex-start;
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .findLinks {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .findLinks button,
+  .signupText button {
+    min-height: 36px;
+    padding: 0 4px;
+  }
+
+  .codeRow {
+    grid-template-columns: 1fr;
+  }
+
+  .secondary {
+    width: 100%;
+  }
+
+  .field input,
+  .primary,
+  .socialButton,
+  .secondary {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 360px) {
+  .card {
+    padding-inline: 14px;
+  }
+
+  .divider {
+    gap: 9px;
+    font-size: 0.74rem;
   }
 }

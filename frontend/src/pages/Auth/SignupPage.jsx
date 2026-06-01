@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { SignupView } from "./components/SignupView";
+import { getApiMessage, getToastDuration } from "./authFeedback";
 import { startKakaoLogin } from "./socialAuth";
 
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
@@ -74,12 +75,16 @@ export const SignupPage = () => {
     type: "",
     message: "",
   });
+  const [signupCompleteModalOpen, setSignupCompleteModalOpen] = useState(false);
 
   const showToast = (type, message) => {
+    const duration = getToastDuration(type);
+
     setToast({
       show: true,
       type: type,
       message: message,
+      duration: duration,
     });
 
     setTimeout(() => {
@@ -88,7 +93,7 @@ export const SignupPage = () => {
         type: "",
         message: "",
       });
-    }, 2500);
+    }, duration);
   };
 
   // 이메일
@@ -289,7 +294,7 @@ export const SignupPage = () => {
     if (!nicknameRegex.test(nickname)) {
       return {
         status: "invalid",
-        message: "한글/영문/숫자 2~12자",
+        message: "닉네임은 한글, 영문, 숫자만 사용해 2~12자로 입력해주세요.",
       };
     }
 
@@ -310,7 +315,7 @@ export const SignupPage = () => {
     if (!passwordRegex.test(value)) {
       return {
         status: "invalid",
-        message: "영문/숫자/특수문자 포함 8~20자",
+        message: "영문, 숫자, 특수문자를 포함해 8~20자로 입력해주세요.",
       };
     }
 
@@ -461,7 +466,7 @@ export const SignupPage = () => {
     if (!nicknameRegex.test(nickname)) {
       setFieldMessage((prev) => ({
         ...prev,
-        nickname: "한글/영문/숫자 2~12자",
+        nickname: "닉네임은 한글, 영문, 숫자만 사용해 2~12자로 입력해주세요.",
       }));
 
       setFieldStatus((prev) => ({
@@ -566,15 +571,14 @@ export const SignupPage = () => {
         setEmailAuth(1);
         setEmailCooldown(60);
         setEmailExpireTime(180);
-        showToast("success", res.data.message);
+        showToast("success", res.data?.message || "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
         console.log(err);
         setEmailAuth(0);
         showToast(
           "error",
-          err.response?.data?.message ||
-            "이메일 인증 요청 중 오류가 발생했습니다.",
+          getApiMessage(err, "이메일 주소와 요청 제한을 확인해주세요."),
         );
       })
       .finally(() => {
@@ -607,15 +611,14 @@ export const SignupPage = () => {
         console.log(res);
         setEmailAuth(3);
         setEmailExpireTime(0);
-        showToast("success", res.data.message);
+        showToast("success", res.data?.message || "이메일 인증이 완료되었습니다.");
       })
       .catch((err) => {
         console.log(err);
         setEmailAuth(1);
         showToast(
           "error",
-          err.response?.data?.message ||
-            "이메일 인증 확인 중 오류가 발생했습니다.",
+          getApiMessage(err, "이메일 인증번호를 확인해주세요."),
         );
       });
   };
@@ -672,8 +675,7 @@ export const SignupPage = () => {
         console.log(err);
         showToast(
           "error",
-          err.response?.data?.message ||
-            "기본 정보 확인 중 오류가 발생했습니다.",
+          getApiMessage(err, "입력한 기본 정보를 다시 확인해주세요."),
         );
       });
   };
@@ -706,14 +708,13 @@ export const SignupPage = () => {
         if (res.data.authCode) {
           console.log("휴대폰 인증번호:", res.data.authCode);
         }
-        showToast("success", res.data.message);
+        showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
         setPhoneAuth(0);
         showToast(
           "error",
-          err.response?.data?.message ||
-            "인증번호 발송 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+          getApiMessage(err, "휴대폰 번호와 요청 제한을 확인해주세요."),
         );
       })
       .finally(() => {
@@ -745,13 +746,13 @@ export const SignupPage = () => {
       .then((res) => {
         setPhoneAuth(3);
         setPhoneExpireTime(0);
-        showToast("success", res?.data?.message);
+        showToast("success", res?.data?.message || "휴대폰 인증이 완료되었습니다.");
       })
       .catch((err) => {
         setPhoneAuth(1);
         showToast(
           "error",
-          err.response?.data?.message || "인증 오류가 발생했습니다.",
+          getApiMessage(err, "휴대폰 인증번호를 확인해주세요."),
         );
       });
   };
@@ -783,8 +784,7 @@ export const SignupPage = () => {
         console.log(err);
         showToast(
           "error",
-          err.response?.data?.message ||
-            "다음 단계 준비 중 오류가 발생했습니다.",
+          getApiMessage(err, "휴대폰 인증 상태를 다시 확인해주세요."),
         );
       });
   };
@@ -879,16 +879,12 @@ export const SignupPage = () => {
         agreements: getAgreementList(),
       })
       .then((res) => {
-        showToast("success", res.data.message);
-
-        setTimeout(() => {
-          navigate("/auth/login");
-        }, 700);
+        setSignupCompleteModalOpen(true);
       })
       .catch((err) => {
         showToast(
           "error",
-          err.response?.data?.message || "회원가입 중 오류가 발생했습니다.",
+          getApiMessage(err, "회원가입 정보를 다시 확인해주세요."),
         );
       })
       .finally(() => {
@@ -897,7 +893,7 @@ export const SignupPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 백엔드 연결 후 사용할 수 있습니다.`);
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 간편가입을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {
@@ -948,6 +944,8 @@ export const SignupPage = () => {
       phoneExpireTime={phoneExpireTime}
       termsLoading={termsLoading}
       signupSubmitting={signupSubmitting}
+      signupCompleteModalOpen={signupCompleteModalOpen}
+      goSignupCompleteLogin={() => navigate("/auth/login", { replace: true })}
     />
   );
 };

@@ -53,7 +53,7 @@ public class LoginService {
     // 비밀번호 null, 빈값 체크
     private String checkPasswordInput(String password) {
         if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("비밀번호를 입력해주세요");
+            throw new IllegalArgumentException("비밀번호를 입력해주세요.");
         }
 
         return password;
@@ -82,11 +82,11 @@ public class LoginService {
     // 인증 미완료, 탈퇴, 정지 체크
     public void checkLoginAllowed(Member member) {
         if ("SUSPENDED".equals(member.getStatus())) {
-            throw new IllegalArgumentException("정지된 계정입니다.");
+            throw new IllegalArgumentException("현재 이용이 제한된 계정입니다. 계정 상태를 확인해주세요.");
         }
 
         if ("WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null) {
-            throw new IllegalArgumentException("탈퇴한 계정입니다.");
+            throw new IllegalArgumentException("탈퇴 처리된 계정입니다. 다른 계정으로 로그인해주세요.");
         }
 
         if (!Integer.valueOf(1).equals(member.getEmailVerified())) {
@@ -120,7 +120,7 @@ public class LoginService {
     @Transactional
     public LoginResult login(LoginRequest request) {
         if (request == null) {
-            throw new IllegalArgumentException("로그인 정보를 입력해주세요.");
+            throw new IllegalArgumentException("이메일과 비밀번호를 입력해주세요.");
         }
 
         String email = memberValidationService.normalizeEmail(request.getEmail());
@@ -227,7 +227,7 @@ public class LoginService {
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(memberId);
 
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 변경을 사용할 수 없습니다.");
+            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 변경을 사용할 수 없습니다. 연결된 소셜 로그인을 이용해주세요.");
         }
 
         if (!passwordEncoder.matches(currentPassword, currentPasswordHash)) {
@@ -276,7 +276,7 @@ public class LoginService {
 
         if (passwordHash == null || passwordHash.trim().isEmpty()) {
             if (!"탈퇴합니다".equals(request.getConfirmText())) {
-                throw new IllegalArgumentException("탈퇴 확인 문구를 입력해주세요.");
+                throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 대신 '탈퇴합니다' 문구를 입력해야 합니다.");
             }
         } else {
             String password = checkPasswordInput(request.getPassword());

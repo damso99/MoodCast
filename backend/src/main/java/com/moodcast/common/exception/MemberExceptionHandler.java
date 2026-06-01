@@ -42,16 +42,16 @@ public class MemberExceptionHandler {
 
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<?> handleDuplicateKeyException(DuplicateKeyException e) {
-        String message = "이미 사용중인 정보입니다.";
+        String message = "이미 사용 중인 정보입니다.";
         String detail = e.getMessage();
 
         if (detail != null) {
             if (detail.contains("uk_members_email")) {
-                message = "이미 사용중인 이메일입니다.";
+                message = "이미 사용 중인 이메일입니다.";
             } else if (detail.contains("uk_members_phone")) {
-                message = "이미 사용중인 전화번호입니다.";
+                message = "이미 사용 중인 휴대폰 번호입니다.";
             } else if (detail.contains("uk_members_nickname")) {
-                message = "이미 사용중인 닉네임입니다.";
+                message = "이미 사용 중인 닉네임입니다.";
             } else if (detail.contains("uk_oauth_provider_user") || detail.contains("uk_oauth_member_provider")) {
                 message = "이미 연결된 소셜 계정입니다.";
             }
@@ -73,7 +73,7 @@ public class MemberExceptionHandler {
         return ResponseEntity.badRequest().body(
                 Map.of(
                         "success", false,
-                        "message", "요청값이 올바르지 않습니다."
+                        "message", "입력값 형식이 올바르지 않습니다. 다시 확인해주세요."
                 )
         );
     }
@@ -83,7 +83,7 @@ public class MemberExceptionHandler {
         return ResponseEntity.internalServerError().body(
                 Map.of(
                         "success", false,
-                        "message", "서버 오류가 발생했습니다. 500 Server"
+                        "message", "서버에서 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요."
                 )
         );
     }
