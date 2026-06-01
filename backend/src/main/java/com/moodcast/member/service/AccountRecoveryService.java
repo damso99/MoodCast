@@ -1,0 +1,274 @@
+package com.moodcast.member.service;
+
+import com.moodcast.member.dao.LoginDao;
+import com.moodcast.member.dao.PasswordHistoryDao;
+import com.moodcast.member.dto.recovery.FindEmailCodeRequest;
+import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
+import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
+import com.moodcast.member.dto.recovery.PasswordResetRequest;
+import com.moodcast.member.dto.signup.PhoneAuthSendResult;
+import com.moodcast.member.vo.Member;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.security.SecureRandom;
+import java.util.List;
+import java.util.regex.Pattern;
+
+@Service
+public class AccountRecoveryService {
+    private static final String FIND_EMAIL_PURPOSE = "FIND_EMAIL";
+    private static final String RESET_PASSWORD_PURPOSE = "RESET_PASSWORD";
+    private static final String PHONE_TARGET_TYPE = "PHONE";
+
+    private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("^010[0-9]{8}$");
+    private static final Pattern PASSWORD_PATTERN =
+            Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[?!@#$%^&*])[A-Za-z\\d?!@#$%^&*]{8,20}$");
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private final LoginDao loginDao;
+    private final PasswordHistoryDao passwordHistoryDao;
+    private final MemberValidationService memberValidationService;
+    private final AuthCodeRedisService authCodeRedisService;
+    private final RefreshTokenRedisService refreshTokenRedisService;
+    private final PasswordEncoder passwordEncoder;
+
+    public AccountRecoveryService(
+            LoginDao loginDao,
+            PasswordHistoryDao passwordHistoryDao,
+            MemberValidationService memberValidationService,
+            AuthCodeRedisService authCodeRedisService,
+            RefreshTokenRedisService refreshTokenRedisService,
+            PasswordEncoder passwordEncoder
+    ) {
+        this.loginDao = loginDao;
+        this.passwordHistoryDao = passwordHistoryDao;
+        this.memberValidationService = memberValidationService;
+        this.authCodeRedisService = authCodeRedisService;
+        this.refreshTokenRedisService = refreshTokenRedisService;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    private String normalizeName(String name) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("이름을 입력해주세요.");
+        }
+
+        name = name.trim();
+
+        if (!NAME_PATTERN.matcher(name).matches()) {
+            throw new IllegalArgumentException("이름은 한글 2~10자로 입력해주세요.");
+        }
+
+        return name;
+    }
+
+    private String normalizePhone(String phone) {
+        if (phone == null || phone.trim().isEmpty()) {
+            throw new IllegalArgumentException("전화번호를 입력해주세요.");
+        }
+
+        phone = phone.trim();
+
+        if (!PHONE_PATTERN.matcher(phone).matches()) {
+            throw new IllegalArgumentException("전화번호 형식이 올바르지 않습니다.");
+        }
+
+        return phone;
+    }
+
+    private String createAuthCode() {
+        int number = SECURE_RANDOM.nextInt(900000) + 100000;
+        return String.valueOf(number);
+    }
+
+    private void checkActiveMember(Member member) {
+        if (member == null || "SUSPENDED".equals(member.getStatus())
+                || "WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null
+                || !Integer.valueOf(1).equals(member.getEmailVerified())
+                || !Integer.valueOf(1).equals(member.getPhoneVerified())) {
+            throw new IllegalArgumentException("입력한 정보와 일치하는 계정을 찾을 수 없습니다.");
+        }
+    }
+
+    private void checkAuthCode(String purpose, String targetType, String targetValue, String authCode) {
+        if (authCode == null || authCode.trim().isEmpty()) {
+            throw new IllegalArgumentException("인증번호를 입력해주세요.");
+        }
+
+        authCode = authCode.trim();
+
+        if (!authCode.matches("^[0-9]{6}$")) {
+            throw new IllegalArgumentException("인증번호는 숫자 6자리입니다.");
+        }
+
+        String savedHashCode = authCodeRedisService.getAuthCodeHash(purpose, targetType, targetValue);
+        if (savedHashCode == null) {
+            throw new IllegalArgumentException("인증번호가 만료되었습니다. 인증번호를 다시 요청해주세요.");
+        }
+
+        long currentAttemptCount = authCodeRedisService.getAttemptCount(purpose, targetType, targetValue);
+        if (currentAttemptCount >= 5) {
+            throw new IllegalArgumentException("인증번호 입력 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
+        }
+
+        if (!passwordEncoder.matches(authCode, savedHashCode)) {
+            Long attemptCount = authCodeRedisService.increaseAttempt(purpose, targetType, targetValue);
+
+            if (attemptCount >= 5) {
+                throw new IllegalArgumentException("인증번호 입력 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
+            }
+
+            throw new IllegalArgumentException("인증번호가 올바르지 않습니다.");
+        }
+
+        authCodeRedisService.markVerified(purpose, targetType, targetValue);
+    }
+
+    private void checkNewPassword(String newPassword, String newPasswordConfirm) {
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            throw new IllegalArgumentException("새 비밀번호를 입력해주세요.");
+        }
+
+        if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
+            throw new IllegalArgumentException("비밀번호는 영문, 숫자, 특수문자를 포함한 8~20자입니다.");
+        }
+
+        if (newPasswordConfirm == null || newPasswordConfirm.trim().isEmpty()) {
+            throw new IllegalArgumentException("새 비밀번호 확인을 입력해주세요.");
+        }
+
+        if (!newPassword.equals(newPasswordConfirm)) {
+            throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
+        }
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return "";
+        }
+
+        String[] parts = email.split("@", 2);
+        String local = parts[0];
+        String domain = parts[1];
+        String visible = local.length() <= 2 ? local.substring(0, 1) : local.substring(0, 2);
+
+        return visible + "****@" + domain;
+    }
+
+    // 이름과 휴대폰이 일치하는 계정에 아이디 찾기 인증번호를 발급함
+    @Transactional
+    public PhoneAuthSendResult sendFindEmailPhoneCode(FindEmailCodeRequest request, String clientIp) {
+        if (request == null) {
+            throw new IllegalArgumentException("계정 찾기 정보를 입력해주세요.");
+        }
+
+        String name = normalizeName(request.getName());
+        String phone = normalizePhone(request.getPhone());
+
+        Member member = loginDao.findMemberByNameAndPhone(name, phone);
+        checkActiveMember(member);
+
+        authCodeRedisService.checkCooldown(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
+        authCodeRedisService.checkAndIncreaseIpSendCount(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, clientIp);
+        authCodeRedisService.checkAndIncreaseSendCount(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
+
+        String authCode = createAuthCode();
+        authCodeRedisService.saveAuthCode(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone, passwordEncoder.encode(authCode));
+
+        System.out.println("아이디 찾기 휴대폰 인증번호: " + authCode);
+        return new PhoneAuthSendResult(phone, authCode);
+    }
+
+    // 아이디 찾기 인증번호가 맞으면 마스킹된 이메일을 반환함
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
+    public String verifyFindEmailCode(FindEmailVerifyRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("계정 찾기 정보를 입력해주세요.");
+        }
+
+        String name = normalizeName(request.getName());
+        String phone = normalizePhone(request.getPhone());
+
+        Member member = loginDao.findMemberByNameAndPhone(name, phone);
+        checkActiveMember(member);
+        checkAuthCode(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
+
+        authCodeRedisService.clearAuth(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
+
+        return maskEmail(member.getEmail());
+    }
+
+    // 이메일과 휴대폰이 일치하는 일반 계정에 비밀번호 재설정 인증번호를 발급함
+    @Transactional
+    public PhoneAuthSendResult sendPasswordResetPhoneCode(PasswordResetCodeRequest request, String clientIp) {
+        if (request == null) {
+            throw new IllegalArgumentException("비밀번호 재설정 정보를 입력해주세요.");
+        }
+
+        String email = memberValidationService.normalizeEmail(request.getEmail());
+        String phone = normalizePhone(request.getPhone());
+
+        Member member = loginDao.findMemberByEmailAndPhone(email, phone);
+        checkActiveMember(member);
+
+        String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
+        if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
+        }
+
+        authCodeRedisService.checkCooldown(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
+        authCodeRedisService.checkAndIncreaseIpSendCount(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, clientIp);
+        authCodeRedisService.checkAndIncreaseSendCount(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
+
+        String authCode = createAuthCode();
+        authCodeRedisService.saveAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, passwordEncoder.encode(authCode));
+
+        System.out.println("비밀번호 재설정 휴대폰 인증번호: " + authCode);
+        return new PhoneAuthSendResult(phone, authCode);
+    }
+
+    // 인증번호 확인 후 비밀번호를 재설정하고 모든 refresh 세션을 폐기함
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
+    public void resetPassword(PasswordResetRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("비밀번호 재설정 정보를 입력해주세요.");
+        }
+
+        String email = memberValidationService.normalizeEmail(request.getEmail());
+        String phone = normalizePhone(request.getPhone());
+        checkNewPassword(request.getNewPassword(), request.getNewPasswordConfirm());
+
+        Member member = loginDao.findMemberByEmailAndPhone(email, phone);
+        checkActiveMember(member);
+
+        String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
+        if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("소셜 로그인 계정은 카카오 로그인을 이용해주세요.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), currentPasswordHash)) {
+            throw new IllegalArgumentException("현재 비밀번호와 다른 비밀번호를 사용해주세요.");
+        }
+
+        List<String> recentPasswordHashes = passwordHistoryDao.findRecentPasswordHashes(member.getMemberId(), 3);
+        for (String recentPasswordHash : recentPasswordHashes) {
+            if (passwordEncoder.matches(request.getNewPassword(), recentPasswordHash)) {
+                throw new IllegalArgumentException("최근 사용한 비밀번호는 다시 사용할 수 없습니다.");
+            }
+        }
+
+        checkAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
+
+        int updateResult = loginDao.updatePasswordHash(member.getMemberId(), passwordEncoder.encode(request.getNewPassword()));
+        if (updateResult != 1) {
+            throw new IllegalStateException("비밀번호 재설정에 실패했습니다.");
+        }
+
+        passwordHistoryDao.insertPasswordHistory(member.getMemberId(), currentPasswordHash);
+        refreshTokenRedisService.deleteAllRefreshTokens(member.getMemberId());
+        authCodeRedisService.clearAuth(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
+    }
+}

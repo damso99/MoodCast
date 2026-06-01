@@ -161,6 +161,63 @@
   font-weight: 800;
 }
 
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #f5f2ff;
+}
+
+.tabs button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  color: #726985;
+  background: transparent;
+  font-weight: 900;
+}
+
+.tabs .tabActive {
+  color: #fff;
+  background: #7b3ff2;
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.18);
+}
+
+.codeRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  align-items: end;
+  gap: 10px;
+}
+
+.secondary {
+  min-height: 50px;
+  border: 1px solid #ddd8ff;
+  border-radius: 14px;
+  color: #7b3ff2;
+  background: #f6f2ff;
+  font-weight: 900;
+}
+
+.secondary:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.resultBox {
+  margin: 0;
+  padding: 13px 14px;
+  border: 1px solid #ddd8ff;
+  border-radius: 14px;
+  color: #30274f;
+  background: #faf8ff;
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: center;
+}
+
 .primary,
 .socialButton {
   display: inline-flex;
@@ -279,5 +336,9 @@
   .options {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .codeRow {
+    grid-template-columns: 1fr;
   }
 }
