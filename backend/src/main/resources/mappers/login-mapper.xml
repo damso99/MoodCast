@@ -32,6 +32,52 @@
         limit 1
     </select>
 
+    <select id="findMemberByNameAndPhone" resultType="member">
+        select
+            member_id,
+            email,
+            name,
+            nickname,
+            phone,
+            profile_image_url,
+            bio,
+            email_verified,
+            phone_verified,
+            role,
+            status,
+            last_login_at,
+            created_at,
+            updated_at,
+            deleted_at
+        from members
+        where name = #{name}
+          and phone = #{phone}
+        limit 1
+    </select>
+
+    <select id="findMemberByEmailAndPhone" resultType="member">
+        select
+            member_id,
+            email,
+            name,
+            nickname,
+            phone,
+            profile_image_url,
+            bio,
+            email_verified,
+            phone_verified,
+            role,
+            status,
+            last_login_at,
+            created_at,
+            updated_at,
+            deleted_at
+        from members
+        where email = #{email}
+          and phone = #{phone}
+        limit 1
+    </select>
+
     <select id="findPasswordHashByMemberId" resultType="String">
         select
             password_hash

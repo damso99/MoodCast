@@ -139,6 +139,10 @@ export const LoginPage = () => {
     navigate("/auth/signup");
   };
 
+  const goRecovery = (mode) => {
+    navigate(`/auth/recovery?mode=${mode}`);
+  };
+
   return (
     <LoginView
       member={member}
@@ -149,6 +153,7 @@ export const LoginPage = () => {
       handleLogin={handleLogin}
       handleKakaoLogin={handleKakaoLogin}
       showReadyMessage={showReadyMessage}
+      goRecovery={goRecovery}
       goSignup={goSignup}
     />
   );
