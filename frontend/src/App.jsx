@@ -15,6 +15,8 @@ import { CreatePostPage } from "./pages/CreatePost/CreatePostPage";
 import { PostDetailPage } from "./pages/PostDetail/PostDetailPage";
 import { ProfileSetupPage } from "./pages/ProfileSetup/ProfileSetupPage";
 import { LoginPage } from "./pages/Auth/LoginPage";
+import { SocialCallbackPage } from "./pages/Auth/SocialCallbackPage";
+import { SocialExtraSignupPage } from "./pages/Auth/SocialExtraSignupPage";
 import { AdminRoutes } from "./pages/Admin/AdminPages";
 import { SignupPage } from "./pages/Auth/SignupPage";
 import { useEffect, useState } from "react";
@@ -146,6 +148,8 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/app/feed" replace />} />
       <Route path="/auth/login" element={<LoginPage />} />
       <Route path="/auth/signup" element={<SignupPage />} />
+      <Route path="/auth/kakao/callback" element={<SocialCallbackPage />} />
+      <Route path="/auth/social/signup" element={<SocialExtraSignupPage />} />
       <Route path="/auth/setup" element={<ProfileSetupPage />} />
       <Route path="/app/login" element={<LoginPage />} />
       <Route path="/app/signup" element={<SignupPage />} />

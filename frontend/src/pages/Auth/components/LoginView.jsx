@@ -9,6 +9,7 @@ export const LoginView = ({
   isLoading,
   inputMember,
   handleLogin,
+  handleKakaoLogin,
   showReadyMessage,
   goSignup,
 }) => {
@@ -112,7 +113,7 @@ export const LoginView = ({
           <button
             type="button"
             className={`${styles.socialButton} ${styles.kakao}`}
-            onClick={() => showReadyMessage("카카오 로그인")}
+            onClick={handleKakaoLogin}
           >
             <ChatBubbleRoundedIcon fontSize="small" />
             카카오로 로그인

@@ -79,7 +79,7 @@ public class LoginService {
 
     // 회원이 로그인 가능한 상태인지 체크
     // 인증 미완료, 탈퇴, 정지 체크
-    private void checkLoginAllowed(Member member) {
+    public void checkLoginAllowed(Member member) {
         if ("SUSPENDED".equals(member.getStatus())) {
             throw new IllegalArgumentException("정지된 계정입니다.");
         }

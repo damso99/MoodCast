@@ -1,6 +1,7 @@
 package com.moodcast.common.exception;
 
 import com.moodcast.member.controller.LoginController;
+import com.moodcast.member.controller.OAuthController;
 import com.moodcast.member.controller.SignupController;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -13,7 +14,8 @@ import java.util.Map;
 // SignupController와 LoginController에서 발생한 예외를 함께 처리한다.
 @RestControllerAdvice(assignableTypes = {
         SignupController.class,
-        LoginController.class
+        LoginController.class,
+        OAuthController.class
 })
 public class MemberExceptionHandler {
 

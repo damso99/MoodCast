@@ -22,6 +22,7 @@ export const SignupView = ({
   movePrevStep,
   toggleTerm,
   completeSignup,
+  handleKakaoLogin,
   showReadyMessage,
   goLogin,
   toast,
@@ -353,7 +354,7 @@ export const SignupView = ({
                     <button
                       type="button"
                       className={`${styles.socialButton} ${styles.kakao}`}
-                      onClick={() => showReadyMessage("카카오 간편가입")}
+                      onClick={handleKakaoLogin}
                       aria-label="카카오로 간편가입"
                     >
                       <ChatBubbleRoundedIcon fontSize="small" />

@@ -13,6 +13,11 @@ jwt:
   refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:14}
   refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:moodcast_refresh_token}
 
+oauth:
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
+
 spring:
   config:
     import: optional:file:.env[.properties]

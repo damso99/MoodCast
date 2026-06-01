@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
+import { startKakaoLogin } from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
 
@@ -126,6 +127,14 @@ export const LoginPage = () => {
     showToast("info", `${label}은 백엔드 연결 후 사용할 수 있습니다.`);
   };
 
+  const handleKakaoLogin = () => {
+    try {
+      startKakaoLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
   const goSignup = () => {
     navigate("/auth/signup");
   };
@@ -138,6 +147,7 @@ export const LoginPage = () => {
       isLoading={isLoading}
       inputMember={inputMember}
       handleLogin={handleLogin}
+      handleKakaoLogin={handleKakaoLogin}
       showReadyMessage={showReadyMessage}
       goSignup={goSignup}
     />

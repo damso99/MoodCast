@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { SignupView } from "./components/SignupView";
+import { startKakaoLogin } from "./socialAuth";
 
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const nameRegex = /^[가-힣]{2,10}$/;
@@ -896,6 +897,14 @@ export const SignupPage = () => {
     showToast("info", `${label}은 백엔드 연결 후 사용할 수 있습니다.`);
   };
 
+  const handleKakaoLogin = () => {
+    try {
+      startKakaoLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
   const goLogin = () => {
     navigate("/auth/login");
   };
@@ -919,6 +928,7 @@ export const SignupPage = () => {
       movePrevStep={movePrevStep}
       toggleTerm={toggleTerm}
       completeSignup={completeSignup}
+      handleKakaoLogin={handleKakaoLogin}
       showReadyMessage={showReadyMessage}
       goLogin={goLogin}
       fieldMessage={fieldMessage}

@@ -52,6 +52,7 @@
             name,
             nickname,
             phone,
+            profile_image_url,
             email_verified,
             phone_verified
         ) values (
@@ -60,6 +61,7 @@
             #{name},
             #{nickname},
             #{phone},
+            #{profileImageUrl},
             #{emailVerified},
             #{phoneVerified}
         )
