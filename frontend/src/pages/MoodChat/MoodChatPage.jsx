@@ -901,6 +901,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           <div
             className={`${styles.composerPreviewGrid} ${
               selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+            } ${
+              selectedImages.length >= 2 ? styles.compactComposerPreviewGrid : ""
             }`}
           >
             {selectedImages.map((image) => (

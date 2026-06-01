@@ -598,12 +598,20 @@
   grid-template-columns: minmax(0, 280px);
 }
 
+.compactComposerPreviewGrid {
+  grid-template-columns: repeat(auto-fit, minmax(78px, 1fr));
+  max-height: 176px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .composerPreviewItem {
   position: relative;
   overflow: hidden;
   border-radius: 18px;
   background: rgba(17, 24, 39, 0.05);
   aspect-ratio: 1 / 1;
+  max-height: 92px;
 }
 
 .composerPreviewItem img,
@@ -1037,6 +1045,11 @@
   .composerPreviewGrid,
   .messageMediaGrid {
     gap: 6px;
+  }
+
+  .compactComposerPreviewGrid {
+    grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+    max-height: 144px;
   }
 
   .scrollBottomButton {

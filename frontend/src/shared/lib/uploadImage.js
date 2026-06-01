@@ -85,7 +85,9 @@ function resizeImage(file, maxWidth, maxHeight, quality = 0.85, cropSquare = fal
  * @param {{maxWidth?: number, maxHeight?: number, quality?: number, cropSquare?: boolean, folderType?: 'user-images'|'post-images'}} [options]
  * @returns {Promise<string>} - 서버에 저장된 이미지 접근 URL
  */
-export async function uploadImage(file, token, backserver = 'http://localhost:8080', options = {}) {
+const DEFAULT_BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+
+export async function uploadImage(file, token, backserver = DEFAULT_BACKSERVER, options = {}) {
   let uploadFile = file;
   if (options.maxWidth || options.maxHeight || options.cropSquare) {
     uploadFile = await resizeImage(
