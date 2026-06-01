@@ -90,8 +90,11 @@ export const SocialExtraSignupPage = () => {
       .post(`${BACKSERVER}/signup/auth/phone/send`, {
         phone: form.phone.trim(),
       })
-      .then(() => {
+      .then((res) => {
         setPhoneAuth(1);
+        if (res.data.authCode) {
+          console.log("휴대폰 인증번호:", res.data.authCode);
+        }
         showToast("success", "인증번호가 발송되었습니다.");
       })
       .catch((err) => {

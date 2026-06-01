@@ -1,13 +1,21 @@
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+﻿import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import GroupAddRoundedIcon from '@mui/icons-material/GroupAddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { useEffect, useMemo, useState } from 'react';
 import { defaultAvatarSrc } from '../../../shared/lib/defaultAvatar';
 
 function getDisplayName(member) {
-  return member?.nickname || member?.name || `회원 ${member?.memberId}`;
+  return (
+    member?.nickname ||
+    member?.name ||
+    member?.memberName ||
+    member?.displayName ||
+    member?.userName ||
+    member?.username ||
+    (member?.email ? String(member.email).split("@")[0] : "") ||
+    `회원 ${member?.memberId}`
+  );
 }
-
 export function ChatRoomCreateModal({
   open,
   mode,
@@ -54,7 +62,7 @@ export function ChatRoomCreateModal({
         className="moodchat-modal"
         role="dialog"
         aria-modal="true"
-        aria-label={mode === 'invite' ? '채팅방 멤버 초대' : '채팅방 생성'}
+        aria-label={mode === 'invite' ? '梨꾪똿諛?硫ㅻ쾭 珥덈?' : '梨꾪똿諛??앹꽦'}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="moodchat-modalHeader">
@@ -62,7 +70,7 @@ export function ChatRoomCreateModal({
             <strong>{mode === 'invite' ? '멤버 초대' : '채팅방 만들기'}</strong>
             <p>
               {mode === 'invite'
-                ? '팔로우 목록에서 초대할 사람을 선택하세요.'
+                ? '아래 목록에서 초대할 사람을 선택하세요.'
                 : '1명을 선택하면 1:1, 2명 이상이면 그룹 채팅방으로 생성됩니다.'}
             </p>
           </div>
@@ -75,7 +83,7 @@ export function ChatRoomCreateModal({
           <span>
             {mode === 'invite' && currentRoomName ? `대상 방: ${currentRoomName}` : '초대/생성 대상'}
           </span>
-          <strong>{selectedCount}명 선택됨</strong>
+          <strong>{selectedCount}명 선택</strong>
         </div>
 
         <label className="moodchat-searchField">
@@ -90,11 +98,11 @@ export function ChatRoomCreateModal({
 
         <div className="moodchat-memberList">
           {isLoading ? (
-            <p className="moodchat-emptyState">팔로우 목록을 불러오는 중입니다.</p>
+            <p className="moodchat-emptyState">?붾줈??紐⑸줉??遺덈윭?ㅻ뒗 以묒엯?덈떎.</p>
           ) : null}
 
           {!isLoading && filteredMembers.length === 0 ? (
-            <p className="moodchat-emptyState">표시할 팔로우 목록이 없습니다.</p>
+            <p className="moodchat-emptyState">?쒖떆???붾줈??紐⑸줉???놁뒿?덈떎.</p>
           ) : null}
 
           {!isLoading
@@ -127,7 +135,7 @@ export function ChatRoomCreateModal({
                   <strong>{displayName}</strong>
                   <span>@{member.email ? member.email.split('@')[0] : memberId}</span>
                 </div>
-                <span className="moodchat-checkbox">{isSelected ? '선택' : '+'}</span>
+                <span className="moodchat-checkbox">{isSelected ? '?좏깮' : '+'}</span>
               </button>
             );
           })
@@ -136,7 +144,7 @@ export function ChatRoomCreateModal({
 
         <div className="moodchat-modalActions">
           <button type="button" className="moodchat-secondaryButton" onClick={onClose}>
-            취소
+            痍⑥냼
           </button>
           <button
             type="button"

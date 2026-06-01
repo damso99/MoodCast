@@ -703,6 +703,9 @@ export const SignupPage = () => {
         setPhoneAuth(1);
         setPhoneCooldown(60);
         setPhoneExpireTime(180);
+        if (res.data.authCode) {
+          console.log("휴대폰 인증번호:", res.data.authCode);
+        }
         showToast("success", res.data.message);
       })
       .catch((err) => {

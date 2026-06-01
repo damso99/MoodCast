@@ -14,6 +14,7 @@ import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
 import { uploadChatImages } from "../../../shared/api/fileUploadApi";
 import { EmojiPicker } from "../../../shared/ui/emoji-picker/EmojiPicker";
+import { RichTextContent } from "../../../shared/ui/rich-text/RichTextContent";
 
 function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
@@ -48,9 +49,6 @@ export function GroupChatRoomDetail({
   messages,
   connected,
   currentMemberId,
-  messageInputRef,
-  messageValue,
-  onMessageChange,
   onSubmitMessage,
   onDeleteMessage,
   onLeaveRoom,
@@ -60,6 +58,7 @@ export function GroupChatRoomDetail({
 }) {
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
+  const [messageValue, setMessageValue] = useState("");
   const [selectedImages, setSelectedImages] = useState([]);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [error, setError] = useState("");
@@ -68,6 +67,7 @@ export function GroupChatRoomDetail({
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
+  const messageInputRef = useRef(null);
   const selectedImagesRef = useRef([]);
   const isUserNearBottomRef = useRef(true);
 
@@ -272,6 +272,7 @@ export function GroupChatRoomDetail({
 
   useEffect(() => {
     setIsEmojiPickerOpen(false);
+    setMessageValue("");
     if (!activeRoom?.roomId) {
       clearSelectedImages();
       setError("");
@@ -306,12 +307,15 @@ export function GroupChatRoomDetail({
         uploadedImageUrls = await uploadChatImages(selectedImages.map((item) => item.file));
       }
 
-      await onSubmitMessage({
+      const isSubmitted = await onSubmitMessage({
         text: trimmedMessage,
         imageUrls: uploadedImageUrls,
       });
-      clearSelectedImages();
-      setIsEmojiPickerOpen(false);
+      if (isSubmitted) {
+        clearSelectedImages();
+        setMessageValue("");
+        setIsEmojiPickerOpen(false);
+      }
     } catch (requestError) {
       console.error("그룹 채팅 메시지 전송 실패", requestError);
       setError(
@@ -327,11 +331,7 @@ export function GroupChatRoomDetail({
   };
 
   const handleEmojiSelect = (emoji) => {
-    onMessageChange({
-      target: {
-        value: `${messageValue}${emoji}`,
-      },
-    });
+    setMessageValue((previousMessage) => `${previousMessage}${emoji}`);
     setIsEmojiPickerOpen(false);
     requestAnimationFrame(focusMessageInput);
   };
@@ -498,7 +498,11 @@ export function GroupChatRoomDetail({
                           <span className={styles.unreadMarker}>{unreadCount}</span>
                         ) : null}
                         <div className={`${styles.bubble} ${styles.me}`}>
-                          {item.content ? <p>{item.content}</p> : null}
+                          {item.content ? (
+                            <p>
+                              <RichTextContent content={item.content} className={styles.richTextContent} />
+                            </p>
+                          ) : null}
                           {imageUrls.length > 0 ? (
                             <div
                               className={`${styles.messageMediaGrid} ${
@@ -530,7 +534,11 @@ export function GroupChatRoomDetail({
                     ) : (
                       <>
                         <div className={`${styles.bubble} ${styles.them}`}>
-                          {item.content ? <p>{item.content}</p> : null}
+                          {item.content ? (
+                            <p>
+                              <RichTextContent content={item.content} className={styles.richTextContent} />
+                            </p>
+                          ) : null}
                           {imageUrls.length > 0 ? (
                             <div
                               className={`${styles.messageMediaGrid} ${

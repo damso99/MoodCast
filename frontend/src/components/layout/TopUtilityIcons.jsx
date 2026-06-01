@@ -137,7 +137,16 @@ function TopUtilityIconsBase({ onSearch }) {
         navigate(`/app/post/${item.postId}`);
       }
     } else if (item.eventType === 'CHAT_NOTIFICATION' && item.senderId) {
-      navigate(`/app/chat?partnerId=${item.senderId}`);
+      const partnerName = item.senderNickname || item.senderName || item.senderNameText || '';
+      const searchParams = new URLSearchParams({
+        partnerId: String(item.senderId),
+      });
+
+      if (partnerName) {
+        searchParams.set('partnerName', partnerName);
+      }
+
+      navigate(`/app/chat?${searchParams.toString()}`);
     }
   };
 

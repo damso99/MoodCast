@@ -297,7 +297,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     handleIncomingMessage,
     async (payload) => {
       if (!payload || Number(payload.memberId) === Number(currentMemberId)) {
-        return;
+        return false;
       }
 
       await refreshMessages(payload.roomId, false);
@@ -402,8 +402,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   };
 
   const handleSubmitMessage = async (payload = {}) => {
-    const trimmedValue =
-      typeof payload?.text === "string" ? payload.text.trim() : messageValue.trim();
+    const trimmedValue = typeof payload?.text === "string" ? payload.text.trim() : "";
     const imageUrls = Array.isArray(payload?.imageUrls) ? payload.imageUrls : [];
 
     if (
@@ -478,14 +477,13 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
         await syncRoomReadState(activeRoom.roomId, lastMessageId);
       }
       await refreshRooms();
+      return true;
     } catch (requestError) {
       console.error("Group message send failed", requestError);
       setError(requestError.response?.data?.message || "Unable to send message.");
+      return false;
     } finally {
       setIsSending(false);
-      requestAnimationFrame(() => {
-        messageInputRef.current?.focus();
-      });
     }
   };
 
@@ -528,9 +526,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       messages={messages}
       connected={connected}
       currentMemberId={currentMemberId}
-      messageInputRef={messageInputRef}
-      messageValue={messageValue}
-      onMessageChange={(event) => setMessageValue(event.target.value)}
       onSubmitMessage={handleSubmitMessage}
       onDeleteMessage={handleDeleteMessage}
       onLeaveRoom={leaveRoomHandler}

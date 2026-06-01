@@ -13,8 +13,23 @@ function mergeUniqueMembers(listA, listB) {
 
     memberMap.set(memberId, {
       memberId,
-      name: item?.name || item?.nickname || '',
-      nickname: item?.nickname || item?.name || '',
+      name: item?.name || item?.nickname || item?.memberName || item?.displayName || item?.userName || item?.username || '',
+      nickname:
+        item?.nickname ||
+        item?.name ||
+        item?.memberName ||
+        item?.displayName ||
+        item?.userName ||
+        item?.username ||
+        '',
+      memberName:
+        item?.memberName ||
+        item?.displayName ||
+        item?.userName ||
+        item?.username ||
+        item?.name ||
+        item?.nickname ||
+        '',
       email: item?.email || '',
       profileImageUrl: item?.profileImageUrl || '',
     });

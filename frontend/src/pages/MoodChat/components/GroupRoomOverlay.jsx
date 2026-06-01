@@ -226,8 +226,7 @@ export function GroupRoomOverlay({
       eventOrPayload && typeof eventOrPayload === "object" && typeof eventOrPayload.preventDefault !== "function"
         ? eventOrPayload
         : {};
-    const trimmedMessage =
-      typeof payload.text === "string" ? payload.text.trim() : message.trim();
+    const trimmedMessage = typeof payload.text === "string" ? payload.text.trim() : "";
     const imageUrls = Array.isArray(payload.imageUrls) ? payload.imageUrls : [];
 
     if ((!trimmedMessage && imageUrls.length === 0) || !room?.roomId || !currentMemberId || isSending) {
@@ -243,7 +242,7 @@ export function GroupRoomOverlay({
       });
 
       if (!content) {
-        return;
+        return false;
       }
 
       const pendingMessage = normalizeGroupMessage({
@@ -298,18 +297,12 @@ export function GroupRoomOverlay({
       }
 
       onRoomUpdated?.();
-      setMessage("");
+      return true;
     } catch (error) {
       console.error("Group message send failed", error);
+      return false;
     } finally {
       setIsSending(false);
-      requestAnimationFrame(() => {
-        try {
-          messageInputRef.current?.focus({ preventScroll: true });
-        } catch (error) {
-          messageInputRef.current?.focus();
-        }
-      });
     }
   };
 
@@ -366,9 +359,6 @@ export function GroupRoomOverlay({
         messages={messages}
         connected={connected}
         currentMemberId={currentMemberId}
-        messageInputRef={messageInputRef}
-        messageValue={message}
-        onMessageChange={(event) => setMessage(event.target.value)}
         onSubmitMessage={handleSend}
         onDeleteMessage={handleDeleteMessage}
         onLeaveRoom={handleLeave}

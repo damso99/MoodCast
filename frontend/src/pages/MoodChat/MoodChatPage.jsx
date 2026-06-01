@@ -27,6 +27,7 @@ import {
 } from "../../shared/api/groupChatApi";
 import { uploadChatImages } from "../../shared/api/fileUploadApi";
 import { EmojiPicker } from "../../shared/ui/emoji-picker/EmojiPicker";
+import { RichTextContent } from "../../shared/ui/rich-text/RichTextContent";
 import { ChatRoomCreateModal } from "./components/ChatRoomCreateModal";
 import { GroupRoomOverlay } from "./components/GroupRoomOverlay";
 import styles from "./MoodChatPage.module.css";
@@ -77,7 +78,16 @@ function normalizeGroupMessage(message) {
 }
 
 function getMemberDisplayName(member) {
-  return member?.nickname || member?.name || `회원 ${member?.memberId}`;
+  return (
+    member?.nickname ||
+    member?.name ||
+    member?.memberName ||
+    member?.displayName ||
+    member?.userName ||
+    member?.username ||
+    (member?.email ? String(member.email).split("@")[0] : "") ||
+    `회원 ${member?.memberId}`
+  );
 }
 
 function buildRoomName(selectedMembers) {
@@ -100,10 +110,31 @@ function buildDirectThread(memberItem) {
     roomId: null,
     threadKey: `direct-${memberItem?.memberId}`,
     partnerMemberId: memberItem?.memberId,
-    partnerName: memberItem?.name || "",
-    partnerNickname: memberItem?.nickname || memberItem?.name || "",
+    partnerName:
+      memberItem?.name ||
+      memberItem?.nickname ||
+      memberItem?.memberName ||
+      memberItem?.displayName ||
+      memberItem?.userName ||
+      memberItem?.username ||
+      "",
+    partnerNickname:
+      memberItem?.nickname ||
+      memberItem?.name ||
+      memberItem?.memberName ||
+      memberItem?.displayName ||
+      memberItem?.userName ||
+      memberItem?.username ||
+      "",
     partnerProfileImageUrl: memberItem?.profileImageUrl || "",
-    roomName: memberItem?.nickname || memberItem?.name || "",
+    roomName:
+      memberItem?.nickname ||
+      memberItem?.name ||
+      memberItem?.memberName ||
+      memberItem?.displayName ||
+      memberItem?.userName ||
+      memberItem?.username ||
+      "",
     roomDescription: "",
     lastMessage: "",
     lastMessageAt: "",
@@ -126,10 +157,31 @@ function normalizeDirectThread(thread) {
     roomId: null,
     threadKey: `direct-${thread?.partnerMemberId}`,
     partnerMemberId: thread?.partnerMemberId,
-    partnerName: thread?.partnerName || "",
-    partnerNickname: thread?.partnerNickname || "",
+    partnerName:
+      thread?.partnerName ||
+      thread?.partnerNickname ||
+      thread?.memberName ||
+      thread?.displayName ||
+      thread?.userName ||
+      thread?.username ||
+      "",
+    partnerNickname:
+      thread?.partnerNickname ||
+      thread?.partnerName ||
+      thread?.memberName ||
+      thread?.displayName ||
+      thread?.userName ||
+      thread?.username ||
+      "",
     partnerProfileImageUrl: thread?.partnerProfileImageUrl || "",
-    roomName: thread?.partnerNickname || thread?.partnerName || "",
+    roomName:
+      thread?.partnerNickname ||
+      thread?.partnerName ||
+      thread?.memberName ||
+      thread?.displayName ||
+      thread?.userName ||
+      thread?.username ||
+      "",
     roomDescription: "",
     lastMessage: thread?.lastMessage || "",
     lastMessageAt: thread?.lastMessageAt || "",
@@ -161,6 +213,218 @@ function getThreadSortValue(thread) {
 
   const parsedValue = Date.parse(String(rawValue).replace(" ", "T"));
   return Number.isNaN(parsedValue) ? 0 : parsedValue;
+}
+
+function DirectChatComposer({
+  activeThread,
+  currentMemberId,
+  isSending,
+  isUploadingImages,
+  onSubmitMessage,
+}) {
+  const messageInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const selectedImagesRef = useRef([]);
+  const [messageValue, setMessageValue] = useState("");
+  const [selectedImages, setSelectedImages] = useState([]);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    selectedImagesRef.current = selectedImages;
+  }, [selectedImages]);
+
+  useEffect(() => {
+    return () => {
+      selectedImagesRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+    };
+  }, []);
+
+  const clearSelectedImages = () => {
+    setSelectedImages((previousImages) => {
+      previousImages.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const removeSelectedImage = (imageId) => {
+    setSelectedImages((previousImages) => {
+      const nextImages = previousImages.filter((item) => item.id !== imageId);
+      const removedImage = previousImages.find((item) => item.id === imageId);
+
+      if (removedImage) {
+        URL.revokeObjectURL(removedImage.previewUrl);
+      }
+
+      return nextImages;
+    });
+  };
+
+  const focusMessageInput = () => {
+    if (!messageInputRef.current) {
+      return;
+    }
+
+    try {
+      messageInputRef.current.focus({ preventScroll: true });
+    } catch (focusError) {
+      messageInputRef.current.focus();
+    }
+  };
+
+  const handleImageSelection = (event) => {
+    const files = Array.from(event.target.files || []);
+
+    if (files.length === 0) {
+      return;
+    }
+
+    setError("");
+    setSelectedImages((previousImages) => {
+      const remainingSlots = 5 - previousImages.length;
+      const nextFiles = files.slice(0, Math.max(remainingSlots, 0));
+
+      if (files.length > remainingSlots) {
+        setError("이미지는 최대 5장까지 첨부할 수 있습니다.");
+      }
+
+      return [...previousImages, ...buildImageEntries(nextFiles)];
+    });
+
+    event.target.value = "";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const trimmedMessage = messageValue.trim();
+
+    if (
+      (!trimmedMessage && selectedImages.length === 0) ||
+      !activeThread ||
+      !currentMemberId ||
+      isSending ||
+      isUploadingImages
+    ) {
+      return;
+    }
+
+    setError("");
+    const isSubmitted = await onSubmitMessage?.({
+      text: trimmedMessage,
+      files: selectedImages.map((item) => item.file),
+    });
+
+    if (isSubmitted) {
+      setMessageValue("");
+      clearSelectedImages();
+      setIsEmojiPickerOpen(false);
+    }
+
+    requestAnimationFrame(focusMessageInput);
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    setMessageValue((previousMessage) => `${previousMessage}${emoji}`);
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(focusMessageInput);
+  };
+
+  useEffect(() => {
+    requestAnimationFrame(focusMessageInput);
+  }, [activeThread?.threadKey]);
+
+  return (
+    <form className={styles.composer} onSubmit={handleSubmit}>
+      {selectedImages.length > 0 ? (
+        <div className={styles.composerPreview}>
+          <div className={styles.composerPreviewHead}>
+            <span>첨부 이미지 {selectedImages.length}/5</span>
+            <button type="button" onClick={clearSelectedImages}>
+              전체 삭제
+            </button>
+          </div>
+          <div
+            className={`${styles.composerPreviewGrid} ${
+              selectedImages.length === 1 ? styles.singleComposerPreviewGrid : ""
+            } ${
+              selectedImages.length >= 2 ? styles.compactComposerPreviewGrid : ""
+            }`}
+          >
+            {selectedImages.map((image) => (
+              <div key={image.id} className={styles.composerPreviewItem}>
+                <img src={image.previewUrl} alt={image.file.name} />
+                <button
+                  type="button"
+                  className={styles.composerPreviewRemoveButton}
+                  onClick={() => removeSelectedImage(image.id)}
+                  aria-label="첨부 이미지 삭제"
+                  title="첨부 이미지 삭제"
+                >
+                  <DeleteOutlineRoundedIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {error ? <p className={styles.errorText}>{error}</p> : null}
+
+      <div className={styles.composerRow}>
+        <label className={styles.addButton} aria-label="이미지 추가" title="이미지 추가">
+          <AddRoundedIcon />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImageSelection}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+        </label>
+        <div className={styles.inputShell}>
+          <input
+            ref={messageInputRef}
+            placeholder="메시지를 입력하세요..."
+            value={messageValue}
+            onChange={(event) => setMessageValue(event.target.value)}
+            disabled={!activeThread || isSending || isUploadingImages}
+          />
+          <button
+            type="button"
+            className={styles.emojiButton}
+            aria-label="이모지"
+            title="이모지"
+            disabled={!activeThread || isSending || isUploadingImages}
+            aria-expanded={isEmojiPickerOpen}
+            aria-haspopup="dialog"
+            onClick={() => setIsEmojiPickerOpen((value) => !value)}
+          >
+            <SentimentSatisfiedAltRoundedIcon />
+          </button>
+          <EmojiPicker
+            open={isEmojiPickerOpen}
+            onSelect={handleEmojiSelect}
+            onClose={() => setIsEmojiPickerOpen(false)}
+          />
+        </div>
+        <button
+          type="submit"
+          className={styles.sendButton}
+          aria-label="메시지 보내기"
+          title="메시지 보내기"
+          disabled={!activeThread || isSending || isUploadingImages}
+        >
+          <SendRoundedIcon />
+        </button>
+      </div>
+    </form>
+  );
 }
 
 function ChatBody({ desktop, onRoomOpenChange }) {
@@ -838,11 +1102,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     navigate(`/app/user/${activeThread.partnerMemberId}`);
   };
 
-  const handleSend = async () => {
-    const trimmedMessage = message.trim();
+  const handleSend = async (payload = {}) => {
+    const trimmedMessage =
+      typeof payload?.text === "string" ? payload.text.trim() : message.trim();
+    const selectedFiles = Array.isArray(payload?.files)
+      ? payload.files
+      : selectedImages.map((item) => item.file);
 
     if (
-      (!trimmedMessage && selectedImages.length === 0) ||
+      (!trimmedMessage && selectedFiles.length === 0) ||
       !activeThread ||
       !currentMemberId ||
       isSending ||
@@ -856,9 +1124,9 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
     try {
       let uploadedImageUrls = [];
-      if (selectedImages.length > 0) {
+      if (selectedFiles.length > 0) {
         setIsUploadingImages(true);
-        uploadedImageUrls = await uploadChatImages(selectedImages.map((item) => item.file));
+        uploadedImageUrls = await uploadChatImages(selectedFiles);
       }
 
       const content = serializeChatContent({
@@ -888,17 +1156,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         await loadMessages(activeThread);
       }
 
-      setMessage("");
-      clearSelectedImages();
-      setIsEmojiPickerOpen(false);
       await loadThreads();
+      return true;
     } catch (requestError) {
       console.error("메시지 전송 실패", requestError);
       setError("메시지 전송에 실패했습니다.");
+      return false;
     } finally {
       setIsSending(false);
       setIsUploadingImages(false);
-      requestAnimationFrame(focusMessageInput);
     }
   };
 
@@ -919,6 +1185,16 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const partnerName =
     activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
   const partnerInitial = partnerName.charAt(0).toUpperCase();
+  const directComposer = (
+    <DirectChatComposer
+      key={activeThread?.threadKey || "direct-composer"}
+      activeThread={activeThread}
+      currentMemberId={currentMemberId}
+      isSending={isSending}
+      isUploadingImages={isUploadingImages}
+      onSubmitMessage={handleSend}
+    />
+  );
 
   const threadList = (
     <div className={styles.threadList}>
@@ -1023,7 +1299,11 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                     <span className={styles.unreadMarker}>1</span>
                   ) : null}
                   <div className={styles.bubble}>
-                    {item.text ? <p>{item.text}</p> : null}
+                    {item.text ? (
+                      <p>
+                        <RichTextContent content={item.text} className={styles.richTextContent} />
+                      </p>
+                    ) : null}
                     {Array.isArray(item.imageUrls) && item.imageUrls.length > 0 ? (
                       <div
                         className={`${styles.messageMediaGrid} ${
@@ -1061,7 +1341,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     </div>
   );
 
-  const composer = (
+  const composer = false && (
     <form className={styles.composer} onSubmit={handleSubmit}>
       {selectedImages.length > 0 ? (
         <div className={styles.composerPreview}>
@@ -1255,7 +1535,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           <KeyboardArrowDownRoundedIcon />
         </button>
       ) : null}
-      {composer}
+      {directComposer}
     </div>
   );
 

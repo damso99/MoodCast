@@ -9,7 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { defaultAvatarSrc } from "../../shared/lib/defaultAvatar";
 import { fetchMentionCandidates } from "../../shared/api/followApi";
-import { MentionContent } from "./MentionContent";
+import { RichTextContent } from "../../shared/ui/rich-text/RichTextContent";
 import {
   getActiveMentionStateFromText,
   insertMentionIntoText,
@@ -599,7 +599,7 @@ export function PostDetailComments({
           </div>
         ) : (
           <p className={styles.commentText}>
-            <MentionContent
+            <RichTextContent
               content={item.content ?? item.text ?? ""}
               mentions={item.mentions ?? []}
               onMentionClick={(mention) => {

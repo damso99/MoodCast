@@ -67,12 +67,13 @@ public class SignupController {
             HttpServletRequest httpRequest
     ) {
 
-            String phone = signupService.sendPhoneAuthCode(request.getPhone(), getClientIp(httpRequest));
+            PhoneAuthSendResult result = signupService.sendPhoneAuthCode(request.getPhone(), getClientIp(httpRequest));
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
                             "message", "인증번호가 발송되었습니다.",
-                            "phone", phone
+                            "phone", result.getPhone(),
+                            "authCode", result.getAuthCode()
                     )
             );
     }
