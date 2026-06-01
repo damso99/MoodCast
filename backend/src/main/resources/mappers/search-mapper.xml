@@ -12,12 +12,16 @@
             p.created_at as createdAt
         from post_tbl p
                  join members m on p.member_id = m.member_id
+                 left join post_hashtag ph on p.post_id = ph.post_id
+                 left join hashtag h on ph.hashtag_id = h.hashtag_id
         where p.deleted_yn = 'N'
           and (
               lower(p.content) like concat('%', lower(#{query}), '%')
               or lower(m.name) like concat('%', lower(#{query}), '%')
               or lower(m.nickname) like concat('%', lower(#{query}), '%')
+              or lower(h.hashtag) like concat('%', lower(replace(#{query}, '#', '')), '%')
           )
+        group by p.post_id, m.name, m.nickname, p.content, p.created_at
         order by p.created_at desc
         limit 50
     </select>
