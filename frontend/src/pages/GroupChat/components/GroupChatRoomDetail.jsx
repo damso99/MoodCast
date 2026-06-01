@@ -13,6 +13,7 @@ import styles from "../../MoodChat/MoodChatPage.module.css";
 import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
 import { uploadChatImages } from "../../../shared/api/fileUploadApi";
+import { EmojiPicker } from "../../../shared/ui/emoji-picker/EmojiPicker";
 
 function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
@@ -63,6 +64,7 @@ export function GroupChatRoomDetail({
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [error, setError] = useState("");
   const [imageViewer, setImageViewer] = useState(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -257,6 +259,7 @@ export function GroupChatRoomDetail({
   }, [messages.length, activeRoom?.roomId]);
 
   useEffect(() => {
+    setIsEmojiPickerOpen(false);
     if (!activeRoom?.roomId) {
       clearSelectedImages();
       setError("");
@@ -296,6 +299,7 @@ export function GroupChatRoomDetail({
         imageUrls: uploadedImageUrls,
       });
       clearSelectedImages();
+      setIsEmojiPickerOpen(false);
     } catch (requestError) {
       console.error("그룹 채팅 메시지 전송 실패", requestError);
       setError(
@@ -307,6 +311,18 @@ export function GroupChatRoomDetail({
     } finally {
       setIsUploadingImages(false);
     }
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    onMessageChange({
+      target: {
+        value: `${messageValue}${emoji}`,
+      },
+    });
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+    });
   };
 
   return (
@@ -702,9 +718,17 @@ export function GroupChatRoomDetail({
               aria-label="이모지"
               title="이모지"
               disabled={!activeRoom || isUploadingImages}
+              aria-expanded={isEmojiPickerOpen}
+              aria-haspopup="dialog"
+              onClick={() => setIsEmojiPickerOpen((value) => !value)}
             >
               <SentimentSatisfiedAltRoundedIcon />
             </button>
+            <EmojiPicker
+              open={isEmojiPickerOpen}
+              onSelect={handleEmojiSelect}
+              onClose={() => setIsEmojiPickerOpen(false)}
+            />
           </div>
           <button
             type="submit"

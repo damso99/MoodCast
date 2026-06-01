@@ -26,6 +26,7 @@ import {
   inviteGroupChatMembers,
 } from "../../shared/api/groupChatApi";
 import { uploadChatImages } from "../../shared/api/fileUploadApi";
+import { EmojiPicker } from "../../shared/ui/emoji-picker/EmojiPicker";
 import { ChatRoomCreateModal } from "./components/ChatRoomCreateModal";
 import { GroupRoomOverlay } from "./components/GroupRoomOverlay";
 import styles from "./MoodChatPage.module.css";
@@ -195,6 +196,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [showScrollBottomButton, setShowScrollBottomButton] = useState(false);
   const [error, setError] = useState("");
   const [imageViewer, setImageViewer] = useState(null);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteMode, setInviteMode] = useState("create");
   const [inviteCandidates, setInviteCandidates] = useState([]);
@@ -778,6 +780,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setError("");
     setShowScrollBottomButton(false);
     setIsThreadMenuOpen(false);
+    setIsEmojiPickerOpen(false);
   };
 
   const handleOpenPartnerProfile = () => {
@@ -840,6 +843,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
       setMessage("");
       clearSelectedImages();
+      setIsEmojiPickerOpen(false);
       await loadThreads();
     } catch (requestError) {
       console.error("메시지 전송 실패", requestError);
@@ -856,6 +860,14 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     await handleSend();
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    setMessage((previousMessage) => `${previousMessage}${emoji}`);
+    setIsEmojiPickerOpen(false);
+    requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+    });
   };
 
   useEffect(() => {
@@ -1066,9 +1078,17 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             aria-label="이모지"
             title="이모지"
             disabled={!activeThread || isSending || isUploadingImages}
+            aria-expanded={isEmojiPickerOpen}
+            aria-haspopup="dialog"
+            onClick={() => setIsEmojiPickerOpen((value) => !value)}
           >
             <SentimentSatisfiedAltRoundedIcon />
           </button>
+          <EmojiPicker
+            open={isEmojiPickerOpen}
+            onSelect={handleEmojiSelect}
+            onClose={() => setIsEmojiPickerOpen(false)}
+          />
         </div>
         <button
           type="submit"
