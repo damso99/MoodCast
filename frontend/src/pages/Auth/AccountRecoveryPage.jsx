@@ -12,7 +12,7 @@ export const AccountRecoveryPage = () => {
 
   const [mode, setMode] = useState(initialMode);
   const [isLoading, setIsLoading] = useState(false);
-  const [foundEmail, setFoundEmail] = useState("");
+  const [foundAccount, setFoundAccount] = useState(null);
   const [toast, setToast] = useState({
     show: false,
     type: "",
@@ -50,7 +50,7 @@ export const AccountRecoveryPage = () => {
   const changeMode = (nextMode) => {
     setMode(nextMode);
     setSearchParams({ mode: nextMode });
-    setFoundEmail("");
+    setFoundAccount(null);
   };
 
   const inputFindEmail = (e) => {
@@ -58,7 +58,7 @@ export const AccountRecoveryPage = () => {
       ...findEmailForm,
       [e.target.name]: e.target.value,
     });
-    setFoundEmail("");
+    setFoundAccount(null);
   };
 
   const inputPassword = (e) => {
@@ -97,7 +97,10 @@ export const AccountRecoveryPage = () => {
     axios
       .post(`${BACKSERVER}/auth/recovery/email/verify`, findEmailForm)
       .then((res) => {
-        setFoundEmail(res.data.email || "");
+        setFoundAccount({
+          email: res.data.email || "",
+          kakaoLinked: Boolean(res.data.kakaoLinked),
+        });
         showToast("success", res.data.message || "계정을 찾았습니다.");
       })
       .catch((err) => {
@@ -227,7 +230,12 @@ export const AccountRecoveryPage = () => {
               </button>
             </div>
 
-            {foundEmail ? <p className={styles.resultBox}>가입 이메일: {foundEmail}</p> : null}
+            {foundAccount ? (
+              <p className={styles.resultBox}>
+                가입 이메일: {foundAccount.email}
+                {foundAccount.kakaoLinked ? <span>카카오 연동 계정입니다.</span> : null}
+              </p>
+            ) : null}
 
             <button type="submit" className={styles.primary} disabled={isLoading}>
               {isLoading ? "확인 중..." : "아이디 찾기"}

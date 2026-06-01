@@ -7,6 +7,7 @@ import com.moodcast.member.dto.login.LoginMemberResponse;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
 import com.moodcast.member.dto.password.PasswordChangeRequest;
 import com.moodcast.member.dto.recovery.FindEmailCodeRequest;
+import com.moodcast.member.dto.recovery.FindEmailResult;
 import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
@@ -224,13 +225,14 @@ public class LoginController {
 
     @PostMapping("recovery/email/verify")
     public ResponseEntity<?> verifyFindEmailCode(@RequestBody FindEmailVerifyRequest request) {
-        String maskedEmail = accountRecoveryService.verifyFindEmailCode(request);
+        FindEmailResult result = accountRecoveryService.verifyFindEmailCode(request);
 
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
                         "message", "계정을 찾았습니다.",
-                        "email", maskedEmail
+                        "email", result.getEmail(),
+                        "kakaoLinked", result.isKakaoLinked()
                 )
         );
     }

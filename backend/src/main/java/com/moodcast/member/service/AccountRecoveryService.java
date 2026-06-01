@@ -1,8 +1,10 @@
 package com.moodcast.member.service;
 
 import com.moodcast.member.dao.LoginDao;
+import com.moodcast.member.dao.OAuthDao;
 import com.moodcast.member.dao.PasswordHistoryDao;
 import com.moodcast.member.dto.recovery.FindEmailCodeRequest;
+import com.moodcast.member.dto.recovery.FindEmailResult;
 import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
@@ -29,6 +31,7 @@ public class AccountRecoveryService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final LoginDao loginDao;
+    private final OAuthDao oAuthDao;
     private final PasswordHistoryDao passwordHistoryDao;
     private final MemberValidationService memberValidationService;
     private final AuthCodeRedisService authCodeRedisService;
@@ -37,6 +40,7 @@ public class AccountRecoveryService {
 
     public AccountRecoveryService(
             LoginDao loginDao,
+            OAuthDao oAuthDao,
             PasswordHistoryDao passwordHistoryDao,
             MemberValidationService memberValidationService,
             AuthCodeRedisService authCodeRedisService,
@@ -44,6 +48,7 @@ public class AccountRecoveryService {
             PasswordEncoder passwordEncoder
     ) {
         this.loginDao = loginDao;
+        this.oAuthDao = oAuthDao;
         this.passwordHistoryDao = passwordHistoryDao;
         this.memberValidationService = memberValidationService;
         this.authCodeRedisService = authCodeRedisService;
@@ -145,19 +150,6 @@ public class AccountRecoveryService {
         }
     }
 
-    private String maskEmail(String email) {
-        if (email == null || !email.contains("@")) {
-            return "";
-        }
-
-        String[] parts = email.split("@", 2);
-        String local = parts[0];
-        String domain = parts[1];
-        String visible = local.length() <= 2 ? local.substring(0, 1) : local.substring(0, 2);
-
-        return visible + "****@" + domain;
-    }
-
     // 이름과 휴대폰이 일치하는 계정에 아이디 찾기 인증번호를 발급함
     @Transactional
     public PhoneAuthSendResult sendFindEmailPhoneCode(FindEmailCodeRequest request, String clientIp) {
@@ -182,9 +174,9 @@ public class AccountRecoveryService {
         return new PhoneAuthSendResult(phone, authCode);
     }
 
-    // 아이디 찾기 인증번호가 맞으면 마스킹된 이메일을 반환함
+    // 아이디 찾기 인증번호가 맞으면 전체 이메일과 카카오 연동 여부를 반환함
     @Transactional(noRollbackFor = IllegalArgumentException.class)
-    public String verifyFindEmailCode(FindEmailVerifyRequest request) {
+    public FindEmailResult verifyFindEmailCode(FindEmailVerifyRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("계정 찾기 정보를 입력해주세요.");
         }
@@ -198,7 +190,9 @@ public class AccountRecoveryService {
 
         authCodeRedisService.clearAuth(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
 
-        return maskEmail(member.getEmail());
+        boolean kakaoLinked = oAuthDao.countByMemberIdAndProvider(member.getMemberId(), "KAKAO") > 0;
+
+        return new FindEmailResult(member.getEmail(), kakaoLinked);
     }
 
     // 이메일과 휴대폰이 일치하는 일반 계정에 비밀번호 재설정 인증번호를 발급함

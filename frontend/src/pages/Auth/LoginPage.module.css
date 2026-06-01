@@ -218,6 +218,13 @@
   text-align: center;
 }
 
+.resultBox span {
+  display: block;
+  margin-top: 6px;
+  color: #7b3ff2;
+  font-size: 0.82rem;
+}
+
 .primary,
 .socialButton {
   display: inline-flex;
