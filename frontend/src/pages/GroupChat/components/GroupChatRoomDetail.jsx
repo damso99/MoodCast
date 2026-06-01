@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
+import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import MoreVertRoundedIcon from "@mui/icons-material/MoreVertRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -85,6 +87,18 @@ export function GroupChatRoomDetail({
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setImageViewer(null);
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        moveImageViewer(-1);
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        moveImageViewer(1);
       }
     };
 
@@ -143,6 +157,60 @@ export function GroupChatRoomDetail({
     }
 
     setImageViewer({ src, alt: alt || "이미지" });
+  };
+
+  const openImageViewerWithList = (images, index, alt) => {
+    const normalizedImages = Array.isArray(images)
+      ? images.filter((imageUrl) => typeof imageUrl === "string" && imageUrl.trim().length > 0)
+      : [];
+
+    if (normalizedImages.length === 0) {
+      return;
+    }
+
+    const safeIndex = Math.min(Math.max(Number(index) || 0, 0), normalizedImages.length - 1);
+    setImageViewer({
+      images: normalizedImages,
+      index: safeIndex,
+      orientation: "horizontal",
+      alt: alt || "이미지",
+    });
+  };
+
+  const handleViewerImageLoad = (event) => {
+    const { naturalWidth, naturalHeight } = event.currentTarget;
+
+    if (!naturalWidth || !naturalHeight) {
+      return;
+    }
+
+    setImageViewer((previousViewer) => {
+      if (!previousViewer) {
+        return previousViewer;
+      }
+
+      return {
+        ...previousViewer,
+        orientation: naturalHeight > naturalWidth ? "vertical" : "horizontal",
+      };
+    });
+  };
+
+  const moveImageViewer = (direction) => {
+    setImageViewer((previousViewer) => {
+      if (!previousViewer || !Array.isArray(previousViewer.images) || previousViewer.images.length === 0) {
+        return previousViewer;
+      }
+
+      const nextIndex =
+        (previousViewer.index + direction + previousViewer.images.length) %
+        previousViewer.images.length;
+
+      return {
+        ...previousViewer,
+        index: nextIndex,
+      };
+    });
   };
 
   const scrollToBottom = (behavior = "auto") => {
@@ -419,11 +487,11 @@ export function GroupChatRoomDetail({
                                   loading="lazy"
                                   role="button"
                                   tabIndex={0}
-                                  onClick={() => openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`)}
+                                  onClick={() => openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`)}
                                   onKeyDown={(event) => {
                                     if (event.key === "Enter" || event.key === " ") {
                                       event.preventDefault();
-                                      openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`);
+                                      openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`);
                                     }
                                   }}
                                 />
@@ -451,11 +519,11 @@ export function GroupChatRoomDetail({
                                   loading="lazy"
                                   role="button"
                                   tabIndex={0}
-                                  onClick={() => openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`)}
+                                  onClick={() => openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`)}
                                   onKeyDown={(event) => {
                                     if (event.key === "Enter" || event.key === " ") {
                                       event.preventDefault();
-                                      openImageViewer(imageUrl, `첨부 이미지 ${index + 1}`);
+                                      openImageViewerWithList(imageUrls, index, `첨부 이미지 ${index + 1}`);
                                     }
                                   }}
                                 />
@@ -511,7 +579,11 @@ export function GroupChatRoomDetail({
           onClick={() => setImageViewer(null)}
         >
           <div
-            className={styles.imageViewerContent}
+            className={`${styles.imageViewerContent} ${
+              imageViewer.orientation === "vertical"
+                ? styles.imageViewerVertical
+                : styles.imageViewerHorizontal
+            }`}
             role="dialog"
             aria-modal="true"
             aria-label={imageViewer.alt}
@@ -526,10 +598,38 @@ export function GroupChatRoomDetail({
             >
               <CloseRoundedIcon />
             </button>
+            {Array.isArray(imageViewer.images) && imageViewer.images.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
+                  aria-label="이전 이미지"
+                  title="이전 이미지"
+                  onClick={() => moveImageViewer(-1)}
+                >
+                  <KeyboardArrowLeftRoundedIcon className={styles.imageViewerNavIcon} />
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
+                  aria-label="다음 이미지"
+                  title="다음 이미지"
+                  onClick={() => moveImageViewer(1)}
+                >
+                  <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
+                </button>
+              </>
+            ) : null}
+            <span className={styles.imageViewerCounter}>
+              {Array.isArray(imageViewer.images) && imageViewer.images.length > 0
+                ? `${imageViewer.index + 1} / ${imageViewer.images.length}`
+                : ""}
+            </span>
             <img
               className={styles.imageViewerImage}
-              src={imageViewer.src}
+              src={imageViewer.images?.[imageViewer.index]}
               alt={imageViewer.alt}
+              onLoad={handleViewerImageLoad}
               onClick={() => setImageViewer(null)}
             />
           </div>
