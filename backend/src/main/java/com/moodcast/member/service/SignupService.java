@@ -3,7 +3,6 @@ package com.moodcast.member.service;
 import com.moodcast.member.dao.SignupDao;
 import com.moodcast.member.dto.signup.SignupRequest;
 import com.moodcast.member.dto.signup.SignupTermsAgreementRequest;
-import com.moodcast.member.vo.AuthCode;
 import com.moodcast.member.vo.Member;
 import com.moodcast.member.vo.Terms;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -250,8 +248,10 @@ public class SignupService {
         try {
             emailService.sendSignupAuthCode(email, authCode);
         } catch (MailException e) { // 메일 서버 인증 실패, SMTP 문제, 계정 문제, 수신 주소 문제 등등 Spring Mail 계열 에러
+            authCodeRedisService.clearAuth("SIGNUP", "EMAIL", email);
             throw new IllegalStateException("이메일 발송에 실패했습니다. 500 Server");
         } catch (IllegalStateException e) {
+            authCodeRedisService.clearAuth("SIGNUP", "EMAIL", email);
             throw new IllegalStateException("이메일 발송 중 오류가 발생했습니다. 500 Server");
         }
 

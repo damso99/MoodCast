@@ -53,7 +53,9 @@ public class JwtService {
                 .compact();
     }
 
-    public String createRefreshToken(Member member) {
+    // memberId + tokenId
+    // pc접속중 모바일로 접속했을때 토큰을 덮어쓰지 않게 하려고 수정함
+    public String createRefreshToken(Member member, String tokenId) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(refreshTokenExpireDays, ChronoUnit.DAYS);
 
@@ -61,6 +63,7 @@ public class JwtService {
                 .issuer(issuer)
                 .subject(String.valueOf(member.getMemberId()))
                 .claim("type", "REFRESH")
+                .claim("tokenId", tokenId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
@@ -123,5 +126,64 @@ public class JwtService {
                 .path("/")
                 .maxAge(0)
                 .build();
+    }
+
+    // refresh 토큰 검증 및 memberId 꺼내서 리턴
+    public Long getMemberIdFromRefreshToken(String refreshToken) {
+        // 토큰 유무 및 공백 검증
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        try {
+            // 토큰 파싱
+            Claims claims = parseToken(refreshToken);
+            // 토큰 타입 꺼내기
+            String tokenType = claims.get("type", String.class);
+
+            // 토큰 타입이 REFRESH인지 체크
+            // npe 방어
+            if (!"REFRESH".equals(tokenType)) {
+                throw new IllegalArgumentException("로그인이 필요합니다.");
+            }
+
+            return Long.parseLong(claims.getSubject());
+
+            // 통합 예외처리 (구체적인 원인은 안알려줌)
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+    }
+
+    public String getTokenIdFromRefreshToken(String refreshToken) {
+        // 토큰 유무 및 공백 검증
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        try {
+            // 토큰 파싱
+            Claims claims = parseToken(refreshToken);
+            // 토큰 타입 꺼내기
+            String tokenType = claims.get("type", String.class);
+
+            // 토큰 타입이 REFRESH인지 체크
+            // npe 방어
+            if (!"REFRESH".equals(tokenType)) {
+                throw new IllegalArgumentException("로그인이 필요합니다.");
+            }
+
+            String tokenId = claims.get("tokenId", String.class);
+
+            if (tokenId == null || tokenId.trim().isEmpty()) {
+                throw new IllegalArgumentException("로그인이 필요합니다.");
+            }
+
+            return tokenId;
+
+            // 통합 예외처리 (구체적인 원인은 안알려줌)
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
     }
 }

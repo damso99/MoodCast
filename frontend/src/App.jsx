@@ -34,30 +34,36 @@ function AppRoutes() {
     서버 기준으로 유효한지 확인한다.
   */
   useEffect(() => {
-    if (!accessToken) {
-      return;
-    }
+    const checkLogin = async () => {
+      try {
+        if (accessToken) {
+          const res = await axios.get(`${BACKSERVER}/auth/me`, {
+            headers: {
+              Authorization: "Bearer " + accessToken,
+            },
+          });
 
-    // 새로고침 후에 sessionStorage에 있는 토큰이 실제로 유효한지 서버에 확인함
-    // 만약 토큰이 만료되었거나 유효하지 않으면 자동 로그아웃 처리함
-    axios
-      .get(`${BACKSERVER}/auth/me`, {
-        headers: {
-          Authorization: "Bearer " + accessToken,
-        },
-      })
-      .then((res) => {
-        const loginMember = res.data.member || res.data;
-        setAuthData(accessToken, loginMember);
-      })
-      .catch((err) => {
-        console.log("로그인 상태 확인 실패", err);
+          const loginMember = res.data.member || res.data;
+          setAuthData(accessToken, loginMember);
+          return;
+        }
+
+        const res = await axios.post(
+          `${BACKSERVER}/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+          },
+        );
+
+        setAuthData(res.data.accessToken, res.data.member);
+      } catch (err) {
+        console.log("로그인 상태복구 실패", err);
         clearAuthData();
-        navigate("/auth/login", { replace: true });
-      });
-  }, [accessToken, setAuthData, clearAuthData, navigate]);
-
-  const authRoute = (element) => <RequireAuth>{element}</RequireAuth>;
+      }
+    };
+    checkLogin();
+  }, [accessToken, setAuthData, clearAuthData]);
 
   return (
     <Routes>

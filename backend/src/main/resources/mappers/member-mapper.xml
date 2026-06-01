@@ -14,67 +14,6 @@
         select count(*) from members where nickname = #{nickname}
     </select>
 
-    <insert id="insertAuthCode">
-        insert into auth_codes (
-            member_id,
-            target_type,
-            target_value,
-            purpose,
-            code_hash,
-            expires_at,
-            attempt_count
-        ) values (
-                  #{memberId},
-                  #{targetType},
-                  #{targetValue},
-                  #{purpose},
-                  #{codeHash},
-                  #{expiresAt},
-                  #{attemptCount}
-            )
-    </insert>
-
-    <select id="findLastAuthCode" resultType="AuthCode">
-        select
-            auth_code_id,
-            code_hash,
-            expires_at,
-            verified_at,
-            used_at,
-            attempt_count,
-            created_at
-        from auth_codes
-        where
-            target_type = #{targetType}
-            and target_value = #{targetValue}
-            and purpose = #{purpose}
-            and used_at is null
-        order by created_at desc
-        limit 1
-    </select>
-
-    <update id="incrementAttempt">
-        update auth_codes
-        set attempt_count = attempt_count +1
-        where auth_code_id = #{authCodeId}
-    </update>
-
-    <update id="updateVerifiedAt">
-        update auth_codes
-        set verified_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
-            attempt_count = 0
-        where auth_code_id = #{authCodeId}
-    </update>
-
-    <select id="countAuthCodeSend">
-        select count(*)
-        from auth_codes
-        where target_type = #{targetType}
-        and target_value = #{targetValue}
-        and purpose = #{purpose}
-        and created_at >= #{from}
-    </select>
-
     <select id="findActiveTerms" resultType="Terms">
         select
             terms_id,
@@ -104,29 +43,6 @@
         where is_active = 1
           and is_required = 1
         order by terms_id asc
-    </select>
-
-    <select id="countVerifiedEmailAuthCode">
-        select count(*)
-        from auth_codes
-        where target_type = 'EMAIL'
-        and target_value = #{email}
-        and purpose = 'SIGNUP'
-        and verified_at is not null
-        and used_at is null
-        and verified_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 10 minute)
-    </select>
-
-
-    <select id="countVerifiedPhoneAuthCode">
-        select count(*)
-        from auth_codes
-        where target_type = 'PHONE'
-          and target_value = #{phone}
-          and purpose = 'SIGNUP'
-          and verified_at is not null
-          and used_at is null
-          and verified_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 10 minute)
     </select>
 
     <insert id="insertMember" useGeneratedKeys="true" keyProperty="memberId">
@@ -162,15 +78,4 @@
             case when #{agreed} = 1 then CONVERT_TZ(NOW(6), '+00:00', '+09:00') else null end
         )
     </insert>
-
-    <update id="updateAuthCodeUsed">
-        update auth_codes
-        set used_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
-        where target_type = #{targetType}
-          and target_value = #{targetValue}
-          and purpose = #{purpose}
-          and verified_at is not null
-          and used_at is null
-          and verified_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 10 minute)
-    </update>
 </mapper>
