@@ -14,6 +14,7 @@ import { defaultAvatarSrc } from "../../../shared/lib/defaultAvatar";
 import { formatKoreanTime } from "../../../shared/lib/dateTime";
 import { uploadChatImages } from "../../../shared/api/fileUploadApi";
 import { EmojiPicker } from "../../../shared/ui/emoji-picker/EmojiPicker";
+import { RichTextContent } from "../../../shared/ui/rich-text/RichTextContent";
 
 function getRoomTitle(activeRoom) {
   return activeRoom?.roomName || "그룹 채팅방";
@@ -497,7 +498,11 @@ export function GroupChatRoomDetail({
                           <span className={styles.unreadMarker}>{unreadCount}</span>
                         ) : null}
                         <div className={`${styles.bubble} ${styles.me}`}>
-                          {item.content ? <p>{item.content}</p> : null}
+                          {item.content ? (
+                            <p>
+                              <RichTextContent content={item.content} className={styles.richTextContent} />
+                            </p>
+                          ) : null}
                           {imageUrls.length > 0 ? (
                             <div
                               className={`${styles.messageMediaGrid} ${
@@ -529,7 +534,11 @@ export function GroupChatRoomDetail({
                     ) : (
                       <>
                         <div className={`${styles.bubble} ${styles.them}`}>
-                          {item.content ? <p>{item.content}</p> : null}
+                          {item.content ? (
+                            <p>
+                              <RichTextContent content={item.content} className={styles.richTextContent} />
+                            </p>
+                          ) : null}
                           {imageUrls.length > 0 ? (
                             <div
                               className={`${styles.messageMediaGrid} ${

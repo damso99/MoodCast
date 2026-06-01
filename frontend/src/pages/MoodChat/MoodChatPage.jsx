@@ -27,6 +27,7 @@ import {
 } from "../../shared/api/groupChatApi";
 import { uploadChatImages } from "../../shared/api/fileUploadApi";
 import { EmojiPicker } from "../../shared/ui/emoji-picker/EmojiPicker";
+import { RichTextContent } from "../../shared/ui/rich-text/RichTextContent";
 import { ChatRoomCreateModal } from "./components/ChatRoomCreateModal";
 import { GroupRoomOverlay } from "./components/GroupRoomOverlay";
 import styles from "./MoodChatPage.module.css";
@@ -1298,7 +1299,11 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                     <span className={styles.unreadMarker}>1</span>
                   ) : null}
                   <div className={styles.bubble}>
-                    {item.text ? <p>{item.text}</p> : null}
+                    {item.text ? (
+                      <p>
+                        <RichTextContent content={item.text} className={styles.richTextContent} />
+                      </p>
+                    ) : null}
                     {Array.isArray(item.imageUrls) && item.imageUrls.length > 0 ? (
                       <div
                         className={`${styles.messageMediaGrid} ${

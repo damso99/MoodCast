@@ -24,7 +24,7 @@ import { normalizeBackendUrl } from '../../shared/lib/postHelpers';
 import { CommentModal } from './CommentModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { HashtagRow } from './HashtagRow';
-import { MentionContent } from './MentionContent';
+import { RichTextContent } from '../../shared/ui/rich-text/RichTextContent';
 import styles from './FeedCard.module.css';
 
 const EMOTIONS = {
@@ -606,7 +606,7 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
 
         {post.title && <p className={styles.title}>{post.title}</p>}
         <p className={styles.text}>
-          <MentionContent
+          <RichTextContent
             content={rawContent}
             mentions={post.mentions ?? []}
             onMentionClick={handleMentionClick}
