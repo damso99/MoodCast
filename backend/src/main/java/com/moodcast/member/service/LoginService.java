@@ -273,13 +273,13 @@ public class LoginService {
             throw new IllegalArgumentException("회원 탈퇴 정보를 입력해주세요.");
         }
 
+        if (!"탈퇴합니다".equals(request.getConfirmText())) {
+            throw new IllegalArgumentException("탈퇴 확인 문구는 '탈퇴합니다'로 정확히 입력해주세요.");
+        }
+
         String passwordHash = loginDao.findPasswordHashByMemberId(memberId);
 
-        if (passwordHash == null || passwordHash.trim().isEmpty()) {
-            if (!"탈퇴합니다".equals(request.getConfirmText())) {
-                throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 대신 '탈퇴합니다' 문구를 입력해야 합니다.");
-            }
-        } else {
+        if (passwordHash != null && !passwordHash.trim().isEmpty()) {
             String password = checkPasswordInput(request.getPassword());
 
             if (!passwordEncoder.matches(password, passwordHash)) {

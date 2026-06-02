@@ -133,11 +133,8 @@ export function SettingsPage() {
   const requestWithdraw = (event) => {
     event.preventDefault();
 
-    const hasPassword = withdrawForm.password.trim().length > 0;
-    const hasConfirmText = withdrawForm.confirmText.trim().length > 0;
-
-    if (!hasPassword && !hasConfirmText) {
-      showToast('error', '일반 계정은 비밀번호를, 소셜 전용 계정은 확인 문구를 입력해주세요.');
+    if (withdrawForm.confirmText.trim() !== '탈퇴합니다') {
+      showToast('error', "탈퇴 확인 문구는 '탈퇴합니다'로 정확히 입력해주세요.");
       return;
     }
 
