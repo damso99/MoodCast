@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import axios from "axios";
 import { EmptyState } from "../common/EmptyState";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
-import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
+import styles from "../../adminComponentsCss/userManagement/UserManagementActionLogs.module.css";
 
 const LOGS_PER_PAGE = 10; // 전체 로그 팝업에서 한 페이지에 보여줄 로그 개수입니다.
 const PAGE_BUTTON_COUNT = 10; // 페이지 번호는 1~10처럼 최대 10개씩 보여줍니다.

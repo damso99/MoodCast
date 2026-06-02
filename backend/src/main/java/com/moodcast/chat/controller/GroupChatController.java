@@ -1,9 +1,9 @@
 package com.moodcast.chat.controller;
 
+import com.moodcast.chat.dto.ChatReadRequest;
 import com.moodcast.chat.dto.ChatRoomCreateRequestDto;
 import com.moodcast.chat.dto.ChatRoomMemberInviteRequestDto;
 import com.moodcast.chat.dto.ChatRoomMemberResponseDto;
-import com.moodcast.chat.dto.ChatReadRequest;
 import com.moodcast.chat.dto.ChatRoomMessageResponseDto;
 import com.moodcast.chat.dto.ChatRoomMessageSendRequestDto;
 import com.moodcast.chat.dto.ChatRoomResponseDto;
@@ -13,19 +13,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/chat")
+@RequestMapping({"/chat", "/api/chat"})
 public class GroupChatController {
 
     private final GroupChatService groupChatService;
@@ -34,6 +34,11 @@ public class GroupChatController {
     @PostMapping("/rooms")
     public ResponseEntity<ChatRoomResponseDto> createRoom(@RequestBody ChatRoomCreateRequestDto request) {
         return ResponseEntity.ok(groupChatService.createChatRoom(request));
+    }
+
+    @GetMapping("/rooms")
+    public ResponseEntity<List<ChatRoomResponseDto>> getRooms(@RequestParam Long memberId) {
+        return ResponseEntity.ok(groupChatService.getRoomsByMemberId(memberId));
     }
 
     @GetMapping("/rooms/member/{memberId}")
@@ -104,12 +109,36 @@ public class GroupChatController {
         return ResponseEntity.ok(groupChatService.inviteMembers(roomId, request));
     }
 
-    @DeleteMapping("/rooms/{roomId}/members/{memberId}")
+    @DeleteMapping("/rooms/{roomId}/hide")
+    public ResponseEntity<Void> hideRoom(
+            @PathVariable Long roomId,
+            @RequestParam Long memberId
+    ) {
+        groupChatService.hideRoom(roomId, memberId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/rooms/{roomId}/leave")
     public ResponseEntity<Void> leaveRoom(
+            @PathVariable Long roomId,
+            @RequestParam Long memberId
+    ) {
+        ChatRoomMessageResponseDto systemMessage = groupChatService.leaveRoom(roomId, memberId);
+        if (systemMessage != null) {
+            messagingTemplate.convertAndSend("/topic/chat/rooms/" + roomId, systemMessage);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/rooms/{roomId}/members/{memberId}")
+    public ResponseEntity<Void> leaveRoomLegacy(
             @PathVariable Long roomId,
             @PathVariable Long memberId
     ) {
-        groupChatService.leaveRoom(roomId, memberId);
+        ChatRoomMessageResponseDto systemMessage = groupChatService.leaveRoom(roomId, memberId);
+        if (systemMessage != null) {
+            messagingTemplate.convertAndSend("/topic/chat/rooms/" + roomId, systemMessage);
+        }
         return ResponseEntity.noContent().build();
     }
 }

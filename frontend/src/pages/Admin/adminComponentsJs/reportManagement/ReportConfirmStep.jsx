@@ -2,7 +2,7 @@ import ErrorOutlineOutlinedIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { todayText } from "./reportConstants";
 import { DrawerHeader } from "./ReportDrawerHeader";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportConfirmStep.module.css";
 
 export function ReportConfirmStep({
   report,

@@ -1,45 +1,66 @@
 import { SearchBar } from "../common/SearchBar";
 import { SegmentedControl } from "../common/SegmentedControl";
-import styles from "../../adminComponentsCss/contentManagement/ContentManagementPage.module.css";
+import styles from "../../adminComponentsCss/contentManagement/ContentManagementToolbar.module.css";
 
 /* ==========================================================================
- * 콘텐츠 관리 상단 검색 컴포넌트
+ * 콘텐츠 관리 상단 검색/탭 컴포넌트
  * --------------------------------------------------------------------------
- * 콘텐츠 종류 탭과 제목/작성자 검색창을 담당합니다.
+ * 게시글/댓글/해시태그 탭과 제목/작성자 검색 UI를 담당합니다.
  *
  * 초보자 설명:
- * - value는 현재 선택되거나 입력된 값을 화면에 보여주는 역할입니다.
- * - onChange 안에서 부모가 내려준 함수를 호출하면 부모 state가 바뀝니다.
- * - 이 컴포넌트는 API를 직접 호출하지 않고, 검색 조건 변경만 담당합니다.
+ * - activeTab은 현재 선택된 콘텐츠 종류입니다.
+ * - searchField는 제목(title)과 작성자(author) 중 어떤 기준으로 검색할지 정합니다.
+ * - searchKeyword는 실제 검색어입니다.
  * ========================================================================== */
 export function ContentManagementToolbar({
-  contentTabs,
-  selectedContentType,
-  onSelectContentType,
+  activeTab,
+  onTabChange,
   searchField,
   onSearchFieldChange,
   searchKeyword,
   onSearchKeywordChange,
 }) {
+  const searchOptions = {
+    게시글: [
+      { value: "title", label: "제목" },
+      { value: "author", label: "작성자" },
+    ],
+    댓글: [
+      { value: "content", label: "댓글" },
+      { value: "author", label: "작성자" },
+      { value: "postTitle", label: "게시글" },
+    ],
+    해시태그: [{ value: "hashtag", label: "해시태그" }],
+  };
+  const currentSearchOptions = searchOptions[activeTab] || searchOptions.게시글;
+  const selectedSearchOption =
+    currentSearchOptions.find((option) => option.value === searchField) ||
+    currentSearchOptions[0];
+  const searchPlaceholder = `${selectedSearchOption.label}로 검색`;
+
   return (
     <section className={styles.topBar}>
       <SegmentedControl
-        labels={contentTabs}
-        selectedLabel={selectedContentType}
-        onSelect={onSelectContentType}
+        labels={["게시글", "댓글", "해시태그"]}
+        selectedLabel={activeTab}
+        onSelect={onTabChange}
       />
 
       <div className={styles.searchControls}>
         <select
           value={searchField}
           onChange={(event) => onSearchFieldChange(event.target.value)}
-          aria-label="콘텐츠 검색 기준"
+          aria-label={`${activeTab} 검색 기준`}
         >
-          <option value="title">제목</option>
-          <option value="author">작성자</option>
+          {currentSearchOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
+
         <SearchBar
-          placeholder={searchField === "title" ? "제목으로 검색" : "작성자로 검색"}
+          placeholder={searchPlaceholder}
           value={searchKeyword}
           onChange={(event) => onSearchKeywordChange(event.target.value)}
         />

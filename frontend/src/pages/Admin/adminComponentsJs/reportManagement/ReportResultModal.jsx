@@ -1,7 +1,7 @@
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { statusMeta } from "./reportConstants";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportResultModal.module.css";
 
 export function ReportResultModal({ report, onClose }) {
   const result = report.sanctionResult; // 처리 완료/반려 시 저장된 처리 결과 정보입니다.

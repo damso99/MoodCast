@@ -178,9 +178,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       setMessages(normalizedMessages);
       if (shouldMarkRead) {
         const lastMessageId = getLatestConfirmedMessageId(normalizedMessages);
-        if (lastMessageId) {
-          await syncRoomReadState(roomId, lastMessageId);
-        }
+        await syncRoomReadState(roomId, lastMessageId);
       }
     } catch (requestError) {
       console.error("Group messages load failed", requestError);
@@ -258,28 +256,32 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   };
 
   const syncRoomReadState = async (roomId, lastReadMessageId) => {
+    if (!roomId || !currentMemberId) {
+      return;
+    }
+
     const numericLastReadMessageId = Number(lastReadMessageId);
-    if (
-      !roomId ||
-      !currentMemberId ||
-      !Number.isFinite(numericLastReadMessageId) ||
-      numericLastReadMessageId <= 0
-    ) {
+    const hasMessageId = Number.isFinite(numericLastReadMessageId) && numericLastReadMessageId > 0;
+
+    if (hasMessageId && lastSentReadMessageIdRef.current >= numericLastReadMessageId) {
       return;
     }
 
-    if (lastSentReadMessageIdRef.current >= numericLastReadMessageId) {
-      return;
+    if (hasMessageId) {
+      lastSentReadMessageIdRef.current = numericLastReadMessageId;
     }
 
-    lastSentReadMessageIdRef.current = numericLastReadMessageId;
-    const payload = {
-      memberId: currentMemberId,
-      lastReadMessageId: numericLastReadMessageId,
-    };
+    const payload = hasMessageId
+      ? {
+          memberId: currentMemberId,
+          lastReadMessageId: numericLastReadMessageId,
+        }
+      : {
+          memberId: currentMemberId,
+        };
 
     if (sendReadEvent(roomId, payload)) {
-      refreshRooms().catch(() => {});
+      refreshRoomsAfterRead();
       return;
     }
 
@@ -310,10 +312,6 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
 
     const lastMessageId = getLatestConfirmedMessageId(messages);
-    if (!lastMessageId) {
-      return;
-    }
-
     syncRoomReadState(activeRoom.roomId, lastMessageId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRoom?.roomId, messages.length]);
@@ -360,20 +358,40 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
-  const inviteMembers = async () => {
+  const inviteMembers = async (targetMemberId = null) => {
     if (!activeRoom?.roomId) {
       return;
     }
 
-    const invitedIds = window.prompt("Enter memberId values separated by commas.");
-    if (!invitedIds) {
-      return;
-    }
+    const memberIds = Number.isFinite(Number(targetMemberId)) && Number(targetMemberId) > 0
+      ? [Number(targetMemberId)]
+      : null;
 
-    const memberIds = invitedIds
-      .split(",")
-      .map((value) => Number(value.trim()))
-      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!memberIds) {
+      const invitedIds = window.prompt("Enter memberId values separated by commas.");
+      if (!invitedIds) {
+        return;
+      }
+
+      const parsedMemberIds = invitedIds
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isFinite(value) && value > 0);
+
+      if (parsedMemberIds.length === 0) {
+        return;
+      }
+
+      try {
+        await inviteGroupChatMembers(activeRoom.roomId, { memberIds: parsedMemberIds });
+        await refreshRooms();
+        return;
+      } catch (requestError) {
+        console.error("Group invite failed", requestError);
+        setError(requestError.response?.data?.message || "Unable to invite members.");
+        return;
+      }
+    }
 
     try {
       await inviteGroupChatMembers(activeRoom.roomId, { memberIds });
@@ -391,6 +409,9 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
 
     try {
       await leaveGroupChatRoom(activeRoom.roomId, currentMemberId);
+      setRooms((previousRooms) =>
+        previousRooms.filter((room) => Number(room.roomId) !== Number(activeRoom.roomId)),
+      );
       setActiveRoom(null);
       setMessages([]);
       setMobileRoomOpen(false);
@@ -448,7 +469,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       });
 
       if (!published) {
-        const response = await axios.post(`${API_BASE}/chat/rooms/${activeRoom.roomId}/messages`, {
+        const response = await axios.post(`${API_BASE}/api/chat/rooms/${activeRoom.roomId}/messages`, {
           senderId: currentMemberId,
           content,
         });
@@ -473,9 +494,7 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       }
 
       const lastMessageId = getLatestConfirmedMessageId(messages);
-      if (lastMessageId) {
-        await syncRoomReadState(activeRoom.roomId, lastMessageId);
-      }
+      await syncRoomReadState(activeRoom.roomId, lastMessageId);
       await refreshRooms();
       return true;
     } catch (requestError) {

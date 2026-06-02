@@ -1,5 +1,5 @@
 import { ReportListItem } from "./ReportListItem";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportList.module.css";
 
 /* ==========================================================================
  * 신고 목록 컴포넌트

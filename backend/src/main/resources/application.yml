@@ -30,6 +30,7 @@ spring:
       schema-locations:
         - classpath:schema-posts.sql
         - classpath:schema-group-chat.sql
+        - classpath:schema-report.sql
   data:
     redis:
       host: ${REDIS_HOST}

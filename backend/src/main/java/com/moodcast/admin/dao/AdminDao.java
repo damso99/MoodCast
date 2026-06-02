@@ -1,6 +1,9 @@
 package com.moodcast.admin.dao;
 
 import com.moodcast.admin.vo.AdminActionLogView;
+import com.moodcast.admin.vo.AdminActiveUserStat;
+import com.moodcast.admin.vo.AdminContentComment;
+import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminEmotionActivity;
@@ -9,7 +12,10 @@ import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRecentMember;
+import com.moodcast.admin.vo.AdminStatisticsSummary;
+import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
+import com.moodcast.admin.vo.Notice;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -41,6 +47,18 @@ public interface AdminDao {
 
     /* 콘텐츠 관리 페이지에서 사용할 게시글 목록을 조회합니다. */
     List<AdminContentPost> selectAdminContentPosts();
+
+    /* 콘텐츠 관리 댓글 탭에서 사용할 댓글 목록을 조회합니다. */
+    List<AdminContentComment> selectAdminContentComments();
+
+    /* 댓글 상태 변경 후 화면 카드 한 건을 갱신하기 위해 최신 댓글 정보를 조회합니다. */
+    AdminContentComment selectAdminContentCommentById(@Param("commentId") Long commentId);
+
+    /* 콘텐츠 관리 해시태그 탭에서 사용할 해시태그 목록을 조회합니다. */
+    List<AdminContentHashtag> selectAdminContentHashtags();
+
+    /* 해시태그 상태 변경 후 화면 카드 한 건을 갱신하기 위해 최신 해시태그 정보를 조회합니다. */
+    AdminContentHashtag selectAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 
     /*
      * 관리자 콘텐츠 관리에서 게시글 작업 후 최신 상태를 다시 조회합니다.
@@ -89,6 +107,21 @@ public interface AdminDao {
      * 로그 테이블은 append-only 정책이므로 삭제하지 않습니다.
      */
     int hardDeleteAdminContentPost(@Param("postId") Long postId);
+
+    /* 댓글 삭제는 comment_tbl.deleted_yn을 Y로 바꾸는 soft delete입니다. */
+    int softDeleteAdminContentComment(@Param("commentId") Long commentId);
+
+    /* 삭제된 댓글을 다시 표시 상태로 복구합니다. */
+    int restoreAdminContentComment(@Param("commentId") Long commentId);
+
+    /* 해시태그 삭제 전에 post_hashtag 연결 레코드를 먼저 제거합니다. */
+    int deleteAdminPostHashtagsByHashtagId(@Param("hashtagId") Long hashtagId);
+
+    /* hashtag 테이블에서 해시태그를 완전 삭제합니다. */
+    int hardDeleteAdminContentHashtag(@Param("hashtagId") Long hashtagId);
+
+    /* 해시태그 상태는 admin_action_logs로 관리하므로 존재 여부만 확인합니다. */
+    int countAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 
     /* 사용자 관리 하단의 전체/일반/관리자/정지 회원 수를 한 번에 조회합니다. */
     AdminUserManagementSummary selectUserManagementSummaryCounts();
@@ -144,11 +177,23 @@ public interface AdminDao {
     /* 관리자 대시보드의 감정별 게시글 활동 수를 일/주/월 단위로 조회합니다. */
     List<AdminEmotionActivity> selectDashboardEmotionActivity(@Param("period") String period);
 
+    /* 관리자 대시보드의 시간별 활성 사용자 수를 일/주/월 단위로 조회합니다. */
+    List<AdminActiveUserStat> selectDashboardActiveUsers(@Param("period") String period);
+
     /* 관리자 대시보드의 최근 활동을 최신 10개만 조회합니다. */
     List<AdminRecentActivity> selectRecentDashboardActivities();
 
     /* 관리자 대시보드의 전체 활동 보기 팝업에서 사용할 모든 활동 로그를 조회합니다. */
     List<AdminRecentActivity> selectAllDashboardActivities();
+
+    /* 통계 대시보드 상단 카드와 하단 요약에 사용할 기간별 요약 숫자를 조회합니다. */
+    AdminStatisticsSummary selectStatisticsSummary(@Param("period") String period);
+
+    /* 통계 대시보드 가입자 추이 차트에 사용할 기간별 가입자 흐름을 조회합니다. */
+    List<AdminStatisticsTrend> selectStatisticsSubscriberTrend(@Param("period") String period);
+
+    /* 통계 대시보드 콘텐츠 활동 막대 그래프에 사용할 게시글/댓글/공감 수를 조회합니다. */
+    List<AdminStatisticsTrend> selectStatisticsContentActivity(@Param("period") String period);
 
     /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
     AdminProfile selectAdminProfile(@Param("memberId") Long memberId);
@@ -160,4 +205,31 @@ public interface AdminDao {
             @Param("nickname") String nickname,
             @Param("phone") String phone
     );
+
+    List<Notice> selectAdminNotices(@Param("status") String status);
+
+    Notice selectAdminNoticeById(@Param("noticeId") Long noticeId);
+
+    Notice selectLatestActiveNotice();
+
+    int insertAdminNotice(
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("noticeType") String noticeType,
+            @Param("adminId") Long adminId
+    );
+
+    int updateAdminNotice(
+            @Param("noticeId") Long noticeId,
+            @Param("title") String title,
+            @Param("content") String content,
+            @Param("noticeType") String noticeType,
+            @Param("adminId") Long adminId
+    );
+
+    int softDeleteAdminNotice(
+            @Param("noticeId") Long noticeId,
+            @Param("adminId") Long adminId
+    );
+
 }

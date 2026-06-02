@@ -45,6 +45,14 @@
         order by terms_id asc
     </select>
 
+    <!--
+      회원 가입 시간 저장입니다.
+
+      시간대 주의:
+      - RDS/MySQL 세션 시간대가 UTC라서 created_at을 DB 기본값에 맡기면 서울 시간보다 9시간 빠르게 저장됩니다.
+      - 관리자 최근 활동/가입자 통계는 members.created_at을 서울 시간 기준으로 집계하므로,
+        로그인 시간과 같은 방식으로 CONVERT_TZ(NOW(6), '+00:00', '+09:00') 값을 직접 저장합니다.
+    -->
     <insert id="insertMember" useGeneratedKeys="true" keyProperty="memberId">
         insert into members (
             email,
@@ -54,7 +62,9 @@
             phone,
             profile_image_url,
             email_verified,
-            phone_verified
+            phone_verified,
+            created_at,
+            updated_at
         ) values (
             #{email},
             #{passwordHash},
@@ -63,7 +73,9 @@
             #{phone},
             #{profileImageUrl},
             #{emailVerified},
-            #{phoneVerified}
+            #{phoneVerified},
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00'),
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         )
     </insert>
 

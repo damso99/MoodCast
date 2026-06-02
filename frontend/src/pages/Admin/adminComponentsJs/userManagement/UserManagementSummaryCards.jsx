@@ -1,21 +1,17 @@
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
-import styles from "../../adminComponentsCss/userManagement/UserManagementPage.module.css";
+import styles from "../../adminComponentsCss/userManagement/UserManagementSummaryCards.module.css";
 
 /* ==========================================================================
  * 사용자 관리 하단 요약 카드 컴포넌트
  * --------------------------------------------------------------------------
- * 사용자 관리 페이지 아래쪽의 "전체 회원 비율"과 "회원 관리 정보" 영역입니다.
- *
- * 담당 기능:
- * - 일반 회원 / 관리자 회원 / 정지 회원 수를 원형 그래프로 표시
- * - 최근 가입 회원 1명 표시
- * - 최근 제재 회원 1명 표시
+ * 사용자 관리 페이지 하단의 "전체 회원 비율"과 "회원 관리 정보" 영역입니다.
  *
  * 초보자 설명:
- * - 부모 컴포넌트(UserManagementPage.jsx)가 API를 호출해서 숫자와 회원 정보를 넘겨줍니다.
- * - 이 컴포넌트는 받은 데이터를 화면에 보기 좋게 그리는 일만 담당합니다.
- * - 정지 회원은 role과 별개로 status가 SUSPENDED인 회원이라 일반/관리자 수와 겹칠 수 있습니다.
- *   그래서 그래프는 세 항목을 같은 원 안에서 비교할 수 있도록 "그래프 항목 합계"를 기준으로 다시 계산합니다.
+ * - 부모 컴포넌트(UserManagementPage.jsx)가 API로 받은 데이터를 props로 넘겨줍니다.
+ * - 이 컴포넌트는 받은 데이터를 원형 그래프와 텍스트 정보로 보여주는 역할만 합니다.
+ * - 정지 회원은 role과 별개로 status가 SUSPENDED인 회원이기 때문에,
+ *   일반 회원/관리자 회원 수와 겹쳐서 계산될 수 있습니다.
+ * - 그래서 그래프는 "전체 회원 수"를 기준으로 각 항목의 비율을 계산합니다.
  * ========================================================================== */
 export function UserManagementSummaryCards({
   isLoading,
@@ -27,52 +23,81 @@ export function UserManagementSummaryCards({
   latestJoinedMember,
   latestSanctionedMember,
 }) {
+  const safeTotalMemberCount = Math.max(Number(totalMemberCount || 0), 0);
+  const safeNormalMemberCount = Math.max(Number(normalMemberCount || 0), 0);
+  const safeAdminMemberCount = Math.max(Number(adminMemberCount || 0), 0);
+  const safeSuspendedMemberCount = Math.max(
+    Number(suspendedMemberCount || 0),
+    0,
+  );
+
   /*
-   * 원형 그래프 계산 기준
+   * 원형 그래프용 회원 수 보정
    * ------------------------------------------------------------------------
-   * 초보자 설명:
-   * - totalMemberCount는 실제 전체 회원 수입니다.
-   * - 하지만 정지 회원은 role이 USER이면서 status만 SUSPENDED일 수도 있어 일반 회원 수와 겹칠 수 있습니다.
-   * - 원형 그래프에서는 겹친 값을 그대로 전체 회원 수로 나누면 마지막 조각이 잘 안 보일 수 있습니다.
-   * - 그래서 그래프 조각은 normal/admin/suspended 세 항목 합계를 기준으로 다시 계산합니다.
+   * DB 기준으로는 정지 회원도 role은 USER/MEMBER 또는 ADMIN 계열 값을 그대로 가집니다.
+   * 그래서 일반 회원 수 + 관리자 회원 수가 이미 전체 회원 수와 같아질 수 있고,
+   * 여기에 정지 회원 수를 세 번째 구간으로 추가하면 앞의 두 구간이 100%를 채워
+   * 정지 회원 색상이 그래프에 보이지 않는 문제가 생깁니다.
+   *
+   * 화면의 "전체 회원 비율" 그래프에서는 정지 회원을 별도 구간으로 보여줘야 하므로,
+   * 그래프를 그릴 때만 정지 회원 수를 일반/관리자 구간에서 먼저 빼서
+   * 일반 + 관리자 + 정지 = 전체 회원 수가 되도록 맞춥니다.
+   *
+   * 현재 정책상 관리자가 슈퍼 관리자를 정지할 수 없고, 보통 정지는 일반 회원에게
+   * 적용되므로 일반 회원 수에서 먼저 차감합니다. 일반 회원 수보다 정지 회원 수가
+   * 더 큰 비정상 데이터가 들어와도 남은 수만 관리자 구간에서 한 번 더 차감합니다.
    */
-  const chartTotal =
-    normalMemberCount + adminMemberCount + suspendedMemberCount;
+  const chartSuspendedCount = Math.min(
+    safeSuspendedMemberCount,
+    safeTotalMemberCount,
+  );
+  const suspendedTakenFromNormal = Math.min(
+    safeNormalMemberCount,
+    chartSuspendedCount,
+  );
+  const suspendedRemainingAfterNormal =
+    chartSuspendedCount - suspendedTakenFromNormal;
+  const chartNormalMemberCount =
+    safeNormalMemberCount - suspendedTakenFromNormal;
+  const chartAdminMemberCount = Math.max(
+    safeAdminMemberCount - suspendedRemainingAfterNormal,
+    0,
+  );
 
   const getChartPercent = (count) => {
-    if (!chartTotal) {
+    if (!safeTotalMemberCount) {
       return 0;
     }
 
-    return Math.round((count / chartTotal) * 100);
+    return Math.round((Number(count || 0) / safeTotalMemberCount) * 100);
   };
 
   const memberRatioItems = [
     {
       label: "일반 회원",
-      count: normalMemberCount,
+      count: chartNormalMemberCount,
       color: "#7c4dff",
-      percent: getChartPercent(normalMemberCount),
+      percent: getChartPercent(chartNormalMemberCount),
     },
     {
       label: "관리자 회원",
-      count: adminMemberCount,
+      count: chartAdminMemberCount,
       color: "#12b76a",
-      percent: getChartPercent(adminMemberCount),
+      percent: getChartPercent(chartAdminMemberCount),
     },
     {
       label: "정지 회원",
-      count: suspendedMemberCount,
+      count: chartSuspendedCount,
       color: "#f04438",
-      percent: getChartPercent(suspendedMemberCount),
+      percent: getChartPercent(chartSuspendedCount),
     },
   ];
 
   /*
    * conic-gradient 구간 계산
    * ------------------------------------------------------------------------
-   * CSS conic-gradient는 0%부터 100%까지 색을 이어 붙여 원형 그래프를 만듭니다.
-   * 각 조각의 시작점과 끝점을 누적해서 계산해야 항목이 서로 겹치지 않습니다.
+   * CSS 원형 그래프는 0%부터 100%까지 색을 이어 붙이는 방식입니다.
+   * 정지 회원 비율이 그래프에 빠지지 않도록 세 번째 구간까지 누적해서 넣습니다.
    */
   const firstRatioEnd = memberRatioItems[0].percent;
   const secondRatioEnd = firstRatioEnd + memberRatioItems[1].percent;
@@ -82,7 +107,7 @@ export function UserManagementSummaryCards({
   );
   const ratioChartStyle = {
     background:
-      chartTotal > 0
+      safeTotalMemberCount > 0
         ? `conic-gradient(
             ${memberRatioItems[0].color} 0% ${firstRatioEnd}%,
             ${memberRatioItems[1].color} ${firstRatioEnd}% ${secondRatioEnd}%,
@@ -115,7 +140,7 @@ export function UserManagementSummaryCards({
       <article className={styles.infoBox}>
         <strong>전체 회원 비율</strong>
 
-        {isLoading && totalMemberCount === 0 ? (
+        {isLoading && safeTotalMemberCount === 0 ? (
           <p>회원 비율을 불러오는 중입니다.</p>
         ) : (
           <>
@@ -129,7 +154,7 @@ export function UserManagementSummaryCards({
               <div className={styles.ratioChart} style={ratioChartStyle}>
                 <div className={styles.ratioChartCenter}>
                   <span>전체</span>
-                  <strong>{totalMemberCount.toLocaleString()}</strong>
+                  <strong>{safeTotalMemberCount.toLocaleString()}</strong>
                 </div>
               </div>
 
@@ -142,7 +167,8 @@ export function UserManagementSummaryCards({
                     />
                     <span>{ratioItem.label}</span>
                     <strong>
-                      {ratioItem.count.toLocaleString()}명 · {ratioItem.percent}%
+                      {Number(ratioItem.count || 0).toLocaleString()}명 ·{" "}
+                      {ratioItem.percent}%
                     </strong>
                   </li>
                 ))}

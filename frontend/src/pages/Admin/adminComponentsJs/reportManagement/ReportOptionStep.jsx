@@ -1,6 +1,6 @@
 import { sanctionOptions } from "./reportConstants";
 import { DrawerHeader } from "./ReportDrawerHeader";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportOptionStep.module.css";
 
 export function ReportOptionStep({
   selectedAction,

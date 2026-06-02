@@ -1,6 +1,6 @@
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import DoneOutlinedIcon from "@mui/icons-material/DoneOutlined";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportCompletionToast.module.css";
 
 /* ==========================================================================
  * 신고 처리 완료 메시지 컴포넌트

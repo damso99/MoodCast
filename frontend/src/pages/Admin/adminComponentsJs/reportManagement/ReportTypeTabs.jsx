@@ -1,5 +1,5 @@
 import { typeMeta } from "./reportConstants";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportTypeTabs.module.css";
 
 /* ==========================================================================
  * 신고 대상 유형 탭 컴포넌트

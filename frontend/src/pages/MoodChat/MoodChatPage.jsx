@@ -34,9 +34,16 @@ import styles from "./MoodChatPage.module.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
+const DIRECT_LEAVE_PREFIX = "__MOODCAST_DIRECT_LEAVE__::";
+
 function normalizeIncomingMessage(message, currentUserId, timeCache) {
   const senderId = Number(message?.senderId);
   const parsedContent = parseChatContent(message?.content ?? "");
+  const isSystemMessage =
+    message?.eventType === "CHAT_SYSTEM" ||
+    message?.eventType === "CHAT_ROOM_LEFT" ||
+    (typeof message?.content === "string" &&
+      message.content.startsWith(DIRECT_LEAVE_PREFIX));
   const messageKey =
     message?.chatId ??
     message?.id ??
@@ -61,6 +68,7 @@ function normalizeIncomingMessage(message, currentUserId, timeCache) {
     createdAt: message?.createdAt ?? "",
     isRead: message?.isRead ?? 0,
     eventType: message?.eventType ?? "CHAT_MESSAGE",
+    isSystem: isSystemMessage,
   };
 }
 
@@ -220,6 +228,7 @@ function DirectChatComposer({
   currentMemberId,
   isSending,
   isUploadingImages,
+  isDirectRoomClosed,
   onSubmitMessage,
 }) {
   const messageInputRef = useRef(null);
@@ -308,7 +317,8 @@ function DirectChatComposer({
       !activeThread ||
       !currentMemberId ||
       isSending ||
-      isUploadingImages
+      isUploadingImages ||
+      isDirectRoomClosed
     ) {
       return;
     }
@@ -384,7 +394,7 @@ function DirectChatComposer({
             accept="image/*"
             multiple
             onChange={handleImageSelection}
-            disabled={!activeThread || isSending || isUploadingImages}
+            disabled={!activeThread || isSending || isUploadingImages || isDirectRoomClosed}
           />
         </label>
         <div className={styles.inputShell}>
@@ -393,14 +403,14 @@ function DirectChatComposer({
             placeholder="메시지를 입력하세요..."
             value={messageValue}
             onChange={(event) => setMessageValue(event.target.value)}
-            disabled={!activeThread || isSending || isUploadingImages}
+            disabled={!activeThread || isSending || isUploadingImages || isDirectRoomClosed}
           />
           <button
             type="button"
             className={styles.emojiButton}
             aria-label="이모지"
             title="이모지"
-            disabled={!activeThread || isSending || isUploadingImages}
+            disabled={!activeThread || isSending || isUploadingImages || isDirectRoomClosed}
             aria-expanded={isEmojiPickerOpen}
             aria-haspopup="dialog"
             onClick={() => setIsEmojiPickerOpen((value) => !value)}
@@ -468,6 +478,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [isLoadingInviteCandidates, setIsLoadingInviteCandidates] = useState(false);
   const [activeGroupRoom, setActiveGroupRoom] = useState(null);
   const [isThreadMenuOpen, setIsThreadMenuOpen] = useState(false);
+  const [messageActionMenu, setMessageActionMenu] = useState(null);
+  const messagePressTimerRef = useRef(null);
 
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -666,6 +678,17 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
       return [...previousMessages, normalizedMessage];
     });
+
+    if (
+      normalizedMessage.isSystem &&
+      normalizedMessage.receiverId === currentMemberId &&
+      activeThread &&
+      Number(activeThread.partnerMemberId) === Number(incomingPartnerId)
+    ) {
+      loadMessages(activeThread);
+      loadThreads();
+      return;
+    }
 
     if (
       isActiveThreadMessage &&
@@ -917,7 +940,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   useEffect(() => {
     loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMemberId]);
+  }, [activeGroupRoom?.roomId, currentMemberId]);
 
   useEffect(() => {
     if (!initialPartnerId) {
@@ -1012,6 +1035,107 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
+  const clearMessagePressTimer = () => {
+    if (messagePressTimerRef.current) {
+      window.clearTimeout(messagePressTimerRef.current);
+      messagePressTimerRef.current = null;
+    }
+  };
+
+  const closeMessageActionMenu = () => {
+    setMessageActionMenu(null);
+  };
+
+  const openMessageActionMenu = (event, item, text) => {
+    const menuWidth = 176;
+    const menuHeight = 112;
+    const nextX = Math.min(event.clientX || 0, window.innerWidth - menuWidth - 12);
+    const nextY = Math.min(event.clientY || 0, window.innerHeight - menuHeight - 12);
+
+    setMessageActionMenu({
+      x: Math.max(12, nextX),
+      y: Math.max(12, nextY),
+      item,
+      text: text || "",
+    });
+  };
+
+  const handleMessagePressStart = (event, item, text) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    clearMessagePressTimer();
+    const clientX = event.clientX;
+    const clientY = event.clientY;
+    messagePressTimerRef.current = window.setTimeout(() => {
+      openMessageActionMenu({ clientX, clientY }, item, text);
+    }, 450);
+  };
+
+  const handleMessagePressEnd = () => {
+    clearMessagePressTimer();
+  };
+
+  const handleMessageContextMenu = (event, item, text) => {
+    event.preventDefault();
+    clearMessagePressTimer();
+    openMessageActionMenu(event, item, text);
+  };
+
+  const handleCopyMessageText = async () => {
+    const text = messageActionMenu?.text || "";
+    if (!text) {
+      closeMessageActionMenu();
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (copyError) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    } finally {
+      closeMessageActionMenu();
+    }
+  };
+
+  const handleDeleteMessageAction = () => {
+    if (!messageActionMenu?.item) {
+      closeMessageActionMenu();
+      return;
+    }
+
+    handleDeleteMessage(messageActionMenu.item);
+    closeMessageActionMenu();
+  };
+
+  useEffect(() => {
+    if (!messageActionMenu) {
+      return undefined;
+    }
+
+    const handleOutside = () => closeMessageActionMenu();
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        closeMessageActionMenu();
+      }
+    };
+
+    window.addEventListener("pointerdown", handleOutside);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("pointerdown", handleOutside);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [messageActionMenu]);
+
   useEffect(() => {
     if (!isRoomOpen) {
       setShowScrollBottomButton(false);
@@ -1027,7 +1151,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, isRoomOpen, activeThread]);
 
-  const openThread = (thread) => {
+  const openThread = (thread, options = {}) => {
     setActiveGroupRoom(null);
     setActiveThread(thread);
     setIsRoomOpen(true);
@@ -1082,7 +1206,16 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
-  const handleExitRoom = () => {
+  const clearDirectRoomSearchParams = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("partnerId");
+    nextParams.delete("partnerName");
+    nextParams.delete("view");
+    nextParams.delete("ts");
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const resetDirectRoomState = () => {
     setIsRoomOpen(false);
     setActiveThread(null);
     setMessages([]);
@@ -1092,6 +1225,42 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setShowScrollBottomButton(false);
     setIsThreadMenuOpen(false);
     setIsEmojiPickerOpen(false);
+    closeMessageActionMenu();
+    clearMessagePressTimer();
+  };
+
+  const handleCloseDirectRoom = () => {
+    resetDirectRoomState();
+    clearDirectRoomSearchParams();
+  };
+
+  const handleLeaveDirectRoom = async () => {
+    if (!currentMemberId || !activeThread?.partnerMemberId) {
+      return;
+    }
+
+    const confirmMessage = isDirectRoomClosed
+      ? "상대가 나간 채팅방을 삭제하시겠습니까?\n복구할 수 없습니다."
+      : "채팅방에서 나가시겠습니까?\n상대방에게는 나감 안내가 표시됩니다.";
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await axios.delete(`${API_BASE}/chat/leave`, {
+        params: {
+          memberId: currentMemberId,
+          partnerId: activeThread.partnerMemberId,
+        },
+      });
+
+      await loadThreads();
+      handleCloseDirectRoom();
+    } catch (requestError) {
+      console.error("채팅방 나가기 실패", requestError);
+      setError("채팅방을 나가지 못했습니다.");
+    }
   };
 
   const handleOpenPartnerProfile = () => {
@@ -1108,6 +1277,11 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     const selectedFiles = Array.isArray(payload?.files)
       ? payload.files
       : selectedImages.map((item) => item.file);
+
+    if (isDirectRoomClosed) {
+      setError("나간 채팅방에는 메시지를 보낼 수 없습니다.");
+      return false;
+    }
 
     if (
       (!trimmedMessage && selectedFiles.length === 0) ||
@@ -1185,6 +1359,17 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const partnerName =
     activeThread?.partnerNickname || activeThread?.partnerName || "상대방";
   const partnerInitial = partnerName.charAt(0).toUpperCase();
+  const isDirectRoomClosed = useMemo(
+    () =>
+      Boolean(
+        activeThread &&
+          messages.some(
+            (item) =>
+              item.isSystem && Number(item.senderId) === Number(activeThread.partnerMemberId),
+          ),
+      ),
+    [activeThread, messages],
+  );
   const directComposer = (
     <DirectChatComposer
       key={activeThread?.threadKey || "direct-composer"}
@@ -1192,6 +1377,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       currentMemberId={currentMemberId}
       isSending={isSending}
       isUploadingImages={isUploadingImages}
+      isDirectRoomClosed={isDirectRoomClosed}
       onSubmitMessage={handleSend}
     />
   );
@@ -1270,6 +1456,26 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         const isUnreadByReceiver =
           item.sender === "me" && Number(item.isRead) !== 1;
 
+        if (item.isSystem) {
+          return (
+            <div key={item.id} className={styles.systemMessageRow}>
+              <span className={styles.systemMessageText}>
+                {item.text || formatChatPreview(item.rawContent) || "시스템 메시지"}
+              </span>
+              {item.senderId !== currentMemberId ? (
+                <button
+                  type="button"
+                  className={styles.systemMessageActionButton}
+                  onClick={handleLeaveDirectRoom}
+                >
+                  채팅방 나가기
+                </button>
+              ) : null}
+              {item.time ? <span className={styles.systemMessageTime}>{item.time}</span> : null}
+            </div>
+          );
+        }
+
         return (
           <div
             key={item.id}
@@ -1282,23 +1488,25 @@ function ChatBody({ desktop, onRoomOpenChange }) {
               className={`${styles.messageItem} ${item.sender === "me" ? styles.me : styles.them}`}
             >
               {item.sender === "them" ? (
-                <span className={styles.senderLabel}>{partnerName}</span>
+              <span className={styles.senderLabel}>{partnerName}</span>
               ) : null}
               <div className={styles.bubbleWrap}>
-                <button
-                  type="button"
-                  className={styles.deleteButton}
-                  aria-label="메시지 삭제"
-                  title="메시지 삭제"
-                  onClick={() => handleDeleteMessage(item)}
-                >
-                  <DeleteOutlineRoundedIcon />
-                </button>
                 <div className={styles.bubbleLine}>
                   {isUnreadByReceiver ? (
                     <span className={styles.unreadMarker}>1</span>
                   ) : null}
-                  <div className={styles.bubble}>
+                  <div
+                    className={styles.bubble}
+                    onPointerDown={(event) =>
+                      handleMessagePressStart(event, item, item.text || "")
+                    }
+                    onPointerUp={handleMessagePressEnd}
+                    onPointerLeave={handleMessagePressEnd}
+                    onPointerCancel={handleMessagePressEnd}
+                    onContextMenu={(event) =>
+                      handleMessageContextMenu(event, item, item.text || "")
+                    }
+                  >
                     {item.text ? (
                       <p>
                         <RichTextContent content={item.text} className={styles.richTextContent} />
@@ -1340,6 +1548,27 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       })}
     </div>
   );
+
+  const activeMessageMenu = messageActionMenu ? (
+    <div
+      className={styles.messageActionMenu}
+      style={{ left: `${messageActionMenu.x}px`, top: `${messageActionMenu.y}px` }}
+      role="menu"
+      aria-label="메시지 작업 메뉴"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <button type="button" className={styles.messageActionMenuItem} onClick={handleCopyMessageText}>
+        텍스트 복사
+      </button>
+      <button
+        type="button"
+        className={`${styles.messageActionMenuItem} ${styles.messageActionMenuItemDanger}`}
+        onClick={handleDeleteMessageAction}
+      >
+        삭제
+      </button>
+    </div>
+  ) : null;
 
   const composer = false && (
     <form className={styles.composer} onSubmit={handleSubmit}>
@@ -1418,7 +1647,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           className={styles.sendButton}
           aria-label="메시지 보내기"
           title="메시지 보내기"
-          disabled={isSending || isUploadingImages || !activeThread}
+          disabled={isSending || isUploadingImages || !activeThread || isDirectRoomClosed}
         >
           <SendRoundedIcon />
         </button>
@@ -1432,8 +1661,8 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         <button
           type="button"
           className={styles.backButton}
-          onClick={handleExitRoom}
-          aria-label="채팅방 나가기"
+          onClick={handleCloseDirectRoom}
+          aria-label="목록으로 돌아가기"
         >
           <ArrowBackRoundedIcon />
         </button>
@@ -1497,7 +1726,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                   type="button"
                   onClick={() => {
                     setIsThreadMenuOpen(false);
-                    handleExitRoom();
+                    handleLeaveDirectRoom();
                   }}
                   style={{
                     display: "flex",
@@ -1516,7 +1745,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
                     fontWeight: 600,
                   }}
                 >
-                  대화방 닫기
+                  채팅방 나가기
                 </button>
               </div>
             ) : null}
@@ -1535,6 +1764,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           <KeyboardArrowDownRoundedIcon />
         </button>
       ) : null}
+      {activeMessageMenu}
       {directComposer}
     </div>
   );

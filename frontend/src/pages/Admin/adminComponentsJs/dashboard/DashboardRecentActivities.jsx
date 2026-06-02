@@ -1,74 +1,55 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import { EmptyState } from "../common/EmptyState";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
-import styles from "../../adminComponentsCss/dashboard/AdminDashboardPage.module.css";
+import styles from "../../adminComponentsCss/dashboard/DashboardRecentActivities.module.css";
 
 const ACTIVITY_PAGE_SIZE = 10;
 
-const getActivityLabel = (activityType) => {
-  if (activityType === "JOINED") return "가입";
-  if (activityType === "DELETED") return "탈퇴";
-  if (activityType === "SUSPENDED") return "정지";
-  if (activityType === "RESTORED") return "해제";
-  return activityType || "활동";
-};
-
-const getActivityMessage = (activity) => {
-  const memberName =
-    activity.memberName ||
-    (activity.memberNickname ? `@${activity.memberNickname}` : "회원");
-
-  if (activity.activityType === "JOINED") {
-    return `${memberName}님이 가입했습니다.`;
-  }
-
-  if (activity.activityType === "DELETED") {
-    return `${memberName}님이 탈퇴했습니다.`;
-  }
-
-  if (activity.activityType === "SUSPENDED") {
-    return `${memberName}님이 정지되었습니다.`;
-  }
-
-  if (activity.activityType === "RESTORED") {
-    return `${memberName}님의 정지가 해제되었습니다.`;
-  }
-
-  return `${memberName}님의 활동 기록입니다.`;
+const activityLabelMap = {
+  JOIN: "가입",
+  JOINED: "가입",
+  DELETE: "탈퇴",
+  DELETED: "탈퇴",
+  SUSPEND: "정지",
+  SUSPENDED: "정지",
+  RESTORE: "해제",
+  RESTORED: "해제",
 };
 
 /* ==========================================================================
- * 관리자 대시보드 최근 활동 컴포넌트
+ * 최근 활동 컴포넌트
  * --------------------------------------------------------------------------
- * 최근 활동 10개와 전체 활동 보기 팝업을 담당합니다.
+ * 최근 가입/탈퇴/정지/정지 해제 활동을 10개까지 보여주고,
+ * 전체 보기 모달에서 전체 로그를 페이지네이션으로 확인할 수 있게 합니다.
  *
  * 초보자 설명:
- * - 최근 활동은 화면이 열릴 때 바로 조회합니다.
- * - 전체 활동은 "전체 보기" 버튼을 눌렀을 때만 조회해서 불필요한 API 호출을 줄입니다.
- * - 전체 보기 팝업은 한 페이지에 10개씩 보여줍니다.
+ * - recentActivities는 대시보드 카드에 바로 보여줄 최근 10개 데이터입니다.
+ * - allActivities는 "전체 보기" 버튼을 눌렀을 때 모달에 표시할 전체 데이터입니다.
+ * - modalPage는 전체 보기 모달의 현재 페이지 번호입니다.
  * ========================================================================== */
 export function DashboardRecentActivities() {
-  const [recentActivities, setRecentActivities] = useState([]); // 대시보드에 바로 보여줄 최근 활동 10개입니다.
-  const [recentActivitiesLoading, setRecentActivitiesLoading] = useState(false);
-  const [recentActivitiesError, setRecentActivitiesError] = useState(false);
-  const [allActivities, setAllActivities] = useState([]); // 전체 보기 팝업에서 사용할 활동 목록입니다.
-  const [allActivitiesLoading, setAllActivitiesLoading] = useState(false);
-  const [allActivitiesOpen, setAllActivitiesOpen] = useState(false);
-  const [allActivitiesPage, setAllActivitiesPage] = useState(1);
-  const { accessToken } = useAuthStore();
+  const [recentActivities, setRecentActivities] = useState([]); // 화면 카드에 보여줄 최근 활동입니다.
+  const [allActivities, setAllActivities] = useState([]); // 전체 보기 모달에 사용할 활동 목록입니다.
+  const [isLoading, setIsLoading] = useState(false); // 최근 활동 API 호출 중인지 표시합니다.
+  const [hasError, setHasError] = useState(false); // 최근 활동 API 호출 실패 여부입니다.
+  const [isModalOpen, setIsModalOpen] = useState(false); // 전체 보기 모달 열림 여부입니다.
+  const [modalLoading, setModalLoading] = useState(false); // 전체 활동 API 호출 중인지 표시합니다.
+  const [modalPage, setModalPage] = useState(1); // 전체 보기 모달의 현재 페이지입니다.
+  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
   ).replace(/\/$/, "");
 
   useEffect(() => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      return;
+    }
 
-    setRecentActivitiesLoading(true);
-    setRecentActivitiesError(false);
+    setIsLoading(true);
+    setHasError(false);
 
     axios
       .get(`${BACKSERVER}/admin/api/dashboard/recent-activities`, {
@@ -77,28 +58,55 @@ export function DashboardRecentActivities() {
         },
       })
       .then((res) => {
-        const nextActivities = Array.isArray(res.data?.activities)
-          ? res.data.activities
-          : [];
-
-        setRecentActivities(nextActivities);
+        setRecentActivities(
+          Array.isArray(res.data?.activities) ? res.data.activities : [],
+        );
       })
       .catch((error) => {
         console.log(error);
         setRecentActivities([]);
-        setRecentActivitiesError(true);
+        setHasError(true);
       })
       .finally(() => {
-        setRecentActivitiesLoading(false);
+        setIsLoading(false);
       });
   }, [BACKSERVER, accessToken]);
 
-  const openAllActivities = () => {
-    if (!accessToken) return;
+  const totalModalPage = Math.max(
+    1,
+    Math.ceil(allActivities.length / ACTIVITY_PAGE_SIZE),
+  );
 
-    setAllActivitiesOpen(true);
-    setAllActivitiesPage(1);
-    setAllActivitiesLoading(true);
+  const paginatedModalActivities = useMemo(() => {
+    const startIndex = (modalPage - 1) * ACTIVITY_PAGE_SIZE;
+
+    return allActivities.slice(startIndex, startIndex + ACTIVITY_PAGE_SIZE);
+  }, [allActivities, modalPage]);
+
+  const getActivityLabel = (activityType) => {
+    return activityLabelMap[activityType] || activityType || "활동";
+  };
+
+  const getActivityTitle = (activity) => {
+    const memberName =
+      activity.memberName ||
+      activity.memberNickname ||
+      (activity.memberId ? `회원 #${activity.memberId}` : "회원 정보 없음");
+    const adminText = activity.adminName
+      ? ` · 처리 관리자: ${activity.adminName}`
+      : "";
+
+    return `${memberName}${adminText}`;
+  };
+
+  const openAllActivities = () => {
+    if (!accessToken) {
+      return;
+    }
+
+    setIsModalOpen(true);
+    setModalLoading(true);
+    setModalPage(1);
 
     axios
       .get(`${BACKSERVER}/admin/api/dashboard/activities`, {
@@ -107,150 +115,142 @@ export function DashboardRecentActivities() {
         },
       })
       .then((res) => {
-        const nextActivities = Array.isArray(res.data?.activities)
-          ? res.data.activities
-          : [];
-
-        setAllActivities(nextActivities);
+        setAllActivities(
+          Array.isArray(res.data?.activities) ? res.data.activities : [],
+        );
       })
       .catch((error) => {
         console.log(error);
         setAllActivities([]);
       })
       .finally(() => {
-        setAllActivitiesLoading(false);
+        setModalLoading(false);
       });
   };
 
-  const allActivityPageCount = Math.max(
-    1,
-    Math.ceil(allActivities.length / ACTIVITY_PAGE_SIZE),
-  );
-  const allActivityStartIndex = (allActivitiesPage - 1) * ACTIVITY_PAGE_SIZE;
-  const paginatedAllActivities = allActivities.slice(
-    allActivityStartIndex,
-    allActivityStartIndex + ACTIVITY_PAGE_SIZE,
-  );
+  const renderActivityList = (activities) => {
+    if (activities.length === 0) {
+      return (
+        <EmptyState
+          title="활동 없음"
+          description="표시할 최근 활동이 없습니다."
+        />
+      );
+    }
 
-  const renderActivityList = (activities, keyPrefix) => (
-    <ul className={styles.activityList}>
-      {activities.map((activity, index) => (
-        <li
-          className={styles.activityItem}
-          key={`${keyPrefix}-${activity.activityType}-${activity.memberId}-${activity.createdAt}-${index}`}
-        >
-          <span className={styles.activityBadge}>
-            {getActivityLabel(activity.activityType)}
-          </span>
-          <div className={styles.activityBody}>
-            <strong>{getActivityMessage(activity)}</strong>
-            <small>
-              {formatKoreanDate(activity.createdAt)}
-              {activity.adminName ? ` · 처리 관리자 ${activity.adminName}` : ""}
-            </small>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
+    return (
+      <ul className={styles.activityList}>
+        {activities.map((activity, index) => (
+          <li
+            className={styles.activityItem}
+            key={`${activity.activityType}-${activity.memberId}-${activity.createdAt}-${index}`}
+          >
+            <span className={styles.activityBadge}>
+              {getActivityLabel(activity.activityType)}
+            </span>
+            <div className={styles.activityBody}>
+              <strong>{getActivityTitle(activity)}</strong>
+              <small>
+                {activity.createdAt
+                  ? formatKoreanDate(activity.createdAt)
+                  : "날짜 정보 없음"}
+              </small>
+            </div>
+          </li>
+        ))}
+      </ul>
+    );
+  };
 
   return (
-    <>
-      <section className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h2>최근 활동</h2>
-          <button
-            type="button"
-            className={styles.textButton}
-            onClick={openAllActivities}
-          >
-            전체 보기
-          </button>
-        </div>
+    <section className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h2>최근 활동</h2>
+        <button
+          className={styles.textButton}
+          type="button"
+          onClick={openAllActivities}
+        >
+          전체 보기
+        </button>
+      </div>
 
-        {recentActivitiesLoading ? (
-          <EmptyState
-            title="최근 활동을 불러오는 중입니다"
-            description="가입, 탈퇴, 정지, 해제 기록을 확인하고 있습니다."
-          />
-        ) : recentActivitiesError ? (
-          <EmptyState
-            title="최근 활동 조회 실패"
-            description="백엔드 API 응답을 확인해주세요."
-          />
-        ) : recentActivities.length === 0 ? (
-          <EmptyState
-            title="최근 활동 없음"
-            description="사용자 활동이 생기면 이 영역에 표시됩니다."
-          />
-        ) : (
-          renderActivityList(recentActivities, "recent")
-        )}
-      </section>
+      {isLoading ? (
+        <EmptyState title="조회 중" description="최근 활동을 불러오고 있습니다." />
+      ) : hasError ? (
+        <EmptyState
+          title="조회 실패"
+          description="최근 활동 데이터를 불러오지 못했습니다."
+        />
+      ) : (
+        renderActivityList(recentActivities)
+      )}
 
-      {allActivitiesOpen && (
-        <section className={styles.activityModalLayer}>
+      {isModalOpen && (
+        <div className={styles.activityModalLayer} role="presentation">
           <button
-            type="button"
             className={styles.activityModalDim}
-            aria-label="전체 활동 보기 닫기"
-            onClick={() => setAllActivitiesOpen(false)}
+            type="button"
+            aria-label="전체 활동 닫기"
+            onClick={() => setIsModalOpen(false)}
           />
-          <article className={styles.activityModalPanel}>
-            <header className={styles.activityModalHead}>
-              <h2>전체 활동</h2>
+          <section
+            className={styles.activityModalPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-activity-modal-title"
+          >
+            <div className={styles.activityModalHead}>
+              <h2 id="dashboard-activity-modal-title">전체 활동</h2>
               <button
-                type="button"
                 className={styles.activityModalClose}
-                aria-label="전체 활동 보기 닫기"
-                onClick={() => setAllActivitiesOpen(false)}
+                type="button"
+                aria-label="닫기"
+                onClick={() => setIsModalOpen(false)}
               >
-                <CloseOutlinedIcon fontSize="small" />
+                ×
               </button>
-            </header>
+            </div>
 
-            {allActivitiesLoading ? (
+            {modalLoading ? (
               <EmptyState
-                title="전체 활동을 불러오는 중입니다"
-                description="잠시만 기다려주세요."
-              />
-            ) : paginatedAllActivities.length === 0 ? (
-              <EmptyState
-                title="전체 활동 없음"
-                description="표시할 활동 기록이 없습니다."
+                title="조회 중"
+                description="전체 활동을 불러오고 있습니다."
               />
             ) : (
-              renderActivityList(paginatedAllActivities, "all")
-            )}
+              <>
+                {renderActivityList(paginatedModalActivities)}
 
-            <nav className={styles.modalPagination} aria-label="전체 활동 페이지">
-              <button
-                type="button"
-                disabled={allActivitiesPage === 1}
-                onClick={() =>
-                  setAllActivitiesPage(Math.max(1, allActivitiesPage - 1))
-                }
-              >
-                이전
-              </button>
-              <span>
-                {allActivitiesPage} / {allActivityPageCount}
-              </span>
-              <button
-                type="button"
-                disabled={allActivitiesPage === allActivityPageCount}
-                onClick={() =>
-                  setAllActivitiesPage(
-                    Math.min(allActivityPageCount, allActivitiesPage + 1),
-                  )
-                }
-              >
-                다음
-              </button>
-            </nav>
-          </article>
-        </section>
+                <div className={styles.modalPagination}>
+                  <button
+                    type="button"
+                    disabled={modalPage === 1}
+                    onClick={() =>
+                      setModalPage((page) => Math.max(1, page - 1))
+                    }
+                  >
+                    이전
+                  </button>
+                  <span>
+                    {modalPage} / {totalModalPage}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={modalPage === totalModalPage}
+                    onClick={() =>
+                      setModalPage((page) =>
+                        Math.min(totalModalPage, page + 1),
+                      )
+                    }
+                  >
+                    다음
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
       )}
-    </>
+    </section>
   );
 }

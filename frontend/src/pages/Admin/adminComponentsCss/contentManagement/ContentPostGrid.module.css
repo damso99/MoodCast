@@ -1,127 +1,3 @@
-.topBar {
-  display: grid;
-  grid-template-columns: auto minmax(360px, 520px);
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid rgba(124, 77, 255, 0.1);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.045);
-}
-
-.searchControls {
-  display: grid;
-  grid-template-columns: 116px minmax(0, 1fr);
-  gap: 8px;
-  min-width: 0;
-}
-
-.searchControls select,
-.viewTools select,
-.filterPanel select,
-.filterPanel input {
-  min-height: 42px;
-  width: 100%;
-  border: 1px solid rgba(102, 112, 133, 0.16);
-  border-radius: 12px;
-  padding: 0 14px;
-  outline: 0;
-  color: #111827;
-  background: #fff;
-}
-
-.contentShell {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 20px;
-  align-items: start;
-}
-
-.contentMain {
-  min-width: 0;
-  display: grid;
-  gap: 14px;
-}
-
-.statusToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.statusPills,
-.viewTools,
-.cardActions,
-.paginationButtons {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.statusPills button,
-.cardActions button,
-.filterPanel button,
-.paginationButtons button {
-  min-height: 34px;
-  border: 0;
-  border-radius: 10px;
-  font-weight: 900;
-  cursor: pointer;
-  transition:
-    transform 0.16s ease,
-    background 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.statusPills button {
-  padding: 0 14px;
-  color: #633df2;
-  background: rgba(124, 77, 255, 0.1);
-}
-
-.statusPills .activeStatus {
-  color: #fff;
-  background: #8b5cf6;
-  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.24);
-}
-
-.viewTools span {
-  color: #667085;
-  font-size: 0.86rem;
-  font-weight: 900;
-}
-
-.summaryPanel,
-.filterPanel,
-.contentCard {
-  border: 1px solid rgba(124, 77, 255, 0.1);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.045);
-}
-
-.summaryPanel {
-  padding: 18px;
-}
-
-.summaryPanel h2,
-.filterPanel h2 {
-  margin: 0;
-  color: #111827;
-  font-size: 1rem;
-  font-weight: 900;
-}
-
-.summaryPanel p {
-  margin: 8px 0 0;
-  color: #667085;
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-
 .feedList {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
@@ -156,10 +32,14 @@
 
 .contentCard {
   display: grid;
-  grid-template-rows: auto 92px minmax(160px, 1fr) auto auto;
+  grid-template-rows: auto minmax(150px, auto) minmax(160px, 1fr) auto auto;
   gap: 12px;
   min-height: 390px;
   padding: 16px;
+  border: 1px solid rgba(124, 77, 255, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.045);
 }
 
 .selectedCard {
@@ -184,8 +64,7 @@
   cursor: pointer;
 }
 
-.cardSelectLabel input,
-.selectAllLabel input {
+.cardSelectLabel input {
   width: 15px;
   height: 15px;
   accent-color: #7c4dff;
@@ -197,23 +76,27 @@
   font-weight: 950;
 }
 
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
 .adminPostImageWrap {
   display: grid;
   place-items: center;
+  min-height: 150px;
+  max-height: 210px;
+  overflow: hidden;
   border: 1px solid rgba(124, 77, 255, 0.12);
   border-radius: 14px;
   color: #633df2;
   font-size: 1rem;
   font-weight: 950;
-  background:
-    linear-gradient(135deg, rgba(124, 77, 255, 0.12), rgba(47, 126, 251, 0.08)),
-    #fff;
-}
-
-.adminPostImageWrap {
-  min-height: 92px;
-  max-height: 92px;
-  overflow: hidden;
   background: #f3f4f6;
 }
 
@@ -226,7 +109,7 @@
   width: 100%;
   height: 100%;
   max-width: 100%;
-  max-height: 92px;
+  max-height: 210px;
   object-fit: contain;
   object-position: center;
   border-radius: 10px;
@@ -299,6 +182,7 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   justify-content: center;
   min-height: 24px;
   padding: 0 8px;
@@ -307,6 +191,12 @@
   font-size: 0.74rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.emotionIcon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
 }
 
 .feedBody p {
@@ -320,8 +210,11 @@
   -webkit-box-orient: vertical;
 }
 
-.statRow {
+.statRow,
+.cardActions,
+.paginationButtons {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -329,6 +222,7 @@
 .statRow span {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   min-height: 26px;
   padding: 0 8px;
   border-radius: 999px;
@@ -338,14 +232,10 @@
   background: rgba(102, 112, 133, 0.08);
 }
 
-.statusBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 5px 9px;
-  border-radius: 999px;
-  font-size: 0.76rem;
-  font-weight: 900;
+.statEmotionIcon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }
 
 .statusPublic {
@@ -367,13 +257,27 @@
   align-self: end;
 }
 
+.cardActions button,
+.paginationButtons button {
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
 .cardActions button {
   flex: 1;
   min-width: 0;
   padding: 0 10px;
 }
 
-.cardActions button:disabled {
+.cardActions button:disabled,
+.paginationButtons button:disabled {
   color: #c3c8d1;
   cursor: not-allowed;
   background: #f6f7f9;
@@ -416,157 +320,25 @@
   font-size: 0.78rem;
 }
 
-.paginationButtons button:disabled {
-  color: #c3c8d1;
-  cursor: not-allowed;
-  background: #f6f7f9;
-  box-shadow: none;
-}
-
 .paginationButtons .activePage {
   color: #fff;
   border-color: #7c4dff;
   background: #7c4dff;
 }
 
-.bulkActionBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(124, 77, 255, 0.1);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.selectAllLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: #344054;
-  font-size: 0.84rem;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.bulkActions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.bulkActions span {
-  color: #667085;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.bulkActions button {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 9px;
-  color: #633df2;
-  font-weight: 900;
-  background: rgba(124, 77, 255, 0.1);
-  cursor: pointer;
-}
-
-.bulkActions button:disabled {
-  color: #c3c8d1;
-  cursor: not-allowed;
-  background: #f6f7f9;
-}
-
-.sideRail {
-  display: grid;
-  gap: 14px;
-  position: sticky;
-  top: 22px;
-}
-
-.filterPanel {
-  display: grid;
-  gap: 15px;
-  padding: 18px;
-}
-
-.filterPanel label {
-  display: grid;
-  gap: 8px;
-  color: #111827;
-  font-size: 0.88rem;
-  font-weight: 900;
-}
-
-.filterPanel button {
-  color: #111827;
-  background: #fff;
-  border: 1px solid rgba(102, 112, 133, 0.16);
-}
-
-.panelTitleRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.panelTitleRow span {
-  color: #667085;
-  font-size: 0.82rem;
-  font-weight: 900;
-}
-
-.statusPills button:hover,
 .cardActions button:hover,
-.filterPanel button:hover,
 .paginationButtons button:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(124, 77, 255, 0.13);
 }
 
-.statusPills button:active,
 .cardActions button:active,
-.filterPanel button:active,
 .paginationButtons button:not(:disabled):active {
   transform: translateY(0) scale(0.98);
 }
 
-@media (max-width: 1280px) {
-  .contentShell {
-    grid-template-columns: 1fr;
-  }
-
-  .sideRail {
-    position: static;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1080px) {
-  .contentMain {
-    overflow-x: auto;
-  }
-}
-
 @media (max-width: 760px) {
-  .topBar,
-  .searchControls,
-  .sideRail {
-    grid-template-columns: 1fr;
-  }
-
-  .statusToolbar {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .statusPills,
-  .cardActions,
-  .bulkActionBar,
-  .bulkActions {
+  .cardActions {
     align-items: stretch;
     flex-direction: column;
   }

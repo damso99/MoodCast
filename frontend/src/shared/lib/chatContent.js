@@ -1,3 +1,5 @@
+const DIRECT_LEAVE_PREFIX = "__MOODCAST_DIRECT_LEAVE__::";
+
 export function parseChatContent(rawContent) {
   if (typeof rawContent !== "string") {
     return {
@@ -27,9 +29,25 @@ export function parseChatContent(rawContent) {
       };
     }
   } catch (error) {
+    if (trimmedContent.startsWith(DIRECT_LEAVE_PREFIX)) {
+      return {
+        text: trimmedContent.slice(DIRECT_LEAVE_PREFIX.length),
+        imageUrls: [],
+        isSystem: true,
+      };
+    }
+
     return {
       text: trimmedContent,
       imageUrls: [],
+    };
+  }
+
+  if (trimmedContent.startsWith(DIRECT_LEAVE_PREFIX)) {
+    return {
+      text: trimmedContent.slice(DIRECT_LEAVE_PREFIX.length),
+      imageUrls: [],
+      isSystem: true,
     };
   }
 

@@ -1,6 +1,6 @@
 import { statusMeta } from "./reportConstants";
 import { getTypeIcon } from "./reportUtils";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportListItem.module.css";
 
 /* ==========================================================================
  * 신고 목록 항목 컴포넌트

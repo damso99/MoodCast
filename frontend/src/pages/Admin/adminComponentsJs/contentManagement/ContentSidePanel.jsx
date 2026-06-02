@@ -1,60 +1,73 @@
-import styles from "../../adminComponentsCss/contentManagement/ContentManagementPage.module.css";
+import styles from "../../adminComponentsCss/contentManagement/ContentSidePanel.module.css";
 
 /* ==========================================================================
- * 콘텐츠 관리 오른쪽 사이드 패널 컴포넌트
+ * 콘텐츠 관리 사이드 패널 컴포넌트
  * --------------------------------------------------------------------------
  * 게시글 관리 안내와 감정/기간 필터를 담당합니다.
  *
  * 초보자 설명:
- * - 오른쪽 사이드바에 있던 복수 관리 카드는 제거했습니다.
- * - 필터 초기화 버튼을 누르면 컨테이너 컴포넌트의 resetFilters 함수가 실행됩니다.
+ * - emotionFilter는 선택된 감정 필터입니다.
+ * - startDate/endDate는 게시글 작성일 기준 기간 필터입니다.
+ * - 복수 관리 버튼은 상단 목록 영역에 있으므로 이 패널에서는 제거했습니다.
  * ========================================================================== */
 export function ContentSidePanel({
-  selectedContentType,
-  contentDescriptions,
   emotionFilters,
-  selectedEmotionId,
-  onSelectedEmotionIdChange,
-  dateRange,
-  onDateRangeChange,
+  emotionFilter,
+  onEmotionFilterChange,
+  startDate,
+  onStartDateChange,
+  endDate,
+  onEndDateChange,
   onResetFilters,
 }) {
   return (
     <aside className={styles.sideRail}>
       <section className={styles.summaryPanel}>
-        <h2>{selectedContentType} 관리 안내</h2>
-        <p>{contentDescriptions[selectedContentType]}</p>
+        <h2>게시글 관리 안내</h2>
+        <p>
+          공개 게시글은 숨김 또는 삭제 상태로 전환할 수 있습니다. 삭제 탭에
+          들어간 게시글은 복구하거나 완전 삭제할 수 있습니다.
+        </p>
       </section>
 
       <section className={styles.filterPanel}>
         <div className={styles.panelTitleRow}>
           <h2>필터</h2>
-          <span>감정 / 기간</span>
+          <span>감정/기간</span>
         </div>
+
         <label>
           감정
           <select
-            value={selectedEmotionId}
-            onChange={(event) => onSelectedEmotionIdChange(event.target.value)}
+            value={emotionFilter}
+            onChange={(event) => onEmotionFilterChange(event.target.value)}
           >
             {emotionFilters.map((emotionItem) => (
-              <option key={emotionItem.id} value={emotionItem.id}>
+              <option key={emotionItem.value} value={emotionItem.value}>
                 {emotionItem.label}
               </option>
             ))}
           </select>
         </label>
+
         <label>
-          작성일
-          <select
-            value={dateRange}
-            onChange={(event) => onDateRangeChange(event.target.value)}
-          >
-            <option value="all">전체 기간</option>
-            <option value="today">오늘</option>
-            <option value="week">최근 7일</option>
-          </select>
+          시작일
+          <input
+            type="date"
+            value={startDate}
+            onChange={(event) => onStartDateChange(event.target.value)}
+          />
         </label>
+
+        <label>
+          종료일
+          <input
+            type="date"
+            value={endDate}
+            onChange={(event) => onEndDateChange(event.target.value)}
+          />
+        </label>
+
         <button type="button" onClick={onResetFilters}>
           필터 초기화
         </button>

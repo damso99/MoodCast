@@ -1,6 +1,6 @@
 import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportDrawerHeader.module.css";
 
 export function DrawerHeader({ title, onBack, onClose }) {
   return (

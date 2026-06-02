@@ -1,9 +1,9 @@
 package com.moodcast.admin.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,12 +13,12 @@ import java.util.Map;
 /* ==========================================================================
  * 관리자 API 예외 처리
  * --------------------------------------------------------------------------
- * AdminController에서 발생한 예외를 프론트가 이해하기 쉬운 JSON 응답으로 바꿉니다.
+ * AdminController에서 발생한 예외를 프론트가 이해하기 쉬운 JSON 응답으로 변환합니다.
  *
- * 필요한 이유:
- * - 로그인하지 않은 사용자가 관리자 API를 호출하면 401로 응답해야 합니다.
- * - 로그인했지만 관리자가 아니면 403으로 응답해야 합니다.
- * - 예외 처리가 없으면 단순 권한 문제도 500 서버 오류처럼 보일 수 있습니다.
+ * 처리 기준:
+ * - 잘못된 요청이나 토큰 문제는 IllegalArgumentException으로 들어오며 401로 응답합니다.
+ * - 권한 부족, 조회 실패, 상태 전환 실패처럼 의도적으로 던진 예외는 지정된 상태 코드를 유지합니다.
+ * - 예상하지 못한 오류는 500으로 응답하고, 서버 로그에는 전체 stack trace를 남깁니다.
  * ========================================================================== */
 @RestControllerAdvice(assignableTypes = AdminController.class)
 public class AdminExceptionHandler {

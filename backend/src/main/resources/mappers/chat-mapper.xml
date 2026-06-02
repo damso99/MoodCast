@@ -26,8 +26,11 @@
             from chat_tbl
             where (sender_id = #{memberId} or receiver_id = #{memberId})
               and deleted_yn = 0
-              and not (sender_id = #{memberId} and sender_deleted_yn = 1)
-              and not (receiver_id = #{memberId} and receiver_deleted_yn = 1)
+              and (
+                (sender_id = #{memberId} and (sender_hidden_at is null or created_at > sender_hidden_at))
+                or
+                (receiver_id = #{memberId} and (receiver_hidden_at is null or created_at > receiver_hidden_at))
+              )
             group by
                 case
                     when sender_id = #{memberId} then receiver_id
@@ -53,12 +56,15 @@
             deleted_yn as deletedYn
         from chat_tbl
         where deleted_yn = 0
-          and not (sender_id = #{memberId} and sender_deleted_yn = 1)
-          and not (receiver_id = #{memberId} and receiver_deleted_yn = 1)
           and (
             (sender_id = #{memberId} and receiver_id = #{partnerId})
             or
             (sender_id = #{partnerId} and receiver_id = #{memberId})
+          )
+          and (
+            (sender_id = #{memberId} and (sender_hidden_at is null or created_at > sender_hidden_at))
+            or
+            (receiver_id = #{memberId} and (receiver_hidden_at is null or created_at > receiver_hidden_at))
           )
         order by created_at asc, chat_id asc
     </select>
@@ -86,7 +92,9 @@
             created_at,
             deleted_yn,
             sender_deleted_yn,
-            receiver_deleted_yn
+            receiver_deleted_yn,
+            sender_hidden_at,
+            receiver_hidden_at
         )
         VALUES (
                    #{senderId},
@@ -94,9 +102,11 @@
                    #{content},
                    COALESCE(#{isRead}, 0),
                    #{createdAt},
-                   0,
-                   0,
-                   0
+                   COALESCE(#{deletedYn}, 0),
+                   COALESCE(#{senderDeletedYn}, 0),
+                   COALESCE(#{receiverDeletedYn}, 0),
+                   #{senderHiddenAt},
+                   #{receiverHiddenAt}
                )
     </insert>
 
@@ -139,5 +149,19 @@
         where chat_id = #{chatId}
           and receiver_id = #{memberId}
           and deleted_yn = 0
+    </update>
+
+    <update id="hideDirectChatMessagesAsSender">
+        update chat_tbl
+        set sender_hidden_at = CURRENT_TIMESTAMP(6)
+        where sender_id = #{memberId}
+          and receiver_id = #{partnerId}
+    </update>
+
+    <update id="hideDirectChatMessagesAsReceiver">
+        update chat_tbl
+        set receiver_hidden_at = CURRENT_TIMESTAMP(6)
+        where sender_id = #{partnerId}
+          and receiver_id = #{memberId}
     </update>
 </mapper>

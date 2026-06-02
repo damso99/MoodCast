@@ -1,5 +1,5 @@
 import { statusMeta } from "./reportConstants";
-import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
+import styles from "../../adminComponentsCss/reportManagement/ReportStatusTabs.module.css";
 
 /* ==========================================================================
  * 신고 처리 상태 탭 컴포넌트

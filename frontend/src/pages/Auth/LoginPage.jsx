@@ -7,6 +7,7 @@ import { getApiMessage, getToastDuration } from "./authFeedback";
 import { startKakaoLogin } from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
+const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -106,14 +107,20 @@ export const LoginPage = () => {
           window.localStorage.removeItem(SAVED_EMAIL_KEY);
         }
 
-        setAuthData(res.data.accessToken, res.data.member);
+        const loginMember = res.data?.member || {};
+        setAuthData(res.data.accessToken, loginMember);
         setMember({
           email: member.rememberId ? member.email : "",
           password: "",
           rememberId: member.rememberId,
           remember: false,
         });
-        navigate("/app/feed");
+
+        if (ADMIN_ROLES.includes(loginMember.role)) {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/app/feed");
+        }
       })
       .catch((err) => {
         console.log(err);
