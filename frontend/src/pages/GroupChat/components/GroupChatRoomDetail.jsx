@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+﻿import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import KeyboardArrowLeftRoundedIcon from "@mui/icons-material/KeyboardArrowLeftRounded";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
@@ -65,6 +65,7 @@ export function GroupChatRoomDetail({
   const [imageViewer, setImageViewer] = useState(null);
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const [messageActionMenu, setMessageActionMenu] = useState(null);
+  const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false);
   const messagesRef = useRef(null);
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -133,7 +134,7 @@ export function GroupChatRoomDetail({
     }
 
     if (files.length > 5) {
-      setError("이미지는 최대 5개까지 업로드할 수 있습니다.");
+      setError("이미지는 최대 5장까지 업로드할 수 있습니다.");
       return;
     }
 
@@ -310,6 +311,20 @@ export function GroupChatRoomDetail({
     closeMessageActionMenu();
   };
 
+  const openLeaveConfirm = () => {
+    setIsMoreMenuOpen(false);
+    setIsLeaveConfirmOpen(true);
+  };
+
+  const closeLeaveConfirm = () => {
+    setIsLeaveConfirmOpen(false);
+  };
+
+  const handleConfirmLeave = async () => {
+    closeLeaveConfirm();
+    await onLeaveRoom?.();
+  };
+
   useEffect(() => {
     if (!messageActionMenu) {
       return undefined;
@@ -446,7 +461,7 @@ export function GroupChatRoomDetail({
           type="button"
           className={styles.backButton}
           onClick={onBack}
-          aria-label="뒤로 가기"
+          aria-label="목록으로 돌아가기"
         >
           <ArrowBackRoundedIcon />
         </button>
@@ -485,7 +500,7 @@ export function GroupChatRoomDetail({
                   type="button"
                   onClick={() => {
                     setIsMoreMenuOpen(false);
-                    onInviteMembers?.();
+                  onInviteMembers?.();
                   }}
                   style={{
                     display: "flex",
@@ -509,8 +524,7 @@ export function GroupChatRoomDetail({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsMoreMenuOpen(false);
-                    onLeaveRoom?.();
+                    openLeaveConfirm();
                   }}
                   style={{
                     display: "flex",
@@ -529,7 +543,7 @@ export function GroupChatRoomDetail({
                     fontWeight: 600,
                   }}
                 >
-                  대화방 나가기
+                  채팅방 나가기
                 </button>
               </div>
             ) : null}
@@ -547,22 +561,22 @@ export function GroupChatRoomDetail({
         {messages.map((item) => {
           if (item.eventType === "CHAT_SYSTEM") {
             const isLeaveMessage =
-              typeof item.content === "string" && item.content.includes("나갔습니다");
+              typeof item.content === "string" && item.content.includes("님이 나갔습니다.");
 
             return (
               <div key={item.messageId} className={styles.systemMessageRow}>
                 <span className={styles.systemMessageText}>
                   <RichTextContent content={item.content} className={styles.richTextContent} />
                 </span>
-                {isLeaveMessage && onLeaveRoom ? (
-                  <button
-                    type="button"
-                    className={styles.systemMessageActionButton}
-                    onClick={onLeaveRoom}
-                  >
-                    채팅방 나가기
-                  </button>
-                ) : null}
+          {isLeaveMessage && onInviteMembers ? (
+            <button
+              type="button"
+              className={styles.systemMessageActionButton}
+              onClick={() => onInviteMembers?.(item.senderId)}
+            >
+              다시 초대하기
+            </button>
+          ) : null}
                 <span className={styles.systemMessageTime}>
                   {item.time || formatKoreanTime(item.createdAt) || ""}
                 </span>
@@ -571,7 +585,7 @@ export function GroupChatRoomDetail({
           }
 
           const isMine = Number(item.senderId) === Number(currentMemberId);
-          const senderName = item.senderName || "회원";
+          const senderName = item.senderName || "?뚯썝";
           const senderInitial = senderName.charAt(0).toUpperCase();
           const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
           const unreadCount = Number(item.unreadCount || 0);
@@ -781,8 +795,8 @@ export function GroupChatRoomDetail({
             <button
               type="button"
               className={`${styles.imageViewerNavButton} ${styles.imageViewerPrevButton}`}
-              aria-label="?? ???"
-              title="?? ???"
+              aria-label="이전 이미지"
+              title="이전 이미지"
               onClick={(event) => {
                 event.stopPropagation();
                 moveImageViewer(-1);
@@ -805,8 +819,8 @@ export function GroupChatRoomDetail({
             <button
               type="button"
               className={styles.imageViewerClose}
-              aria-label="??? ??"
-              title="??? ??"
+              aria-label="이미지 닫기"
+              title="이미지 닫기"
               onClick={() => setImageViewer(null)}
             >
               <CloseRoundedIcon />
@@ -828,8 +842,8 @@ export function GroupChatRoomDetail({
             <button
               type="button"
               className={`${styles.imageViewerNavButton} ${styles.imageViewerNextButton}`}
-              aria-label="?? ???"
-              title="?? ???"
+              aria-label="다음 이미지"
+              title="다음 이미지"
               onClick={(event) => {
                 event.stopPropagation();
                 moveImageViewer(1);
@@ -838,6 +852,37 @@ export function GroupChatRoomDetail({
               <KeyboardArrowRightRoundedIcon className={styles.imageViewerNavIcon} />
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {isLeaveConfirmOpen ? (
+        <div className="moodchat-modalBackdrop" role="presentation" onClick={closeLeaveConfirm}>
+          <div
+            className="moodchat-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="채팅방 나가기 확인"
+            onClick={(event) => event.stopPropagation()}
+            style={{ height: "auto", maxHeight: "none", minHeight: "0" }}
+          >
+            <div className="moodchat-modalHeader">
+              <div>
+                <strong>채팅방 나가기</strong>
+                <p>한 번 나가면 다시 입장하기 전까지 이전 대화는 보이지 않습니다.</p>
+              </div>
+              <button type="button" className="moodchat-iconButton" onClick={closeLeaveConfirm} aria-label="닫기">
+                <CloseRoundedIcon />
+              </button>
+            </div>
+            <div className="moodchat-modalActions">
+              <button type="button" className="moodchat-secondaryButton" onClick={closeLeaveConfirm}>
+                취소
+              </button>
+              <button type="button" className="moodchat-primaryButton" onClick={handleConfirmLeave}>
+                나가기
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -892,7 +937,7 @@ export function GroupChatRoomDetail({
               ref={messageInputRef}
               placeholder="메시지를 입력하세요..."
               value={messageValue}
-              onChange={onMessageChange}
+              onChange={(event) => setMessageValue(event.target.value)}
               disabled={!activeRoom || isUploadingImages}
             />
             <button
@@ -927,3 +972,4 @@ export function GroupChatRoomDetail({
     </div>
   );
 }
+

@@ -13,4 +13,6 @@ public class ChatVo {
     private int deletedYn;
     private int senderDeletedYn;
     private int receiverDeletedYn;
+    private String senderHiddenAt;
+    private String receiverHiddenAt;
 }
