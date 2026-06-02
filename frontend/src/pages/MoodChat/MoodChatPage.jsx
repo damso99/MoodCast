@@ -36,47 +36,6 @@ const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 const DEFAULT_CURRENT_USER_ID = null;
 const DIRECT_LEAVE_PREFIX = "__MOODCAST_DIRECT_LEAVE__::";
 
-function loadHiddenDirectThreadIds() {
-  if (typeof window === "undefined") {
-    return new Set();
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem("moodcast-hidden-direct-thread-ids");
-    if (!rawValue) {
-      return new Set();
-    }
-
-    const parsedValue = JSON.parse(rawValue);
-    if (!Array.isArray(parsedValue)) {
-      return new Set();
-    }
-
-    return new Set(
-      parsedValue
-        .map((value) => Number(value))
-        .filter((value) => Number.isFinite(value) && value > 0),
-    );
-  } catch (error) {
-    return new Set();
-  }
-}
-
-function saveHiddenDirectThreadIds(threadIds) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(
-      "moodcast-hidden-direct-thread-ids",
-      JSON.stringify(Array.from(threadIds || [])),
-    );
-  } catch (error) {
-    // 저장 실패는 무시합니다.
-  }
-}
-
 function normalizeIncomingMessage(message, currentUserId, timeCache) {
   const senderId = Number(message?.senderId);
   const parsedContent = parseChatContent(message?.content ?? "");
@@ -520,9 +479,6 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   const [activeGroupRoom, setActiveGroupRoom] = useState(null);
   const [isThreadMenuOpen, setIsThreadMenuOpen] = useState(false);
   const [messageActionMenu, setMessageActionMenu] = useState(null);
-  const [hiddenDirectThreadIds, setHiddenDirectThreadIds] = useState(() =>
-    loadHiddenDirectThreadIds(),
-  );
   const messagePressTimerRef = useRef(null);
 
   useEffect(() => {
@@ -729,20 +685,6 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       activeThread &&
       Number(activeThread.partnerMemberId) === Number(incomingPartnerId)
     ) {
-      const closedPartnerId = Number(normalizedMessage.senderId);
-      if (closedPartnerId > 0) {
-        setHiddenDirectThreadIds((previousIds) => {
-          if (previousIds.has(closedPartnerId)) {
-            return previousIds;
-          }
-
-          const nextIds = new Set(previousIds);
-          nextIds.add(closedPartnerId);
-          saveHiddenDirectThreadIds(nextIds);
-          return nextIds;
-        });
-      }
-
       loadMessages(activeThread);
       loadThreads();
       return;
@@ -833,7 +775,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         setActiveGroupRoom(null);
         setInviteModalOpen(false);
         setSelectedInviteIds([]);
-        openThread(directThread, { clearHidden: true });
+        openThread(directThread);
         return;
       } else {
         const response = await createGroupChatRoom({
@@ -904,20 +846,13 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         : [];
 
       const nextThreads = [...directThreads, ...groupThreads];
-      const filteredThreads = nextThreads.filter((thread) => {
-        if (thread.roomType !== "direct") {
-          return true;
-        }
-
-        return !hiddenDirectThreadIds.has(Number(thread.partnerMemberId));
-      });
 
       setThreads((previousThreads) => {
         const previousByKey = new Map(
           previousThreads.map((thread) => [thread.threadKey, thread]),
         );
         const nextByKey = new Map(
-          filteredThreads.map((thread) => [thread.threadKey, thread]),
+          nextThreads.map((thread) => [thread.threadKey, thread]),
         );
 
         const mergedThreads = previousThreads
@@ -939,7 +874,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
           })
           .filter((thread) => nextByKey.has(thread.threadKey));
 
-        const appendedThreads = filteredThreads.filter(
+        const appendedThreads = nextThreads.filter(
           (thread) => !previousByKey.has(thread.threadKey),
         );
 
@@ -1005,7 +940,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   useEffect(() => {
     loadThreads();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeGroupRoom?.roomId, currentMemberId, hiddenDirectThreadIds]);
+  }, [activeGroupRoom?.roomId, currentMemberId]);
 
   useEffect(() => {
     if (!initialPartnerId) {
@@ -1020,17 +955,6 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     }
 
     if (!currentMemberId) {
-      return;
-    }
-
-    if (hiddenDirectThreadIds.has(Number(initialPartnerId))) {
-      setError("나간 채팅방입니다.");
-      setActiveThread(null);
-      setIsRoomOpen(false);
-      setMessages([]);
-      setMessage("");
-      clearSelectedImages();
-      setShowScrollBottomButton(false);
       return;
     }
 
@@ -1051,7 +975,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     setShowScrollBottomButton(false);
     loadMessages(partnerThread);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentMemberId, hiddenDirectThreadIds, initialPartnerId, initialPartnerName]);
+  }, [currentMemberId, initialPartnerId, initialPartnerName]);
 
   useEffect(() => {
     if (searchParams.get("view") !== "list") {
@@ -1228,27 +1152,6 @@ function ChatBody({ desktop, onRoomOpenChange }) {
   }, [messages, isRoomOpen, activeThread]);
 
   const openThread = (thread, options = {}) => {
-    const partnerMemberId = Number(thread?.partnerMemberId);
-    const shouldClearHidden = Boolean(options?.clearHidden);
-
-    if (partnerMemberId && hiddenDirectThreadIds.has(partnerMemberId) && !shouldClearHidden) {
-      setError("나간 채팅방입니다.");
-      return;
-    }
-
-    if (partnerMemberId && shouldClearHidden) {
-      setHiddenDirectThreadIds((previousIds) => {
-        if (!previousIds.has(partnerMemberId)) {
-          return previousIds;
-        }
-
-        const nextIds = new Set(previousIds);
-        nextIds.delete(partnerMemberId);
-        saveHiddenDirectThreadIds(nextIds);
-        return nextIds;
-      });
-    }
-
     setActiveGroupRoom(null);
     setActiveThread(thread);
     setIsRoomOpen(true);
@@ -1345,49 +1248,11 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     }
 
     try {
-      if (isDirectRoomClosed) {
-        setThreads((previousThreads) =>
-          previousThreads.filter(
-            (thread) =>
-              thread.roomType === "group" ||
-              Number(thread.partnerMemberId) !== Number(activeThread.partnerMemberId),
-          ),
-        );
-        handleCloseDirectRoom();
-        return;
-      }
-
-      const leavingName =
-        member?.nickname ||
-        member?.name ||
-        member?.memberName ||
-        member?.displayName ||
-        member?.userName ||
-        member?.username ||
-        `회원 ${currentMemberId}`;
-      const leaveContent = `${DIRECT_LEAVE_PREFIX}${leavingName}님이 나갔습니다.`;
-
-      const isPublished = sendMessage({
-        content: leaveContent,
-        senderId: currentMemberId,
-        receiverId: activeThread.partnerMemberId,
-        isRead: 0,
-      });
-
-      if (!isPublished) {
-        await axios.post(`${API_BASE}/chat/send`, {
-          content: leaveContent,
-          senderId: currentMemberId,
-          receiverId: activeThread.partnerMemberId,
-          isRead: 0,
-        });
-      }
-
-      setHiddenDirectThreadIds((previousIds) => {
-        const nextIds = new Set(previousIds);
-        nextIds.add(Number(activeThread.partnerMemberId));
-        saveHiddenDirectThreadIds(nextIds);
-        return nextIds;
+      await axios.delete(`${API_BASE}/chat/leave`, {
+        params: {
+          memberId: currentMemberId,
+          partnerId: activeThread.partnerMemberId,
+        },
       });
 
       await loadThreads();

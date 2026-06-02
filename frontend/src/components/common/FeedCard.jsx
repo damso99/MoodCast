@@ -388,7 +388,6 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
   const handleReport = (event) => {
     event?.stopPropagation();
     setMenuOpen(false);
-    console.log('Report post', postId);
   };
 
   const closeDeleteModal = () => {
@@ -406,7 +405,6 @@ export function FeedCard({ post, compact = false, initialCommentOpen = false, on
           },
         }
       );
-      console.log('✅ 게시물 삭제 성공:', response.data);
       window.location.reload();
     } catch (err) {
       console.error('❌ 게시물 삭제 실패:', err);

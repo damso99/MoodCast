@@ -46,9 +46,4 @@ public interface ChatDao {
         @Param("memberId") Long memberId,
         @Param("partnerId") Long partnerId
     );
-
-    int deleteDirectChatMessagesByPair(
-        @Param("memberId") Long memberId,
-        @Param("partnerId") Long partnerId
-    );
 }

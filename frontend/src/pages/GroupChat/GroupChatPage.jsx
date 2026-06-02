@@ -358,20 +358,40 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
-  const inviteMembers = async () => {
+  const inviteMembers = async (targetMemberId = null) => {
     if (!activeRoom?.roomId) {
       return;
     }
 
-    const invitedIds = window.prompt("Enter memberId values separated by commas.");
-    if (!invitedIds) {
-      return;
-    }
+    const memberIds = Number.isFinite(Number(targetMemberId)) && Number(targetMemberId) > 0
+      ? [Number(targetMemberId)]
+      : null;
 
-    const memberIds = invitedIds
-      .split(",")
-      .map((value) => Number(value.trim()))
-      .filter((value) => Number.isFinite(value) && value > 0);
+    if (!memberIds) {
+      const invitedIds = window.prompt("Enter memberId values separated by commas.");
+      if (!invitedIds) {
+        return;
+      }
+
+      const parsedMemberIds = invitedIds
+        .split(",")
+        .map((value) => Number(value.trim()))
+        .filter((value) => Number.isFinite(value) && value > 0);
+
+      if (parsedMemberIds.length === 0) {
+        return;
+      }
+
+      try {
+        await inviteGroupChatMembers(activeRoom.roomId, { memberIds: parsedMemberIds });
+        await refreshRooms();
+        return;
+      } catch (requestError) {
+        console.error("Group invite failed", requestError);
+        setError(requestError.response?.data?.message || "Unable to invite members.");
+        return;
+      }
+    }
 
     try {
       await inviteGroupChatMembers(activeRoom.roomId, { memberIds });
