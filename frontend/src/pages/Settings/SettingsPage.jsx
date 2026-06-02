@@ -33,8 +33,11 @@ export function SettingsPage() {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const [kakaoLinked, setKakaoLinked] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
+  const [kakaoCanUnlink, setKakaoCanUnlink] = useState(false);
+  const [googleCanUnlink, setGoogleCanUnlink] = useState(false);
   const [kakaoLinkModalOpen, setKakaoLinkModalOpen] = useState(false);
   const [googleLinkModalOpen, setGoogleLinkModalOpen] = useState(false);
+  const [unlinkModal, setUnlinkModal] = useState(null);
   const [passwordSuccessModalOpen, setPasswordSuccessModalOpen] = useState(false);
   const [withdrawConfirmModalOpen, setWithdrawConfirmModalOpen] = useState(false);
   const [withdrawSuccessModalOpen, setWithdrawSuccessModalOpen] = useState(false);
@@ -47,6 +50,7 @@ export function SettingsPage() {
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
   const [isWithdrawEmailSending, setIsWithdrawEmailSending] = useState(false);
   const [isWithdrawEmailVerifying, setIsWithdrawEmailVerifying] = useState(false);
+  const [isSocialUnlinkLoading, setIsSocialUnlinkLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, type: '', message: '' });
 
   const showToast = (type, message) => {
@@ -61,9 +65,39 @@ export function SettingsPage() {
     }
   };
 
+  const loadSocialStatuses = async () => {
+    if (!accessToken) {
+      return;
+    }
+
+    const headers = {
+      Authorization: 'Bearer ' + accessToken,
+    };
+
+    const [kakaoResult, googleResult] = await Promise.allSettled([
+      axios.get(`${BACKSERVER}/oauth/kakao/status`, { headers }),
+      axios.get(`${BACKSERVER}/oauth/google/status`, { headers }),
+    ]);
+
+    const kakaoData =
+      kakaoResult.status === 'fulfilled' ? kakaoResult.value.data : {};
+    const googleData =
+      googleResult.status === 'fulfilled' ? googleResult.value.data : {};
+
+    setKakaoLinked(Boolean(kakaoData?.linked));
+    setKakaoCanUnlink(Boolean(kakaoData?.canUnlink));
+    setGoogleLinked(Boolean(googleData?.linked));
+    setGoogleCanUnlink(Boolean(googleData?.canUnlink));
+  };
+
   const handleKakaoLink = () => {
     if (kakaoLinked) {
-      showToast('success', '이미 카카오 계정이 연결되어 있습니다.');
+      if (!kakaoCanUnlink) {
+        showToast('error', '카카오 계정은 마지막 로그인 수단이라 바로 해제할 수 없습니다.');
+        return;
+      }
+
+      setUnlinkModal({ provider: 'kakao', label: '카카오' });
       return;
     }
 
@@ -81,7 +115,12 @@ export function SettingsPage() {
 
   const handleGoogleLink = () => {
     if (googleLinked) {
-      showToast('success', '이미 Google 계정이 연결되어 있습니다.');
+      if (!googleCanUnlink) {
+        showToast('error', 'Google 계정은 마지막 로그인 수단이라 바로 해제할 수 없습니다.');
+        return;
+      }
+
+      setUnlinkModal({ provider: 'google', label: 'Google' });
       return;
     }
 
@@ -94,6 +133,29 @@ export function SettingsPage() {
       startGoogleLink();
     } catch (error) {
       showToast('error', error.message);
+    }
+  };
+
+  const confirmSocialUnlink = async () => {
+    if (!unlinkModal) {
+      return;
+    }
+
+    try {
+      setIsSocialUnlinkLoading(true);
+      const res = await axios.delete(`${BACKSERVER}/oauth/${unlinkModal.provider}/link`, {
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+        },
+      });
+
+      setUnlinkModal(null);
+      await loadSocialStatuses();
+      showToast('success', res.data?.message || `${unlinkModal.label} 계정 연결이 해제되었습니다.`);
+    } catch (error) {
+      showToast('error', getApiMessage(error, `${unlinkModal.label} 계정 연결 해제에 실패했습니다.`));
+    } finally {
+      setIsSocialUnlinkLoading(false);
     }
   };
 
@@ -285,21 +347,7 @@ export function SettingsPage() {
       return;
     }
 
-    const headers = {
-      Authorization: 'Bearer ' + accessToken,
-    };
-
-    Promise.allSettled([
-      axios.get(`${BACKSERVER}/oauth/kakao/status`, { headers }),
-      axios.get(`${BACKSERVER}/oauth/google/status`, { headers }),
-    ]).then(([kakaoResult, googleResult]) => {
-      setKakaoLinked(
-        kakaoResult.status === 'fulfilled' && Boolean(kakaoResult.value.data?.linked),
-      );
-      setGoogleLinked(
-        googleResult.status === 'fulfilled' && Boolean(googleResult.value.data?.linked),
-      );
-    });
+    loadSocialStatuses();
   }, [BACKSERVER, accessToken]);
 
   const content = (
@@ -322,6 +370,15 @@ export function SettingsPage() {
         confirmText="연결하기"
         onCancel={() => setGoogleLinkModalOpen(false)}
         onConfirm={confirmGoogleLink}
+      />
+      <AuthConfirmModal
+        open={Boolean(unlinkModal)}
+        title={`${unlinkModal?.label || '소셜'} 계정 연결을 해제할까요?`}
+        description={`해제하면 ${unlinkModal?.label || '소셜'} 로그인은 사용할 수 없습니다. MoodCast 계정과 기존 게시글은 그대로 유지됩니다.`}
+        cancelText="취소"
+        confirmText={isSocialUnlinkLoading ? '해제 중' : '해제하기'}
+        onCancel={() => setUnlinkModal(null)}
+        onConfirm={confirmSocialUnlink}
       />
       <AuthConfirmModal
         open={passwordSuccessModalOpen}
@@ -365,19 +422,39 @@ export function SettingsPage() {
                   <div className={styles.providerRow}>
                     <div className={styles.providerMeta}>
                       <strong>카카오</strong>
-                      <span>{kakaoLinked ? '연결됨' : '미연결'}</span>
+                      <span>
+                        {kakaoLinked
+                          ? kakaoCanUnlink
+                            ? '연결됨'
+                            : '연결됨 · 마지막 로그인 수단'
+                          : '미연결'}
+                      </span>
                     </div>
-                    <button type="button" onClick={handleKakaoLink} disabled={kakaoLinked}>
-                      {kakaoLinked ? '연결완료' : '연결'}
+                    <button
+                      type="button"
+                      className={kakaoLinked && kakaoCanUnlink ? styles.unlinkButton : undefined}
+                      onClick={handleKakaoLink}
+                    >
+                      {kakaoLinked ? (kakaoCanUnlink ? '해제' : '해제불가') : '연결'}
                     </button>
                   </div>
                   <div className={styles.providerRow}>
                     <div className={styles.providerMeta}>
                       <strong>Google</strong>
-                      <span>{googleLinked ? '연결됨' : '미연결'}</span>
+                      <span>
+                        {googleLinked
+                          ? googleCanUnlink
+                            ? '연결됨'
+                            : '연결됨 · 마지막 로그인 수단'
+                          : '미연결'}
+                      </span>
                     </div>
-                    <button type="button" onClick={handleGoogleLink} disabled={googleLinked}>
-                      {googleLinked ? '연결완료' : '연결'}
+                    <button
+                      type="button"
+                      className={googleLinked && googleCanUnlink ? styles.unlinkButton : undefined}
+                      onClick={handleGoogleLink}
+                    >
+                      {googleLinked ? (googleCanUnlink ? '해제' : '해제불가') : '연결'}
                     </button>
                   </div>
                 </div>

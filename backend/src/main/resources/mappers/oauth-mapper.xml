@@ -25,6 +25,12 @@
           and provider = #{provider}
     </select>
 
+    <select id="countByMemberId" resultType="int">
+        select count(*)
+        from member_oauth_accounts
+        where member_id = #{memberId}
+    </select>
+
     <insert id="insertOAuthAccount" parameterType="OAuthAccount">
         insert into member_oauth_accounts (
             member_id,
@@ -44,6 +50,12 @@
             CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         )
     </insert>
+
+    <delete id="deleteByMemberIdAndProvider">
+        delete from member_oauth_accounts
+        where member_id = #{memberId}
+          and provider = #{provider}
+    </delete>
 
     <update id="updateLastLoginAt">
         update member_oauth_accounts

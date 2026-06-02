@@ -16,7 +16,14 @@ public interface OAuthDao {
             @Param("provider") String provider
     );
 
+    int countByMemberId(@Param("memberId") Long memberId);
+
     int insertOAuthAccount(OAuthAccount oAuthAccount);
+
+    int deleteByMemberIdAndProvider(
+            @Param("memberId") Long memberId,
+            @Param("provider") String provider
+    );
 
     int updateLastLoginAt(
             @Param("provider") String provider,

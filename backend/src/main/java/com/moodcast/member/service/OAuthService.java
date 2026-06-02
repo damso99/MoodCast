@@ -206,10 +206,37 @@ public class OAuthService {
         return oAuthDao.countByMemberIdAndProvider(memberId, KAKAO) > 0;
     }
 
+    // 현재 회원의 카카오 연결 상태와 해제 가능 여부를 함께 반환함
+    public Map<String, Object> getKakaoLinkStatus(String authorizationHeader) {
+        return getProviderLinkStatus(authorizationHeader, KAKAO);
+    }
+
     // 현재 로그인 회원이 구글 계정을 연결했는지 확인함
     public boolean isGoogleLinked(String authorizationHeader) {
         Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
         return oAuthDao.countByMemberIdAndProvider(memberId, GOOGLE) > 0;
+    }
+
+    // 현재 회원의 Google 연결 상태와 해제 가능 여부를 함께 반환함
+    public Map<String, Object> getGoogleLinkStatus(String authorizationHeader) {
+        return getProviderLinkStatus(authorizationHeader, GOOGLE);
+    }
+
+    private Map<String, Object> getProviderLinkStatus(String authorizationHeader, String provider) {
+        Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
+        boolean linked = oAuthDao.countByMemberIdAndProvider(memberId, provider) > 0;
+        int linkedProviderCount = oAuthDao.countByMemberId(memberId);
+        boolean passwordLoginEnabled = hasPasswordLogin(memberId);
+
+        return Map.of(
+                "success", true,
+                "provider", provider,
+                "providerLabel", providerLabel(provider),
+                "linked", linked,
+                "canUnlink", linked && canUnlinkSocialAccount(passwordLoginEnabled, linkedProviderCount),
+                "passwordLoginEnabled", passwordLoginEnabled,
+                "linkedProviderCount", linkedProviderCount
+        );
     }
 
     // 로그인된 일반 회원에게 카카오 계정을 연결함
@@ -222,6 +249,18 @@ public class OAuthService {
     @Transactional
     public Member linkGoogleAccount(String authorizationHeader, KakaoLoginRequest request) {
         return linkProviderAccount(authorizationHeader, GOOGLE, requestGoogleUserInfo(request));
+    }
+
+    // 로그인 수단이 0개가 되지 않는 경우에만 카카오 연결을 해제함
+    @Transactional
+    public Member unlinkKakaoAccount(String authorizationHeader) {
+        return unlinkProviderAccount(authorizationHeader, KAKAO);
+    }
+
+    // 로그인 수단이 0개가 되지 않는 경우에만 Google 연결을 해제함
+    @Transactional
+    public Member unlinkGoogleAccount(String authorizationHeader) {
+        return unlinkProviderAccount(authorizationHeader, GOOGLE);
     }
 
     private Member linkProviderAccount(String authorizationHeader, String provider, SocialUserInfo socialUserInfo) {
@@ -258,6 +297,42 @@ public class OAuthService {
 
         insertOAuthAccount(memberId, pendingSocialSignup);
         return member;
+    }
+
+    private Member unlinkProviderAccount(String authorizationHeader, String provider) {
+        Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
+        Member member = loginDao.findMemberById(memberId);
+        if (member == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        loginService.checkLoginAllowed(member);
+
+        if (oAuthDao.countByMemberIdAndProvider(memberId, provider) == 0) {
+            throw new IllegalArgumentException("연결된 " + providerLabel(provider) + " 계정이 없습니다.");
+        }
+
+        int linkedProviderCount = oAuthDao.countByMemberId(memberId);
+        boolean passwordLoginEnabled = hasPasswordLogin(memberId);
+        if (!canUnlinkSocialAccount(passwordLoginEnabled, linkedProviderCount)) {
+            throw new IllegalArgumentException("비밀번호가 없는 계정은 마지막 소셜 계정을 해제할 수 없습니다. 먼저 비밀번호 설정이 필요합니다.");
+        }
+
+        int result = oAuthDao.deleteByMemberIdAndProvider(memberId, provider);
+        if (result != 1) {
+            throw new IllegalStateException(providerLabel(provider) + " 계정 연결 해제에 실패했습니다.");
+        }
+
+        return member;
+    }
+
+    private boolean hasPasswordLogin(Long memberId) {
+        String passwordHash = loginDao.findPasswordHashByMemberId(memberId);
+        return passwordHash != null && !passwordHash.trim().isEmpty();
+    }
+
+    private boolean canUnlinkSocialAccount(boolean passwordLoginEnabled, int linkedProviderCount) {
+        return passwordLoginEnabled || linkedProviderCount > 1;
     }
 
     private void insertOAuthAccount(Long memberId, PendingSocialSignup pendingSocialSignup) {

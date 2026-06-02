@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -124,12 +125,7 @@ public class OAuthController {
     public ResponseEntity<?> getKakaoLinkStatus(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "linked", oAuthService.isKakaoLinked(authorizationHeader)
-                )
-        );
+        return ResponseEntity.ok(oAuthService.getKakaoLinkStatus(authorizationHeader));
     }
 
     // 현재 로그인 회원의 Google 연결 여부를 조회함
@@ -137,12 +133,7 @@ public class OAuthController {
     public ResponseEntity<?> getGoogleLinkStatus(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "linked", oAuthService.isGoogleLinked(authorizationHeader)
-                )
-        );
+        return ResponseEntity.ok(oAuthService.getGoogleLinkStatus(authorizationHeader));
     }
 
     private ResponseEntity<?> linkSocialAccount(
@@ -208,6 +199,68 @@ public class OAuthController {
             HttpServletRequest httpRequest
     ) {
         return linkSocialAccount("GOOGLE", "Google", authorizationHeader, request, httpRequest);
+    }
+
+    private ResponseEntity<?> unlinkSocialAccount(
+            String provider,
+            String providerLabel,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        try {
+            Member member = "GOOGLE".equals(provider)
+                    ? oAuthService.unlinkGoogleAccount(authorizationHeader)
+                    : oAuthService.unlinkKakaoAccount(authorizationHeader);
+
+            loginAuditService.record(
+                    member.getMemberId(),
+                    member.getEmail(),
+                    provider,
+                    "SOCIAL_UNLINK_SUCCESS",
+                    true,
+                    null,
+                    getClientIp(httpRequest),
+                    getUserAgent(httpRequest)
+            );
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "success", true,
+                            "message", providerLabel + " 계정 연결이 해제되었습니다."
+                    )
+            );
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            loginAuditService.record(
+                    null,
+                    null,
+                    provider,
+                    "SOCIAL_UNLINK_FAIL",
+                    false,
+                    "SOCIAL_UNLINK_FAIL",
+                    getClientIp(httpRequest),
+                    getUserAgent(httpRequest)
+            );
+
+            throw e;
+        }
+    }
+
+    // 로그인 수단이 남아 있는 경우에만 카카오 연결을 해제함
+    @DeleteMapping("kakao/link")
+    public ResponseEntity<?> unlinkKakaoAccount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        return unlinkSocialAccount("KAKAO", "카카오", authorizationHeader, httpRequest);
+    }
+
+    // 로그인 수단이 남아 있는 경우에만 Google 연결을 해제함
+    @DeleteMapping("google/link")
+    public ResponseEntity<?> unlinkGoogleAccount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        return unlinkSocialAccount("GOOGLE", "Google", authorizationHeader, httpRequest);
     }
 
     // 신규 소셜 사용자의 추가정보 입력 후 회원가입과 소셜 계정 연결을 완료함
