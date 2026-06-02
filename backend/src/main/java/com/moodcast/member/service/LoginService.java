@@ -107,7 +107,8 @@ public class LoginService {
                 member.getNickname(),
                 member.getProfileImageUrl(),
                 member.getBio(),
-                member.getRole()
+                member.getRole(),
+                member.getCreatedAt()
         );
     }
 
