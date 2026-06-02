@@ -331,6 +331,17 @@ public class AdminController {
         return adminService.getMemberDetail(authorizationHeader, memberId);
     }
 
+    @GetMapping("/members/{memberId}/sanction-logs")
+    public Map<String, List<AdminActionLogView>> getMemberSanctionLogs(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long memberId
+    ) {
+        return Map.of(
+                "actionLogs",
+                adminService.getMemberSanctionLogs(authorizationHeader, memberId)
+        );
+    }
+
     /* ==========================================================================
      * 회원 정지 처리 API
      * --------------------------------------------------------------------------

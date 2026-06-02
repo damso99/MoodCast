@@ -680,6 +680,20 @@ public class AdminService {
         return actionLogs == null ? Collections.emptyList() : actionLogs;
     }
 
+    public List<AdminActionLogView> getMemberSanctionLogs(String authorizationHeader, Long memberId) {
+        validateAdmin(authorizationHeader);
+
+        if (memberId == null) {
+            throw new IllegalArgumentException("제재 이력을 조회할 회원을 선택해주세요.");
+        }
+
+        log.info("[ADMIN_API] selectMemberSanctionLogs start memberId={}", memberId);
+        List<AdminActionLogView> actionLogs = adminDao.selectMemberSanctionLogs(memberId);
+        log.info("[ADMIN_API] selectMemberSanctionLogs success memberId={} size={}", memberId, actionLogs == null ? 0 : actionLogs.size());
+
+        return actionLogs == null ? Collections.emptyList() : actionLogs;
+    }
+
     /* ==========================================================================
      * 회원 상세 정보 조회
      * --------------------------------------------------------------------------
@@ -753,8 +767,8 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 계정은 정지할 수 없습니다.");
         }
 
-        if ("SUPER_ADMIN".equals(targetMember.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 계정은 정지할 수 없습니다.");
+        if (isAdminRole(targetMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정은 정지할 수 없습니다.");
         }
 
         LocalDateTime suspendedUntil = calculateSuspendedUntil(request);
@@ -849,8 +863,8 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 계정은 정지 해제 대상이 될 수 없습니다.");
         }
 
-        if ("SUPER_ADMIN".equals(targetMember.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 계정은 관리할 수 없습니다.");
+        if (isAdminRole(targetMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정은 정지 해제할 수 없습니다.");
         }
 
         int updated = adminDao.restoreSuspendedMember(memberId);
@@ -913,7 +927,9 @@ public class AdminService {
      * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원의 role을 변경합니다.
      *
      * 처리 규칙:
-     * - 변경 가능한 role은 USER, NORMAL_ADMIN, SUPER_ADMIN 세 가지입니다.
+     * - 변경 가능한 role은 USER, SUPER_ADMIN 두 가지입니다.
+     * - 일반 관리자(NORMAL_ADMIN)는 새로 부여하지 않습니다.
+     * - 기존 관리자 계정은 서로 관리하지 못하게 막고, 본인 계정 강등만 허용합니다.
      * - SQL에서도 ACTIVE 상태와 변경 가능한 role 조건을 다시 확인합니다.
      * - 조건에 맞지 않으면 400 BAD_REQUEST로 실패 처리합니다.
      * ========================================================================== */
@@ -927,6 +943,16 @@ public class AdminService {
 
         if (memberId == null) {
             throw new IllegalArgumentException("관리자 등급을 변경할 회원을 선택해주세요.");
+        }
+
+        AdminMemberDetail targetMember = adminDao.selectMemberDetail(memberId);
+
+        if (targetMember == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관리자 등급을 변경할 회원 정보를 찾을 수 없습니다.");
+        }
+
+        if (isAdminRole(targetMember.getRole()) && !Objects.equals(loginMember.getMemberId(), memberId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정끼리는 등급을 변경할 수 없습니다.");
         }
 
         String normalizedRole = normalizeAdminRole(role);
@@ -953,15 +979,15 @@ public class AdminService {
             return "SUPER_ADMIN";
         }
 
-        if ("NORMAL_ADMIN".equals(role)) {
-            return "NORMAL_ADMIN";
-        }
-
         if ("USER".equals(role)) {
             return "USER";
         }
 
         throw new IllegalArgumentException("관리자 등급을 올바르게 선택해주세요.");
+    }
+
+    private boolean isAdminRole(String role) {
+        return "ADMIN".equals(role) || "NORMAL_ADMIN".equals(role) || "SUPER_ADMIN".equals(role);
     }
 
     /* ==========================================================================

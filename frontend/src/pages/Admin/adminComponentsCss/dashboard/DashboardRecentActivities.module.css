@@ -23,6 +23,7 @@
 }
 
 .textButton {
+  /*
   min-height: 32px;
   padding: 0 10px;
   border: 1px solid rgba(124, 77, 255, 0.18);
@@ -32,6 +33,28 @@
   font-weight: 900;
   background: rgba(124, 77, 255, 0.08);
   cursor: pointer;
+  */
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #ddd8ff;
+  border-radius: 12px;
+  color: #7b3ff2;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+  background: #f6f2ff;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.textButton:hover {
+  background: #eee7ff;
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.textButton:active {
+  transform: translateY(0) scale(0.98);
 }
 
 .activityList {
@@ -102,9 +125,11 @@
 .activityModalPanel {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: min(720px, 100%);
   max-height: min(760px, 86vh);
-  overflow: auto;
+  overflow: hidden;
   padding: 18px;
   border-radius: 14px;
   background: #ffffff;
@@ -138,7 +163,28 @@
   cursor: pointer;
 }
 
+.activityModalBody {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.activityModalBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.activityModalBody::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.32);
+}
+
+.activityModalBody::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
+}
+
 .modalPagination {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -147,6 +193,7 @@
 }
 
 .modalPagination button {
+  /*
   min-height: 30px;
   padding: 0 12px;
   border: 1px solid rgba(102, 112, 133, 0.18);
@@ -155,6 +202,22 @@
   font-weight: 800;
   background: #ffffff;
   cursor: pointer;
+  */
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid #ddd8ff;
+  border-radius: 12px;
+  color: #7b3ff2;
+  font-weight: 900;
+  background: #f6f2ff;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.modalPagination button:hover:not(:disabled) {
+  background: #eee7ff;
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.14);
+  transform: translateY(-1px);
 }
 
 .modalPagination button:disabled {

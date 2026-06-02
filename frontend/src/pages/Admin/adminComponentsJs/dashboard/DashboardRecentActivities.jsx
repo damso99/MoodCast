@@ -219,7 +219,9 @@ export function DashboardRecentActivities() {
               />
             ) : (
               <>
-                {renderActivityList(paginatedModalActivities)}
+                <div className={styles.activityModalBody}>
+                  {renderActivityList(paginatedModalActivities)}
+                </div>
 
                 <div className={styles.modalPagination}>
                   <button

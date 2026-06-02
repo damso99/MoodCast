@@ -42,6 +42,7 @@
 }
 
 .primaryLinkButton {
+  /*
   min-height: 42px;
   display: inline-flex;
   align-items: center;
@@ -59,11 +60,34 @@
   background: #7c4dff;
   box-shadow: 0 14px 28px rgba(124, 77, 255, 0.24);
   transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  */
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 900;
+  font-family: inherit;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  box-shadow: 0 16px 28px rgba(124, 77, 255, 0.22);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
 }
 
 .primaryLinkButton:hover {
+  /*
   background: #6d3df0;
   box-shadow: 0 18px 34px rgba(124, 77, 255, 0.32);
+  */
+  filter: brightness(1.03);
+  box-shadow: 0 18px 34px rgba(124, 77, 255, 0.3);
   transform: translateY(-1px);
 }
 
@@ -136,6 +160,7 @@
 }
 
 .tableActionButton {
+  /*
   min-height: 32px;
   padding: 0 12px;
   border: 1px solid rgba(124, 77, 255, 0.16);
@@ -146,10 +171,26 @@
   background: rgba(124, 77, 255, 0.08);
   cursor: pointer;
   transition: transform 0.16s ease, background 0.16s ease;
+  */
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #ddd8ff;
+  border-radius: 12px;
+  color: #7b3ff2;
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+  background: #f6f2ff;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .tableActionButton:hover {
+  /*
   background: rgba(124, 77, 255, 0.14);
+  */
+  background: #eee7ff;
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.14);
   transform: translateY(-1px);
 }
 

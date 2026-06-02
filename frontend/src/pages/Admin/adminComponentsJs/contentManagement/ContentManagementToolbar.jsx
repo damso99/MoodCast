@@ -36,7 +36,11 @@ export function ContentManagementToolbar({
   const selectedSearchOption =
     currentSearchOptions.find((option) => option.value === searchField) ||
     currentSearchOptions[0];
-  const searchPlaceholder = `${selectedSearchOption.label}로 검색`;
+  const searchParticle =
+    ["title", "content", "postTitle"].includes(selectedSearchOption.value)
+      ? "으로"
+      : "로";
+  const searchPlaceholder = `${selectedSearchOption.label}${searchParticle} 검색`;
 
   return (
     <section className={styles.topBar}>

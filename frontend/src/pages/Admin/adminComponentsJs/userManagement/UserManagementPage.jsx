@@ -79,6 +79,10 @@ export function UserManagementPage() {
   const MEMBERS_PER_PAGE = 10; // 한 페이지에 보여줄 회원 수입니다.
   const PAGE_BUTTON_COUNT = 10; // 페이지 번호 버튼은 1~10처럼 최대 10개씩 보여줍니다.
 
+  const normalizeMemberStatus = (status) => {
+    return String(status || "").trim().toUpperCase();
+  };
+
   const searchPlaceholder = {
     name: "이름으로 검색",
     nickname: "닉네임으로 검색",
@@ -233,7 +237,7 @@ export function UserManagementPage() {
     }
 
     if (selectedUserType === "정지 회원") {
-      return member.status === "SUSPENDED";
+      return normalizeMemberStatus(member.status) === "SUSPENDED";
     }
 
     return true;
@@ -288,7 +292,7 @@ export function UserManagementPage() {
   // members 목록 중 status가 SUSPENDED인 회원만 세어서 "정지 회원" 카드에 표시합니다.
   // 백엔드에서 이미 회원 목록을 받아오고 있으므로, 별도 API를 만들지 않고 현재 화면 데이터 기준으로 계산합니다.
   const fallbackSuspendedMemberCount = members.filter(
-    (member) => member.status === "SUSPENDED",
+    (member) => normalizeMemberStatus(member.status) === "SUSPENDED",
   ).length;
 
   const fallbackAdminMemberCount = members.filter((member) =>
@@ -329,7 +333,7 @@ export function UserManagementPage() {
    * 하나 선택해 "제재 가능성이 있는 최근 회원" 정도로만 보여줍니다.
    * -------------------------------------------------------------------------- */
   const fallbackLatestSanctionedMember = [...members]
-    .filter((member) => member.status === "SUSPENDED")
+    .filter((member) => normalizeMemberStatus(member.status) === "SUSPENDED")
     .sort((firstMember, secondMember) => {
       return (
         new Date(secondMember.suspendedUntil || secondMember.createdAt || 0) -
@@ -342,15 +346,17 @@ export function UserManagementPage() {
   };
 
   const getStatusLabel = (status) => {
-    if (status === "ACTIVE") {
+    const normalizedStatus = normalizeMemberStatus(status);
+
+    if (normalizedStatus === "ACTIVE") {
       return "정상";
     }
 
-    if (status === "SUSPENDED") {
+    if (normalizedStatus === "SUSPENDED") {
       return "정지";
     }
 
-    if (status === "DELETED") {
+    if (normalizedStatus === "DELETED") {
       return "삭제";
     }
 
@@ -358,7 +364,7 @@ export function UserManagementPage() {
   };
 
   const isSuspendedMember = (member) => {
-    return member?.status === "SUSPENDED";
+    return normalizeMemberStatus(member?.status) === "SUSPENDED";
   };
 
   const isPermanentSuspension = (member) => {
@@ -554,7 +560,7 @@ export function UserManagementPage() {
               <td>
                 <span
                   className={`${styles.statusBadge} ${
-                    member.status === "SUSPENDED" ? styles.warningBadge : ""
+                    isSuspendedMember(member) ? styles.warningBadge : ""
                   } ${isPermanentSuspension(member) ? styles.permanentStatusBadge : ""}`}
                 >
                   {getMemberStatusLabel(member)}

@@ -10,7 +10,11 @@ export function ContentManagementControls({
   statusFilters,
   activeStatus,
   onStatusChange,
-  filteredPostCount,
+  filteredCount,
+  resultLabel = "검색 결과",
+  sortOptions = [],
+  activeSort = "",
+  onSortChange,
 }) {
   return (
     <section className={styles.statusToolbar}>
@@ -28,7 +32,21 @@ export function ContentManagementControls({
       </div>
 
       <div className={styles.viewTools}>
-        <span>검색 결과 {filteredPostCount.toLocaleString()}개</span>
+        {sortOptions.length > 0 && (
+          <select
+            className={styles.sortSelect}
+            value={activeSort}
+            onChange={(event) => onSortChange(event.target.value)}
+            aria-label="정렬 기준"
+          >
+            {sortOptions.map((sortOption) => (
+              <option key={sortOption.value} value={sortOption.value}>
+                {sortOption.label}
+              </option>
+            ))}
+          </select>
+        )}
+        <span>{resultLabel} {Number(filteredCount || 0).toLocaleString()}개</span>
       </div>
     </section>
   );

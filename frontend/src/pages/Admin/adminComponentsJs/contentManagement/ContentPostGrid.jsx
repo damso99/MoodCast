@@ -169,10 +169,6 @@ export function ContentPostGrid({
         <div className={styles.statRow}>
           <span>댓글 {post.commentCount ?? 0}</span>
           <span>해시태그 {post.hashtagCount ?? 0}</span>
-          <span className={styles.statEmotion}>
-            <EmotionIcon className={styles.statEmotionIcon} />
-            감정 {emotionMeta.label}
-          </span>
         </div>
 
         {renderActionButtons(post, status)}
