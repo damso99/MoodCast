@@ -55,9 +55,7 @@ function TopUtilityIconsBase({ onSearch }) {
   const logout = () => {
     axios
       .post(`${BACKSERVER}/auth/logout`, {}, { withCredentials: true })
-      .catch((err) => {
-        console.log(err);
-      })
+      .catch(() => {})
       .finally(() => {
         clearAuthData();
         setMenuOpen(false);

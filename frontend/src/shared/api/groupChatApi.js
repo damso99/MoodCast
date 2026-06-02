@@ -55,7 +55,7 @@ export function inviteGroupChatMembers(roomId, payload) {
 export function leaveGroupChatRoom(roomId, memberId) {
   return requestWithFallback(
     () =>
-      axios.post(`${API_BASE}/api/chat/rooms/${roomId}/leave`, null, {
+      axios.delete(`${API_BASE}/api/chat/rooms/${roomId}/leave`, {
         params: { memberId },
       }),
     () =>

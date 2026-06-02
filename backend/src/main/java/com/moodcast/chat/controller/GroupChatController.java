@@ -118,7 +118,7 @@ public class GroupChatController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/rooms/{roomId}/leave")
+    @DeleteMapping("/rooms/{roomId}/leave")
     public ResponseEntity<Void> leaveRoom(
             @PathVariable Long roomId,
             @RequestParam Long memberId
