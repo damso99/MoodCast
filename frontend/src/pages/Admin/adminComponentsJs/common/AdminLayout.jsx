@@ -1,7 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import axios from "axios";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import { Logo } from "../../../../components/common/Logo";
@@ -109,12 +107,6 @@ export function AdminLayout({ children, title, description }) {
             <p>{description}</p>
           </div>
           <div className={styles.headerActions}>
-            <button type="button" aria-label="알림">
-              <NotificationsNoneOutlinedIcon />
-            </button>
-            <button type="button" aria-label="도움말">
-              <HelpOutlineOutlinedIcon />
-            </button>
             <NavLink
               className={styles.headerIconLink}
               to="/admin/profile"

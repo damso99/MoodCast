@@ -27,6 +27,18 @@ public class Notice {
 
     private Long createdByAdminId; // notices_tbl.created_by_admin_id: 작성 관리자 member_id입니다.
 
+    private String createdByAdminName; // members.name: 작성 관리자 실명입니다.
+
+    private String createdByAdminNickname; // members.nickname: 작성 관리자 닉네임입니다.
+
+    private String createdByAdminEmail; // members.email: 작성 관리자 로그인 이메일입니다.
+
+    private String adminName; // 프론트 표시용 작성 관리자 실명입니다.
+
+    private String adminNickname; // 프론트 표시용 작성 관리자 닉네임입니다.
+
+    private String adminEmail; // 프론트 표시용 작성 관리자 로그인 이메일입니다.
+
     private Long updatedByAdminId; // notices_tbl.updated_by_admin_id: 마지막 수정 관리자 member_id입니다.
 
     private LocalDateTime createdAt; // notices_tbl.created_at: 최초 작성 시간입니다.

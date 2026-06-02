@@ -1,6 +1,4 @@
-import { NavLink } from "react-router-dom";
 import { AdminLayout } from "../common/AdminLayout";
-import { adminNavItems } from "../common/adminConfig";
 import { DashboardActiveUserChart } from "./DashboardActiveUserChart";
 import { DashboardEmotionActivityChart } from "./DashboardEmotionActivityChart";
 import { DashboardMetricCards } from "./DashboardMetricCards";
@@ -25,21 +23,6 @@ export function AdminDashboardPage() {
 
         <div className={styles.dashboardSideColumn}>
           <DashboardRecentActivities />
-
-          <section className={styles.panel}>
-            <div className={styles.panelHead}>
-              <h2>빠른 이동</h2>
-            </div>
-
-            <nav className={styles.quickLinks} aria-label="관리자 빠른 이동">
-              <NavLink to="/app/feed">피드로 이동</NavLink>
-              {adminNavItems.slice(1, 5).map((item) => (
-                <NavLink key={item.to} to={item.to}>
-                  {item.label}
-                </NavLink>
-              ))}
-            </nav>
-          </section>
         </div>
       </section>
     </AdminLayout>

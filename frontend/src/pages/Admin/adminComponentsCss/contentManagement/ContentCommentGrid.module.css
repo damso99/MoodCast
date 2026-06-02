@@ -22,11 +22,13 @@
   color: #111827;
   font-size: 1rem;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .emptyFeed span {
   font-size: 0.9rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .simpleCard {

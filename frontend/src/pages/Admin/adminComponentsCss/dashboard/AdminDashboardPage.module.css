@@ -12,67 +12,6 @@
   min-width: 0;
 }
 
-.panel {
-  min-width: 0;
-  padding: 18px;
-  border: 1px solid rgba(124, 77, 255, 0.1);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.83);
-  box-shadow: 0 22px 52px rgba(17, 24, 39, 0.055);
-}
-
-.panelHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-
-.panelHead h2 {
-  margin: 0;
-  color: #111827;
-  font-size: 1rem;
-  font-weight: 900;
-}
-
-.quickLinks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.quickLinks a {
-  min-height: 38px;
-  padding: 0 14px;
-  border: 1px solid rgba(124, 77, 255, 0.14);
-  border-radius: 11px;
-  color: #633df2;
-  font-weight: 800;
-  text-decoration: none;
-  background: rgba(124, 77, 255, 0.08);
-  cursor: pointer;
-  transition:
-    transform 0.16s ease,
-    background 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.quickLinks a:hover {
-  background: rgba(124, 77, 255, 0.15);
-  box-shadow: 0 10px 22px rgba(124, 77, 255, 0.13);
-  transform: translateY(-1px);
-}
-
-.quickLinks a:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.quickLinks a:focus-visible {
-  outline: 3px solid rgba(124, 77, 255, 0.28);
-  outline-offset: 2px;
-}
-
 @media (max-width: 1120px) {
   .dashboardGrid {
     grid-template-columns: 1fr;

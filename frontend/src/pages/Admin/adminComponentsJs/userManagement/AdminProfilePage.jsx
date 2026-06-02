@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../common/AdminLayout";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/userManagement/AdminProfilePage.module.css";
@@ -27,6 +28,7 @@ import styles from "../../adminComponentsCss/userManagement/AdminProfilePage.mod
  * 비밀번호 검증과 이미지 실제 업로드는 아직 추가하지 않습니다.
  * ========================================================================== */
 export function AdminProfilePage() {
+  const navigate = useNavigate();
   const [profilePreview, setProfilePreview] = useState("");
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -38,9 +40,10 @@ export function AdminProfilePage() {
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [roleChanging, setRoleChanging] = useState(false);
   const [message, setMessage] = useState("");
   const fileInputRef = useRef(null);
-  const { accessToken } = useAuthStore();
+  const { accessToken, member, setAuthData } = useAuthStore();
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
@@ -176,6 +179,50 @@ export function AdminProfilePage() {
       });
   };
 
+  const handleDowngradeOwnRole = () => {
+    if (!accessToken || !member?.memberId) {
+      setMessage("로그인이 필요합니다.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "관리자 권한을 일반 회원으로 변경하시겠습니까?\n\n" +
+        "• 관리자 페이지 접근 권한이 제한됩니다.\n" +
+        "• 회원 관리, 콘텐츠 관리, 신고 처리 등 관리자 기능을 사용할 수 없습니다.\n" +
+        "• 권한 복구는 다른 관리자에 의해 다시 부여되어야 합니다.\n\n" +
+        "권한 변경을 진행하시겠습니까?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setRoleChanging(true);
+    setMessage("");
+
+    axios
+      .put(
+        `${BACKSERVER}/admin/api/members/${member.memberId}/role`,
+        { role: "USER" },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      )
+      .then(() => {
+        setAuthData(accessToken, { ...member, role: "USER" });
+        navigate("/app/feed", { replace: true });
+      })
+      .catch((error) => {
+        console.log(error);
+        setMessage("관리자 권한 변경에 실패했습니다.");
+      })
+      .finally(() => {
+        setRoleChanging(false);
+      });
+  };
+
   return (
     <AdminLayout
       title="관리자 개인 정보 수정"
@@ -280,6 +327,23 @@ export function AdminProfilePage() {
             </label>
 
             {message ? <p className={styles.formMessage}>{message}</p> : null}
+
+            {member?.role === "SUPER_ADMIN" && (
+              <section className={styles.roleDangerBox}>
+                <strong>관리자 권한 변경</strong>
+                <p>
+                  본인 계정을 일반 회원으로 변경하면 관리자 페이지 접근 권한이
+                  즉시 제한됩니다.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDowngradeOwnRole}
+                  disabled={roleChanging}
+                >
+                  {roleChanging ? "변경 중" : "내 권한을 일반 회원으로 변경"}
+                </button>
+              </section>
+            )}
 
             <div className={styles.formActions}>
               <button type="button" onClick={handleProfileCancel}>

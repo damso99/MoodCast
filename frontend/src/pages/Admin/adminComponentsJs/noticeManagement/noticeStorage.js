@@ -96,6 +96,14 @@ export const normalizeNotice = (notice) => {
   const deletedTimestamp = toTimestamp(notice.deletedAt, 0);
   const isDeleted = Boolean(notice.deletedAt);
   const isExpired = !isDeleted && Date.now() - createdTimestamp >= NOTICE_VISIBLE_MS;
+  const adminDisplayName =
+    notice.createdByAdminName ||
+    notice.adminName ||
+    notice.createdAdminName ||
+    (notice.createdByAdminNickname ? `@${notice.createdByAdminNickname}` : "") ||
+    "관리자";
+  const adminEmail =
+    notice.createdByAdminEmail || notice.adminEmail || notice.createdAdminEmail || "";
 
   return {
     id: notice.noticeId,
@@ -109,7 +117,9 @@ export const normalizeNotice = (notice) => {
     isExpired,
     createdAt: formatDateText(notice.createdAt),
     createdTimestamp,
-    adminName: notice.createdByAdminId ? `관리자 #${notice.createdByAdminId}` : "관리자",
+    adminName: adminEmail ? `${adminDisplayName} (${adminEmail})` : adminDisplayName,
+    adminDisplayName,
+    adminEmail,
     updatedAt: formatDateText(notice.updatedAt),
     updatedTimestamp,
     deletedAt: formatDateText(notice.deletedAt),

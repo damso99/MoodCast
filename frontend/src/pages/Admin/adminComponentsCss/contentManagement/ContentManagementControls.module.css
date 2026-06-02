@@ -40,6 +40,24 @@
   font-weight: 900;
 }
 
+.sortSelect {
+  min-height: 34px;
+  border: 1px solid rgba(102, 112, 133, 0.13);
+  border-radius: 12px;
+  padding: 0 32px 0 12px;
+  outline: 0;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 850;
+  background: #fff;
+  cursor: pointer;
+}
+
+.sortSelect:focus {
+  border-color: rgba(124, 77, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.12);
+}
+
 .statusPills button:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(124, 77, 255, 0.13);

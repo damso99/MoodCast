@@ -138,6 +138,9 @@ public interface AdminDao {
     /* 전체 로그 보기 팝업에서 사용할 권한 변경/제재 로그 전체 목록을 조회합니다. */
     List<AdminActionLogView> selectAllAdminActionLogs();
 
+    /* 사용자 관리 우측 패널에서 선택 회원의 정지/해제 이력을 조회합니다. */
+    List<AdminActionLogView> selectMemberSanctionLogs(@Param("memberId") Long memberId);
+
     /* 회원 정보 전체 보기에서 사용할 단건 상세 정보를 조회합니다. */
     AdminMemberDetail selectMemberDetail(@Param("memberId") Long memberId);
 

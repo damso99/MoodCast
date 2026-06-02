@@ -381,15 +381,17 @@ export function StatisticsDashboardPage() {
   return (
     <AdminLayout title="통계 대시보드" description="주요 지표를 기간별 차트로 확인하세요.">
       <section className={styles.toolbar}>
-        <div>
+        <div className={styles.toolbarText}>
+          <p>{currentPeriod.helper}</p>
+          {errorMessage ? <span className={styles.errorText}>{errorMessage}</span> : null}
+        </div>
+        <div className={styles.toolbarPeriod}>
           <SegmentedControl
             labels={periodOptions.map((option) => option.label)}
             selectedLabel={periodLabel}
             onSelect={setPeriodLabel}
           />
-          <p>{currentPeriod.helper}</p>
         </div>
-        {errorMessage ? <span className={styles.errorText}>{errorMessage}</span> : null}
       </section>
 
       <section className={styles.metricGrid}>

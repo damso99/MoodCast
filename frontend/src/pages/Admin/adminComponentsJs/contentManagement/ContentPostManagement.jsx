@@ -21,6 +21,11 @@ import styles from "../../adminComponentsCss/contentManagement/ContentPostManage
 const POSTS_PER_PAGE = 12;
 const PAGE_BUTTON_COUNT = 10;
 const statusFilters = ["전체", "공개", "숨김", "삭제"];
+const hashtagSortOptions = [
+  { value: "latest", label: "최신 사용 순" },
+  { value: "oldest", label: "오래된 순" },
+  { value: "name", label: "가나다 순" },
+];
 
 const emotionFilters = [
   { value: "all", label: "전체 감정", color: "#667085", icon: SentimentNeutralIcon },
@@ -41,6 +46,8 @@ export function ContentPostManagement() {
   const [searchField, setSearchField] = useState("title");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [activeStatus, setActiveStatus] = useState("전체");
+  const [activeCommentStatus, setActiveCommentStatus] = useState("전체");
+  const [hashtagSort, setHashtagSort] = useState("latest");
   const [emotionFilter, setEmotionFilter] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -204,6 +211,13 @@ export function ContentPostManagement() {
   const filteredComments = comments.filter((comment) => {
     if (activeTab !== "댓글") return false;
     const trimmedKeyword = searchKeyword.trim().toLowerCase();
+    const commentStatus =
+      comment.deletedYn === "Y"
+        ? "삭제"
+        : comment.moderationStatus === "HIDDEN"
+          ? "숨김"
+          : "공개";
+    if (activeCommentStatus !== "전체" && commentStatus !== activeCommentStatus) return false;
     if (!trimmedKeyword) return true;
     if (searchField === "author") {
       return `${comment.authorName || ""} ${comment.authorNickname || ""}`
@@ -216,12 +230,24 @@ export function ContentPostManagement() {
     return String(comment.content || "").toLowerCase().includes(trimmedKeyword);
   });
 
-  const filteredHashtags = hashtags.filter((hashtag) => {
-    if (activeTab !== "해시태그") return false;
-    const trimmedKeyword = searchKeyword.trim().toLowerCase().replace(/^#/, "");
-    if (!trimmedKeyword) return true;
-    return String(hashtag.hashtag || "").toLowerCase().includes(trimmedKeyword);
-  });
+  const filteredHashtags = hashtags
+    .filter((hashtag) => {
+      if (activeTab !== "해시태그") return false;
+      const trimmedKeyword = searchKeyword.trim().toLowerCase().replace(/^#/, "");
+      if (!trimmedKeyword) return true;
+      return String(hashtag.hashtag || "").toLowerCase().includes(trimmedKeyword);
+    })
+    .sort((leftHashtag, rightHashtag) => {
+      if (hashtagSort === "name") {
+        return String(leftHashtag.hashtag || "").localeCompare(
+          String(rightHashtag.hashtag || ""),
+          "ko",
+        );
+      }
+      const leftDate = new Date(leftHashtag.latestPostCreatedAt || 0).getTime();
+      const rightDate = new Date(rightHashtag.latestPostCreatedAt || 0).getTime();
+      return hashtagSort === "oldest" ? leftDate - rightDate : rightDate - leftDate;
+    });
 
   const activeFilteredCount =
     activeTab === "댓글"
@@ -264,7 +290,17 @@ export function ContentPostManagement() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedPostIds([]);
-  }, [activeTab, searchField, searchKeyword, activeStatus, emotionFilter, startDate, endDate]);
+  }, [
+    activeTab,
+    searchField,
+    searchKeyword,
+    activeStatus,
+    activeCommentStatus,
+    emotionFilter,
+    startDate,
+    endDate,
+    hashtagSort,
+  ]);
 
   useEffect(() => {
     if (currentPage > totalPageCount) setCurrentPage(totalPageCount);
@@ -380,7 +416,7 @@ export function ContentPostManagement() {
 
   const handleHashtagDelete = (hashtag) => {
     if (!accessToken) return;
-    if (!window.confirm(`해시태그 #${hashtag.hashtag} 을(를) 삭제하시겠습니까?`)) return;
+    if (!window.confirm(`해시태그 #${hashtag.hashtag}을(를) 삭제하시겠습니까?`)) return;
 
     setActionLoadingHashtagId(hashtag.hashtagId);
     axios({
@@ -470,7 +506,7 @@ export function ContentPostManagement() {
                 statusFilters={statusFilters}
                 activeStatus={activeStatus}
                 onStatusChange={setActiveStatus}
-                filteredPostCount={filteredPosts.length}
+                filteredCount={filteredPosts.length}
               />
 
               <ContentBulkActions
@@ -507,33 +543,52 @@ export function ContentPostManagement() {
           )}
 
           {activeTab === "댓글" && (
-            <ContentCommentGrid
-              commentsLoading={commentsLoading}
-              commentsError={commentsError}
-              paginatedComments={paginatedComments}
-              actionLoadingCommentId={actionLoadingCommentId}
-              onCommentAction={handleCommentAction}
-              filteredCommentCount={filteredComments.length}
-              currentPage={currentPage}
-              totalPageCount={totalPageCount}
-              pageNumbers={pageNumbers}
-              onPageChange={setCurrentPage}
-            />
+            <>
+              <ContentManagementControls
+                statusFilters={statusFilters}
+                activeStatus={activeCommentStatus}
+                onStatusChange={setActiveCommentStatus}
+                filteredCount={filteredComments.length}
+              />
+              <ContentCommentGrid
+                commentsLoading={commentsLoading}
+                commentsError={commentsError}
+                paginatedComments={paginatedComments}
+                actionLoadingCommentId={actionLoadingCommentId}
+                onCommentAction={handleCommentAction}
+                filteredCommentCount={filteredComments.length}
+                currentPage={currentPage}
+                totalPageCount={totalPageCount}
+                pageNumbers={pageNumbers}
+                onPageChange={setCurrentPage}
+              />
+            </>
           )}
 
           {activeTab === "해시태그" && (
-            <ContentHashtagGrid
-              hashtagsLoading={hashtagsLoading}
-              hashtagsError={hashtagsError}
-              paginatedHashtags={paginatedHashtags}
-              actionLoadingHashtagId={actionLoadingHashtagId}
-              onHashtagDelete={handleHashtagDelete}
-              filteredHashtagCount={filteredHashtags.length}
-              currentPage={currentPage}
-              totalPageCount={totalPageCount}
-              pageNumbers={pageNumbers}
-              onPageChange={setCurrentPage}
-            />
+            <>
+              <ContentManagementControls
+                statusFilters={[]}
+                activeStatus=""
+                onStatusChange={() => {}}
+                filteredCount={filteredHashtags.length}
+                sortOptions={hashtagSortOptions}
+                activeSort={hashtagSort}
+                onSortChange={setHashtagSort}
+              />
+              <ContentHashtagGrid
+                hashtagsLoading={hashtagsLoading}
+                hashtagsError={hashtagsError}
+                paginatedHashtags={paginatedHashtags}
+                actionLoadingHashtagId={actionLoadingHashtagId}
+                onHashtagDelete={handleHashtagDelete}
+                filteredHashtagCount={filteredHashtags.length}
+                currentPage={currentPage}
+                totalPageCount={totalPageCount}
+                pageNumbers={pageNumbers}
+                onPageChange={setCurrentPage}
+              />
+            </>
           )}
         </div>
 

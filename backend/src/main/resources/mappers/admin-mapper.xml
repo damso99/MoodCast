@@ -184,6 +184,12 @@
         <result property="content" column="content"/>
         <result property="noticeType" column="notice_type"/>
         <result property="createdByAdminId" column="created_by_admin_id"/>
+        <result property="createdByAdminName" column="created_by_admin_name"/>
+        <result property="createdByAdminNickname" column="created_by_admin_nickname"/>
+        <result property="createdByAdminEmail" column="created_by_admin_email"/>
+        <result property="adminName" column="admin_name"/>
+        <result property="adminNickname" column="admin_nickname"/>
+        <result property="adminEmail" column="admin_email"/>
         <result property="updatedByAdminId" column="updated_by_admin_id"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -203,7 +209,7 @@
             name,
             nickname,
             email,
-            status,
+            upper(status) as status,
             created_at,
             role,
             last_login_at,
@@ -230,8 +236,17 @@
             p.member_id,
             m.name as author_name,
             m.nickname as author_nickname,
-            0 as comment_count,
-            0 as hashtag_count
+            coalesce((
+                select count(*)
+                from comment_tbl c
+                where c.post_id = p.post_id
+                  and c.deleted_yn = 'N'
+            ), 0) as comment_count,
+            coalesce((
+                select count(*)
+                from post_hashtag ph
+                where ph.post_id = p.post_id
+            ), 0) as hashtag_count
         from post_tbl p
         left join members m on m.member_id = p.member_id
         order by p.created_at desc
@@ -511,7 +526,7 @@
             name,
             nickname,
             email,
-            status,
+            upper(status) as status,
             role,
             created_at,
             null as action_type,
@@ -527,7 +542,7 @@
             target.name,
             target.nickname,
             target.email,
-            target.status,
+            upper(target.status) as status,
             target.role,
             log.created_at,
             log.action_type,
@@ -585,6 +600,30 @@
         order by log.created_at desc, log.log_id desc
     </select>
 
+    <select id="selectMemberSanctionLogs" resultMap="adminActionLogViewMap">
+        select
+            log.log_id,
+            log.admin_id,
+            admin_member.name as admin_name,
+            admin_member.nickname as admin_nickname,
+            log.action_type,
+            log.target_type,
+            log.target_id,
+            target_member.name as target_name,
+            target_member.nickname as target_nickname,
+            target_member.email as target_email,
+            log.created_at,
+            log.action_detail
+        from admin_action_logs log
+        left join members admin_member on admin_member.member_id = log.admin_id
+        left join members target_member on target_member.member_id = log.target_id
+        where log.target_type = 'USER'
+          and log.target_id = #{memberId}
+          and log.action_type in ('SUSPEND', 'RESTORE')
+        order by log.created_at desc, log.log_id desc
+        limit 50
+    </select>
+
     <!-- selectMemberDetail 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectMemberDetail" resultMap="adminMemberDetailMap">
         select
@@ -596,7 +635,7 @@
             email_verified,
             phone_verified,
             role,
-            status,
+            upper(status) as status,
             last_login_at,
             created_at,
             updated_at,
@@ -616,7 +655,7 @@
             name,
             nickname,
             email,
-            status,
+            upper(status) as status,
             created_at,
             role,
             last_login_at,
@@ -1217,61 +1256,85 @@
 
     <select id="selectAdminNotices" resultMap="noticeMap">
         select
-            notice_id,
-            title,
-            content,
-            notice_type,
-            created_by_admin_id,
-            updated_by_admin_id,
-            created_at,
-            updated_at,
-            deleted_at
-        from notices_tbl
+            notice.notice_id,
+            notice.title,
+            notice.content,
+            notice.notice_type,
+            notice.created_by_admin_id,
+            created_admin.name as created_by_admin_name,
+            created_admin.nickname as created_by_admin_nickname,
+            created_admin.email as created_by_admin_email,
+            created_admin.name as admin_name,
+            created_admin.nickname as admin_nickname,
+            created_admin.email as admin_email,
+            notice.updated_by_admin_id,
+            notice.created_at,
+            notice.updated_at,
+            notice.deleted_at
+        from notices_tbl notice
+        left join members created_admin
+          on created_admin.member_id = notice.created_by_admin_id
         <where>
             <choose>
                 <when test="status == 'active'">
-                    deleted_at is null
+                    notice.deleted_at is null
                 </when>
                 <when test="status == 'deleted'">
-                    deleted_at is not null
+                    notice.deleted_at is not null
                 </when>
             </choose>
         </where>
-        order by created_at desc, notice_id desc
+        order by notice.created_at desc, notice.notice_id desc
         limit 500
     </select>
 
     <select id="selectAdminNoticeById" resultMap="noticeMap">
         select
-            notice_id,
-            title,
-            content,
-            notice_type,
-            created_by_admin_id,
-            updated_by_admin_id,
-            created_at,
-            updated_at,
-            deleted_at
-        from notices_tbl
-        where notice_id = #{noticeId}
+            notice.notice_id,
+            notice.title,
+            notice.content,
+            notice.notice_type,
+            notice.created_by_admin_id,
+            created_admin.name as created_by_admin_name,
+            created_admin.nickname as created_by_admin_nickname,
+            created_admin.email as created_by_admin_email,
+            created_admin.name as admin_name,
+            created_admin.nickname as admin_nickname,
+            created_admin.email as admin_email,
+            notice.updated_by_admin_id,
+            notice.created_at,
+            notice.updated_at,
+            notice.deleted_at
+        from notices_tbl notice
+        left join members created_admin
+          on created_admin.member_id = notice.created_by_admin_id
+        where notice.notice_id = #{noticeId}
         limit 1
     </select>
 
     <select id="selectLatestActiveNotice" resultMap="noticeMap">
         select
-            notice_id,
-            title,
-            content,
-            notice_type,
-            created_by_admin_id,
-            updated_by_admin_id,
-            created_at,
-            updated_at,
-            deleted_at
-        from notices_tbl
-        where deleted_at is null
-          and created_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 7 day)
-        order by created_at desc, notice_id desc
+            notice.notice_id,
+            notice.title,
+            notice.content,
+            notice.notice_type,
+            notice.created_by_admin_id,
+            created_admin.name as created_by_admin_name,
+            created_admin.nickname as created_by_admin_nickname,
+            created_admin.email as created_by_admin_email,
+            created_admin.name as admin_name,
+            created_admin.nickname as admin_nickname,
+            created_admin.email as admin_email,
+            notice.updated_by_admin_id,
+            notice.created_at,
+            notice.updated_at,
+            notice.deleted_at
+        from notices_tbl notice
+        left join members created_admin
+          on created_admin.member_id = notice.created_by_admin_id
+        where notice.deleted_at is null
+          and notice.created_at >= date_sub(CONVERT_TZ(NOW(6), '+00:00', '+09:00'), interval 7 day)
+        order by notice.created_at desc, notice.notice_id desc
         limit 1
     </select>
 
