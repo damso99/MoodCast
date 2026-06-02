@@ -1,12 +1,14 @@
 package com.moodcast.member.service;
 
 import com.moodcast.member.dao.SignupDao;
+import com.moodcast.member.dto.signup.EmailAuthSendResult;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.signup.SignupRequest;
 import com.moodcast.member.dto.signup.SignupTermsAgreementRequest;
 import com.moodcast.member.vo.Member;
 import com.moodcast.member.vo.Terms;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,9 @@ public class SignupService {
 
     @Autowired
     private AuthCodeRedisService authCodeRedisService;
+
+    @Value("${app.dev-return-auth-code:false}")
+    private boolean devReturnAuthCode;
 
     // 이메일 정규식
     private static final Pattern EMAIL_PATTERN =
@@ -233,13 +238,13 @@ public class SignupService {
 
     // 이메일 인증코드
     @Transactional
-    public String sendEmailAuthCode(String email) {
+    public EmailAuthSendResult sendEmailAuthCode(String email) {
         return sendEmailAuthCode(email, "UNKNOWN");
     }
 
     // 이메일 인증코드
     @Transactional
-    public String sendEmailAuthCode(String email, String clientIp) {
+    public EmailAuthSendResult sendEmailAuthCode(String email, String clientIp) {
         email = normalizeEmail(email);
 
         checkEmailDuplicate(email);
@@ -263,8 +268,11 @@ public class SignupService {
             throw new IllegalStateException("이메일 인증번호 발송 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.");
         }
 
+        if (devReturnAuthCode) {
+            System.out.println("이메일 인증번호: " + authCode);
+        }
 
-        return email;
+        return new EmailAuthSendResult(email, authCode);
     }
 
     // 휴대폰 인증코드
@@ -289,7 +297,9 @@ public class SignupService {
         authCodeRedisService.saveAuthCode("SIGNUP", "PHONE", phone, hashCode);
 
         // phoneService.sendSignupAuthCode(phone, authCode); 포인트 없어서 일단 주석
-        System.out.println("휴대폰 인증번호: " + authCode);
+        if (devReturnAuthCode) {
+            System.out.println("휴대폰 인증번호: " + authCode);
+        }
         return new PhoneAuthSendResult(phone, authCode);
     }
 

@@ -21,15 +21,16 @@ package com.moodcast.controller;
  */
 
 import com.moodcast.service.FileUploadService;
+import com.moodcast.member.service.LoginService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -43,19 +44,11 @@ import java.util.Map;
  * @RestController = @Controller + @ResponseBody
  *   → 이 클래스의 모든 메서드 반환값이 자동으로 JSON으로 변환되어 응답됨
  *
- * @CrossOrigin = CORS 설정임
- *   → 프론트(localhost:5173)에서 백엔드(localhost:8080)로 API를 호출할 때
- *     브라우저가 "다른 출처라서 막겠다"고 하는 걸 허용해주는 설정임
+ * CORS는 WebConfig의 전역 설정을 사용함.
  *
  * @RequestMapping("/upload") = 이 컨트롤러의 모든 엔드포인트는 /upload 로 시작함
  */
 @RestController
-@CrossOrigin(
-        origins = {"http://localhost:5173", "http://127.0.0.1:5173", "http://3.39.49.9:5173"},
-        allowedHeaders = "*",
-        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.OPTIONS},
-        allowCredentials = "true"
-)
 @RequestMapping("/upload")
 public class FileUploadController {
 
@@ -64,13 +57,15 @@ public class FileUploadController {
      * final로 선언하면 한 번 주입된 뒤 절대 바뀌지 않아서 안전함.
      */
     private final FileUploadService fileUploadService;
+    private final LoginService loginService;
 
     /**
      * 생성자 주입 방식 — Spring이 이 클래스를 만들 때 자동으로 FileUploadService를 넣어줌.
      * @Autowired 없이도 생성자가 하나면 Spring이 알아서 주입해줌.
      */
-    public FileUploadController(FileUploadService fileUploadService) {
+    public FileUploadController(FileUploadService fileUploadService, LoginService loginService) {
         this.fileUploadService = fileUploadService;
+        this.loginService = loginService;
     }
 
     /**
@@ -86,10 +81,12 @@ public class FileUploadController {
      */
     @PostMapping
     public ResponseEntity<Map<String, String>> upload(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "post-images") String folderType,
             HttpServletRequest request
     ) {
+        requireLogin(authorizationHeader);
         return ResponseEntity.ok(fileUploadService.uploadImage(file, folderType, baseUrl(request)));
     }
 
@@ -101,10 +98,12 @@ public class FileUploadController {
      */
     @PostMapping("/batch")
     public ResponseEntity<List<Map<String, String>>> uploadBatch(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(defaultValue = "chat-images") String folderType,
             HttpServletRequest request
     ) {
+        requireLogin(authorizationHeader);
         return ResponseEntity.ok(fileUploadService.uploadImages(files, folderType, baseUrl(request)));
     }
 
@@ -119,9 +118,11 @@ public class FileUploadController {
      */
     @DeleteMapping("/{filename}")
     public ResponseEntity<Map<String, Boolean>> delete(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @PathVariable String filename,
             @RequestParam(defaultValue = "post-images") String folderType
     ) {
+        requireLogin(authorizationHeader);
         return ResponseEntity.ok(Map.of("deleted", fileUploadService.deleteImage(filename, folderType)));
     }
 
@@ -171,7 +172,11 @@ public class FileUploadController {
             @RequestParam(defaultValue = "false") boolean deleteAfterUpload,
             HttpServletRequest request
     ) {
-        return ResponseEntity.ok(fileUploadService.migrateLegacyLocalUploadsAndDatabase(deleteAfterUpload));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "success", false,
+                        "message", "운영 도구는 API로 실행할 수 없습니다."
+                ));
     }
 
     /**
@@ -185,7 +190,18 @@ public class FileUploadController {
      */
     @PostMapping("/rewrite-s3-links")
     public ResponseEntity<Map<String, Object>> rewriteS3Links(HttpServletRequest request) {
-        return ResponseEntity.ok(fileUploadService.rewriteImageUrlsToPublicS3Urls(baseUrl(request)));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of(
+                        "success", false,
+                        "message", "운영 도구는 API로 실행할 수 없습니다."
+                ));
+    }
+
+    /**
+     * 업로드/삭제 요청은 로그인한 사용자만 통과시킴.
+     */
+    private void requireLogin(String authorizationHeader) {
+        loginService.getLoginMemberByHeader(authorizationHeader);
     }
 
     /**

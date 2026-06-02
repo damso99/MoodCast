@@ -1,12 +1,15 @@
 package com.moodcast.member.controller;
 
+import com.moodcast.common.ClientIpResolver;
 import com.moodcast.member.dto.signup.*;
 import com.moodcast.member.service.SignupService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestController
@@ -15,14 +18,14 @@ public class SignupController {
     @Autowired
     private SignupService signupService;
 
+    @Autowired
+    private ClientIpResolver clientIpResolver;
+
+    @Value("${app.dev-return-auth-code:false}")
+    private boolean devReturnAuthCode;
+
     private String getClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 
     // =======================================================================================
@@ -37,14 +40,16 @@ public class SignupController {
             HttpServletRequest httpRequest
     ) {
 
-            String email = signupService.sendEmailAuthCode(request.getEmail(), getClientIp(httpRequest));
-            return ResponseEntity.ok(
-                    Map.of(
-                            "success", true,
-                            "message", "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
-                            "email", email
-                    )
-            );
+            EmailAuthSendResult result = signupService.sendEmailAuthCode(request.getEmail(), getClientIp(httpRequest));
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("message", "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+            response.put("email", result.getEmail());
+            if (devReturnAuthCode) {
+                response.put("authCode", result.getAuthCode());
+            }
+
+            return ResponseEntity.ok(response);
     }
 
     // 회원가입 이메일 인증번호 확인
@@ -68,14 +73,15 @@ public class SignupController {
     ) {
 
             PhoneAuthSendResult result = signupService.sendPhoneAuthCode(request.getPhone(), getClientIp(httpRequest));
-            return ResponseEntity.ok(
-                    Map.of(
-                            "success", true,
-                            "message", "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
-                            "phone", result.getPhone(),
-                            "authCode", result.getAuthCode()
-                    )
-            );
+            Map<String, Object> response = new LinkedHashMap<>();
+            response.put("success", true);
+            response.put("message", "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+            response.put("phone", result.getPhone());
+            if (devReturnAuthCode) {
+                response.put("authCode", result.getAuthCode());
+            }
+
+            return ResponseEntity.ok(response);
     }
 
     // 회원가입 휴대폰 인증 확인

@@ -6,4 +6,5 @@ import lombok.Data;
 public class WithdrawRequest {
     private String password;
     private String confirmText;
+    private String authCode;
 }

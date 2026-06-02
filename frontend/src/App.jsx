@@ -35,119 +35,53 @@ function AppRoutes() {
     <RequireAuth authChecked={authChecked}>{element}</RequireAuth>
   );
 
-  useEffect(() => {
-    let refreshPromise = null;
-
-    // 모든 axios 요청에 현재 accessToken을 자동으로 붙임
-    const requestInterceptor = axios.interceptors.request.use((config) => {
-      const token = useAuthStore.getState().accessToken;
-
-      if (token && !config.headers?.Authorization) {
-        config.headers = {
-          ...config.headers,
-          Authorization: "Bearer " + token,
-        };
-      }
-
-      return config;
-    });
-
-    // accessToken 만료 시 refresh를 한 번만 시도하고 원래 요청을 다시 보냄
-    const responseInterceptor = axios.interceptors.response.use(
-      (response) => response,
-      async (error) => {
-        const originalRequest = error.config;
-        const status = error.response?.status;
-        const requestUrl = originalRequest?.url || "";
-        const isRefreshRequest = requestUrl.includes("/auth/refresh");
-
-        if (
-          (status === 401 || status === 403) &&
-          originalRequest &&
-          !originalRequest._retry &&
-          !isRefreshRequest
-        ) {
-          originalRequest._retry = true;
-
-          if (!refreshPromise) {
-            refreshPromise = axios
-              .post(
-                `${BACKSERVER}/auth/refresh`,
-                {},
-                {
-                  withCredentials: true,
-                },
-              )
-              .then((res) => {
-                setAuthData(res.data.accessToken, res.data.member);
-                return res.data.accessToken;
-              })
-              .catch((refreshError) => {
-                clearAuthData();
-                throw refreshError;
-              })
-              .finally(() => {
-                refreshPromise = null;
-              });
-          }
-
-          const newAccessToken = await refreshPromise;
-
-          originalRequest.headers = {
-            ...originalRequest.headers,
-            Authorization: "Bearer " + newAccessToken,
-          };
-
-          return axios(originalRequest);
-        }
-
-        return Promise.reject(error);
-      },
-    );
-
-    return () => {
-      axios.interceptors.request.eject(requestInterceptor);
-      axios.interceptors.response.eject(responseInterceptor);
-    };
-  }, [BACKSERVER, setAuthData, clearAuthData]);
-
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
     서버 기준으로 유효한지 확인한다.
   */
   useEffect(() => {
+    const refreshLogin = async () => {
+      const res = await axios.post(
+        `${BACKSERVER}/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          _skipAuthRefresh: true,
+        },
+      );
+
+      setAuthData(res.data.accessToken, res.data.member);
+    };
+
     const checkLogin = async () => {
       try {
         if (accessToken) {
-          const res = await axios.get(`${BACKSERVER}/auth/me`, {
-            headers: {
-              Authorization: "Bearer " + accessToken,
-            },
-          });
+          try {
+            const res = await axios.get(`${BACKSERVER}/auth/me`, {
+              headers: {
+                Authorization: "Bearer " + accessToken,
+              },
+              _skipAuthRefresh: true,
+            });
 
-          const loginMember = res.data.member || res.data;
-          setAuthData(accessToken, loginMember);
-          return;
+            const loginMember = res.data.member || res.data;
+            setAuthData(accessToken, loginMember);
+            return;
+          } catch (meError) {
+            await refreshLogin();
+            return;
+          }
         }
 
-        const res = await axios.post(
-          `${BACKSERVER}/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          },
-        );
-
-        setAuthData(res.data.accessToken, res.data.member);
+        await refreshLogin();
       } catch (err) {
-        console.log("로그인 상태복구 실패", err);
         clearAuthData();
       } finally {
         setAuthChecked(true);
       }
     };
     checkLogin();
-  }, [accessToken, setAuthData, clearAuthData]);
+  }, [BACKSERVER, accessToken, setAuthData, clearAuthData]);
 
   return (
     <Routes>
@@ -156,6 +90,7 @@ function AppRoutes() {
       <Route path="/auth/signup" element={<SignupPage />} />
       <Route path="/auth/recovery" element={<AccountRecoveryPage />} />
       <Route path="/auth/kakao/callback" element={<SocialCallbackPage />} />
+      <Route path="/auth/google/callback" element={<SocialCallbackPage />} />
       <Route path="/auth/social/signup" element={<SocialExtraSignupPage />} />
       <Route path="/auth/setup" element={<ProfileSetupPage />} />
       <Route path="/app/login" element={<LoginPage />} />

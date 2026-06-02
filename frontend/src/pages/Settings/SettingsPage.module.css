@@ -44,3 +44,200 @@
   color: #7c4dff;
   font-weight: 800;
 }
+
+.card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.providerList {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.providerRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.07);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.providerMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.providerMeta strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.providerMeta span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.card .providerRow button {
+  min-width: 76px;
+  margin-top: 0;
+}
+
+.passwordForm {
+  display: grid;
+  gap: 12px;
+}
+
+.passwordForm label,
+.withdrawForm label {
+  display: grid;
+  gap: 7px;
+}
+
+.passwordForm span,
+.withdrawForm span {
+  color: #344054;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.passwordForm input,
+.withdrawForm input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 13px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #111827;
+  font-size: 15px;
+  outline: none;
+}
+
+.passwordForm input:focus,
+.withdrawForm input:focus {
+  border-color: rgba(124, 77, 255, 0.55);
+  box-shadow: 0 0 0 4px rgba(124, 77, 255, 0.1);
+}
+
+.helperText {
+  margin: -2px 0 0;
+  color: #7b8191;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.dangerZone {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.card .textDangerButton {
+  min-height: auto;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.card .textDangerButton:hover {
+  color: #b42318;
+}
+
+.withdrawForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.dangerHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.dangerHeader strong {
+  color: #b42318;
+  font-size: 15px;
+  font-weight: 1000;
+}
+
+.dangerHeader p {
+  margin: 0;
+  color: #7b8191;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.emailVerifyBox {
+  display: grid;
+  gap: 10px;
+}
+
+.emailVerifyBox p {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.inlineAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.card .secondaryButton {
+  min-height: 44px;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.card .dangerButton {
+  background: rgba(217, 45, 32, 0.08);
+  color: #b42318;
+}
+
+@media (max-width: 640px) {
+  .hero,
+  .card {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .card button,
+  .passwordForm input,
+  .withdrawForm input {
+    min-height: 46px;
+  }
+
+  .card .textDangerButton {
+    min-height: auto;
+  }
+
+  .inlineAction {
+    grid-template-columns: 1fr;
+  }
+
+  .providerRow {
+    grid-template-columns: 1fr;
+  }
+
+  .card .providerRow button {
+    width: 100%;
+  }
+}

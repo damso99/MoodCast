@@ -1,5 +1,6 @@
 package com.moodcast.member.controller;
 
+import com.moodcast.common.ClientIpResolver;
 import com.moodcast.member.dto.login.LoginResponse;
 import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.oauth.KakaoLoginRequest;
@@ -31,37 +32,39 @@ public class OAuthController {
     private final OAuthService oAuthService;
     private final JwtService jwtService;
     private final LoginAuditService loginAuditService;
+    private final ClientIpResolver clientIpResolver;
 
-    public OAuthController(OAuthService oAuthService, JwtService jwtService, LoginAuditService loginAuditService) {
+    public OAuthController(
+            OAuthService oAuthService,
+            JwtService jwtService,
+            LoginAuditService loginAuditService,
+            ClientIpResolver clientIpResolver
+    ) {
         this.oAuthService = oAuthService;
         this.jwtService = jwtService;
         this.loginAuditService = loginAuditService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 
     private String getUserAgent(HttpServletRequest request) {
         return request.getHeader("User-Agent");
     }
 
-    // 카카오 인가 code를 검증하고 기존 연결 계정이면 바로 로그인 처리함
-    @PostMapping("kakao/login")
-    public ResponseEntity<?> loginWithKakao(@RequestBody KakaoLoginRequest request, HttpServletRequest httpRequest) {
-        OAuthLoginResult result = oAuthService.loginWithKakao(request);
-
+    private ResponseEntity<?> handleSocialLoginResult(
+            String provider,
+            String providerLabel,
+            OAuthLoginResult result,
+            HttpServletRequest httpRequest
+    ) {
         if ("EMAIL_CONFLICT".equals(result.getStatus())) {
             loginAuditService.record(
                     null,
                     result.getProviderEmail(),
-                    "KAKAO",
+                    provider,
                     "SOCIAL_EMAIL_CONFLICT",
                     false,
                     "SOCIAL_EMAIL_CONFLICT",
@@ -70,7 +73,7 @@ public class OAuthController {
             );
 
             return ResponseEntity.status(HttpStatus.CONFLICT).body(
-                    SocialLoginResponse.emailConflict(result.getProviderEmail())
+                    SocialLoginResponse.emailConflict(provider, result.getProviderEmail())
             );
         }
 
@@ -78,7 +81,7 @@ public class OAuthController {
             return ResponseEntity.ok(
                     SocialLoginResponse.needExtraSignup(
                             result.getPendingToken(),
-                            "KAKAO",
+                            provider,
                             result.getProviderEmail(),
                             result.getProviderNickname()
                     )
@@ -91,7 +94,7 @@ public class OAuthController {
         loginAuditService.record(
                 loginResult.getMember().getMemberId(),
                 loginResult.getMember().getEmail(),
-                "KAKAO",
+                provider,
                 "SOCIAL_LOGIN_SUCCESS",
                 true,
                 null,
@@ -101,7 +104,19 @@ public class OAuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new LoginResponse(true, "카카오 로그인 성공", loginResult.getAccessToken(), loginResult.getMember()));
+                .body(new LoginResponse(true, providerLabel + " 로그인 성공", loginResult.getAccessToken(), loginResult.getMember()));
+    }
+
+    // 카카오 인가 code를 검증하고 기존 연결 계정이면 바로 로그인 처리함
+    @PostMapping("kakao/login")
+    public ResponseEntity<?> loginWithKakao(@RequestBody KakaoLoginRequest request, HttpServletRequest httpRequest) {
+        return handleSocialLoginResult("KAKAO", "카카오", oAuthService.loginWithKakao(request), httpRequest);
+    }
+
+    // Google 인가 code를 검증하고 기존 연결 계정이면 바로 로그인 처리함
+    @PostMapping("google/login")
+    public ResponseEntity<?> loginWithGoogle(@RequestBody KakaoLoginRequest request, HttpServletRequest httpRequest) {
+        return handleSocialLoginResult("GOOGLE", "Google", oAuthService.loginWithGoogle(request), httpRequest);
     }
 
     // 현재 로그인 회원의 카카오 연결 여부를 조회함
@@ -117,20 +132,35 @@ public class OAuthController {
         );
     }
 
-    // 로그인된 일반 회원에게 카카오 계정을 연결함
-    @PostMapping("kakao/link")
-    public ResponseEntity<?> linkKakaoAccount(
+    // 현재 로그인 회원의 Google 연결 여부를 조회함
+    @GetMapping("google/status")
+    public ResponseEntity<?> getGoogleLinkStatus(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "linked", oAuthService.isGoogleLinked(authorizationHeader)
+                )
+        );
+    }
+
+    private ResponseEntity<?> linkSocialAccount(
+            String provider,
+            String providerLabel,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestBody KakaoLoginRequest request,
             HttpServletRequest httpRequest
     ) {
         try {
-            Member member = oAuthService.linkKakaoAccount(authorizationHeader, request);
+            Member member = "GOOGLE".equals(provider)
+                    ? oAuthService.linkGoogleAccount(authorizationHeader, request)
+                    : oAuthService.linkKakaoAccount(authorizationHeader, request);
 
             loginAuditService.record(
                     member.getMemberId(),
                     member.getEmail(),
-                    "KAKAO",
+                    provider,
                     "SOCIAL_LINK_SUCCESS",
                     true,
                     null,
@@ -141,14 +171,14 @@ public class OAuthController {
             return ResponseEntity.ok(
                     Map.of(
                             "success", true,
-                            "message", "카카오 계정이 연결되었습니다."
+                            "message", providerLabel + " 계정이 연결되었습니다."
                     )
             );
         } catch (IllegalArgumentException | IllegalStateException e) {
             loginAuditService.record(
                     null,
                     null,
-                    "KAKAO",
+                    provider,
                     "SOCIAL_LINK_FAIL",
                     false,
                     "SOCIAL_LINK_FAIL",
@@ -160,19 +190,40 @@ public class OAuthController {
         }
     }
 
-    // 카카오 신규 사용자의 추가정보 입력 후 회원가입과 소셜 계정 연결을 완료함
+    // 로그인된 일반 회원에게 카카오 계정을 연결함
+    @PostMapping("kakao/link")
+    public ResponseEntity<?> linkKakaoAccount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody KakaoLoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return linkSocialAccount("KAKAO", "카카오", authorizationHeader, request, httpRequest);
+    }
+
+    // 로그인된 일반 회원에게 Google 계정을 연결함
+    @PostMapping("google/link")
+    public ResponseEntity<?> linkGoogleAccount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody KakaoLoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return linkSocialAccount("GOOGLE", "Google", authorizationHeader, request, httpRequest);
+    }
+
+    // 신규 소셜 사용자의 추가정보 입력 후 회원가입과 소셜 계정 연결을 완료함
     @PostMapping("social/signup")
     public ResponseEntity<?> completeSocialSignup(
             @RequestBody SocialExtraSignupRequest request,
             HttpServletRequest httpRequest
     ) {
+        String provider = oAuthService.getPendingProvider(request.getPendingToken());
         LoginResult loginResult = oAuthService.completeSocialSignup(request);
         ResponseCookie refreshCookie = jwtService.createRefreshCookie(loginResult.getRefreshToken());
 
         loginAuditService.record(
                 loginResult.getMember().getMemberId(),
                 loginResult.getMember().getEmail(),
-                "KAKAO",
+                provider,
                 "SOCIAL_LOGIN_SUCCESS",
                 true,
                 null,

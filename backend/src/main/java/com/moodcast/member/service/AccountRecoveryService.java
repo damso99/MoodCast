@@ -11,6 +11,7 @@ import com.moodcast.member.dto.recovery.PasswordResetRequest;
 import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.vo.Member;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +39,9 @@ public class AccountRecoveryService {
     private final AuthCodeRedisService authCodeRedisService;
     private final RefreshTokenRedisService refreshTokenRedisService;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.dev-return-auth-code:false}")
+    private boolean devReturnAuthCode;
 
     public AccountRecoveryService(
             LoginDao loginDao,
@@ -181,7 +185,9 @@ public class AccountRecoveryService {
         String authCode = createAuthCode();
         authCodeRedisService.saveAuthCode(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone, passwordEncoder.encode(authCode));
 
-        System.out.println("아이디 찾기 휴대폰 인증번호: " + authCode);
+        if (devReturnAuthCode) {
+            System.out.println("아이디 찾기 휴대폰 인증번호: " + authCode);
+        }
         return new PhoneAuthSendResult(phone, authCode);
     }
 
@@ -231,7 +237,9 @@ public class AccountRecoveryService {
         String authCode = createAuthCode();
         authCodeRedisService.saveAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, passwordEncoder.encode(authCode));
 
-        System.out.println("비밀번호 재설정 휴대폰 인증번호: " + authCode);
+        if (devReturnAuthCode) {
+            System.out.println("비밀번호 재설정 휴대폰 인증번호: " + authCode);
+        }
         return new PhoneAuthSendResult(phone, authCode);
     }
 

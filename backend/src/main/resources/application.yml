@@ -17,6 +17,11 @@ oauth:
   kakao:
     client-id: ${KAKAO_CLIENT_ID:}
     client-secret: ${KAKAO_CLIENT_SECRET:}
+    allowed-redirect-uris: "${KAKAO_ALLOWED_REDIRECT_URIS:http://localhost:5173/auth/kakao/callback,http://moodcast-frontend-s3-qqqq.s3-website.ap-northeast-2.amazonaws.com/auth/kakao/callback}"
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    allowed-redirect-uris: "${GOOGLE_ALLOWED_REDIRECT_URIS:http://localhost:5173/auth/google/callback,http://moodcast-frontend-s3-qqqq.s3-website.ap-northeast-2.amazonaws.com/auth/google/callback}"
 
 spring:
   config:
@@ -25,7 +30,7 @@ spring:
     name: moodcast-backend
   sql:
     init:
-      mode: always
+      mode: ${SQL_INIT_MODE:never}
       schema-locations:
         - classpath:schema-posts.sql
         - classpath:schema-group-chat.sql
@@ -62,6 +67,8 @@ app:
   upload-dir: uploads
   local-upload-resource-enabled: ${APP_LOCAL_UPLOAD_RESOURCE_ENABLED:false}
   public-base-url: ${APP_PUBLIC_BASE_URL:}
+  dev-return-auth-code: ${APP_DEV_RETURN_AUTH_CODE:false}
+  trust-forwarded-headers: ${APP_TRUST_FORWARDED_HEADERS:false}
 
 cloud:
   aws:

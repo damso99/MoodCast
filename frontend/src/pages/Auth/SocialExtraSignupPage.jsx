@@ -31,11 +31,18 @@ export const SocialExtraSignupPage = () => {
   const [agreements, setAgreements] = useState({});
   const [signupCompleteModalOpen, setSignupCompleteModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
+  const providerLabel = pending?.provider === "GOOGLE" ? "Google" : "카카오";
 
   const showToast = (type, message) => {
     const duration = getToastDuration(type);
     setToast({ show: true, type, message, duration });
     setTimeout(() => setToast({ show: false, type: "", message: "" }), duration);
+  };
+
+  const logDevAuthCode = (label, authCode) => {
+    if (authCode) {
+      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
+    }
   };
 
   useEffect(() => {
@@ -45,7 +52,21 @@ export const SocialExtraSignupPage = () => {
       return;
     }
 
-    const nextPending = JSON.parse(pendingText);
+    let nextPending;
+    try {
+      nextPending = JSON.parse(pendingText);
+    } catch (error) {
+      window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+
+    if (!nextPending?.pendingToken) {
+      window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
+      navigate("/auth/login", { replace: true });
+      return;
+    }
+
     setPending(nextPending);
     setForm((prev) => ({
       ...prev,
@@ -96,9 +117,7 @@ export const SocialExtraSignupPage = () => {
       })
       .then((res) => {
         setPhoneAuth(1);
-        if (res.data.authCode) {
-          console.log("휴대폰 인증번호:", res.data.authCode);
-        }
+        logDevAuthCode("소셜 회원가입 휴대폰", res.data?.authCode);
         showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
@@ -190,10 +209,13 @@ export const SocialExtraSignupPage = () => {
         setSignupCompleteModalOpen(true);
       })
       .catch((err) => {
-        showToast(
-          "error",
-          getApiMessage(err, "소셜 회원가입 정보를 다시 확인해주세요."),
-        );
+        const message = getApiMessage(err, "소셜 회원가입 정보를 다시 확인해주세요.");
+        showToast("error", message);
+
+        if (message.includes("소셜 가입 시간이 만료")) {
+          window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
+          setTimeout(() => navigate("/auth/login", { replace: true }), 1600);
+        }
       })
       .finally(() => {
         setSignupSubmitting(false);
@@ -206,7 +228,7 @@ export const SocialExtraSignupPage = () => {
       <AuthConfirmModal
         open={signupCompleteModalOpen}
         title="소셜 회원가입 완료"
-        description="카카오 계정과 MoodCast 계정이 연결되었습니다. 이제 카카오 로그인으로도 이용할 수 있습니다."
+        description={`${providerLabel} 계정과 MoodCast 계정이 연결되었습니다. 이제 ${providerLabel} 로그인으로도 이용할 수 있습니다.`}
         confirmOnly
         confirmText="피드로 이동"
         onConfirm={() => navigate("/app/feed", { replace: true })}
@@ -223,7 +245,7 @@ export const SocialExtraSignupPage = () => {
             <strong>MoodCast</strong>
           </div>
           <h1>소셜 회원가입</h1>
-          <p>{pending?.providerEmail || "카카오 계정"}에 추가 정보를 연결합니다</p>
+          <p>{pending?.providerEmail || `${providerLabel} 계정`}에 추가 정보를 연결합니다</p>
         </header>
 
         <form className={styles.form}>

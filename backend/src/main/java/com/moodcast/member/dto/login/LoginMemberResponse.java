@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
@@ -15,4 +17,5 @@ public class LoginMemberResponse {
     private String profileImageUrl;
     private String bio;
     private String role;
+    private LocalDateTime createdAt;
 }

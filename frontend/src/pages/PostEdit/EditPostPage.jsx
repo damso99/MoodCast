@@ -1,32 +1,32 @@
-import axios from 'axios';
-import { DesktopShell } from '../../components/layout/DesktopShell';
-import { MobileShell } from '../../components/layout/MobileShell';
-import { useIsDesktop } from '../../hooks/useViewportWidth';
-import { useRef, useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuthStore } from '../../stores/useAuthStore';
-import styles from './EditPostPage.module.css';
-import { uploadImage } from '../../shared/lib/uploadImage';
-import { fetchMentionCandidates } from '../../shared/api/followApi';
+import axios from "axios";
+import { DesktopShell } from "../../components/layout/DesktopShell";
+import { MobileShell } from "../../components/layout/MobileShell";
+import { useIsDesktop } from "../../hooks/useViewportWidth";
+import { useRef, useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuthStore } from "../../stores/useAuthStore";
+import styles from "./EditPostPage.module.css";
+import { uploadImage } from "../../shared/lib/uploadImage";
+import { fetchMentionCandidates } from "../../shared/api/followApi";
 import {
   getActiveMentionStateFromText,
   insertMentionIntoText,
   reconcileMentionsAfterTextChange,
-} from '../../shared/lib/mentionUtils';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
-import SentimentDissatisfiedIcon from '@mui/icons-material/SentimentDissatisfied';
-import SpaIcon from '@mui/icons-material/Spa';
-import MoodBadIcon from '@mui/icons-material/MoodBad';
-import CelebrationIcon from '@mui/icons-material/Celebration';
-import SentimentNeutralIcon from '@mui/icons-material/SentimentNeutral';
+} from "../../shared/lib/mentionUtils";
+import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
+import SentimentDissatisfiedIcon from "@mui/icons-material/SentimentDissatisfied";
+import SpaIcon from "@mui/icons-material/Spa";
+import MoodBadIcon from "@mui/icons-material/MoodBad";
+import CelebrationIcon from "@mui/icons-material/Celebration";
+import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 
 const EMOTIONS = [
-  { id: 1, name: '행복', icon: EmojiEmotionsIcon, color: '#FFD700' },
-  { id: 2, name: '슬픔', icon: SentimentDissatisfiedIcon, color: '#4A90E2' },
-  { id: 3, name: '차분', icon: SpaIcon, color: '#F4A460' },
-  { id: 4, name: '화남', icon: MoodBadIcon, color: '#E74C3C' },
-  { id: 5, name: '신남', icon: CelebrationIcon, color: '#FF69B4' },
-  { id: 6, name: '중립', icon: SentimentNeutralIcon, color: '#95A5A6' },
+  { id: 1, name: "행복", icon: EmojiEmotionsIcon, color: "#FFD700" },
+  { id: 2, name: "슬픔", icon: SentimentDissatisfiedIcon, color: "#4A90E2" },
+  { id: 3, name: "차분", icon: SpaIcon, color: "#F4A460" },
+  { id: 4, name: "화남", icon: MoodBadIcon, color: "#E74C3C" },
+  { id: 5, name: "신남", icon: CelebrationIcon, color: "#FF69B4" },
+  { id: 6, name: "무감정", icon: SentimentNeutralIcon, color: "#95A5A6" },
 ];
 
 export function EditPostPage() {
@@ -35,26 +35,26 @@ export function EditPostPage() {
   const { postId } = useParams();
   const editorRef = useRef(null);
   const tagInputRef = useRef(null);
-  
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [tagList, setTagList] = useState([]);
-  const [tagInput, setTagInput] = useState('');
+  const [tagInput, setTagInput] = useState("");
   const [selectedEmotion, setSelectedEmotion] = useState(null);
   const [attachedImages, setAttachedImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const { accessToken: token, member } = useAuthStore();
-  const [mentionKeyword, setMentionKeyword] = useState('');
+  const [mentionKeyword, setMentionKeyword] = useState("");
   const [mentionCandidates, setMentionCandidates] = useState([]);
   const [mentionLoading, setMentionLoading] = useState(false);
   const [mentionOpen, setMentionOpen] = useState(false);
   const [mentionRange, setMentionRange] = useState(null);
   const [mentions, setMentions] = useState([]);
-  const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
 
   const closeMentionBox = () => {
-    setMentionKeyword('');
+    setMentionKeyword("");
     setMentionOpen(false);
     setMentionRange(null);
   };
@@ -72,11 +72,11 @@ export function EditPostPage() {
         const candidates = await fetchMentionCandidates(
           currentMemberId,
           mentionKeyword,
-          token || window.sessionStorage.getItem('moodcast-access-token'),
+          token || window.sessionStorage.getItem("moodcast-access-token"),
         );
         setMentionCandidates(candidates);
       } catch (error) {
-        console.error('멘션 후보 조회 실패', error);
+        console.error("멘션 후보 조회 실패", error);
         setMentionCandidates([]);
       } finally {
         setMentionLoading(false);
@@ -100,28 +100,43 @@ export function EditPostPage() {
 
   const handleContentChange = (event) => {
     const nextContent = event.target.value;
-    const nextMentions = reconcileMentionsAfterTextChange(content, nextContent, mentions);
+    const nextMentions = reconcileMentionsAfterTextChange(
+      content,
+      nextContent,
+      mentions,
+    );
     setContent(nextContent);
     setMentions(nextMentions);
-    syncMentionState(nextContent, event.target.selectionStart ?? nextContent.length);
+    syncMentionState(
+      nextContent,
+      event.target.selectionStart ?? nextContent.length,
+    );
   };
 
   const handleMentionSelect = (candidate) => {
-    const inserted = insertMentionIntoText(content, mentionRange, candidate, mentions);
+    const inserted = insertMentionIntoText(
+      content,
+      mentionRange,
+      candidate,
+      mentions,
+    );
     if (!inserted) {
       return;
     }
 
     setContent(inserted.content);
     setMentions(inserted.mentions);
-    setMentionKeyword('');
+    setMentionKeyword("");
     setMentionOpen(false);
     setMentionRange(null);
     setMentionCandidates([]);
 
     window.requestAnimationFrame(() => {
       editorRef.current?.focus();
-      editorRef.current?.setSelectionRange(inserted.caretIndex, inserted.caretIndex);
+      editorRef.current?.setSelectionRange(
+        inserted.caretIndex,
+        inserted.caretIndex,
+      );
     });
   };
 
@@ -130,38 +145,38 @@ export function EditPostPage() {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const response = await axios.get(
-          `${BACKSERVER}/api/posts/${postId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await axios.get(`${BACKSERVER}/api/posts/${postId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
         const post = response.data;
-        
-        setTitle(post.title || '');
-        setContent(post.content || '');
+
+        setTitle(post.title || "");
+        setContent(post.content || "");
         setMentions(post.mentions || []);
-        setAttachedImages(getImageUrlsFromHtml(post.content || ''));
-        
+        setAttachedImages(getImageUrlsFromHtml(post.content || ""));
+
         // 태그 파싱 (공백으로 구분된 문자열을 배열로 변환
         if (post.tags) {
-          const tags = post.tags.trim().split(/\s+/).filter(t => t);
+          const tags = post.tags
+            .trim()
+            .split(/\s+/)
+            .filter((t) => t);
           setTagList(tags);
         }
-        
+
         // 감정 설정
         if (post.emotionId) {
-          const emotion = EMOTIONS.find(e => e.id === post.emotionId);
+          const emotion = EMOTIONS.find((e) => e.id === post.emotionId);
           if (emotion) setSelectedEmotion(emotion);
         }
-        
+
         setLoading(false);
       } catch (error) {
-        console.error('[게시물 수정] 불러오기 실패:', error);
-        alert('게시물을 불러오지 못했습니다.');
-        navigate('/app');
+        console.error("[게시물 수정] 불러오기 실패:", error);
+        alert("게시물을 불러오지 못했습니다.");
+        navigate("/app");
       }
     };
 
@@ -172,7 +187,8 @@ export function EditPostPage() {
   const handleImageUpload = async (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
-    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const effectiveToken =
+      token || window.sessionStorage.getItem("moodcast-access-token");
 
     for (const file of files) {
       try {
@@ -181,11 +197,11 @@ export function EditPostPage() {
           maxHeight: 1200,
           quality: 0.8,
           cropSquare: false,
-          folderType: 'post-images',
+          folderType: "post-images",
         });
         const imageHtml = `<img src="${url}" alt="${file.name}" />`;
         setContent((prev) => {
-          const nextContent = `${prev}${prev ? '\n' : ''}${imageHtml}`;
+          const nextContent = `${prev}${prev ? "\n" : ""}${imageHtml}`;
           setAttachedImages(getImageUrlsFromHtml(nextContent));
           return nextContent;
         });
@@ -194,7 +210,7 @@ export function EditPostPage() {
       }
     }
 
-    event.target.value = '';
+    event.target.value = "";
   };
 
   const handleTagInput = (e) => {
@@ -206,28 +222,28 @@ export function EditPostPage() {
       return;
     }
 
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       const tag = tagInput.trim();
-      const cleanTag = tag.startsWith('#') ? tag : `#${tag}`;
+      const cleanTag = tag.startsWith("#") ? tag : `#${tag}`;
       const normalizedTag = cleanTag.toLowerCase();
-      
+
       if (normalizedTag.length > 1 && !tagList.includes(normalizedTag)) {
         setTagList([...tagList, normalizedTag]);
-        setTagInput('');
+        setTagInput("");
         tagInputRef.current?.focus();
       } else if (tagList.includes(normalizedTag)) {
-        alert('이미 추가된 해시태그입니다.');
-        setTagInput('');
+        alert("이미 추가된 해시태그입니다.");
+        setTagInput("");
       }
     }
   };
 
   const getImageUrlsFromHtml = (html) => {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html || '', 'text/html');
-    return Array.from(doc.querySelectorAll('img'))
-      .map((img) => img.getAttribute('src'))
+    const doc = parser.parseFromString(html || "", "text/html");
+    return Array.from(doc.querySelectorAll("img"))
+      .map((img) => img.getAttribute("src"))
       .filter(Boolean);
   };
 
@@ -238,8 +254,8 @@ export function EditPostPage() {
   };
 
   const getFileNameFromUrl = (url) => {
-    if (!url) return '이미지';
-    const cleaned = url.split('?')[0].split('/').pop() || '이미지';
+    if (!url) return "이미지";
+    const cleaned = url.split("?")[0].split("/").pop() || "이미지";
     return cleaned.length > 18 ? `${cleaned.slice(0, 15)}...` : cleaned;
   };
 
@@ -249,8 +265,8 @@ export function EditPostPage() {
 
   const handleImageRemove = (indexToRemove) => {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(content, 'text/html');
-    const images = Array.from(doc.querySelectorAll('img'));
+    const doc = parser.parseFromString(content, "text/html");
+    const images = Array.from(doc.querySelectorAll("img"));
     if (!images[indexToRemove]) return;
     images[indexToRemove].remove();
     updateEditorContent(doc.body.innerHTML);
@@ -258,24 +274,25 @@ export function EditPostPage() {
 
   // 게시물 수정 완료 버튼을 눌렀을 때 백엔드에 수정 요청을 보냅니다.
   const handleSubmit = async () => {
-    const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
+    const effectiveToken =
+      token || window.sessionStorage.getItem("moodcast-access-token");
     if (!effectiveToken) {
-      alert('로그인이 필요합니다.');
-      navigate('/auth/login');
+      alert("로그인이 필요합니다.");
+      navigate("/auth/login");
       return;
     }
 
     const editorContent = content;
 
     if (!title.trim() && !editorContent.trim()) {
-      alert('제목 또는 본문을 입력해주세요.');
+      alert("제목 또는 본문을 입력해주세요.");
       return;
     }
 
     setSaving(true);
     try {
-      const tagsString = tagList.join(' ');
-      
+      const tagsString = tagList.join(" ");
+
       const requestData = {
         title: title.trim(),
         content: editorContent,
@@ -283,9 +300,9 @@ export function EditPostPage() {
         emotionId: selectedEmotion?.id || null,
         mentions,
       };
-      
-      console.log('[게시물 수정] 요청 데이터:', requestData);
-      
+
+      console.log("[게시물 수정] 요청 데이터:", requestData);
+
       const response = await axios.put(
         `${BACKSERVER}/api/posts/${postId}`,
         requestData,
@@ -293,23 +310,29 @@ export function EditPostPage() {
           headers: {
             Authorization: `Bearer ${effectiveToken}`,
           },
-        }
+        },
       );
-      
-      console.log('[게시물 수정] 저장 성공:', response.data);
-      alert('게시물이 수정되었습니다.');
-      navigate('/app');
+
+      console.log("[게시물 수정] 저장 성공:", response.data);
+      alert("게시물이 수정되었습니다.");
+      navigate("/app");
     } catch (error) {
-      console.error('[게시물 수정] 저장 오류:', error);
-      console.error('[게시물 수정] 오류 응답:', error.response?.data);
-      alert(error.response?.data?.message || error.message || '게시물 수정에 실패했습니다.');
+      console.error("[게시물 수정] 저장 오류:", error);
+      console.error("[게시물 수정] 오류 응답:", error.response?.data);
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "게시물 수정에 실패했습니다.",
+      );
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>로딩 중...</div>;
+    return (
+      <div style={{ padding: "20px", textAlign: "center" }}>로딩 중...</div>
+    );
   }
 
   const contentArea = (
@@ -338,11 +361,20 @@ export function EditPostPage() {
                 <button
                   key={emotion.id}
                   type="button"
-                  className={`${styles.emotionButton} ${selectedEmotion?.id === emotion.id ? styles.emotionSelected : ''}`}
+                  className={`${styles.emotionButton} ${selectedEmotion?.id === emotion.id ? styles.emotionSelected : ""}`}
                   onClick={() => setSelectedEmotion(emotion)}
-                  style={selectedEmotion?.id === emotion.id ? { borderColor: emotion.color, backgroundColor: emotion.color + '20' } : {}}
+                  style={
+                    selectedEmotion?.id === emotion.id
+                      ? {
+                          borderColor: emotion.color,
+                          backgroundColor: emotion.color + "20",
+                        }
+                      : {}
+                  }
                 >
-                  <IconComponent sx={{ fontSize: '1.8rem', color: emotion.color }} />
+                  <IconComponent
+                    sx={{ fontSize: "1.8rem", color: emotion.color }}
+                  />
                   <span className={styles.emotionName}>{emotion.name}</span>
                 </button>
               );
@@ -360,14 +392,26 @@ export function EditPostPage() {
               value={content}
               placeholder="오늘의 감정과 생각을 적어보세요."
               onChange={handleContentChange}
-              onKeyUp={(event) => syncMentionState(event.currentTarget.value, event.currentTarget.selectionStart)}
-              onClick={(event) => syncMentionState(event.currentTarget.value, event.currentTarget.selectionStart)}
+              onKeyUp={(event) =>
+                syncMentionState(
+                  event.currentTarget.value,
+                  event.currentTarget.selectionStart,
+                )
+              }
+              onClick={(event) =>
+                syncMentionState(
+                  event.currentTarget.value,
+                  event.currentTarget.selectionStart,
+                )
+              }
             />
             {mentionOpen ? (
               <div className={styles.mentionBox}>
                 {mentionLoading ? (
                   <div className={styles.mentionItem}>
-                    <span className={styles.mentionText}>멘션 후보를 불러오는 중입니다.</span>
+                    <span className={styles.mentionText}>
+                      멘션 후보를 불러오는 중입니다.
+                    </span>
                   </div>
                 ) : mentionCandidates.length > 0 ? (
                   mentionCandidates.map((candidate) => (
@@ -385,7 +429,9 @@ export function EditPostPage() {
                   ))
                 ) : (
                   <div className={styles.mentionItem}>
-                    <span className={styles.mentionText}>일치하는 멘션 후보가 없습니다.</span>
+                    <span className={styles.mentionText}>
+                      일치하는 멘션 후보가 없습니다.
+                    </span>
                   </div>
                 )}
               </div>
@@ -397,9 +443,17 @@ export function EditPostPage() {
           <div className={styles.uploadGroup}>
             <label className={styles.uploadButton}>
               사진 첨부
-              <input type="file" accept="image/*" multiple onChange={handleImageUpload} style={{ display: 'none' }} />
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                style={{ display: "none" }}
+              />
             </label>
-            <span className={styles.uploadDescription}>본문에 들어갈 사진을 선택하세요.</span>
+            <span className={styles.uploadDescription}>
+              본문에 들어갈 사진을 선택하세요.
+            </span>
           </div>
 
           {attachedImages.length > 0 && (
@@ -409,7 +463,11 @@ export function EditPostPage() {
                 {attachedImages.map((src, index) => (
                   <div key={`${src}-${index}`} className={styles.imageItem}>
                     <div className={styles.imageThumbWrap}>
-                      <img src={src} alt={`첨부 이미지 ${index + 1}`} className={styles.imageThumb} />
+                      <img
+                        src={src}
+                        alt={`첨부 이미지 ${index + 1}`}
+                        className={styles.imageThumb}
+                      />
                       <button
                         type="button"
                         className={styles.imageRemoveButton}
@@ -419,7 +477,9 @@ export function EditPostPage() {
                         ×
                       </button>
                     </div>
-                    <div className={styles.imageName}>{getFileNameFromUrl(src)}</div>
+                    <div className={styles.imageName}>
+                      {getFileNameFromUrl(src)}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -429,7 +489,7 @@ export function EditPostPage() {
 
         <div className={styles.field}>
           <label htmlFor="postTags">해시태그</label>
-          
+
           {tagList.length > 0 && (
             <div className={styles.tagContainer}>
               {tagList.map((tag, index) => (
@@ -446,36 +506,55 @@ export function EditPostPage() {
               ))}
             </div>
           )}
-          
+
           <input
             ref={tagInputRef}
             id="postTags"
             value={tagInput}
             onChange={handleTagInput}
             onKeyDown={handleTagKeyDown}
-            placeholder={tagList.length === 0 ? "#태그를 입력하고 엔터를 누르세요" : "추가할 태그를 입력하고 엔터"}
-            style={{ width: '100%' }}
+            placeholder={
+              tagList.length === 0
+                ? "#태그를 입력하고 엔터를 누르세요"
+                : "추가할 태그를 입력하고 엔터"
+            }
+            style={{ width: "100%" }}
           />
-          
+
           <small className={styles.tagHelpText}>
             추가된 태그: {tagList.length}개
-            {tagList.length > 0 && ` (${tagList.join(', ')})`}
+            {tagList.length > 0 && ` (${tagList.join(", ")})`}
           </small>
         </div>
 
         <div className={styles.buttonGroup}>
-          <button type="button" className={styles.cancelButton} onClick={() => navigate('/app')}>
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={() => navigate("/app")}
+          >
             취소
           </button>
-          <button type="button" className={styles.submitButton} onClick={handleSubmit}>
+          <button
+            type="button"
+            className={styles.submitButton}
+            onClick={handleSubmit}
+          >
             수정하기
           </button>
         </div>
-        {saving ? <div className={styles.message}>게시물을 수정하는 중입니다...</div> : null}
+        {saving ? (
+          <div className={styles.message}>게시물을 수정하는 중입니다...</div>
+        ) : null}
       </div>
     </section>
   );
 
-  if (!desktop) return <MobileShell title="게시물 수정" hideSearch>{contentArea}</MobileShell>;
+  if (!desktop)
+    return (
+      <MobileShell title="게시물 수정" hideSearch>
+        {contentArea}
+      </MobileShell>
+    );
   return <DesktopShell>{contentArea}</DesktopShell>;
 }

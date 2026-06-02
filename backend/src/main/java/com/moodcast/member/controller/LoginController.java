@@ -1,9 +1,12 @@
 package com.moodcast.member.controller;
 
+import com.moodcast.common.ClientIpResolver;
+import com.moodcast.common.exception.AuthException;
 import com.moodcast.member.dto.login.LoginRequest;
 import com.moodcast.member.dto.login.LoginResponse;
 import com.moodcast.member.dto.login.LoginResult;
 import com.moodcast.member.dto.login.LoginMemberResponse;
+import com.moodcast.member.dto.login.RefreshTokenInfo;
 import com.moodcast.member.dto.login.UpdateProfileRequest;
 import com.moodcast.member.dto.password.PasswordChangeRequest;
 import com.moodcast.member.dto.recovery.FindEmailCodeRequest;
@@ -12,6 +15,7 @@ import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
 import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
+import com.moodcast.member.dto.signup.EmailAuthSendResult;
 import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
@@ -24,11 +28,13 @@ import com.moodcast.member.service.JwtService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,14 +53,14 @@ public class LoginController {
     @Autowired
     private AccountRecoveryService accountRecoveryService;
 
+    @Autowired
+    private ClientIpResolver clientIpResolver;
+
+    @Value("${app.dev-return-auth-code:false}")
+    private boolean devReturnAuthCode;
+
     private String getClientIp(HttpServletRequest request) {
-        String forwardedFor = request.getHeader("X-Forwarded-For");
-
-        if (forwardedFor != null && !forwardedFor.isBlank()) {
-            return forwardedFor.split(",")[0].trim();
-        }
-
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 
     private String getUserAgent(HttpServletRequest request) {
@@ -101,6 +107,53 @@ public class LoginController {
         }
 
         return "UNKNOWN";
+    }
+
+    private LoginMemberResponse getAuditMemberFromRefreshToken(String refreshToken) {
+        try {
+            RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
+            return loginService.getMemberById(refreshTokenInfo.getMemberId());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private Long getAuditMemberId(LoginMemberResponse member) {
+        return member == null ? null : member.getMemberId();
+    }
+
+    private String getAuditMemberEmail(LoginMemberResponse member) {
+        return member == null ? null : member.getEmail();
+    }
+
+    private String getRefreshFailReason(Exception e, LoginMemberResponse auditMember) {
+        String message = e.getMessage();
+
+        if (message == null) {
+            return "UNKNOWN";
+        }
+
+        if (message.contains("정지")) {
+            return "SUSPENDED";
+        }
+
+        if (message.contains("탈퇴")) {
+            return "WITHDRAW";
+        }
+
+        if (message.contains("이메일 인증")) {
+            return "EMAIL_NOT_VERIFIED";
+        }
+
+        if (message.contains("휴대폰 인증")) {
+            return "PHONE_NOT_VERIFIED";
+        }
+
+        if (auditMember != null && message.contains("로그인")) {
+            return "REFRESH_MISMATCH";
+        }
+
+        return "REFRESH_EXPIRED";
     }
 
     @PostMapping("login")
@@ -152,7 +205,7 @@ public class LoginController {
     @GetMapping("me")
     public ResponseEntity<?> me(@RequestHeader(value = "Authorization", required = false) String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         String accessToken = authorization.substring(7);
@@ -182,13 +235,14 @@ public class LoginController {
             @RequestBody PasswordChangeRequest request,
             HttpServletRequest httpRequest
     ) {
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         loginService.changePassword(authorizationHeader, request);
 
         loginAuditService.record(
+                loginMember.getMemberId(),
+                loginMember.getEmail(),
                 null,
-                null,
-                null,
-                "PASSWORD_CHANGE",
+                "PASSWORD_RESET",
                 true,
                 null,
                 getClientIp(httpRequest),
@@ -214,14 +268,15 @@ public class LoginController {
     ) {
         PhoneAuthSendResult result = accountRecoveryService.sendFindEmailPhoneCode(request, getClientIp(httpRequest));
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
-                        "phone", result.getPhone(),
-                        "authCode", result.getAuthCode()
-                )
-        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("phone", result.getPhone());
+        if (devReturnAuthCode) {
+            response.put("authCode", result.getAuthCode());
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("recovery/email/verify")
@@ -245,14 +300,15 @@ public class LoginController {
     ) {
         PhoneAuthSendResult result = accountRecoveryService.sendPasswordResetPhoneCode(request, getClientIp(httpRequest));
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true,
-                        "message", "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
-                        "phone", result.getPhone(),
-                        "authCode", result.getAuthCode()
-                )
-        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("phone", result.getPhone());
+        if (devReturnAuthCode) {
+            response.put("authCode", result.getAuthCode());
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("recovery/password/verify")
@@ -293,17 +349,51 @@ public class LoginController {
         );
     }
 
+    @PostMapping("withdraw/email/send")
+    public ResponseEntity<?> sendWithdrawEmailCode(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        EmailAuthSendResult result = loginService.sendWithdrawEmailAuthCode(authorizationHeader, getClientIp(httpRequest));
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "탈퇴 확인 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("email", result.getEmail());
+        if (devReturnAuthCode) {
+            response.put("authCode", result.getAuthCode());
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("withdraw/email/verify")
+    public ResponseEntity<?> verifyWithdrawEmailCode(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody WithdrawRequest request
+    ) {
+        loginService.verifyWithdrawEmailAuthCode(authorizationHeader, request.getAuthCode());
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "탈퇴 이메일 인증이 완료되었습니다."
+                )
+        );
+    }
+
     @PostMapping("withdraw")
     public ResponseEntity<?> withdraw(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestBody WithdrawRequest request,
             HttpServletRequest httpRequest
     ) {
+        LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         loginService.withdraw(authorizationHeader, request);
 
         loginAuditService.record(
-                null,
-                null,
+                loginMember.getMemberId(),
+                loginMember.getEmail(),
                 null,
                 "WITHDRAW",
                 true,
@@ -384,11 +474,13 @@ public class LoginController {
         }
 
         if (refreshToken != null && !refreshToken.isBlank()) {
+            LoginMemberResponse auditMember = getAuditMemberFromRefreshToken(refreshToken);
+
             try {
                 loginService.logout(refreshToken);
                 loginAuditService.record(
-                        null,
-                        null,
+                        getAuditMemberId(auditMember),
+                        getAuditMemberEmail(auditMember),
                         null,
                         "LOGOUT",
                         true,
@@ -396,15 +488,15 @@ public class LoginController {
                         getClientIp(request),
                         getUserAgent(request)
                 );
-            } catch (IllegalArgumentException e) {
+            } catch (AuthException | IllegalArgumentException e) {
                 // refresh token이 이미 만료/삭제되어도 로그아웃은 쿠키 정리까지 성공 처리함
                 loginAuditService.record(
-                        null,
-                        null,
+                        getAuditMemberId(auditMember),
+                        getAuditMemberEmail(auditMember),
                         null,
                         "LOGOUT",
                         false,
-                        "REFRESH_EXPIRED",
+                        getRefreshFailReason(e, auditMember),
                         getClientIp(request),
                         getUserAgent(request)
                 );
@@ -441,6 +533,7 @@ public class LoginController {
         }
 
         LoginResult result;
+        LoginMemberResponse auditMember = getAuditMemberFromRefreshToken(refreshToken);
 
         try {
             result = loginService.refreshAccessToken(refreshToken);
@@ -454,14 +547,14 @@ public class LoginController {
                     getClientIp(request),
                     getUserAgent(request)
             );
-        } catch (IllegalArgumentException | IllegalStateException e) {
+        } catch (AuthException | IllegalArgumentException | IllegalStateException e) {
             loginAuditService.record(
-                    null,
-                    null,
+                    getAuditMemberId(auditMember),
+                    getAuditMemberEmail(auditMember),
                     null,
                     "REFRESH_FAIL",
                     false,
-                    "REFRESH_EXPIRED",
+                    getRefreshFailReason(e, auditMember),
                     getClientIp(request),
                     getUserAgent(request)
             );

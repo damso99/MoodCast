@@ -1,5 +1,6 @@
 package com.moodcast.member.service;
 
+import com.moodcast.common.exception.AuthException;
 import com.moodcast.member.dto.login.RefreshTokenInfo;
 import com.moodcast.member.vo.Member;
 import io.jsonwebtoken.Claims;
@@ -73,7 +74,7 @@ public class JwtService {
 
     public Long getMemberIdFromAccessToken(String accessToken) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         try {
@@ -81,12 +82,12 @@ public class JwtService {
             String tokenType = claims.get("type", String.class);
 
             if (!"ACCESS".equals(tokenType)) {
-                throw new IllegalArgumentException("로그인이 필요합니다.");
+                throw new AuthException("로그인이 필요합니다.");
             }
 
             return Long.parseLong(claims.getSubject());
-        } catch (JwtException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+        } catch (JwtException | NumberFormatException e) {
+            throw new AuthException("로그인이 필요합니다.");
         }
     }
 
@@ -132,7 +133,7 @@ public class JwtService {
     // refresh 토큰을 한 번만 파싱해서 공통 검증을 처리함
     private Claims parseRefreshToken(String refreshToken) {
         if (refreshToken == null || refreshToken.trim().isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
         try {
@@ -140,12 +141,12 @@ public class JwtService {
             String tokenType = claims.get("type", String.class);
 
             if (!"REFRESH".equals(tokenType)) {
-                throw new IllegalArgumentException("로그인이 필요합니다.");
+                throw new AuthException("로그인이 필요합니다.");
             }
 
             return claims;
         } catch (JwtException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
     }
 
@@ -155,10 +156,14 @@ public class JwtService {
         String tokenId = claims.get("tokenId", String.class);
 
         if (tokenId == null || tokenId.trim().isEmpty()) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new AuthException("로그인이 필요합니다.");
         }
 
-        return new RefreshTokenInfo(Long.parseLong(claims.getSubject()), tokenId);
+        try {
+            return new RefreshTokenInfo(Long.parseLong(claims.getSubject()), tokenId);
+        } catch (NumberFormatException e) {
+            throw new AuthException("로그인이 필요합니다.");
+        }
     }
 
     // 기존 호출부가 깨지지 않도록 memberId만 필요한 경우도 지원함
