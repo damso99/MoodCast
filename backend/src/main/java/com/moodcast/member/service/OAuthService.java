@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 public class OAuthService {
     private static final String KAKAO = "KAKAO";
     private static final String GOOGLE = "GOOGLE";
+    private static final int MAX_PROFILE_IMAGE_URL_LENGTH = 500;
     private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9]{2,12}$");
     private static final Pattern PHONE_PATTERN = Pattern.compile("^010[0-9]{8}$");
@@ -180,7 +181,7 @@ public class OAuthService {
         member.setName(name);
         member.setNickname(nickname);
         member.setPhone(phone);
-        member.setProfileImageUrl(pendingSocialSignup.getProfileImageUrl());
+        member.setProfileImageUrl(normalizeProfileImageUrl(pendingSocialSignup.getProfileImageUrl()));
         member.setEmailVerified(1);
         member.setPhoneVerified(1);
 
@@ -540,6 +541,19 @@ public class OAuthService {
         }
 
         return phone;
+    }
+
+    private String normalizeProfileImageUrl(String profileImageUrl) {
+        if (profileImageUrl == null || profileImageUrl.trim().isEmpty()) {
+            return null;
+        }
+
+        profileImageUrl = profileImageUrl.trim();
+        if (profileImageUrl.length() > MAX_PROFILE_IMAGE_URL_LENGTH) {
+            return null;
+        }
+
+        return profileImageUrl;
     }
 
     private String providerLabel(String provider) {
