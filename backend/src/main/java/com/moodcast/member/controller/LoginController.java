@@ -348,6 +348,37 @@ public class LoginController {
         );
     }
 
+    @PostMapping("withdraw/email/send")
+    public ResponseEntity<?> sendWithdrawEmailCode(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        String email = loginService.sendWithdrawEmailAuthCode(authorizationHeader, getClientIp(httpRequest));
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "탈퇴 확인 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.",
+                        "email", email
+                )
+        );
+    }
+
+    @PostMapping("withdraw/email/verify")
+    public ResponseEntity<?> verifyWithdrawEmailCode(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody WithdrawRequest request
+    ) {
+        loginService.verifyWithdrawEmailAuthCode(authorizationHeader, request.getAuthCode());
+
+        return ResponseEntity.ok(
+                Map.of(
+                        "success", true,
+                        "message", "탈퇴 이메일 인증이 완료되었습니다."
+                )
+        );
+    }
+
     @PostMapping("withdraw")
     public ResponseEntity<?> withdraw(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,

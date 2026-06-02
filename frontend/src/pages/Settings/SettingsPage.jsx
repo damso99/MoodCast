@@ -22,14 +22,14 @@ const initialPasswordForm = {
   newPasswordConfirm: '',
 };
 const initialWithdrawForm = {
-  password: '',
   confirmText: '',
+  authCode: '',
 };
 
 export function SettingsPage() {
   const desktop = useIsDesktop();
   const navigate = useNavigate();
-  const { accessToken, clearAuthData } = useAuthStore();
+  const { accessToken, member, clearAuthData } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const [kakaoLinked, setKakaoLinked] = useState(false);
   const [kakaoLinkModalOpen, setKakaoLinkModalOpen] = useState(false);
@@ -39,8 +39,12 @@ export function SettingsPage() {
   const [withdrawPanelOpen, setWithdrawPanelOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [withdrawForm, setWithdrawForm] = useState(initialWithdrawForm);
+  const [withdrawEmailCodeSent, setWithdrawEmailCodeSent] = useState(false);
+  const [withdrawEmailVerified, setWithdrawEmailVerified] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
+  const [isWithdrawEmailSending, setIsWithdrawEmailSending] = useState(false);
+  const [isWithdrawEmailVerifying, setIsWithdrawEmailVerifying] = useState(false);
   const [toast, setToast] = useState({ show: false, type: '', message: '' });
 
   const showToast = (type, message) => {
@@ -81,6 +85,10 @@ export function SettingsPage() {
       ...prev,
       [name]: value,
     }));
+
+    if (name === 'authCode' && withdrawEmailVerified) {
+      setWithdrawEmailVerified(false);
+    }
   };
 
   const handlePasswordChange = async (event) => {
@@ -134,13 +142,72 @@ export function SettingsPage() {
   const toggleWithdrawPanel = () => {
     if (withdrawPanelOpen) {
       setWithdrawForm(initialWithdrawForm);
+      setWithdrawEmailCodeSent(false);
+      setWithdrawEmailVerified(false);
     }
 
     setWithdrawPanelOpen((prev) => !prev);
   };
 
+  const sendWithdrawEmailCode = async () => {
+    try {
+      setIsWithdrawEmailSending(true);
+      const res = await axios.post(
+        `${BACKSERVER}/auth/withdraw/email/send`,
+        {},
+        {
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+          },
+        },
+      );
+
+      setWithdrawEmailCodeSent(true);
+      setWithdrawEmailVerified(false);
+      showToast('success', res.data?.message || '탈퇴 확인 이메일 인증번호를 발송했습니다.');
+    } catch (error) {
+      showToast('error', getApiMessage(error, '탈퇴 확인 이메일 인증번호 발송에 실패했습니다.'));
+    } finally {
+      setIsWithdrawEmailSending(false);
+    }
+  };
+
+  const verifyWithdrawEmailCode = async () => {
+    if (!withdrawForm.authCode.trim()) {
+      showToast('error', '이메일 인증번호를 입력해주세요.');
+      return;
+    }
+
+    try {
+      setIsWithdrawEmailVerifying(true);
+      const res = await axios.post(
+        `${BACKSERVER}/auth/withdraw/email/verify`,
+        {
+          authCode: withdrawForm.authCode.trim(),
+        },
+        {
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+          },
+        },
+      );
+
+      setWithdrawEmailVerified(true);
+      showToast('success', res.data?.message || '탈퇴 이메일 인증이 완료되었습니다.');
+    } catch (error) {
+      showToast('error', getApiMessage(error, '이메일 인증번호를 확인해주세요.'));
+    } finally {
+      setIsWithdrawEmailVerifying(false);
+    }
+  };
+
   const requestWithdraw = (event) => {
     event.preventDefault();
+
+    if (!withdrawEmailVerified) {
+      showToast('error', '이메일 인증을 먼저 완료해주세요.');
+      return;
+    }
 
     if (withdrawForm.confirmText.trim() !== '탈퇴합니다') {
       showToast('error', "탈퇴 확인 문구는 '탈퇴합니다'로 정확히 입력해주세요.");
@@ -158,7 +225,6 @@ export function SettingsPage() {
       await axios.post(
         `${BACKSERVER}/auth/withdraw`,
         {
-          password: withdrawForm.password.trim(),
           confirmText: withdrawForm.confirmText.trim(),
         },
         {
@@ -172,6 +238,8 @@ export function SettingsPage() {
       clearAuthData();
       setWithdrawForm(initialWithdrawForm);
       setWithdrawPanelOpen(false);
+      setWithdrawEmailCodeSent(false);
+      setWithdrawEmailVerified(false);
       setWithdrawSuccessModalOpen(true);
     } catch (error) {
       showToast('error', getApiMessage(error, '회원 탈퇴에 실패했습니다.'));
@@ -273,18 +341,45 @@ export function SettingsPage() {
                     <form id="withdrawPanel" className={styles.withdrawForm} onSubmit={requestWithdraw}>
                       <div className={styles.dangerHeader}>
                         <strong>회원 탈퇴</strong>
-                        <p>탈퇴 후에는 계정 로그인이 차단됩니다.</p>
+                        <p>계정 이메일 인증 후 탈퇴할 수 있습니다.</p>
+                      </div>
+                      <div className={styles.emailVerifyBox}>
+                        <p>{member?.email || '현재 로그인한 이메일'}로 인증번호를 보냅니다.</p>
+                        <button
+                          type="button"
+                          className={styles.secondaryButton}
+                          onClick={sendWithdrawEmailCode}
+                          disabled={isWithdrawEmailSending || withdrawEmailVerified}
+                        >
+                          {isWithdrawEmailSending
+                            ? '발송 중'
+                            : withdrawEmailVerified
+                              ? '인증완료'
+                              : withdrawEmailCodeSent
+                                ? '인증번호 재발송'
+                                : '인증번호 발송'}
+                        </button>
                       </div>
                       <label>
-                        <span>비밀번호</span>
-                        <input
-                          type="password"
-                          name="password"
-                          value={withdrawForm.password}
-                          onChange={handleWithdrawInputChange}
-                          placeholder="일반 계정만 입력"
-                          autoComplete="current-password"
-                        />
+                        <span>이메일 인증번호</span>
+                        <div className={styles.inlineAction}>
+                          <input
+                            type="text"
+                            name="authCode"
+                            value={withdrawForm.authCode}
+                            onChange={handleWithdrawInputChange}
+                            placeholder="6자리 숫자"
+                            readOnly={withdrawEmailVerified}
+                          />
+                          <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={verifyWithdrawEmailCode}
+                            disabled={!withdrawEmailCodeSent || isWithdrawEmailVerifying || withdrawEmailVerified}
+                          >
+                            {withdrawEmailVerified ? '확인완료' : isWithdrawEmailVerifying ? '확인 중' : '인증 확인'}
+                          </button>
+                        </div>
                       </label>
                       <label>
                         <span>확인 문구</span>
