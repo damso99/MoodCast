@@ -36,6 +36,7 @@ export function SettingsPage() {
   const [passwordSuccessModalOpen, setPasswordSuccessModalOpen] = useState(false);
   const [withdrawConfirmModalOpen, setWithdrawConfirmModalOpen] = useState(false);
   const [withdrawSuccessModalOpen, setWithdrawSuccessModalOpen] = useState(false);
+  const [withdrawPanelOpen, setWithdrawPanelOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [withdrawForm, setWithdrawForm] = useState(initialWithdrawForm);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
@@ -130,6 +131,14 @@ export function SettingsPage() {
     navigate('/auth/login', { replace: true });
   };
 
+  const toggleWithdrawPanel = () => {
+    if (withdrawPanelOpen) {
+      setWithdrawForm(initialWithdrawForm);
+    }
+
+    setWithdrawPanelOpen((prev) => !prev);
+  };
+
   const requestWithdraw = (event) => {
     event.preventDefault();
 
@@ -162,6 +171,7 @@ export function SettingsPage() {
 
       clearAuthData();
       setWithdrawForm(initialWithdrawForm);
+      setWithdrawPanelOpen(false);
       setWithdrawSuccessModalOpen(true);
     } catch (error) {
       showToast('error', getApiMessage(error, '회원 탈퇴에 실패했습니다.'));
@@ -249,36 +259,49 @@ export function SettingsPage() {
                 <button type="button" onClick={handleKakaoLink} disabled={kakaoLinked}>
                   {kakaoLinked ? '카카오 연결완료' : '카카오 계정 연결'}
                 </button>
-                <form className={styles.withdrawForm} onSubmit={requestWithdraw}>
-                  <div className={styles.dangerHeader}>
-                    <strong>회원 탈퇴</strong>
-                    <p>탈퇴 후에는 계정 로그인이 차단됩니다.</p>
-                  </div>
-                  <label>
-                    <span>비밀번호</span>
-                    <input
-                      type="password"
-                      name="password"
-                      value={withdrawForm.password}
-                      onChange={handleWithdrawInputChange}
-                      placeholder="일반 계정만 입력"
-                      autoComplete="current-password"
-                    />
-                  </label>
-                  <label>
-                    <span>소셜 전용 계정 확인 문구</span>
-                    <input
-                      type="text"
-                      name="confirmText"
-                      value={withdrawForm.confirmText}
-                      onChange={handleWithdrawInputChange}
-                      placeholder="탈퇴합니다"
-                    />
-                  </label>
-                  <button type="submit" className={styles.dangerButton} disabled={isWithdrawLoading}>
-                    {isWithdrawLoading ? '처리 중' : '회원 탈퇴'}
+                <div className={styles.dangerZone}>
+                  <button
+                    type="button"
+                    className={styles.textDangerButton}
+                    onClick={toggleWithdrawPanel}
+                    aria-expanded={withdrawPanelOpen}
+                    aria-controls="withdrawPanel"
+                  >
+                    {withdrawPanelOpen ? '계정 관리 접기' : '계정 관리 더보기'}
                   </button>
-                </form>
+                  {withdrawPanelOpen ? (
+                    <form id="withdrawPanel" className={styles.withdrawForm} onSubmit={requestWithdraw}>
+                      <div className={styles.dangerHeader}>
+                        <strong>회원 탈퇴</strong>
+                        <p>탈퇴 후에는 계정 로그인이 차단됩니다.</p>
+                      </div>
+                      <label>
+                        <span>비밀번호</span>
+                        <input
+                          type="password"
+                          name="password"
+                          value={withdrawForm.password}
+                          onChange={handleWithdrawInputChange}
+                          placeholder="일반 계정만 입력"
+                          autoComplete="current-password"
+                        />
+                      </label>
+                      <label>
+                        <span>확인 문구</span>
+                        <input
+                          type="text"
+                          name="confirmText"
+                          value={withdrawForm.confirmText}
+                          onChange={handleWithdrawInputChange}
+                          placeholder="탈퇴합니다"
+                        />
+                      </label>
+                      <button type="submit" className={styles.dangerButton} disabled={isWithdrawLoading}>
+                        {isWithdrawLoading ? '처리 중' : '회원 탈퇴'}
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
               </>
             ) : title === '보안' ? (
               <form className={styles.passwordForm} onSubmit={handlePasswordChange}>

@@ -95,12 +95,32 @@
   line-height: 1.45;
 }
 
+.dangerZone {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.card .textDangerButton {
+  min-height: auto;
+  margin-top: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.card .textDangerButton:hover {
+  color: #b42318;
+}
+
 .withdrawForm {
   display: grid;
   gap: 12px;
-  margin-top: 18px;
-  padding-top: 18px;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  margin-top: 12px;
 }
 
 .dangerHeader {
@@ -138,5 +158,9 @@
   .passwordForm input,
   .withdrawForm input {
     min-height: 46px;
+  }
+
+  .card .textDangerButton {
+    min-height: auto;
   }
 }
