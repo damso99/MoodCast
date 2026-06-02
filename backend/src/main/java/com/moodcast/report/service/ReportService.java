@@ -33,6 +33,10 @@ public class ReportService {
             throw new IllegalArgumentException("신고 대상을 선택해주세요.");
         }
 
+        if (request.getPostId() != null && request.getCommentId() != null) {
+            throw new IllegalArgumentException("게시물 또는 댓글 중 하나만 신고할 수 있습니다.");
+        }
+
         LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         Long reporterMemberId = loginMember.getMemberId();
 
@@ -42,6 +46,14 @@ public class ReportService {
 
         if (request.getCommentId() != null && reportDao.existsCommentById(request.getCommentId()) == 0) {
             throw new IllegalArgumentException("신고할 댓글을 찾을 수 없습니다.");
+        }
+
+        if (request.getPostId() != null && reportDao.existsReportByReporterAndPost(reporterMemberId, request.getPostId())) {
+            throw new IllegalArgumentException("이미 신고한 게시물입니다.");
+        }
+
+        if (request.getCommentId() != null && reportDao.existsReportByReporterAndComment(reporterMemberId, request.getCommentId())) {
+            throw new IllegalArgumentException("이미 신고한 댓글입니다.");
         }
 
         Report report = new Report();
