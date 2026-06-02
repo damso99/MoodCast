@@ -39,6 +39,7 @@
 }
 
 .bulkActions button {
+  /*
   min-height: 32px;
   padding: 0 12px;
   border: 0;
@@ -47,6 +48,27 @@
   font-weight: 900;
   background: rgba(124, 77, 255, 0.1);
   cursor: pointer;
+  */
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid #ddd8ff;
+  border-radius: 12px;
+  color: #7b3ff2;
+  font-weight: 900;
+  line-height: 1;
+  background: #f6f2ff;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.bulkActions button:hover:not(:disabled) {
+  background: #eee7ff;
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.bulkActions button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .bulkActions button:disabled {

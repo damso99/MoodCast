@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
@@ -19,7 +20,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementDrawer
  * - 선택한 회원의 기본 정보 표시
  * - 회원 상세 정보 조회
  * - 일시 정지 / 영구 정지 / 정지 해제 처리
- * - 슈퍼 관리자 계정과 로그인한 관리자 본인 계정에 대한 제재 차단
+ * - 관리자 계정과 로그인한 관리자 본인 계정에 대한 제재 차단
  *
  * 초보자 설명:
  * - selectedManagedMember는 목록에서 선택한 회원입니다.
@@ -34,17 +35,22 @@ export function UserManagementDrawer({
   onClose,
   onMemberUpdated,
 }) {
+  const navigate = useNavigate();
   const [memberDetail, setMemberDetail] = useState(null); // "회원 정보 전체 보기" API 응답을 저장합니다.
   const [memberDetailLoading, setMemberDetailLoading] = useState(false); // 상세 정보 조회 중인지 표시합니다.
   const [memberDetailError, setMemberDetailError] = useState(""); // 상세 정보 조회 실패 메시지입니다.
+  const [sanctionLogs, setSanctionLogs] = useState([]); // 선택 회원의 정지/해제 이력입니다.
+  const [sanctionLogsLoading, setSanctionLogsLoading] = useState(false); // 제재 이력 조회 중인지 표시합니다.
+  const [sanctionLogsError, setSanctionLogsError] = useState(""); // 제재 이력 조회 실패 메시지입니다.
   const [suspendModalType, setSuspendModalType] = useState(null); // TEMPORARY 또는 PERMANENT 모달 종류입니다.
   const [selectedSuspendDays, setSelectedSuspendDays] = useState(7); // 일시 정지 기간 라디오 값입니다.
   const [customSuspendDate, setCustomSuspendDate] = useState(""); // 직접 선택한 정지 해제 날짜입니다.
   const [suspendLoading, setSuspendLoading] = useState(false); // 정지/해제 API 호출 중인지 표시합니다.
+  const [roleChanging, setRoleChanging] = useState(false); // 본인 관리자 권한 변경 API 호출 중인지 표시합니다.
   const [suspendError, setSuspendError] = useState(""); // 정지/해제 실패 메시지입니다.
   const [actionResultPopup, setActionResultPopup] = useState(null); // 정지/해제 API가 끝난 뒤 성공/실패 결과를 하나의 팝업으로 보여주기 위한 상태입니다.
   const [isClosing, setIsClosing] = useState(false); // 패널을 닫을 때 바로 사라지지 않고 닫힘 애니메이션을 보여주기 위한 상태입니다.
-  const { accessToken } = useAuthStore();
+  const { accessToken, member, setAuthData } = useAuthStore();
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
@@ -61,14 +67,26 @@ export function UserManagementDrawer({
     setMemberDetail(null);
     setMemberDetailError("");
     setMemberDetailLoading(false);
+    setSanctionLogs([]);
+    setSanctionLogsError("");
+    setSanctionLogsLoading(false);
     setSuspendModalType(null);
     setSelectedSuspendDays(7);
     setCustomSuspendDate("");
     setSuspendError("");
     setSuspendLoading(false);
+    setRoleChanging(false);
     setActionResultPopup(null);
     setIsClosing(false);
   }, [selectedManagedMember?.memberId]);
+
+  useEffect(() => {
+    if (!selectedManagedMember?.memberId || !accessToken) {
+      return;
+    }
+
+    fetchSanctionLogs(selectedManagedMember.memberId);
+  }, [selectedManagedMember?.memberId, accessToken]);
 
   if (!selectedManagedMember) {
     return null;
@@ -93,25 +111,36 @@ export function UserManagementDrawer({
     }, 220);
   };
 
-  const isCurrentAdminSuperAdmin = currentAdminRole === "SUPER_ADMIN";
   const isTargetSelf =
     Number(selectedManagedMember.memberId) === Number(currentAdminMemberId);
+  const isAdminRole = (role) =>
+    role === "ADMIN" || role === "NORMAL_ADMIN" || role === "SUPER_ADMIN";
   const isTargetSuperAdmin = selectedManagedMember.role === "SUPER_ADMIN";
-  const isAdminBlockedTarget = isTargetSelf || isTargetSuperAdmin;
+  const isTargetAdmin = isAdminRole(selectedManagedMember.role);
+  const isAdminBlockedTarget = isTargetSelf || isTargetAdmin;
   const blockReason = isTargetSelf
     ? "본인 계정은 정지하거나 정지 해제할 수 없습니다."
-    : "슈퍼 관리자 계정은 정지하거나 정지 해제할 수 없습니다.";
+    : isTargetSuperAdmin
+      ? "슈퍼 관리자 계정은 정지하거나 정지 해제할 수 없습니다."
+      : "관리자 계정은 정지하거나 정지 해제할 수 없습니다.";
 
   const formatDate = (value) => formatKoreanDate(value);
 
+  const normalizeMemberStatus = (status) => {
+    return String(status || "").trim().toUpperCase();
+  };
+
   const getStatusLabel = (status) => {
-    if (status === "ACTIVE") return "정상";
-    if (status === "SUSPENDED") return "정지";
-    if (status === "DELETED") return "삭제";
+    const normalizedStatus = normalizeMemberStatus(status);
+
+    if (normalizedStatus === "ACTIVE") return "정상";
+    if (normalizedStatus === "SUSPENDED") return "정지";
+    if (normalizedStatus === "DELETED") return "삭제";
     return status || "-";
   };
 
-  const isSuspendedMember = (member) => member?.status === "SUSPENDED";
+  const isSuspendedMember = (member) =>
+    normalizeMemberStatus(member?.status) === "SUSPENDED";
   const isPermanentSuspension = (member) =>
     isSuspendedMember(member) && !member?.suspendedUntil;
   const isTemporarySuspension = (member) =>
@@ -145,6 +174,43 @@ export function UserManagementDrawer({
   const getVerifiedLabel = (value) => (value === 1 ? "인증 완료" : "미인증");
   const getEmptySafeText = (value) =>
     value === null || value === undefined || value === "" ? "-" : value;
+
+  const getActionLabel = (actionType) => {
+    if (actionType === "SUSPEND") return "정지";
+    if (actionType === "RESTORE") return "해제";
+    return actionType || "작업";
+  };
+
+  const getLogAdminName = (logItem) => {
+    if (logItem?.adminName) return logItem.adminName;
+    if (logItem?.adminNickname) return `@${logItem.adminNickname}`;
+    return "관리자";
+  };
+
+  const fetchSanctionLogs = (memberId) => {
+    setSanctionLogsLoading(true);
+    setSanctionLogsError("");
+
+    axios
+      .get(`${BACKSERVER}/admin/api/members/${memberId}/sanction-logs`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      .then((res) => {
+        setSanctionLogs(
+          Array.isArray(res.data?.actionLogs) ? res.data.actionLogs : [],
+        );
+      })
+      .catch((error) => {
+        console.log(error);
+        setSanctionLogs([]);
+        setSanctionLogsError("제재 이력을 불러오지 못했습니다.");
+      })
+      .finally(() => {
+        setSanctionLogsLoading(false);
+      });
+  };
 
   const handleMemberDetailClick = () => {
     if (!accessToken) return;
@@ -254,6 +320,7 @@ export function UserManagementDrawer({
         }
 
         openActionResultPopup("success", "처리 완료", resultText);
+        fetchSanctionLogs(selectedManagedMember.memberId);
         setSuspendModalType(null);
       })
       .catch((error) => {
@@ -307,6 +374,7 @@ export function UserManagementDrawer({
         }
 
         openActionResultPopup("success", "처리 완료", "회원 정지를 해제했습니다.");
+        fetchSanctionLogs(selectedManagedMember.memberId);
       })
       .catch((error) => {
         console.log(error);
@@ -319,6 +387,48 @@ export function UserManagementDrawer({
       })
       .finally(() => {
         setSuspendLoading(false);
+      });
+  };
+
+  const handleDowngradeSelfRole = () => {
+    if (!accessToken || !member?.memberId || !isTargetSelf) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "관리자 권한을 일반 회원으로 변경하시겠습니까?\n\n" +
+        "• 관리자 페이지 접근 권한이 제한됩니다.\n" +
+        "• 회원 관리, 콘텐츠 관리, 신고 처리 등 관리자 기능을 사용할 수 없습니다.\n" +
+        "• 권한 복구는 다른 관리자에 의해 다시 부여되어야 합니다.\n\n" +
+        "권한 변경을 진행하시겠습니까?",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setRoleChanging(true);
+
+    axios
+      .put(
+        `${BACKSERVER}/admin/api/members/${member.memberId}/role`,
+        { role: "USER" },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      )
+      .then(() => {
+        setAuthData(accessToken, { ...member, role: "USER" });
+        navigate("/app/feed", { replace: true });
+      })
+      .catch((error) => {
+        console.log(error);
+        openActionResultPopup("error", "처리 실패", "관리자 권한 변경에 실패했습니다.");
+      })
+      .finally(() => {
+        setRoleChanging(false);
       });
   };
 
@@ -388,16 +498,6 @@ export function UserManagementDrawer({
           </div>
         </section>
 
-        {isAdminBlockedTarget && (
-          <p className={styles.detailErrorText}>{blockReason}</p>
-        )}
-
-        {!isCurrentAdminSuperAdmin && isTargetSuperAdmin && (
-          <p className={styles.detailErrorText}>
-            일반 관리자는 슈퍼 관리자 계정을 관리할 수 없습니다.
-          </p>
-        )}
-
         <section className={styles.drawerCard}>
           <h3>제재 관리</h3>
           <div className={styles.sanctionGrid}>
@@ -454,6 +554,24 @@ export function UserManagementDrawer({
           </div>
         </section>
 
+        {isTargetSelf && currentAdminRole === "SUPER_ADMIN" && (
+          <section className={styles.drawerCard}>
+            <h3>내 관리자 권한</h3>
+            <p className={styles.drawerHelperText}>
+              본인 권한을 일반 회원으로 변경하면 관리자 페이지 접근 권한이 즉시
+              제한됩니다.
+            </p>
+            <button
+              type="button"
+              className={styles.selfRoleChangeButton}
+              onClick={handleDowngradeSelfRole}
+              disabled={roleChanging}
+            >
+              {roleChanging ? "변경 중" : "내 권한을 일반 회원으로 변경"}
+            </button>
+          </section>
+        )}
+
         <section className={styles.drawerCard}>
           <div className={styles.drawerCardHead}>
             <h3>회원 정보</h3>
@@ -497,7 +615,7 @@ export function UserManagementDrawer({
             onClick={handleMemberDetailClick}
             disabled={memberDetailLoading}
           >
-            {memberDetailLoading ? "회원 정보 불러오는 중" : "회원 정보 전체 보기"}
+            {memberDetailLoading ? "회원 정보를 불러오는 중" : "회원 정보 전체 보기"}
           </button>
 
           {memberDetailError && (
@@ -560,10 +678,33 @@ export function UserManagementDrawer({
 
         <section className={styles.drawerCard}>
           <h3>제재 이력</h3>
-          <div className={styles.emptySanctionHistory}>
-            <DescriptionOutlinedIcon />
-            <strong>제재 이력은 추후 상세 API와 연결됩니다.</strong>
-          </div>
+          {sanctionLogsLoading ? (
+            <div className={styles.emptySanctionHistory}>
+              <DescriptionOutlinedIcon />
+              <strong>제재 이력을 불러오는 중입니다.</strong>
+            </div>
+          ) : sanctionLogsError ? (
+            <p className={styles.detailErrorText}>{sanctionLogsError}</p>
+          ) : sanctionLogs.length === 0 ? (
+            <div className={styles.emptySanctionHistory}>
+              <DescriptionOutlinedIcon />
+              <strong>기록된 제재 이력이 없습니다.</strong>
+            </div>
+          ) : (
+            <div className={styles.sanctionHistoryList}>
+              {sanctionLogs.map((logItem) => (
+                <article className={styles.sanctionHistoryItem} key={logItem.logId}>
+                  <span>{getActionLabel(logItem.actionType)}</span>
+                  <div>
+                    <strong>{logItem.actionDetail || "작업 상세 내용 없음"}</strong>
+                    <small>
+                      {getLogAdminName(logItem)} · {formatDate(logItem.createdAt)}
+                    </small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </aside>
 

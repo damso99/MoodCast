@@ -9,9 +9,10 @@
   background: rgba(255, 255, 255, 0.78);
 }
 
-.toolbar > div {
+.toolbarText {
   display: grid;
   gap: 8px;
+  min-width: 0;
 }
 
 .toolbar p {
@@ -21,10 +22,23 @@
   font-weight: 800;
 }
 
+.toolbarPeriod {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}
+
 .errorText {
   color: #d92d20;
   font-size: 0.82rem;
   font-weight: 850;
+}
+
+@media (max-width: 720px) {
+  .toolbar {
+    align-items: flex-start;
+    flex-direction: column-reverse;
+  }
 }
 
 .metricGrid {

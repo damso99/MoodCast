@@ -26,9 +26,14 @@
 }
 
 .segmented .selected {
+  /*
   color: #fff;
   background: #7c4dff;
   box-shadow: 0 8px 18px rgba(124, 77, 255, 0.25);
+  */
+  color: #fff;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.22);
 }
 
 .segmented button:hover {
@@ -38,9 +43,14 @@
 }
 
 .segmented .selected:hover {
+  /*
   color: #fff;
   background: #6d3df0;
   box-shadow: 0 10px 22px rgba(124, 77, 255, 0.3);
+  */
+  color: #fff;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.3);
 }
 
 .segmented button:active {

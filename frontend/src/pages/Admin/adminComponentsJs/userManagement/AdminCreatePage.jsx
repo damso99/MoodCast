@@ -18,12 +18,12 @@ import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.modu
  * - 이름, 닉네임, 이메일 기준으로 회원 검색
  * - ACTIVE 상태인 일반 회원과 관리자 회원을 검색 결과로 표시
  * - 검색 결과에서 권한을 변경할 회원 선택
- * - 일반 회원 / 일반 관리자 / 슈퍼 관리자 중 하나를 선택해 등급 변경
+ * - 일반 회원 / 슈퍼 관리자 중 하나를 선택해 등급 변경
  *
  * 큰 흐름:
  * 1. 슈퍼 관리자가 이름/닉네임/이메일 중 하나를 선택해서 회원을 검색합니다.
  * 2. 검색 결과 중 권한을 변경할 회원을 선택합니다.
- * 3. 일반 회원, 일반 관리자, 슈퍼 관리자 중 등급을 고릅니다.
+ * 3. 일반 회원, 슈퍼 관리자 중 등급을 고릅니다.
  * 4. 백엔드 API로 role 변경 요청을 보냅니다.
  *
  * ========================================================================== */
@@ -37,7 +37,7 @@ export function AdminCreatePage() {
   const [successMessage, setSuccessMessage] = useState(""); // 권한 변경 성공 메시지를 저장합니다.
   const [members, setMembers] = useState([]); // 검색 결과로 받은 회원 목록입니다.
   const [selectedMemberId, setSelectedMemberId] = useState(null); // 라디오 버튼으로 선택한 권한 변경 대상 회원 id입니다.
-  const [selectedRole, setSelectedRole] = useState("NORMAL_ADMIN"); // 선택한 관리자 등급입니다.
+  const [selectedRole, setSelectedRole] = useState("SUPER_ADMIN"); // 선택한 관리자 등급입니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 JWT 토큰입니다.
 
   const BACKSERVER = (
@@ -47,9 +47,7 @@ export function AdminCreatePage() {
   const roleDescription =
     selectedRole === "USER"
       ? "일반 회원은 관리자 페이지에 접근할 수 없습니다."
-      : selectedRole === "SUPER_ADMIN"
-        ? "슈퍼 관리자는 관리자 권한 부여와 해제까지 사용할 수 있습니다."
-        : "일반 관리자는 관리자 권한 관리를 제외한 관리자 기능을 사용할 수 있습니다.";
+      : "슈퍼 관리자는 관리자 권한 부여와 해제까지 사용할 수 있습니다.";
 
   const searchPlaceholder = {
     name: "회원 이름",
@@ -141,7 +139,7 @@ export function AdminCreatePage() {
 
   const resetSelection = () => {
     setSelectedMemberId(null); // 선택된 회원을 비웁니다.
-    setSelectedRole("NORMAL_ADMIN"); // 권한 선택은 기본값인 일반 관리자로 되돌립니다.
+    setSelectedRole("SUPER_ADMIN"); // 권한 선택은 기본값인 슈퍼 관리자로 되돌립니다.
     setSearchError(""); // 이전 오류 메시지를 지웁니다.
     setSuccessMessage(""); // 이전 성공 메시지를 지웁니다.
   };
@@ -173,7 +171,7 @@ export function AdminCreatePage() {
     const selectedRoleLabel = getRoleLabel(selectedRole);
     const confirmMessage =
       selectedRole === "USER"
-        ? `${selectedName} 회원을 일반 회원으로 강등시키시겠습니까?`
+        ? `관리자 권한을 일반 회원으로 변경하시겠습니까?\n\n• 관리자 페이지 접근 권한이 제한됩니다.\n• 회원 관리, 콘텐츠 관리, 신고 처리 등 관리자 기능을 사용할 수 없습니다.\n• 권한 복구는 다른 관리자에 의해 다시 부여되어야 합니다.\n\n권한 변경을 진행하시겠습니까?`
         : `${selectedName} 회원을 ${selectedRoleLabel}로 변경하시겠습니까?`;
     const confirmed = window.confirm(confirmMessage);
 
@@ -189,7 +187,7 @@ export function AdminCreatePage() {
       .put(
         `${BACKSERVER}/admin/api/members/${selectedMemberId}/role`,
         {
-          role: selectedRole, // USER, NORMAL_ADMIN, SUPER_ADMIN 중 선택한 값입니다.
+          role: selectedRole, // USER, SUPER_ADMIN 중 선택한 값입니다.
         },
         {
           headers: {
@@ -209,7 +207,7 @@ export function AdminCreatePage() {
           ),
         );
         setSelectedMemberId(null);
-        setSelectedRole("NORMAL_ADMIN");
+        setSelectedRole("SUPER_ADMIN");
       })
       .catch((error) => {
         console.log(error);
@@ -333,15 +331,6 @@ export function AdminCreatePage() {
               <input
                 type="radio"
                 name="adminRole"
-                checked={selectedRole === "NORMAL_ADMIN"}
-                onChange={() => setSelectedRole("NORMAL_ADMIN")}
-              />
-              일반 관리자
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="adminRole"
                 checked={selectedRole === "SUPER_ADMIN"}
                 onChange={() => setSelectedRole("SUPER_ADMIN")}
               />
@@ -353,9 +342,7 @@ export function AdminCreatePage() {
             <strong>
               {selectedRole === "USER"
                 ? "일반 회원 권한"
-                : selectedRole === "SUPER_ADMIN"
-                  ? "슈퍼 관리자 권한"
-                  : "일반 관리자 권한"}
+                : "슈퍼 관리자 권한"}
             </strong>
             <p>{roleDescription}</p>
           </div>

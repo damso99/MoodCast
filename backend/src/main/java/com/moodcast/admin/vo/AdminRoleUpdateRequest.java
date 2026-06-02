@@ -8,8 +8,10 @@ import lombok.Data;
  * 프론트에서 "이 회원을 어떤 관리자 등급으로 바꿀지" 보낼 때 사용하는 객체입니다.
  *
  * role 값:
- * - NORMAL_ADMIN: 일반 관리자
+ * - USER: 일반 회원
  * - SUPER_ADMIN: 슈퍼 관리자
+ *
+ * NORMAL_ADMIN은 기존 데이터 호환용으로만 조회하고, 신규 부여 대상에서는 제외합니다.
  * ========================================================================== */
 @Data
 public class AdminRoleUpdateRequest {
