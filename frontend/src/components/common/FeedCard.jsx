@@ -457,6 +457,7 @@ export function FeedCard({
   const handleReport = (event) => {
     event?.stopPropagation();
     setMenuOpen(false);
+
     if (!accessToken) {
       alert("로그인이 필요합니다.");
       return;
@@ -501,12 +502,14 @@ export function FeedCard({
   const confirmDelete = async () => {
     try {
       setDeleteModalOpen(false);
+
       const response = await axios.delete(`${BACKSERVER}/posts/${postId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
       console.log("✅ 게시물 삭제 성공:", response.data);
+
       window.location.reload();
     } catch (err) {
       console.error("❌ 게시물 삭제 실패:", err);
