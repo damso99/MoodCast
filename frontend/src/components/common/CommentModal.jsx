@@ -1,4 +1,4 @@
-﻿﻿import CloseIcon from "@mui/icons-material/Close";
+﻿import CloseIcon from "@mui/icons-material/Close";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -476,9 +476,13 @@ export function CommentModal({
       alert("댓글 신고가 정상적으로 접수되었습니다.");
     } catch (error) {
       setReportModalOpen(false);
-      if (error.response?.status === 409) {
-        // 409 Conflict: 중복 신고
-        alert(error.response.data?.message || "이미 신고한 댓글입니다.");
+      const errorMessage = error.response?.data?.message || "";
+      // 409 상태 코드 또는 응답 메시지에 '이미 신고'가 포함된 경우를 중복으로 처리
+      if (
+        error.response?.status === 409 ||
+        errorMessage.includes("이미 신고")
+      ) {
+        alert(errorMessage || "이미 신고된 내용입니다.");
       } else {
         console.error("신고 제출 실패:", error);
         alert("신고 접수에 실패했습니다. 다시 시도해주세요.");

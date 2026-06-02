@@ -484,9 +484,13 @@ export function FeedCard({
       alert("게시물 신고가 정상적으로 접수되었습니다.");
     } catch (error) {
       setReportModalOpen(false);
-      if (error.response?.status === 409) {
-        // 409 Conflict: 중복 신고
-        alert(error.response.data?.message || "이미 신고한 게시물입니다.");
+      const errorMessage = error.response?.data?.message || "";
+      // 409 상태 코드 또는 응답 메시지에 '이미 신고'가 포함된 경우를 중복으로 처리
+      if (
+        error.response?.status === 409 ||
+        errorMessage.includes("이미 신고")
+      ) {
+        alert(errorMessage || "이미 신고된 내용입니다.");
       } else {
         console.error("신고 제출 실패:", error);
         alert("신고 접수에 실패했습니다. 다시 시도해주세요.");
@@ -588,7 +592,7 @@ export function FeedCard({
     const mentions = Array.isArray(payload?.mentions) ? payload.mentions : [];
 
     if (!accessToken) {
-      alert("濡쒓렇?몄씠 ?꾩슂?⑸땲??");
+      alert("로그인이 필요합니다.");
       return null;
     }
 
@@ -613,15 +617,15 @@ export function FeedCard({
           nextComment?.profileImageUrl ??
           nextComment?.profile_image_url ??
           null,
-        author: nextComment?.author || nextComment?.nickname || "?듬챸",
+        author: nextComment?.author || nextComment?.nickname || "익명",
         mentions: nextComment?.mentions ?? mentions,
       };
       setComments((prev) => [...prev, mappedComment]);
       setCommentCount((prev) => prev + 1);
       return mappedComment;
     } catch (err) {
-      console.error("?볤? ?깅줉 ?ㅽ뙣:", err);
-      alert("?볤? ?깅줉???ㅽ뙣?덉뒿?덈떎.");
+      console.error("댓글 등록 실패:", err);
+      alert("댓글 등록에 실패했습니다.");
       return null;
     }
   };
