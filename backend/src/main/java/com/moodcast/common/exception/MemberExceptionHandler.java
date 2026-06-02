@@ -3,6 +3,8 @@ package com.moodcast.common.exception;
 import com.moodcast.member.controller.LoginController;
 import com.moodcast.member.controller.OAuthController;
 import com.moodcast.member.controller.SignupController;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,7 @@ import java.util.Map;
         OAuthController.class
 })
 public class MemberExceptionHandler {
+    private static final Logger log = LoggerFactory.getLogger(MemberExceptionHandler.class);
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<?> handleAuthException(AuthException e) {
@@ -91,6 +94,8 @@ public class MemberExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleException(Exception e) {
+        log.error("회원/인증 요청 처리 중 서버 예외 발생", e);
+
         return ResponseEntity.internalServerError().body(
                 Map.of(
                         "success", false,
