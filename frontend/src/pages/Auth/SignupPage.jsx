@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { SignupView } from "./components/SignupView";
 import { getApiMessage, getToastDuration } from "./authFeedback";
-import { startKakaoLogin } from "./socialAuth";
+import { startGoogleLogin, startKakaoLogin } from "./socialAuth";
 
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const nameRegex = /^[가-힣]{2,10}$/;
@@ -890,12 +890,20 @@ export const SignupPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 간편가입을 이용해주세요.`);
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 또는 Google 간편가입을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {
     try {
       startKakaoLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    try {
+      startGoogleLogin();
     } catch (error) {
       showToast("error", error.message);
     }
@@ -925,6 +933,7 @@ export const SignupPage = () => {
       toggleTerm={toggleTerm}
       completeSignup={completeSignup}
       handleKakaoLogin={handleKakaoLogin}
+      handleGoogleLogin={handleGoogleLogin}
       showReadyMessage={showReadyMessage}
       goLogin={goLogin}
       fieldMessage={fieldMessage}

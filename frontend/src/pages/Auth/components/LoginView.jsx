@@ -10,6 +10,7 @@ export const LoginView = ({
   inputMember,
   handleLogin,
   handleKakaoLogin,
+  handleGoogleLogin,
   showReadyMessage,
   goRecovery,
   goSignup,
@@ -132,7 +133,7 @@ export const LoginView = ({
           <button
             type="button"
             className={styles.socialButton}
-            onClick={() => showReadyMessage("Google 로그인")}
+            onClick={handleGoogleLogin}
           >
             <span className={styles.googleMark}>G</span>
             Google로 로그인

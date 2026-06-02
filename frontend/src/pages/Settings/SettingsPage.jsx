@@ -5,7 +5,7 @@ import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { startKakaoLink } from '../Auth/socialAuth';
+import { startGoogleLink, startKakaoLink } from '../Auth/socialAuth';
 import AuthToast from '../Auth/components/AuthToast';
 import AuthConfirmModal from '../Auth/components/AuthConfirmModal';
 import { getApiMessage, getToastDuration } from '../Auth/authFeedback';
@@ -32,7 +32,9 @@ export function SettingsPage() {
   const { accessToken, member, clearAuthData } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const [kakaoLinked, setKakaoLinked] = useState(false);
+  const [googleLinked, setGoogleLinked] = useState(false);
   const [kakaoLinkModalOpen, setKakaoLinkModalOpen] = useState(false);
+  const [googleLinkModalOpen, setGoogleLinkModalOpen] = useState(false);
   const [passwordSuccessModalOpen, setPasswordSuccessModalOpen] = useState(false);
   const [withdrawConfirmModalOpen, setWithdrawConfirmModalOpen] = useState(false);
   const [withdrawSuccessModalOpen, setWithdrawSuccessModalOpen] = useState(false);
@@ -66,6 +68,24 @@ export function SettingsPage() {
     try {
       setKakaoLinkModalOpen(false);
       startKakaoLink();
+    } catch (error) {
+      showToast('error', error.message);
+    }
+  };
+
+  const handleGoogleLink = () => {
+    if (googleLinked) {
+      showToast('success', '이미 Google 계정이 연결되어 있습니다.');
+      return;
+    }
+
+    setGoogleLinkModalOpen(true);
+  };
+
+  const confirmGoogleLink = () => {
+    try {
+      setGoogleLinkModalOpen(false);
+      startGoogleLink();
     } catch (error) {
       showToast('error', error.message);
     }
@@ -258,18 +278,21 @@ export function SettingsPage() {
       return;
     }
 
-    axios
-      .get(`${BACKSERVER}/oauth/kakao/status`, {
-        headers: {
-          Authorization: 'Bearer ' + accessToken,
-        },
-      })
-      .then((res) => {
-        setKakaoLinked(Boolean(res.data?.linked));
-      })
-      .catch(() => {
-        setKakaoLinked(false);
-      });
+    const headers = {
+      Authorization: 'Bearer ' + accessToken,
+    };
+
+    Promise.allSettled([
+      axios.get(`${BACKSERVER}/oauth/kakao/status`, { headers }),
+      axios.get(`${BACKSERVER}/oauth/google/status`, { headers }),
+    ]).then(([kakaoResult, googleResult]) => {
+      setKakaoLinked(
+        kakaoResult.status === 'fulfilled' && Boolean(kakaoResult.value.data?.linked),
+      );
+      setGoogleLinked(
+        googleResult.status === 'fulfilled' && Boolean(googleResult.value.data?.linked),
+      );
+    });
   }, [BACKSERVER, accessToken]);
 
   const content = (
@@ -283,6 +306,15 @@ export function SettingsPage() {
         confirmText="연결하기"
         onCancel={() => setKakaoLinkModalOpen(false)}
         onConfirm={confirmKakaoLink}
+      />
+      <AuthConfirmModal
+        open={googleLinkModalOpen}
+        title="Google 계정을 연결할까요?"
+        description="현재 MoodCast 계정에 Google 로그인을 추가합니다. 연결 후에는 같은 이메일의 Google 계정으로도 로그인할 수 있습니다."
+        cancelText="취소"
+        confirmText="연결하기"
+        onCancel={() => setGoogleLinkModalOpen(false)}
+        onConfirm={confirmGoogleLink}
       />
       <AuthConfirmModal
         open={passwordSuccessModalOpen}
@@ -320,13 +352,28 @@ export function SettingsPage() {
             {title === '계정' ? (
               <>
                 <p className={styles.cardText}>
-                  {kakaoLinked
-                    ? '카카오 계정이 연결되어 있습니다.'
-                    : '일반 계정에 카카오 로그인을 연결합니다.'}
+                  일반 계정에 소셜 로그인을 연결합니다. 현재 로그인한 이메일과 같은 소셜 계정만 연결할 수 있습니다.
                 </p>
-                <button type="button" onClick={handleKakaoLink} disabled={kakaoLinked}>
-                  {kakaoLinked ? '카카오 연결완료' : '카카오 계정 연결'}
-                </button>
+                <div className={styles.providerList}>
+                  <div className={styles.providerRow}>
+                    <div className={styles.providerMeta}>
+                      <strong>카카오</strong>
+                      <span>{kakaoLinked ? '연결됨' : '미연결'}</span>
+                    </div>
+                    <button type="button" onClick={handleKakaoLink} disabled={kakaoLinked}>
+                      {kakaoLinked ? '연결완료' : '연결'}
+                    </button>
+                  </div>
+                  <div className={styles.providerRow}>
+                    <div className={styles.providerMeta}>
+                      <strong>Google</strong>
+                      <span>{googleLinked ? '연결됨' : '미연결'}</span>
+                    </div>
+                    <button type="button" onClick={handleGoogleLink} disabled={googleLinked}>
+                      {googleLinked ? '연결완료' : '연결'}
+                    </button>
+                  </div>
+                </div>
                 <div className={styles.dangerZone}>
                   <button
                     type="button"

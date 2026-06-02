@@ -4,7 +4,7 @@ import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
 import { getApiMessage, getToastDuration } from "./authFeedback";
-import { startKakaoLogin } from "./socialAuth";
+import { startGoogleLogin, startKakaoLogin } from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
 const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
@@ -135,12 +135,20 @@ export const LoginPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 로그인을 이용해주세요.`);
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 또는 Google 로그인을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {
     try {
       startKakaoLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
+  const handleGoogleLogin = () => {
+    try {
+      startGoogleLogin();
     } catch (error) {
       showToast("error", error.message);
     }
@@ -163,6 +171,7 @@ export const LoginPage = () => {
       inputMember={inputMember}
       handleLogin={handleLogin}
       handleKakaoLogin={handleKakaoLogin}
+      handleGoogleLogin={handleGoogleLogin}
       showReadyMessage={showReadyMessage}
       goRecovery={goRecovery}
       goSignup={goSignup}

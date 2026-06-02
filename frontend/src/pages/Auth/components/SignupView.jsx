@@ -24,6 +24,7 @@ export const SignupView = ({
   toggleTerm,
   completeSignup,
   handleKakaoLogin,
+  handleGoogleLogin,
   showReadyMessage,
   goLogin,
   toast,
@@ -374,7 +375,7 @@ export const SignupView = ({
                     <button
                       type="button"
                       className={styles.socialButton}
-                      onClick={() => showReadyMessage("Google 간편가입")}
+                      onClick={handleGoogleLogin}
                       aria-label="Google로 간편가입"
                     >
                       <span className={styles.googleMark}>G</span>

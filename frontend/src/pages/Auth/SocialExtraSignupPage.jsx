@@ -31,6 +31,7 @@ export const SocialExtraSignupPage = () => {
   const [agreements, setAgreements] = useState({});
   const [signupCompleteModalOpen, setSignupCompleteModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
+  const providerLabel = pending?.provider === "GOOGLE" ? "Google" : "카카오";
 
   const showToast = (type, message) => {
     const duration = getToastDuration(type);
@@ -220,7 +221,7 @@ export const SocialExtraSignupPage = () => {
       <AuthConfirmModal
         open={signupCompleteModalOpen}
         title="소셜 회원가입 완료"
-        description="카카오 계정과 MoodCast 계정이 연결되었습니다. 이제 카카오 로그인으로도 이용할 수 있습니다."
+        description={`${providerLabel} 계정과 MoodCast 계정이 연결되었습니다. 이제 ${providerLabel} 로그인으로도 이용할 수 있습니다.`}
         confirmOnly
         confirmText="피드로 이동"
         onConfirm={() => navigate("/app/feed", { replace: true })}
@@ -237,7 +238,7 @@ export const SocialExtraSignupPage = () => {
             <strong>MoodCast</strong>
           </div>
           <h1>소셜 회원가입</h1>
-          <p>{pending?.providerEmail || "카카오 계정"}에 추가 정보를 연결합니다</p>
+          <p>{pending?.providerEmail || `${providerLabel} 계정`}에 추가 정보를 연결합니다</p>
         </header>
 
         <form className={styles.form}>

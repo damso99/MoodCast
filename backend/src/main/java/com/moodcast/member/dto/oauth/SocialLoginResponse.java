@@ -30,11 +30,15 @@ public class SocialLoginResponse {
     }
 
     public static SocialLoginResponse emailConflict(String providerEmail) {
+        return emailConflict("KAKAO", providerEmail);
+    }
+
+    public static SocialLoginResponse emailConflict(String provider, String providerEmail) {
         SocialLoginResponse response = new SocialLoginResponse();
         response.setSuccess(false);
         response.setStatus("EMAIL_CONFLICT");
         response.setMessage("이미 일반 회원으로 가입된 이메일입니다. 일반 로그인 후 소셜 계정 연동을 진행해주세요.");
-        response.setProvider("KAKAO");
+        response.setProvider(provider);
         response.setProviderEmail(providerEmail);
         return response;
     }

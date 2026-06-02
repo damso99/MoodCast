@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 @Service
 public class OAuthService {
     private static final String KAKAO = "KAKAO";
+    private static final String GOOGLE = "GOOGLE";
     private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9]{2,12}$");
     private static final Pattern PHONE_PATTERN = Pattern.compile("^010[0-9]{8}$");
@@ -47,6 +48,15 @@ public class OAuthService {
 
     @Value("${oauth.kakao.allowed-redirect-uris:}")
     private String kakaoAllowedRedirectUris;
+
+    @Value("${oauth.google.client-id:}")
+    private String googleClientId;
+
+    @Value("${oauth.google.client-secret:}")
+    private String googleClientSecret;
+
+    @Value("${oauth.google.allowed-redirect-uris:}")
+    private String googleAllowedRedirectUris;
 
     private final OAuthDao oAuthDao;
     private final LoginDao loginDao;
@@ -78,10 +88,18 @@ public class OAuthService {
     // 카카오 code로 사용자 정보를 조회하고 기존 연결/신규/이메일 충돌을 분기함
     @Transactional
     public OAuthLoginResult loginWithKakao(KakaoLoginRequest request) {
-        SocialUserInfo socialUserInfo = requestKakaoUserInfo(request);
+        return loginWithProvider(KAKAO, requestKakaoUserInfo(request));
+    }
 
+    // 구글 code로 사용자 정보를 조회하고 기존 연결/신규/이메일 충돌을 분기함
+    @Transactional
+    public OAuthLoginResult loginWithGoogle(KakaoLoginRequest request) {
+        return loginWithProvider(GOOGLE, requestGoogleUserInfo(request));
+    }
+
+    private OAuthLoginResult loginWithProvider(String provider, SocialUserInfo socialUserInfo) {
         OAuthAccount connectedAccount = oAuthDao.findByProviderAndProviderUserId(
-                KAKAO,
+                provider,
                 socialUserInfo.getProviderUserId()
         );
 
@@ -92,7 +110,7 @@ public class OAuthService {
             }
 
             loginService.checkLoginAllowed(member);
-            oAuthDao.updateLastLoginAt(KAKAO, socialUserInfo.getProviderUserId());
+            oAuthDao.updateLastLoginAt(provider, socialUserInfo.getProviderUserId());
             loginDao.updateLastLoginAt(member.getMemberId());
 
             return OAuthLoginResult.loginSuccess(loginService.issueLoginTokens(member));
@@ -104,7 +122,7 @@ public class OAuthService {
         }
 
         PendingSocialSignup pendingSocialSignup = new PendingSocialSignup();
-        pendingSocialSignup.setProvider(KAKAO);
+        pendingSocialSignup.setProvider(provider);
         pendingSocialSignup.setProviderUserId(socialUserInfo.getProviderUserId());
         pendingSocialSignup.setProviderEmail(socialUserInfo.getEmail());
         pendingSocialSignup.setProviderNickname(socialUserInfo.getNickname());
@@ -119,6 +137,11 @@ public class OAuthService {
         );
     }
 
+    // 추가 회원가입 단계에서 어떤 소셜 제공자인지 확인함
+    public String getPendingProvider(String pendingToken) {
+        return pendingSignupRedisService.get(pendingToken).getProvider();
+    }
+
     // pendingToken과 추가정보로 members 생성 후 member_oauth_accounts에 연결함
     @Transactional
     public LoginResult completeSocialSignup(SocialExtraSignupRequest request) {
@@ -128,12 +151,13 @@ public class OAuthService {
 
         PendingSocialSignup pendingSocialSignup = pendingSignupRedisService.get(request.getPendingToken());
         String email = memberValidationService.normalizeEmail(pendingSocialSignup.getProviderEmail());
+        String providerLabel = providerLabel(pendingSocialSignup.getProvider());
         String name = normalizeName(request.getName());
         String nickname = normalizeNickname(request.getNickname());
         String phone = normalizePhone(request.getPhone());
 
         if (signupDao.countByEmail(email) > 0) {
-            throw new IllegalArgumentException("카카오 이메일로 이미 가입된 계정이 있습니다. 로그인 화면에서 다시 시도해주세요.");
+            throw new IllegalArgumentException(providerLabel + " 이메일로 이미 가입된 계정이 있습니다. 로그인 화면에서 다시 시도해주세요.");
         }
 
         if (signupDao.countByPhone(phone) > 0) {
@@ -181,9 +205,25 @@ public class OAuthService {
         return oAuthDao.countByMemberIdAndProvider(memberId, KAKAO) > 0;
     }
 
+    // 현재 로그인 회원이 구글 계정을 연결했는지 확인함
+    public boolean isGoogleLinked(String authorizationHeader) {
+        Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
+        return oAuthDao.countByMemberIdAndProvider(memberId, GOOGLE) > 0;
+    }
+
     // 로그인된 일반 회원에게 카카오 계정을 연결함
     @Transactional
     public Member linkKakaoAccount(String authorizationHeader, KakaoLoginRequest request) {
+        return linkProviderAccount(authorizationHeader, KAKAO, requestKakaoUserInfo(request));
+    }
+
+    // 로그인된 일반 회원에게 구글 계정을 연결함
+    @Transactional
+    public Member linkGoogleAccount(String authorizationHeader, KakaoLoginRequest request) {
+        return linkProviderAccount(authorizationHeader, GOOGLE, requestGoogleUserInfo(request));
+    }
+
+    private Member linkProviderAccount(String authorizationHeader, String provider, SocialUserInfo socialUserInfo) {
         Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
         Member member = loginDao.findMemberById(memberId);
         if (member == null) {
@@ -192,25 +232,24 @@ public class OAuthService {
 
         loginService.checkLoginAllowed(member);
 
-        SocialUserInfo socialUserInfo = requestKakaoUserInfo(request);
         if (!member.getEmail().equalsIgnoreCase(socialUserInfo.getEmail())) {
-            throw new IllegalArgumentException("현재 로그인한 이메일과 카카오 계정 이메일이 다릅니다. 같은 이메일의 카카오 계정만 연결할 수 있습니다.");
+            throw new IllegalArgumentException("현재 로그인한 이메일과 " + providerLabel(provider) + " 계정 이메일이 다릅니다. 같은 이메일의 소셜 계정만 연결할 수 있습니다.");
         }
 
-        if (oAuthDao.countByMemberIdAndProvider(memberId, KAKAO) > 0) {
-            throw new IllegalArgumentException("이미 카카오 계정이 연결되어 있습니다.");
+        if (oAuthDao.countByMemberIdAndProvider(memberId, provider) > 0) {
+            throw new IllegalArgumentException("이미 " + providerLabel(provider) + " 계정이 연결되어 있습니다.");
         }
 
         OAuthAccount connectedAccount = oAuthDao.findByProviderAndProviderUserId(
-                KAKAO,
+                provider,
                 socialUserInfo.getProviderUserId()
         );
         if (connectedAccount != null) {
-            throw new IllegalArgumentException("이미 다른 MoodCast 계정에 연결된 카카오 계정입니다.");
+            throw new IllegalArgumentException("이미 다른 MoodCast 계정에 연결된 " + providerLabel(provider) + " 계정입니다.");
         }
 
         PendingSocialSignup pendingSocialSignup = new PendingSocialSignup();
-        pendingSocialSignup.setProvider(KAKAO);
+        pendingSocialSignup.setProvider(provider);
         pendingSocialSignup.setProviderUserId(socialUserInfo.getProviderUserId());
         pendingSocialSignup.setProviderEmail(socialUserInfo.getEmail());
         pendingSocialSignup.setProviderNickname(socialUserInfo.getNickname());
@@ -268,14 +307,22 @@ public class OAuthService {
     }
 
     private void validateKakaoRedirectUri(String redirectUri) {
+        validateRedirectUri(redirectUri, kakaoAllowedRedirectUris, "카카오");
+    }
+
+    private void validateGoogleRedirectUri(String redirectUri) {
+        validateRedirectUri(redirectUri, googleAllowedRedirectUris, "Google");
+    }
+
+    private void validateRedirectUri(String redirectUri, String allowedRedirectUris, String providerLabel) {
         String normalizedRedirectUri = redirectUri.trim();
-        boolean allowed = Arrays.stream(kakaoAllowedRedirectUris.split(","))
+        boolean allowed = Arrays.stream(allowedRedirectUris.split(","))
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
                 .anyMatch(normalizedRedirectUri::equals);
 
         if (!allowed) {
-            throw new IllegalArgumentException("허용되지 않은 카카오 Redirect URI입니다. 관리자에게 문의해주세요.");
+            throw new IllegalArgumentException("허용되지 않은 " + providerLabel + " Redirect URI입니다. 관리자에게 문의해주세요.");
         }
     }
 
@@ -310,6 +357,104 @@ public class OAuthService {
         }
 
         return accessToken.toString();
+    }
+
+    private SocialUserInfo requestGoogleUserInfo(KakaoLoginRequest request) {
+        if (request == null || request.getCode() == null || request.getCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("Google 인증 코드가 없습니다.");
+        }
+
+        if (request.getRedirectUri() == null || request.getRedirectUri().trim().isEmpty()) {
+            throw new IllegalArgumentException("Google 로그인 요청 정보가 올바르지 않습니다. 다시 시도해주세요.");
+        }
+
+        validateGoogleRedirectUri(request.getRedirectUri());
+
+        if (googleClientId == null || googleClientId.trim().isEmpty()
+                || googleClientSecret == null || googleClientSecret.trim().isEmpty()) {
+            throw new IllegalStateException("Google 로그인 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.");
+        }
+
+        String googleAccessToken = requestGoogleAccessToken(request.getCode(), request.getRedirectUri());
+        Map<String, Object> googleUser = requestGoogleUser(googleAccessToken);
+        SocialUserInfo socialUserInfo = parseGoogleUserInfo(googleUser);
+
+        if (socialUserInfo.getEmail() == null || socialUserInfo.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Google 계정에서 이메일을 제공하지 않아 가입할 수 없습니다.");
+        }
+
+        socialUserInfo.setEmail(memberValidationService.normalizeEmail(socialUserInfo.getEmail()));
+
+        return socialUserInfo;
+    }
+
+    private String requestGoogleAccessToken(String code, String redirectUri) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "authorization_code");
+        body.add("client_id", googleClientId);
+        body.add("client_secret", googleClientSecret);
+        body.add("redirect_uri", redirectUri);
+        body.add("code", code);
+
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.postForEntity(
+                    "https://oauth2.googleapis.com/token",
+                    new HttpEntity<>(body, headers),
+                    Map.class
+            );
+        } catch (RestClientResponseException e) {
+            throw new IllegalArgumentException("Google 로그인 인증에 실패했습니다. Google Cloud의 Redirect URI와 Client Secret을 확인해주세요.");
+        }
+
+        Object accessToken = response.getBody() == null ? null : response.getBody().get("access_token");
+        if (accessToken == null) {
+            throw new IllegalArgumentException("Google 로그인 인증에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        return accessToken.toString();
+    }
+
+    private Map<String, Object> requestGoogleUser(String googleAccessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(googleAccessToken);
+
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.exchange(
+                    "https://www.googleapis.com/oauth2/v2/userinfo",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+            );
+        } catch (RestClientResponseException e) {
+            throw new IllegalArgumentException("Google 사용자 정보를 가져오지 못했습니다. Google 계정 설정을 확인해주세요.");
+        }
+
+        if (response.getBody() == null) {
+            throw new IllegalArgumentException("Google 사용자 정보를 가져오지 못했습니다.");
+        }
+
+        return response.getBody();
+    }
+
+    private SocialUserInfo parseGoogleUserInfo(Map<String, Object> googleUser) {
+        Object id = googleUser.get("id");
+        if (id == null) {
+            throw new IllegalArgumentException("Google 사용자 정보가 올바르지 않습니다.");
+        }
+
+        SocialUserInfo socialUserInfo = new SocialUserInfo();
+        socialUserInfo.setProvider(GOOGLE);
+        socialUserInfo.setProviderUserId(id.toString());
+        socialUserInfo.setEmail(googleUser.get("email") == null ? null : googleUser.get("email").toString());
+        socialUserInfo.setNickname(googleUser.get("name") == null ? null : googleUser.get("name").toString());
+        socialUserInfo.setProfileImageUrl(googleUser.get("picture") == null ? null : googleUser.get("picture").toString());
+
+        return socialUserInfo;
     }
 
     private Map<String, Object> requestKakaoUser(String kakaoAccessToken) {
@@ -395,6 +540,18 @@ public class OAuthService {
         }
 
         return phone;
+    }
+
+    private String providerLabel(String provider) {
+        if (GOOGLE.equals(provider)) {
+            return "Google";
+        }
+
+        if (KAKAO.equals(provider)) {
+            return "카카오";
+        }
+
+        return "소셜";
     }
 
     private void checkRequiredTermsAgreed(List<SignupTermsAgreementRequest> agreements) {
