@@ -433,8 +433,9 @@ export function PostDetailComments({
     });
 
   const handleReplySubmit = async (parentCommentId) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || submittingRef.current) return;
 
+    submittingRef.current = true;
     try {
       const response = await axios.post(
         `${BACKSERVER}/posts/${postId}/comments`,
@@ -458,6 +459,8 @@ export function PostDetailComments({
       closeReplyMentionBox();
     } catch {
       alert("답글 작성에 실패했습니다.");
+    } finally {
+      submittingRef.current = false;
     }
   };
 

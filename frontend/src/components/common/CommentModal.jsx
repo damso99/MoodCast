@@ -413,7 +413,9 @@ export function CommentModal({
     });
 
   const handleReplySubmit = async (parentCommentId) => {
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || submittingRef.current) return;
+
+    submittingRef.current = true;
     try {
       const res = await axios.post(
         `${BACKSERVER}/posts/${post.postId}/comments`,
@@ -448,6 +450,8 @@ export function CommentModal({
       if (onCommentUpdate) onCommentUpdate();
     } catch {
       alert("답글 작성에 실패했습니다.");
+    } finally {
+      submittingRef.current = false;
     }
   };
 
