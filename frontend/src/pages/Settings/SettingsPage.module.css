@@ -142,6 +142,32 @@
   line-height: 1.45;
 }
 
+.emailVerifyBox {
+  display: grid;
+  gap: 10px;
+}
+
+.emailVerifyBox p {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+.inlineAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.card .secondaryButton {
+  min-height: 44px;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
 .card .dangerButton {
   background: rgba(217, 45, 32, 0.08);
   color: #b42318;
@@ -162,5 +188,9 @@
 
   .card .textDangerButton {
     min-height: auto;
+  }
+
+  .inlineAction {
+    grid-template-columns: 1fr;
   }
 }
