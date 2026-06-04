@@ -1,11 +1,13 @@
-import AppConfirmModal from "../../../components/common/AppConfirmModal";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import styles from "./AppConfirmModal.module.css";
 
-const AuthConfirmModal = ({
+const AppConfirmModal = ({
   open,
   title,
   description,
-  cancelText = "\uCDE8\uC18C",
-  confirmText = "\uD655\uC778",
+  cancelText = "취소",
+  confirmText = "확인",
   confirmOnly = false,
   onCancel,
   onConfirm,
@@ -46,28 +48,20 @@ const AuthConfirmModal = ({
         className={styles.modal}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="authConfirmTitle"
+        aria-labelledby="appConfirmTitle"
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.icon}>!</div>
-        <strong id="authConfirmTitle">{title}</strong>
+        <strong id="appConfirmTitle">{title}</strong>
         <p>{description}</p>
 
         <div className={confirmOnly ? styles.singleAction : styles.actions}>
           {!confirmOnly ? (
-            <button
-              type="button"
-              className={styles.cancelButton}
-              onClick={onCancel}
-            >
+            <button type="button" className={styles.cancelButton} onClick={onCancel}>
               {cancelText}
             </button>
           ) : null}
-          <button
-            type="button"
-            className={styles.confirmButton}
-            onClick={onConfirm}
-          >
+          <button type="button" className={styles.confirmButton} onClick={onConfirm}>
             {confirmText}
           </button>
         </div>
@@ -77,4 +71,4 @@ const AuthConfirmModal = ({
   );
 };
 
-export default AuthConfirmModal;
+export default AppConfirmModal;

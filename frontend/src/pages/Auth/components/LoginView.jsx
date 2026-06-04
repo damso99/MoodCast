@@ -11,6 +11,7 @@ export const LoginView = ({
   handleLogin,
   handleKakaoLogin,
   handleGoogleLogin,
+  handleNaverLogin,
   showReadyMessage,
   goRecovery,
   goSignup,
@@ -124,7 +125,7 @@ export const LoginView = ({
           <button
             type="button"
             className={`${styles.socialButton} ${styles.naver}`}
-            onClick={() => showReadyMessage("네이버 로그인")}
+            onClick={handleNaverLogin}
           >
             <b>N</b>
             네이버로 로그인

@@ -94,6 +94,7 @@ function AppRoutes() {
       <Route path="/auth/recovery" element={<AccountRecoveryPage />} />
       <Route path="/auth/kakao/callback" element={<SocialCallbackPage />} />
       <Route path="/auth/google/callback" element={<SocialCallbackPage />} />
+      <Route path="/auth/naver/callback" element={<SocialCallbackPage />} />
       <Route path="/auth/social/signup" element={<SocialExtraSignupPage />} />
       <Route path="/auth/setup" element={<ProfileSetupPage />} />
       <Route path="/app/login" element={<LoginPage />} />

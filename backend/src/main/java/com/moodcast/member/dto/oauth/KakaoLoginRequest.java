@@ -6,4 +6,5 @@ import lombok.Data;
 public class KakaoLoginRequest {
     private String code;
     private String redirectUri;
+    private String state;
 }

@@ -5,7 +5,11 @@ import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
 import AuthConfirmModal from "./components/AuthConfirmModal";
 import { getApiMessage, getToastDuration } from "./authFeedback";
-import { startGoogleLogin, startKakaoLogin } from "./socialAuth";
+import {
+  startGoogleLogin,
+  startKakaoLogin,
+  startNaverLogin,
+} from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
 const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
@@ -85,7 +89,10 @@ export const LoginPage = () => {
     }
 
     if (!member.email.trim() || !member.password.trim()) {
-      showToast("error", "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+      showToast(
+        "error",
+        "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.",
+      );
       return;
     }
 
@@ -104,7 +111,6 @@ export const LoginPage = () => {
         },
       )
       .then((res) => {
-
         if (member.rememberId) {
           window.localStorage.setItem(SAVED_EMAIL_KEY, member.email.trim());
         } else {
@@ -134,7 +140,9 @@ export const LoginPage = () => {
 
         if (
           loginErrorMessage.includes("\uC81C\uC7AC\uB41C \uACC4\uC815") ||
-          loginErrorMessage.includes("\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4")
+          loginErrorMessage.includes(
+            "\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+          )
         ) {
           setSanctionModal({
             open: true,
@@ -151,7 +159,10 @@ export const LoginPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}\uC740 \uC544\uC9C1 \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4. \uD604\uC7AC\uB294 \uCE74\uCE74\uC624 \uB610\uB294 Google \uB85C\uADF8\uC778\uC744 \uC774\uC6A9\uD574\uC8FC\uC138\uC694.`);
+    showToast(
+      "info",
+      `${label}\uC740 \uC544\uC9C1 \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4. \uD604\uC7AC\uB294 \uCE74\uCE74\uC624 \uB610\uB294 Google \uB85C\uADF8\uC778\uC744 \uC774\uC6A9\uD574\uC8FC\uC138\uC694.`,
+    );
   };
 
   const handleKakaoLogin = () => {
@@ -165,6 +176,14 @@ export const LoginPage = () => {
   const handleGoogleLogin = () => {
     try {
       startGoogleLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
+  const handleNaverLogin = () => {
+    try {
+      startNaverLogin();
     } catch (error) {
       showToast("error", error.message);
     }
@@ -207,4 +226,3 @@ export const LoginPage = () => {
 };
 
 export default LoginPage;
-

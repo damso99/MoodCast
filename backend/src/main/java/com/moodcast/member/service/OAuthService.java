@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 public class OAuthService {
     private static final String KAKAO = "KAKAO";
     private static final String GOOGLE = "GOOGLE";
+    private static final String NAVER = "NAVER";
     private static final int MAX_PROFILE_IMAGE_URL_LENGTH = 500;
     private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9]{2,12}$");
@@ -57,6 +58,15 @@ public class OAuthService {
 
     @Value("${oauth.google.allowed-redirect-uris:}")
     private String googleAllowedRedirectUris;
+
+    @Value("${oauth.naver.client-id:}")
+    private String naverClientId;
+
+    @Value("${oauth.naver.client-secret:}")
+    private String naverClientSecret;
+
+    @Value("${oauth.naver.allowed-redirect-uris:}")
+    private String naverAllowedRedirectUris;
 
     private final OAuthDao oAuthDao;
     private final LoginDao loginDao;
@@ -92,6 +102,12 @@ public class OAuthService {
     @Transactional
     public OAuthLoginResult loginWithGoogle(KakaoLoginRequest request) {
         return loginWithProvider(GOOGLE, requestGoogleUserInfo(request));
+    }
+
+    // 네이버 code로 사용자 정보를 조회하고 기존 연결/신규/이메일 충돌을 분기함
+    @Transactional
+    public OAuthLoginResult loginWithNaver(KakaoLoginRequest request) {
+        return loginWithProvider(NAVER, requestNaverUserInfo(request));
     }
 
     private OAuthLoginResult loginWithProvider(String provider, SocialUserInfo socialUserInfo) {
@@ -208,6 +224,11 @@ public class OAuthService {
         return getProviderLinkStatus(authorizationHeader, GOOGLE);
     }
 
+    // 현재 회원의 네이버 연결 상태와 해제 가능 여부를 함께 반환함
+    public Map<String, Object> getNaverLinkStatus(String authorizationHeader) {
+        return getProviderLinkStatus(authorizationHeader, NAVER);
+    }
+
     private Map<String, Object> getProviderLinkStatus(String authorizationHeader, String provider) {
         Long memberId = loginService.getLoginMemberByHeader(authorizationHeader).getMemberId();
         boolean linked = oAuthDao.countByMemberIdAndProvider(memberId, provider) > 0;
@@ -237,6 +258,12 @@ public class OAuthService {
         return linkProviderAccount(authorizationHeader, GOOGLE, requestGoogleUserInfo(request));
     }
 
+    // 로그인된 일반 회원에게 네이버 계정을 연결함
+    @Transactional
+    public Member linkNaverAccount(String authorizationHeader, KakaoLoginRequest request) {
+        return linkProviderAccount(authorizationHeader, NAVER, requestNaverUserInfo(request));
+    }
+
     // 로그인 수단이 0개가 되지 않는 경우에만 카카오 연결을 해제함
     @Transactional
     public Member unlinkKakaoAccount(String authorizationHeader) {
@@ -247,6 +274,12 @@ public class OAuthService {
     @Transactional
     public Member unlinkGoogleAccount(String authorizationHeader) {
         return unlinkProviderAccount(authorizationHeader, GOOGLE);
+    }
+
+    // 로그인 수단이 0개가 되지 않는 경우에만 네이버 연결을 해제함
+    @Transactional
+    public Member unlinkNaverAccount(String authorizationHeader) {
+        return unlinkProviderAccount(authorizationHeader, NAVER);
     }
 
     private Member linkProviderAccount(String authorizationHeader, String provider, SocialUserInfo socialUserInfo) {
@@ -376,6 +409,10 @@ public class OAuthService {
         validateRedirectUri(redirectUri, googleAllowedRedirectUris, "Google");
     }
 
+    private void validateNaverRedirectUri(String redirectUri) {
+        validateRedirectUri(redirectUri, naverAllowedRedirectUris, "네이버");
+    }
+
     private void validateRedirectUri(String redirectUri, String allowedRedirectUris, String providerLabel) {
         String normalizedRedirectUri = redirectUri.trim();
         boolean allowed = Arrays.stream(allowedRedirectUris.split(","))
@@ -450,6 +487,43 @@ public class OAuthService {
         return socialUserInfo;
     }
 
+    private SocialUserInfo requestNaverUserInfo(KakaoLoginRequest request) {
+        if (request == null || request.getCode() == null || request.getCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("네이버 인증 코드가 없습니다.");
+        }
+
+        if (request.getRedirectUri() == null || request.getRedirectUri().trim().isEmpty()) {
+            throw new IllegalArgumentException("네이버 로그인 요청 정보가 올바르지 않습니다. 다시 시도해주세요.");
+        }
+
+        if (request.getState() == null || request.getState().trim().isEmpty()) {
+            throw new IllegalArgumentException("네이버 로그인 요청 정보가 올바르지 않습니다. 다시 시도해주세요.");
+        }
+
+        validateNaverRedirectUri(request.getRedirectUri());
+
+        if (naverClientId == null || naverClientId.trim().isEmpty()
+                || naverClientSecret == null || naverClientSecret.trim().isEmpty()) {
+            throw new IllegalStateException("네이버 로그인 설정이 완료되지 않았습니다. 관리자에게 문의해주세요.");
+        }
+
+        String naverAccessToken = requestNaverAccessToken(
+                request.getCode(),
+                request.getRedirectUri(),
+                request.getState()
+        );
+        Map<String, Object> naverUser = requestNaverUser(naverAccessToken);
+        SocialUserInfo socialUserInfo = parseNaverUserInfo(naverUser);
+
+        if (socialUserInfo.getEmail() == null || socialUserInfo.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("네이버 계정에서 이메일을 제공하지 않아 가입할 수 없습니다.");
+        }
+
+        socialUserInfo.setEmail(memberValidationService.normalizeEmail(socialUserInfo.getEmail()));
+
+        return socialUserInfo;
+    }
+
     private String requestGoogleAccessToken(String code, String redirectUri) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -503,6 +577,60 @@ public class OAuthService {
         return response.getBody();
     }
 
+    private String requestNaverAccessToken(String code, String redirectUri, String state) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+        body.add("grant_type", "authorization_code");
+        body.add("client_id", naverClientId);
+        body.add("client_secret", naverClientSecret);
+        body.add("redirect_uri", redirectUri);
+        body.add("code", code);
+        body.add("state", state);
+
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.postForEntity(
+                    "https://nid.naver.com/oauth2.0/token",
+                    new HttpEntity<>(body, headers),
+                    Map.class
+            );
+        } catch (RestClientResponseException e) {
+            throw new IllegalArgumentException("네이버 로그인 인증에 실패했습니다. 네이버 개발자 설정의 Callback URL을 확인해주세요.");
+        }
+
+        Object accessToken = response.getBody() == null ? null : response.getBody().get("access_token");
+        if (accessToken == null) {
+            throw new IllegalArgumentException("네이버 로그인 인증에 실패했습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        return accessToken.toString();
+    }
+
+    private Map<String, Object> requestNaverUser(String naverAccessToken) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(naverAccessToken);
+
+        ResponseEntity<Map> response;
+        try {
+            response = restTemplate.exchange(
+                    "https://openapi.naver.com/v1/nid/me",
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+            );
+        } catch (RestClientResponseException e) {
+            throw new IllegalArgumentException("네이버 사용자 정보를 가져오지 못했습니다. 네이버 계정 설정을 확인해주세요.");
+        }
+
+        if (response.getBody() == null) {
+            throw new IllegalArgumentException("네이버 사용자 정보를 가져오지 못했습니다.");
+        }
+
+        return response.getBody();
+    }
+
     private SocialUserInfo parseGoogleUserInfo(Map<String, Object> googleUser) {
         Object id = googleUser.get("id");
         if (id == null) {
@@ -515,6 +643,27 @@ public class OAuthService {
         socialUserInfo.setEmail(googleUser.get("email") == null ? null : googleUser.get("email").toString());
         socialUserInfo.setNickname(googleUser.get("name") == null ? null : googleUser.get("name").toString());
         socialUserInfo.setProfileImageUrl(googleUser.get("picture") == null ? null : googleUser.get("picture").toString());
+
+        return socialUserInfo;
+    }
+
+    @SuppressWarnings("unchecked")
+    private SocialUserInfo parseNaverUserInfo(Map<String, Object> naverUser) {
+        Map<String, Object> response = naverUser.get("response") instanceof Map
+                ? (Map<String, Object>) naverUser.get("response")
+                : new HashMap<>();
+        Object id = response.get("id");
+
+        if (id == null) {
+            throw new IllegalArgumentException("네이버 사용자 정보가 올바르지 않습니다.");
+        }
+
+        SocialUserInfo socialUserInfo = new SocialUserInfo();
+        socialUserInfo.setProvider(NAVER);
+        socialUserInfo.setProviderUserId(id.toString());
+        socialUserInfo.setEmail(response.get("email") == null ? null : response.get("email").toString());
+        socialUserInfo.setNickname(response.get("nickname") == null ? null : response.get("nickname").toString());
+        socialUserInfo.setProfileImageUrl(response.get("profile_image") == null ? null : response.get("profile_image").toString());
 
         return socialUserInfo;
     }
@@ -607,6 +756,10 @@ public class OAuthService {
     private String providerLabel(String provider) {
         if (GOOGLE.equals(provider)) {
             return "Google";
+        }
+
+        if (NAVER.equals(provider)) {
+            return "네이버";
         }
 
         if (KAKAO.equals(provider)) {
