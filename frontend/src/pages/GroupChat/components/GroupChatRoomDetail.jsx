@@ -551,8 +551,6 @@ export function GroupChatRoomDetail({
     try {
       const response = await fetchGroupChatMembers(activeRoom.roomId);
       const nextMemberList = Array.isArray(response.data) ? response.data : [];
-      console.log("[GroupChat] 참여자 목록 응답", response.data);
-      console.log("[GroupChat] 참여자 목록 첫 항목", nextMemberList[0]);
       setMemberList(nextMemberList);
     } catch (requestError) {
       console.error("그룹 채팅 참여자 목록 조회 실패", requestError);
@@ -565,6 +563,11 @@ export function GroupChatRoomDetail({
 
   const closeMembersPanel = () => {
     setIsMembersPanelOpen(false);
+  };
+
+  const handleOpenMembersPanelFromMenu = () => {
+    setIsMoreMenuOpen(false);
+    openMembersPanel();
   };
 
   return (
@@ -634,7 +637,7 @@ export function GroupChatRoomDetail({
                   type="button"
                   onClick={() => {
                     setIsMoreMenuOpen(false);
-                  onInviteMembers?.();
+                    onInviteMembers?.();
                   }}
                   style={{
                     display: "flex",
@@ -654,6 +657,28 @@ export function GroupChatRoomDetail({
                   }}
                 >
                   참여자 초대
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenMembersPanelFromMenu}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    minHeight: "42px",
+                    padding: "0 14px",
+                    border: 0,
+                    borderRadius: "12px",
+                    background: "rgba(124, 77, 255, 0.1)",
+                    color: "#7c4dff",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    wordBreak: "keep-all",
+                    fontWeight: 600,
+                  }}
+                >
+                  참여자 보기
                 </button>
                 <button
                   type="button"
