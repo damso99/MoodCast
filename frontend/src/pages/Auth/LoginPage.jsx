@@ -99,8 +99,6 @@ export const LoginPage = () => {
         },
       )
       .then((res) => {
-        console.log(res.data);
-
         if (member.rememberId) {
           window.localStorage.setItem(SAVED_EMAIL_KEY, member.email.trim());
         } else {
@@ -123,7 +121,6 @@ export const LoginPage = () => {
         }
       })
       .catch((err) => {
-        console.log(err);
         showToast(
           "error",
           getApiMessage(err, "로그인 정보를 확인해주세요."),
@@ -135,7 +132,7 @@ export const LoginPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 또는 Google 로그인을 이용해주세요.`);
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오, Google, 네이버 로그인을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {

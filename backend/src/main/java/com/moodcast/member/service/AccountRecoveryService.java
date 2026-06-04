@@ -211,8 +211,9 @@ public class AccountRecoveryService {
 
         boolean kakaoLinked = oAuthDao.countByMemberIdAndProvider(member.getMemberId(), "KAKAO") > 0;
         boolean googleLinked = oAuthDao.countByMemberIdAndProvider(member.getMemberId(), "GOOGLE") > 0;
+        boolean naverLinked = oAuthDao.countByMemberIdAndProvider(member.getMemberId(), "NAVER") > 0;
 
-        return new FindEmailResult(member.getEmail(), kakaoLinked, googleLinked);
+        return new FindEmailResult(member.getEmail(), kakaoLinked, googleLinked, naverLinked);
     }
 
     // 이메일이 일치하는 일반 계정에 비밀번호 재설정 인증번호를 발급함

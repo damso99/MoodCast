@@ -37,6 +37,7 @@ export function SettingsPage() {
   const [kakaoCanUnlink, setKakaoCanUnlink] = useState(false);
   const [googleCanUnlink, setGoogleCanUnlink] = useState(false);
   const [naverCanUnlink, setNaverCanUnlink] = useState(false);
+  const [passwordLoginEnabled, setPasswordLoginEnabled] = useState(true);
   const [kakaoLinkModalOpen, setKakaoLinkModalOpen] = useState(false);
   const [googleLinkModalOpen, setGoogleLinkModalOpen] = useState(false);
   const [naverLinkModalOpen, setNaverLinkModalOpen] = useState(false);
@@ -96,6 +97,13 @@ export function SettingsPage() {
     setGoogleCanUnlink(Boolean(googleData?.canUnlink));
     setNaverLinked(Boolean(naverData?.linked));
     setNaverCanUnlink(Boolean(naverData?.canUnlink));
+
+    const passwordStatus = [kakaoData, googleData, naverData].find(
+      (data) => typeof data?.passwordLoginEnabled === 'boolean',
+    );
+    if (passwordStatus) {
+      setPasswordLoginEnabled(Boolean(passwordStatus.passwordLoginEnabled));
+    }
   };
 
   const handleKakaoLink = () => {
@@ -588,7 +596,7 @@ export function SettingsPage() {
                   ) : null}
                 </div>
               </>
-            ) : title === '보안' ? (
+            ) : title === '보안' && passwordLoginEnabled ? (
               <form className={styles.passwordForm} onSubmit={handlePasswordChange}>
                 <p className={styles.cardText}>
                   비밀번호 변경 후 모든 기기에서 다시 로그인해야 합니다.
@@ -628,6 +636,13 @@ export function SettingsPage() {
                   {isPasswordLoading ? '변경 중' : '비밀번호 변경'}
                 </button>
               </form>
+            ) : title === '보안' ? (
+              <div className={styles.passwordNotice}>
+                <strong>소셜 로그인 계정입니다.</strong>
+                <p>
+                  이 계정은 아직 비밀번호가 설정되어 있지 않습니다. 연결된 소셜 로그인으로 로그인해주세요.
+                </p>
+              </div>
             ) : (
               <button type="button">세부 설정</button>
             )}

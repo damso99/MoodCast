@@ -1,6 +1,8 @@
 package com.moodcast.member.service;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -8,6 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
+import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -62,12 +65,26 @@ public class RefreshTokenRedisService {
         redisTemplate.delete(key(memberId, tokenId));
     }
 
-    // 해당 회원의 모든 로그인 세션 refreshToken 삭제
-    // 아직 사용안함 미리 준비
-    public void deleteAllRefreshTokens(Long memberId) {
-        Set<String> keys = redisTemplate.keys("auth:refresh:" + memberId + ":*");
+    // refreshToken 재발급 직후 여러 탭 요청이 겹쳐도 잠깐은 기존 토큰을 허용함
+    public void expireRefreshTokenSoon(Long memberId, String tokenId, Duration gracePeriod) {
+        redisTemplate.expire(key(memberId, tokenId), gracePeriod);
+    }
 
-        if (keys == null || keys.isEmpty()) {
+    // 비밀번호 변경, 탈퇴처럼 모든 기기 로그아웃이 필요할 때 refreshToken을 삭제함
+    public void deleteAllRefreshTokens(Long memberId) {
+        Set<String> keys = new HashSet<>();
+        ScanOptions options = ScanOptions.scanOptions()
+                .match("auth:refresh:" + memberId + ":*")
+                .count(100)
+                .build();
+
+        try (Cursor<String> cursor = redisTemplate.scan(options)) {
+            while (cursor.hasNext()) {
+                keys.add(cursor.next());
+            }
+        }
+
+        if (keys.isEmpty()) {
             return;
         }
 

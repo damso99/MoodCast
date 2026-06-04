@@ -233,7 +233,7 @@ public class LoginController {
                 loginMember.getMemberId(),
                 loginMember.getEmail(),
                 null,
-                "PASSWORD_RESET",
+                "PASSWORD_CHANGE",
                 true,
                 null,
                 getClientIp(httpRequest),
@@ -280,7 +280,8 @@ public class LoginController {
                         "message", "가입 계정을 찾았습니다.",
                         "email", result.getEmail(),
                         "kakaoLinked", result.isKakaoLinked(),
-                        "googleLinked", result.isGoogleLinked()
+                        "googleLinked", result.isGoogleLinked(),
+                        "naverLinked", result.isNaverLinked()
                 )
         );
     }
@@ -326,7 +327,7 @@ public class LoginController {
                 null,
                 request == null || request.getEmail() == null ? null : request.getEmail().trim().toLowerCase(),
                 null,
-                "PASSWORD_CHANGE",
+                "PASSWORD_RESET",
                 true,
                 null,
                 getClientIp(httpRequest),
@@ -529,13 +530,9 @@ public class LoginController {
 
         try {
             result = loginService.refreshAccessToken(refreshToken);
-            loginAuditService.record(
+            loginAuditService.recordRefreshSuccess(
                     result.getMember().getMemberId(),
                     result.getMember().getEmail(),
-                    null,
-                    "REFRESH_SUCCESS",
-                    true,
-                    null,
                     getClientIp(request),
                     getUserAgent(request)
             );

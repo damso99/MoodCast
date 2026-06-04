@@ -24,6 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
@@ -565,8 +566,8 @@ public class LoginService {
         // 로그인 가능여부 서비스 정책 체크
         checkLoginAllowed(member);
 
-        // 기존 refreshToken은 재사용하지 못하게 삭제
-        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
+        // 여러 탭이 동시에 refresh해도 한쪽이 바로 튕기지 않도록 기존 토큰은 아주 짧게만 유지함
+        refreshTokenRedisService.expireRefreshTokenSoon(memberId, tokenId, Duration.ofSeconds(10));
 
         // 새 로그인 세션 tokenId 생성
         String newTokenId = UUID.randomUUID().toString();

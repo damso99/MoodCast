@@ -141,6 +141,7 @@ export const AccountRecoveryPage = () => {
           email: res.data.email || "",
           kakaoLinked: Boolean(res.data.kakaoLinked),
           googleLinked: Boolean(res.data.googleLinked),
+          naverLinked: Boolean(res.data.naverLinked),
         });
         showToast("success", res.data.message || "계정을 찾았습니다.");
       })
@@ -340,6 +341,7 @@ export const AccountRecoveryPage = () => {
                 가입 이메일: {foundAccount.email}
                 {foundAccount.kakaoLinked ? <span>카카오 연동 계정입니다.</span> : null}
                 {foundAccount.googleLinked ? <span>Google 연동 계정입니다.</span> : null}
+                {foundAccount.naverLinked ? <span>네이버 연동 계정입니다.</span> : null}
               </p>
             ) : null}
 
