@@ -262,6 +262,7 @@
   height: 38px;
   flex: 0 0 38px;
   font-size: 0.92rem;
+  cursor: pointer;
 }
 
 .messageAvatarImage {

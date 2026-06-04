@@ -7,50 +7,14 @@ import {
   leaveGroupChatRoom,
   updateGroupChatRoomRead,
 } from "../../../shared/api/groupChatApi";
-import { formatKoreanTime } from "../../../shared/lib/dateTime";
-import { parseChatContent, serializeChatContent } from "../../../shared/lib/chatContent";
+import { serializeChatContent } from "../../../shared/lib/chatContent";
+import {
+  getLatestConfirmedMessageId,
+  normalizeGroupMessage,
+} from "../../../shared/lib/chatRoomModel";
 import { GroupChatRoomDetail } from "../../GroupChat/components/GroupChatRoomDetail";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-function normalizeGroupMessage(message, timeCache) {
-  const messageKey = message?.messageId ?? message?.id;
-  const parsedContent = parseChatContent(message?.content ?? "");
-  const cachedTime = timeCache?.get?.(messageKey);
-  const computedTime = message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : "");
-  const time = cachedTime || computedTime;
-
-  if (timeCache && time && !cachedTime) {
-    timeCache.set(messageKey, time);
-  }
-
-  return {
-    messageId: message?.messageId ?? message?.id,
-    roomId: message?.roomId,
-    senderId: Number(message?.senderId),
-    senderName: message?.senderName || "Member",
-    profileImageUrl: message?.profileImageUrl || "",
-    content: parsedContent.text || "",
-    imageUrls: parsedContent.imageUrls,
-    rawContent: message?.content || "",
-    time,
-    createdAt: message?.createdAt || "",
-    readCount: Number(message?.readCount || 0),
-    unreadCount: Number(message?.unreadCount || 0),
-    eventType: message?.eventType || "",
-    isPending: Boolean(message?.isPending),
-  };
-}
-
-function getLatestConfirmedMessageId(messages) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const messageId = Number(messages[index]?.messageId);
-    if (Number.isFinite(messageId) && messageId > 0) {
-      return messageId;
-    }
-  }
-
-  return null;
-}
 
 export function GroupRoomOverlay({
   room,

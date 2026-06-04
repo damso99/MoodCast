@@ -5,7 +5,6 @@ import { DesktopShell } from "../../components/layout/DesktopShell";
 import { MobileShell } from "../../components/layout/MobileShell";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { useIsDesktop } from "../../hooks/useViewportWidth";
-import { formatKoreanTime } from "../../shared/lib/dateTime";
 import { parseChatContent, serializeChatContent } from "../../shared/lib/chatContent";
 import {
   createGroupChatRoom,
@@ -19,62 +18,14 @@ import {
 import { useGroupChatSocket } from "../../hooks/useGroupChatSocket";
 import { GroupChatRoomDetail } from "./components/GroupChatRoomDetail";
 import { GroupChatRoomList } from "./components/GroupChatRoomList";
+import {
+  getLatestConfirmedMessageId,
+  normalizeGroupMessage as normalizeMessage,
+  normalizeGroupRoom as normalizeRoom,
+} from "../../shared/lib/chatRoomModel";
 import "./groupChatStyles.css";
 
 const API_BASE = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-function normalizeRoom(room) {
-  return {
-    roomId: room?.roomId,
-    roomName: room?.roomName || "Group Chat",
-    roomDescription: room?.roomDescription || "",
-    createdBy: room?.createdBy,
-    createdAt: room?.createdAt,
-    memberCount: Number(room?.memberCount || 0),
-    lastMessage: room?.lastMessage || "",
-    lastMessageAt: room?.lastMessageAt || "",
-    unreadCount: Number(room?.unreadCount || 0),
-  };
-}
-
-function normalizeMessage(message, timeCache) {
-  const messageKey = message?.messageId ?? message?.id;
-  const parsedContent = parseChatContent(message?.content ?? "");
-  const cachedTime = timeCache?.get?.(messageKey);
-  const computedTime = message?.time || (message?.createdAt ? formatKoreanTime(message.createdAt) : "");
-  const time = cachedTime || computedTime;
-
-  if (timeCache && time && !cachedTime) {
-    timeCache.set(messageKey, time);
-  }
-
-  return {
-    messageId: message?.messageId ?? message?.id,
-    roomId: message?.roomId,
-    senderId: Number(message?.senderId),
-    senderName: message?.senderName || "Member",
-    profileImageUrl: message?.profileImageUrl || "",
-    content: parsedContent.text || message?.content || "",
-    imageUrls: parsedContent.imageUrls,
-    rawContent: message?.content || "",
-    time,
-    createdAt: message?.createdAt || "",
-    readCount: Number(message?.readCount || 0),
-    unreadCount: Number(message?.unreadCount || 0),
-    eventType: message?.eventType || "",
-    isPending: Boolean(message?.isPending),
-  };
-}
-
-function getLatestConfirmedMessageId(messages) {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const messageId = Number(messages[index]?.messageId);
-    if (Number.isFinite(messageId) && messageId > 0) {
-      return messageId;
-    }
-  }
-
-  return null;
-}
 
 function GroupChatBody({ desktop, onRoomOpenChange }) {
   const { member, accessToken } = useAuthStore();
