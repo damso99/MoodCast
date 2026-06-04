@@ -5,5 +5,4 @@ import lombok.Data;
 @Data
 public class PasswordResetCodeRequest {
     private String email;
-    private String phone;
 }

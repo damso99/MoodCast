@@ -11,14 +11,10 @@ export const SignupView = ({
   signup,
   terms,
   emailAuth,
-  phoneAuth,
   message,
   inputSignup,
   sendEmailAuthCode,
   checkEmailAuthCode,
-  sendPhoneAuthCode,
-  checkPhoneAuthCode,
-  movePhoneStep,
   moveTermsStep,
   movePrevStep,
   toggleTerm,
@@ -37,26 +33,20 @@ export const SignupView = ({
   selectedTerm,
   openTermContent,
   closeTermContent,
-  phoneSendLoading,
-  phoneCooldown,
-  phoneExpireTime,
   termsLoading,
   signupSubmitting,
   signupCompleteModalOpen,
   goSignupCompleteLogin,
 }) => {
-  const phoneExpireMinute = Math.floor(phoneExpireTime / 60);
-  const phoneExpireSecond = String(phoneExpireTime % 60).padStart(2, "0");
   const allTermsChecked = terms.service && terms.privacy && terms.marketing;
   const hasNickname = signup.nickname.trim().length > 0;
-  const canMovePhoneStep =
+  const canMoveTermsStep =
     fieldStatus.name === "valid" &&
     (!hasNickname || fieldStatus.nickname === "valid") &&
     fieldStatus.email === "valid" &&
     emailAuth === 3 &&
     fieldStatus.password === "valid" &&
     fieldStatus.passwordConfirm === "valid";
-  const canMoveTermsStep = phoneAuth === 3 && !termsLoading;
   const canCompleteSignup =
     terms.service &&
     terms.privacy &&
@@ -118,21 +108,10 @@ export const SignupView = ({
 
             <li
               className={`${styles.stepItem} ${
-                step === 2 ? styles.stepActive : step > 2 ? styles.stepDone : ""
+                step === 2 ? styles.stepActive : ""
               }`}
             >
-              <span className={styles.stepDot}>
-                {step > 2 ? <CheckRoundedIcon fontSize="inherit" /> : 2}
-              </span>
-              <span className={styles.stepText}>인증</span>
-            </li>
-
-            <li
-              className={`${styles.stepItem} ${
-                step === 3 ? styles.stepActive : ""
-              }`}
-            >
-              <span className={styles.stepDot}>3</span>
+              <span className={styles.stepDot}>2</span>
               <span className={styles.stepText}>약관 동의</span>
             </li>
           </ol>
@@ -349,10 +328,10 @@ export const SignupView = ({
                 <button
                   type="button"
                   className={styles.primaryButton}
-                  onClick={movePhoneStep}
-                  disabled={!canMovePhoneStep}
+                  onClick={moveTermsStep}
+                  disabled={!canMoveTermsStep || termsLoading}
                 >
-                  다음 단계
+                  {termsLoading ? "약관 불러오는 중..." : "다음 단계"}
                 </button>
 
                 <div className={styles.socialArea}>
@@ -404,120 +383,10 @@ export const SignupView = ({
 
           {step === 2 && (
             <>
-              <div className={styles.successNotice}>
-                <CheckRoundedIcon fontSize="small" />
-                <div>
-                  <strong>이메일 인증 완료</strong>
-                  <span>{signup.email}</span>
-                </div>
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="signupPhone">
-                  휴대폰 번호 <b>*</b>
-                </label>
-
-                <div className={styles.inputAction}>
-                  <input
-                    type="text"
-                    id="signupPhone"
-                    name="phone"
-                    value={signup.phone}
-                    onChange={inputSignup}
-                    placeholder="'-' 없이 번호만 입력"
-                    readOnly={phoneAuth === 3}
-                  />
-
-                  <button
-                    type="button"
-                    className={styles.ghostButton}
-                    onClick={sendPhoneAuthCode}
-                    disabled={
-                      phoneSendLoading || phoneCooldown > 0 || phoneAuth === 3
-                    }
-                  >
-                    {phoneSendLoading
-                      ? "발송 중..."
-                      : phoneAuth === 3
-                        ? "인증완료"
-                        : phoneCooldown > 0
-                          ? `${phoneCooldown}초`
-                          : phoneAuth === 1
-                            ? "재요청"
-                    : "인증번호 발송"}
-                  </button>
-                </div>
-              </div>
-
-              {phoneAuth === 1 && (
-                <div className={styles.field}>
-                  <label htmlFor="signupPhoneCode">
-                    휴대폰 인증번호 <b>*</b>
-                  </label>
-
-                  <div className={styles.inputAction}>
-                    <input
-                      type="text"
-                      id="signupPhoneCode"
-                      name="phoneCode"
-                      value={signup.phoneCode}
-                      onChange={inputSignup}
-                      placeholder="인증번호 입력"
-                    />
-
-                    <button
-                      type="button"
-                      className={styles.ghostButton}
-                      onClick={checkPhoneAuthCode}
-                    >
-                      확인
-                    </button>
-                  </div>
-
-                  <p
-                    className={
-                      phoneExpireTime > 0
-                        ? styles.timerText
-                        : styles.invalidText
-                    }
-                  >
-                    {phoneExpireTime > 0
-                      ? `남은 시간 ${phoneExpireMinute}:${phoneExpireSecond}`
-                      : "인증번호가 만료되었습니다. 다시 요청해주세요."}
-                  </p>
-                </div>
-              )}
-
-              <div className={styles.actions}>
-                <button
-                  type="button"
-                  className={styles.outlineButton}
-                  onClick={movePrevStep}
-                >
-                  이전
-                </button>
-                <button
-                  type="button"
-                  className={styles.primaryButton}
-                  onClick={moveTermsStep}
-                  disabled={!canMoveTermsStep}
-                >
-                  {termsLoading ? "약관 불러오는 중..." : "다음 단계"}
-                </button>
-              </div>
-            </>
-          )}
-
-          {step === 3 && (
-            <>
               <div className={styles.badgeRow}>
                 <span>
                   <CheckRoundedIcon fontSize="small" />
                   이메일 인증 완료
-                </span>
-                <span>
-                  <CheckRoundedIcon fontSize="small" />
-                  휴대폰 인증 완료
                 </span>
               </div>
 

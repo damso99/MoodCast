@@ -39,7 +39,6 @@ public class OAuthService {
     private static final int MAX_PROFILE_IMAGE_URL_LENGTH = 500;
     private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
     private static final Pattern NICKNAME_PATTERN = Pattern.compile("^[가-힣A-Za-z0-9]{2,12}$");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("^010[0-9]{8}$");
 
     @Value("${oauth.kakao.client-id:}")
     private String kakaoClientId;
@@ -64,7 +63,6 @@ public class OAuthService {
     private final SignupDao signupDao;
     private final LoginService loginService;
     private final MemberValidationService memberValidationService;
-    private final AuthCodeRedisService authCodeRedisService;
     private final SocialPendingSignupRedisService pendingSignupRedisService;
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -74,7 +72,6 @@ public class OAuthService {
             SignupDao signupDao,
             LoginService loginService,
             MemberValidationService memberValidationService,
-            AuthCodeRedisService authCodeRedisService,
             SocialPendingSignupRedisService pendingSignupRedisService
     ) {
         this.oAuthDao = oAuthDao;
@@ -82,7 +79,6 @@ public class OAuthService {
         this.signupDao = signupDao;
         this.loginService = loginService;
         this.memberValidationService = memberValidationService;
-        this.authCodeRedisService = authCodeRedisService;
         this.pendingSignupRedisService = pendingSignupRedisService;
     }
 
@@ -155,22 +151,13 @@ public class OAuthService {
         String providerLabel = providerLabel(pendingSocialSignup.getProvider());
         String name = normalizeName(request.getName());
         String nickname = normalizeNickname(request.getNickname());
-        String phone = normalizePhone(request.getPhone());
 
         if (signupDao.countByEmail(email) > 0) {
             throw new IllegalArgumentException(providerLabel + " 이메일로 이미 가입된 계정이 있습니다. 로그인 화면에서 다시 시도해주세요.");
         }
 
-        if (signupDao.countByPhone(phone) > 0) {
-            throw new IllegalArgumentException("이미 다른 계정에서 사용 중인 휴대폰 번호입니다.");
-        }
-
         if (nickname != null && signupDao.countByNickname(nickname) > 0) {
             throw new IllegalArgumentException("이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.");
-        }
-
-        if (!authCodeRedisService.isVerified("SIGNUP", "PHONE", phone)) {
-            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 인증번호를 다시 요청해주세요.");
         }
 
         checkRequiredTermsAgreed(request.getAgreements());
@@ -180,10 +167,10 @@ public class OAuthService {
         member.setPasswordHash(null);
         member.setName(name);
         member.setNickname(nickname);
-        member.setPhone(phone);
+        member.setPhone(null);
         member.setProfileImageUrl(normalizeProfileImageUrl(pendingSocialSignup.getProfileImageUrl()));
         member.setEmailVerified(1);
-        member.setPhoneVerified(1);
+        member.setPhoneVerified(0);
 
         int memberResult = signupDao.insertMember(member);
         if (memberResult != 1) {
@@ -193,7 +180,6 @@ public class OAuthService {
         insertTermsAgreements(member.getMemberId(), request.getAgreements());
         insertOAuthAccount(member.getMemberId(), pendingSocialSignup);
 
-        authCodeRedisService.clearAuth("SIGNUP", "PHONE", phone);
         pendingSignupRedisService.delete(request.getPendingToken());
 
         Member savedMember = loginDao.findMemberById(member.getMemberId());
@@ -603,19 +589,6 @@ public class OAuthService {
         }
 
         return nickname;
-    }
-
-    private String normalizePhone(String phone) {
-        if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("휴대폰 번호를 입력해주세요.");
-        }
-
-        phone = phone.trim();
-        if (!PHONE_PATTERN.matcher(phone).matches()) {
-            throw new IllegalArgumentException("휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
-        }
-
-        return phone;
     }
 
     private String normalizeProfileImageUrl(String profileImageUrl) {

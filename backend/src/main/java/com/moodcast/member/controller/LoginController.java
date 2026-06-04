@@ -16,7 +16,6 @@ import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
 import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
 import com.moodcast.member.dto.signup.EmailAuthSendResult;
-import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.withdraw.WithdrawRequest;
 import com.moodcast.member.dto.follow.FollowResponse;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
@@ -261,17 +260,17 @@ public class LoginController {
                 );
     }
 
-    @PostMapping("recovery/email/send-phone-code")
-    public ResponseEntity<?> sendFindEmailPhoneCode(
+    @PostMapping("recovery/email/send-code")
+    public ResponseEntity<?> sendFindEmailCode(
             @RequestBody FindEmailCodeRequest request,
             HttpServletRequest httpRequest
     ) {
-        PhoneAuthSendResult result = accountRecoveryService.sendFindEmailPhoneCode(request, getClientIp(httpRequest));
+        EmailAuthSendResult result = accountRecoveryService.sendFindEmailCode(request, getClientIp(httpRequest));
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "\uC544\uC774\uB514 \uCC3E\uAE30 \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
-        response.put("phone", result.getPhone());
+        response.put("message", "\uAC00\uC785 \uC774\uBA54\uC77C\uB85C \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+        response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
         }
@@ -288,22 +287,23 @@ public class LoginController {
                         "success", true,
                         "message", "\uAC00\uC785 \uACC4\uC815\uC744 \uCC3E\uC558\uC2B5\uB2C8\uB2E4.",
                         "email", result.getEmail(),
-                        "kakaoLinked", result.isKakaoLinked()
+                        "kakaoLinked", result.isKakaoLinked(),
+                        "googleLinked", result.isGoogleLinked()
                 )
         );
     }
 
-    @PostMapping("recovery/password/send-phone-code")
-    public ResponseEntity<?> sendPasswordResetPhoneCode(
+    @PostMapping("recovery/password/send-code")
+    public ResponseEntity<?> sendPasswordResetCode(
             @RequestBody PasswordResetCodeRequest request,
             HttpServletRequest httpRequest
     ) {
-        PhoneAuthSendResult result = accountRecoveryService.sendPasswordResetPhoneCode(request, getClientIp(httpRequest));
+        EmailAuthSendResult result = accountRecoveryService.sendPasswordResetCode(request, getClientIp(httpRequest));
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "\uBE44\uBC00\uBC88\uD638 \uC7AC\uC124\uC815 \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
-        response.put("phone", result.getPhone());
+        response.put("message", "\uBE44\uBC00\uBC88\uD638 \uC7AC\uC124\uC815 \uC774\uBA54\uC77C \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+        response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
         }
@@ -318,7 +318,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "\uD734\uB300\uD3F0 \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694."
+                        "message", "\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694."
                 )
         );
     }
@@ -571,4 +571,5 @@ public class LoginController {
                 .body(response);
     }
 }
+
 

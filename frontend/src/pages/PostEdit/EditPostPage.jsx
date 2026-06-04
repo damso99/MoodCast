@@ -21,12 +21,12 @@ import CelebrationIcon from "@mui/icons-material/Celebration";
 import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 
 const EMOTIONS = [
-  { id: 1, name: "행복", icon: EmojiEmotionsIcon, color: "#FFD700" },
-  { id: 2, name: "슬픔", icon: SentimentDissatisfiedIcon, color: "#4A90E2" },
-  { id: 3, name: "차분", icon: SpaIcon, color: "#F4A460" },
-  { id: 4, name: "화남", icon: MoodBadIcon, color: "#E74C3C" },
-  { id: 5, name: "신남", icon: CelebrationIcon, color: "#FF69B4" },
-  { id: 6, name: "무감정", icon: SentimentNeutralIcon, color: "#95A5A6" },
+  { id: 1, name: "행복해요", icon: EmojiEmotionsIcon, color: "#FFD700" },
+  { id: 2, name: "슬퍼요", icon: SentimentDissatisfiedIcon, color: "#4A90E2" },
+  { id: 3, name: "차분해요", icon: SpaIcon, color: "#F4A460" },
+  { id: 4, name: "화가나요", icon: MoodBadIcon, color: "#E74C3C" },
+  { id: 5, name: "신나요", icon: CelebrationIcon, color: "#FF69B4" },
+  { id: 6, name: "무덤덤해요", icon: SentimentNeutralIcon, color: "#95A5A6" },
 ];
 
 export function EditPostPage() {

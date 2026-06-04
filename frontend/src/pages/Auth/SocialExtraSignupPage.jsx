@@ -10,7 +10,6 @@ import styles from "./SignupPage.module.css";
 
 const nameRegex = /^[가-힣]{2,10}$/;
 const nicknameRegex = /^[가-힣A-Za-z0-9]{2,12}$/;
-const phoneRegex = /^010[0-9]{8}$/;
 
 export const SocialExtraSignupPage = () => {
   const navigate = useNavigate();
@@ -21,11 +20,7 @@ export const SocialExtraSignupPage = () => {
   const [form, setForm] = useState({
     name: "",
     nickname: "",
-    phone: "",
-    phoneCode: "",
   });
-  const [phoneAuth, setPhoneAuth] = useState(0);
-  const [phoneSendLoading, setPhoneSendLoading] = useState(false);
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [termsList, setTermsList] = useState([]);
   const [agreements, setAgreements] = useState({});
@@ -37,12 +32,6 @@ export const SocialExtraSignupPage = () => {
     const duration = getToastDuration(type);
     setToast({ show: true, type, message, duration });
     setTimeout(() => setToast({ show: false, type: "", message: "" }), duration);
-  };
-
-  const logDevAuthCode = (label, authCode) => {
-    if (authCode) {
-      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
-    }
   };
 
   useEffect(() => {
@@ -99,59 +88,6 @@ export const SocialExtraSignupPage = () => {
       [name]: value,
     }));
 
-    if (name === "phone") {
-      setPhoneAuth(0);
-    }
-  };
-
-  const sendPhoneAuthCode = () => {
-    if (!phoneRegex.test(form.phone.trim())) {
-      showToast("error", "휴대폰 번호는 010 포함 11자리로 입력해주세요.");
-      return;
-    }
-
-    setPhoneSendLoading(true);
-    axios
-      .post(`${BACKSERVER}/signup/auth/phone/send`, {
-        phone: form.phone.trim(),
-      })
-      .then((res) => {
-        setPhoneAuth(1);
-        logDevAuthCode("소셜 회원가입 휴대폰", res.data?.authCode);
-        showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
-      })
-      .catch((err) => {
-        showToast(
-          "error",
-          getApiMessage(err, "휴대폰 번호와 요청 제한을 확인해주세요."),
-        );
-      })
-      .finally(() => {
-        setPhoneSendLoading(false);
-      });
-  };
-
-  const checkPhoneAuthCode = () => {
-    if (!form.phoneCode.trim()) {
-      showToast("error", "휴대폰 인증번호를 입력해주세요.");
-      return;
-    }
-
-    axios
-      .post(`${BACKSERVER}/signup/auth/phone/verify`, {
-        phone: form.phone.trim(),
-        authCode: form.phoneCode.trim(),
-      })
-      .then((res) => {
-        setPhoneAuth(3);
-        showToast("success", res.data?.message || "휴대폰 인증이 완료되었습니다.");
-      })
-      .catch((err) => {
-        showToast(
-          "error",
-          getApiMessage(err, "휴대폰 인증번호를 확인해주세요."),
-        );
-      });
   };
 
   const toggleAgreement = (termsId) => {
@@ -172,11 +108,6 @@ export const SocialExtraSignupPage = () => {
       return;
     }
 
-    if (phoneAuth !== 3) {
-      showToast("error", "휴대폰 인증을 완료해주세요.");
-      return;
-    }
-
     const requiredNotAgreed = termsList.some(
       (term) => term.isRequired === 1 && !agreements[term.termsId],
     );
@@ -193,7 +124,6 @@ export const SocialExtraSignupPage = () => {
           pendingToken: pending.pendingToken,
           name: form.name.trim(),
           nickname: form.nickname.trim(),
-          phone: form.phone.trim(),
           agreements: termsList.map((term) => ({
             termsId: term.termsId,
             agreed: Boolean(agreements[term.termsId]),
@@ -272,58 +202,6 @@ export const SocialExtraSignupPage = () => {
               placeholder="한글, 영문, 숫자 2~12자"
             />
           </div>
-
-          <div className={styles.field}>
-            <label htmlFor="socialPhone">
-              휴대폰 번호 <b>*</b>
-            </label>
-            <div className={styles.inputAction}>
-              <input
-                id="socialPhone"
-                name="phone"
-                value={form.phone}
-                onChange={inputForm}
-                placeholder="'-' 없이 번호만 입력"
-                readOnly={phoneAuth === 3}
-              />
-              <button
-                type="button"
-                className={styles.ghostButton}
-                onClick={sendPhoneAuthCode}
-                disabled={phoneSendLoading || phoneAuth === 3}
-              >
-                {phoneSendLoading
-                  ? "발송 중..."
-                  : phoneAuth === 3
-                    ? "인증완료"
-                    : "인증번호 발송"}
-              </button>
-            </div>
-          </div>
-
-          {phoneAuth === 1 && (
-            <div className={styles.field}>
-              <label htmlFor="socialPhoneCode">
-                휴대폰 인증번호 <b>*</b>
-              </label>
-              <div className={styles.inputAction}>
-                <input
-                  id="socialPhoneCode"
-                  name="phoneCode"
-                  value={form.phoneCode}
-                  onChange={inputForm}
-                  placeholder="인증번호 입력"
-                />
-                <button
-                  type="button"
-                  className={styles.ghostButton}
-                  onClick={checkPhoneAuthCode}
-                >
-                  확인
-                </button>
-              </div>
-            </div>
-          )}
 
           <section className={styles.termsBox} aria-label="약관 동의">
             {termsList.map((term) => (

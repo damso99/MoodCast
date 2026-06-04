@@ -5,6 +5,6 @@ import lombok.Data;
 @Data
 public class FindEmailVerifyRequest {
     private String name;
-    private String phone;
+    private String email;
     private String authCode;
 }

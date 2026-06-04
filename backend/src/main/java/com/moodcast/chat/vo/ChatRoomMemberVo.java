@@ -12,6 +12,7 @@ public class ChatRoomMemberVo {
     private Long roomId;
     private Long memberId;
     private String memberName;
+    private String email;
     private String profileImageUrl;
     private String joinedAt;
     private String hiddenAt;

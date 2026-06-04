@@ -166,18 +166,23 @@ function DesktopShell({
   }, [BACKSERVER]);
 
   return (
-    <main className={styles.layout}>
+    <main className={styles.layout} data-dashboard-scroll-container="layout">
       <aside className={styles.leftSlot}>
         {/* 왼쪽 사이드바: 로고, 메뉴, 주요 내비게이션 */}
         <Sidebar />
       </aside>
       <section className={styles.center}>
-        <div className={styles.centerInner}>{children}</div>
+        <div className={styles.centerInner} data-dashboard-scroll-container="center">
+          {children}
+        </div>
       </section>
       <aside className={styles.rightSlot}>
         <div className={styles.right}>
           <TopUtilityIcons onSearch={handleSearchOpen} />
-          <div className={styles.rightScrollArea}>
+          <div
+            className={styles.rightScrollArea}
+            data-dashboard-scroll-container="right"
+          >
             <RightRail
               posts={posts}
               isLoading={loadingPosts && !posts.length}

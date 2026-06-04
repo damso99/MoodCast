@@ -213,6 +213,28 @@ function normalizeGroupThread(thread) {
   };
 }
 
+function getGroupThreadDisplayName(thread) {
+  const roomName = String(thread?.roomName || "").trim();
+  const memberCount = Number(thread?.memberCount || 0);
+  const matchedTitle = roomName.match(/^(.*?)(?:\s외\s\d+명)$/);
+
+  if (!matchedTitle) {
+    return roomName || "그룹 채팅방";
+  }
+
+  const baseName = matchedTitle[1].trim();
+
+  if (!baseName) {
+    return roomName || "그룹 채팅방";
+  }
+
+  if (memberCount <= 1) {
+    return baseName;
+  }
+
+  return `${baseName} 외 ${memberCount - 1}명`;
+}
+
 function getThreadSortValue(thread) {
   const rawValue = thread?.lastMessageAt || thread?.createdAt || "";
   if (!rawValue) {
@@ -1408,7 +1430,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             <div className={styles.threadContent}>
               <strong>
                 {isGroupThread
-                  ? thread.roomName || "그룹 채팅방"
+                  ? getGroupThreadDisplayName(thread)
                   : thread.partnerNickname ||
                     thread.partnerName ||
                     `회원 ${thread.partnerMemberId}`}

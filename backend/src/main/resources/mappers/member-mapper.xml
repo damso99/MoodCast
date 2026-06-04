@@ -6,10 +6,6 @@
         select count(*) from members where email = #{email}
     </select>
 
-    <select id="countByPhone">
-        select count(*) from members where phone = #{phone}
-    </select>
-
     <select id="countByNickname">
         select count(*) from members where nickname = #{nickname}
     </select>

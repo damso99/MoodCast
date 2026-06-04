@@ -9,8 +9,9 @@ import com.moodcast.member.dto.recovery.FindEmailVerifyRequest;
 import com.moodcast.member.dto.recovery.PasswordResetCodeRequest;
 import com.moodcast.member.dto.recovery.PasswordResetRequest;
 import com.moodcast.member.dto.recovery.PasswordResetVerifyRequest;
-import com.moodcast.member.dto.signup.PhoneAuthSendResult;
+import com.moodcast.member.dto.signup.EmailAuthSendResult;
 import com.moodcast.member.vo.Member;
+import org.springframework.mail.MailException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,10 +25,9 @@ import java.util.regex.Pattern;
 public class AccountRecoveryService {
     private static final String FIND_EMAIL_PURPOSE = "FIND_EMAIL";
     private static final String RESET_PASSWORD_PURPOSE = "RESET_PASSWORD";
-    private static final String PHONE_TARGET_TYPE = "PHONE";
+    private static final String EMAIL_TARGET_TYPE = "EMAIL";
 
     private static final Pattern NAME_PATTERN = Pattern.compile("^[가-힣]{2,10}$");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("^010[0-9]{8}$");
     private static final Pattern PASSWORD_PATTERN =
             Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[?!@#$%^&*])[A-Za-z\\d?!@#$%^&*]{8,20}$");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -39,6 +39,7 @@ public class AccountRecoveryService {
     private final AuthCodeRedisService authCodeRedisService;
     private final RefreshTokenRedisService refreshTokenRedisService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Value("${app.dev-return-auth-code:false}")
     private boolean devReturnAuthCode;
@@ -50,7 +51,8 @@ public class AccountRecoveryService {
             MemberValidationService memberValidationService,
             AuthCodeRedisService authCodeRedisService,
             RefreshTokenRedisService refreshTokenRedisService,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            EmailService emailService
     ) {
         this.loginDao = loginDao;
         this.oAuthDao = oAuthDao;
@@ -59,6 +61,7 @@ public class AccountRecoveryService {
         this.authCodeRedisService = authCodeRedisService;
         this.refreshTokenRedisService = refreshTokenRedisService;
         this.passwordEncoder = passwordEncoder;
+        this.emailService = emailService;
     }
 
     private String normalizeName(String name) {
@@ -73,20 +76,6 @@ public class AccountRecoveryService {
         }
 
         return name;
-    }
-
-    private String normalizePhone(String phone) {
-        if (phone == null || phone.trim().isEmpty()) {
-            throw new IllegalArgumentException("휴대폰 번호를 입력해주세요.");
-        }
-
-        phone = phone.trim();
-
-        if (!PHONE_PATTERN.matcher(phone).matches()) {
-            throw new IllegalArgumentException("휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
-        }
-
-        return phone;
     }
 
     private String createAuthCode() {
@@ -107,8 +96,7 @@ public class AccountRecoveryService {
             throw new IllegalArgumentException("탈퇴 처리된 계정입니다. 다른 계정으로 로그인해주세요.");
         }
 
-        if (!Integer.valueOf(1).equals(member.getEmailVerified())
-                || !Integer.valueOf(1).equals(member.getPhoneVerified())) {
+        if (!Integer.valueOf(1).equals(member.getEmailVerified())) {
             throw new IllegalArgumentException("인증이 완료되지 않은 계정입니다. 회원가입 정보를 다시 확인해주세요.");
         }
     }
@@ -165,33 +153,43 @@ public class AccountRecoveryService {
         }
     }
 
-    // 이름과 휴대폰이 일치하는 계정에 아이디 찾기 인증번호를 발급함
+    // 이름과 이메일이 일치하는 계정에 아이디 찾기 인증번호를 발급함
     @Transactional
-    public PhoneAuthSendResult sendFindEmailPhoneCode(FindEmailCodeRequest request, String clientIp) {
+    public EmailAuthSendResult sendFindEmailCode(FindEmailCodeRequest request, String clientIp) {
         if (request == null) {
             throw new IllegalArgumentException("계정 찾기 정보를 입력해주세요.");
         }
 
         String name = normalizeName(request.getName());
-        String phone = normalizePhone(request.getPhone());
+        String email = memberValidationService.normalizeEmail(request.getEmail());
 
-        Member member = loginDao.findMemberByNameAndPhone(name, phone);
-        checkRecoverableMember(member, "이름과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
+        Member member = loginDao.findMemberByEmail(email);
+        checkRecoverableMember(member, "이름과 이메일이 일치하는 계정을 찾을 수 없습니다.");
+        if (!name.equals(member.getName())) {
+            throw new IllegalArgumentException("이름과 이메일이 일치하는 계정을 찾을 수 없습니다.");
+        }
 
-        authCodeRedisService.checkCooldown(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
-        authCodeRedisService.checkAndIncreaseIpSendCount(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, clientIp);
-        authCodeRedisService.checkAndIncreaseSendCount(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
+        authCodeRedisService.checkCooldown(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, email);
+        authCodeRedisService.checkAndIncreaseIpSendCount(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, clientIp);
+        authCodeRedisService.checkAndIncreaseSendCount(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, email);
 
         String authCode = createAuthCode();
-        authCodeRedisService.saveAuthCode(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone, passwordEncoder.encode(authCode));
+        authCodeRedisService.saveAuthCode(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, email, passwordEncoder.encode(authCode));
+
+        try {
+            emailService.sendAccountRecoveryAuthCode(email, authCode, "아이디 찾기");
+        } catch (MailException e) {
+            authCodeRedisService.clearAuth(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, email);
+            throw new IllegalStateException("이메일 인증번호를 발송하지 못했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해주세요.");
+        }
 
         if (devReturnAuthCode) {
-            System.out.println("아이디 찾기 휴대폰 인증번호: " + authCode);
+            System.out.println("아이디 찾기 이메일 인증번호: " + authCode);
         }
-        return new PhoneAuthSendResult(phone, authCode);
+        return new EmailAuthSendResult(email, authCode);
     }
 
-    // 아이디 찾기 인증번호가 맞으면 전체 이메일과 카카오 연동 여부를 반환함
+    // 아이디 찾기 인증번호가 맞으면 전체 이메일과 소셜 연동 여부를 반환함
     @Transactional(noRollbackFor = IllegalArgumentException.class)
     public FindEmailResult verifyFindEmailCode(FindEmailVerifyRequest request) {
         if (request == null) {
@@ -199,51 +197,62 @@ public class AccountRecoveryService {
         }
 
         String name = normalizeName(request.getName());
-        String phone = normalizePhone(request.getPhone());
+        String email = memberValidationService.normalizeEmail(request.getEmail());
 
-        Member member = loginDao.findMemberByNameAndPhone(name, phone);
-        checkRecoverableMember(member, "이름과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
-        checkAuthCode(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
+        Member member = loginDao.findMemberByEmail(email);
+        checkRecoverableMember(member, "이름과 이메일이 일치하는 계정을 찾을 수 없습니다.");
+        if (!name.equals(member.getName())) {
+            throw new IllegalArgumentException("이름과 이메일이 일치하는 계정을 찾을 수 없습니다.");
+        }
 
-        authCodeRedisService.clearAuth(FIND_EMAIL_PURPOSE, PHONE_TARGET_TYPE, phone);
+        checkAuthCode(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, email, request.getAuthCode());
+
+        authCodeRedisService.clearAuth(FIND_EMAIL_PURPOSE, EMAIL_TARGET_TYPE, email);
 
         boolean kakaoLinked = oAuthDao.countByMemberIdAndProvider(member.getMemberId(), "KAKAO") > 0;
+        boolean googleLinked = oAuthDao.countByMemberIdAndProvider(member.getMemberId(), "GOOGLE") > 0;
 
-        return new FindEmailResult(member.getEmail(), kakaoLinked);
+        return new FindEmailResult(member.getEmail(), kakaoLinked, googleLinked);
     }
 
-    // 이메일과 휴대폰이 일치하는 일반 계정에 비밀번호 재설정 인증번호를 발급함
+    // 이메일이 일치하는 일반 계정에 비밀번호 재설정 인증번호를 발급함
     @Transactional
-    public PhoneAuthSendResult sendPasswordResetPhoneCode(PasswordResetCodeRequest request, String clientIp) {
+    public EmailAuthSendResult sendPasswordResetCode(PasswordResetCodeRequest request, String clientIp) {
         if (request == null) {
             throw new IllegalArgumentException("비밀번호 재설정 정보를 입력해주세요.");
         }
 
         String email = memberValidationService.normalizeEmail(request.getEmail());
-        String phone = normalizePhone(request.getPhone());
 
-        Member member = loginDao.findMemberByEmailAndPhone(email, phone);
-        checkRecoverableMember(member, "이메일과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
+        Member member = loginDao.findMemberByEmail(email);
+        checkRecoverableMember(member, "가입된 이메일을 찾을 수 없습니다.");
 
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("카카오로 가입한 계정입니다. 로그인 화면에서 카카오 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("소셜 로그인으로 가입한 계정입니다. 로그인 화면에서 연결된 소셜 로그인을 이용해주세요.");
         }
 
-        authCodeRedisService.checkCooldown(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
-        authCodeRedisService.checkAndIncreaseIpSendCount(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, clientIp);
-        authCodeRedisService.checkAndIncreaseSendCount(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
+        authCodeRedisService.checkCooldown(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email);
+        authCodeRedisService.checkAndIncreaseIpSendCount(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, clientIp);
+        authCodeRedisService.checkAndIncreaseSendCount(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email);
 
         String authCode = createAuthCode();
-        authCodeRedisService.saveAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, passwordEncoder.encode(authCode));
+        authCodeRedisService.saveAuthCode(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email, passwordEncoder.encode(authCode));
+
+        try {
+            emailService.sendAccountRecoveryAuthCode(email, authCode, "비밀번호 재설정");
+        } catch (MailException e) {
+            authCodeRedisService.clearAuth(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email);
+            throw new IllegalStateException("이메일 인증번호를 발송하지 못했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해주세요.");
+        }
 
         if (devReturnAuthCode) {
-            System.out.println("비밀번호 재설정 휴대폰 인증번호: " + authCode);
+            System.out.println("비밀번호 재설정 이메일 인증번호: " + authCode);
         }
-        return new PhoneAuthSendResult(phone, authCode);
+        return new EmailAuthSendResult(email, authCode);
     }
 
-    // 비밀번호 재설정 전에 휴대폰 인증번호를 확인 완료 상태로 바꿈
+    // 비밀번호 재설정 전에 이메일 인증번호를 확인 완료 상태로 바꿈
     @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyPasswordResetCode(PasswordResetVerifyRequest request) {
         if (request == null) {
@@ -251,17 +260,16 @@ public class AccountRecoveryService {
         }
 
         String email = memberValidationService.normalizeEmail(request.getEmail());
-        String phone = normalizePhone(request.getPhone());
 
-        Member member = loginDao.findMemberByEmailAndPhone(email, phone);
-        checkRecoverableMember(member, "이메일과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
+        Member member = loginDao.findMemberByEmail(email);
+        checkRecoverableMember(member, "가입된 이메일을 찾을 수 없습니다.");
 
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("카카오로 가입한 계정입니다. 로그인 화면에서 카카오 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("소셜 로그인으로 가입한 계정입니다. 로그인 화면에서 연결된 소셜 로그인을 이용해주세요.");
         }
 
-        checkAuthCode(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone, request.getAuthCode());
+        checkAuthCode(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email, request.getAuthCode());
     }
 
     // 인증 확인이 끝난 계정의 비밀번호를 재설정하고 모든 refresh 세션을 폐기함
@@ -272,19 +280,18 @@ public class AccountRecoveryService {
         }
 
         String email = memberValidationService.normalizeEmail(request.getEmail());
-        String phone = normalizePhone(request.getPhone());
         checkNewPassword(request.getNewPassword(), request.getNewPasswordConfirm());
 
-        Member member = loginDao.findMemberByEmailAndPhone(email, phone);
-        checkRecoverableMember(member, "이메일과 휴대폰 번호가 일치하는 계정을 찾을 수 없습니다.");
+        Member member = loginDao.findMemberByEmail(email);
+        checkRecoverableMember(member, "가입된 이메일을 찾을 수 없습니다.");
 
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(member.getMemberId());
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("카카오로 가입한 계정입니다. 로그인 화면에서 카카오 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("소셜 로그인으로 가입한 계정입니다. 로그인 화면에서 연결된 소셜 로그인을 이용해주세요.");
         }
 
-        if (!authCodeRedisService.isVerified(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone)) {
-            throw new IllegalArgumentException("휴대폰 인증을 먼저 완료해주세요.");
+        if (!authCodeRedisService.isVerified(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email)) {
+            throw new IllegalArgumentException("이메일 인증을 먼저 완료해주세요.");
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), currentPasswordHash)) {
@@ -305,6 +312,6 @@ public class AccountRecoveryService {
 
         passwordHistoryDao.insertPasswordHistory(member.getMemberId(), currentPasswordHash);
         refreshTokenRedisService.deleteAllRefreshTokens(member.getMemberId());
-        authCodeRedisService.clearAuth(RESET_PASSWORD_PURPOSE, PHONE_TARGET_TYPE, phone);
+        authCodeRedisService.clearAuth(RESET_PASSWORD_PURPOSE, EMAIL_TARGET_TYPE, email);
     }
 }

@@ -11,6 +11,5 @@ public class SignupRequest {
     private String email;
     private String password;
     private String passwordConfirm;
-    private String phone;
     private List<SignupTermsAgreementRequest> agreements;
 }

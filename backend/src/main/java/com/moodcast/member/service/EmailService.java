@@ -42,4 +42,17 @@ public class EmailService {
 
         mailSender.send(message);
     }
+
+    public void sendAccountRecoveryAuthCode(String email, String authCode, String subjectType) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(email);
+        message.setSubject("[MoodCast] " + subjectType + " 이메일 인증번호");
+        message.setText(
+                "MoodCast " + subjectType + " 이메일 인증번호입니다. \n\n"
+                        + "인증번호: " + authCode + "\n\n"
+                        + "인증번호는 3분간 유효합니다. 본인이 요청하지 않았다면 이 메일을 무시해주세요."
+        );
+
+        mailSender.send(message);
+    }
 }

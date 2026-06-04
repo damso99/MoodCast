@@ -65,37 +65,6 @@ public class SignupController {
             );
     }
 
-    // 회원가입 휴대폰 인증 발송
-    @PostMapping(value="auth/phone/send")
-    public ResponseEntity<?> sendPhoneAuthCode(
-            @RequestBody PhoneAuthSendRequest request,
-            HttpServletRequest httpRequest
-    ) {
-
-            PhoneAuthSendResult result = signupService.sendPhoneAuthCode(request.getPhone(), getClientIp(httpRequest));
-            Map<String, Object> response = new LinkedHashMap<>();
-            response.put("success", true);
-            response.put("message", "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
-            response.put("phone", result.getPhone());
-            if (devReturnAuthCode) {
-                response.put("authCode", result.getAuthCode());
-            }
-
-            return ResponseEntity.ok(response);
-    }
-
-    // 회원가입 휴대폰 인증 확인
-    @PostMapping(value="auth/phone/verify")
-    public ResponseEntity<?> verifyPhoneAuthCode(@RequestBody PhoneAuthVerifyRequest request) {
-            signupService.verifyPhoneAuthCode(request.getPhone(), request.getAuthCode());
-            return ResponseEntity.ok(
-                    Map.of(
-                            "success", true,
-                            "message", "휴대폰 인증이 완료되었습니다."
-                    )
-            );
-    }
-
     // 이메일 기본검사, 중복체크
     @GetMapping(value="check/email")
     public ResponseEntity<?> checkEmail(@RequestParam String email) {
@@ -143,19 +112,6 @@ public class SignupController {
                             "success", true
                     )
             );
-    }
-
-    // 회원가입 step2 검증
-    @PostMapping("validate/phone")
-    public ResponseEntity<?> validatePhone (@RequestBody PhoneAuthSendRequest request) {
-        signupService.validatePhone (
-                request.getPhone());
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "success", true
-                )
-        );
     }
 
     @PostMapping("complete")

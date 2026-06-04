@@ -23,8 +23,6 @@ export const SignupPage = () => {
     emailCode: "",
     password: "",
     passwordConfirm: "",
-    phone: "",
-    phoneCode: "",
   });
 
   const [fieldMessage, setFieldMessage] = useState({
@@ -57,17 +55,11 @@ export const SignupPage = () => {
 
   // 0: 인증 전, 1: 인증번호 발송 완료, 3: 인증 완료
   const [emailAuth, setEmailAuth] = useState(0);
-  const [phoneAuth, setPhoneAuth] = useState(0);
 
   // 이메일
   const [emailSendLoading, setEmailSendLoading] = useState(false);
   const [emailCooldown, setEmailCooldown] = useState(0);
   const [emailExpireTime, setEmailExpireTime] = useState(0);
-
-  // 휴대폰
-  const [phoneSendLoading, setPhoneSendLoading] = useState(false);
-  const [phoneCooldown, setPhoneCooldown] = useState(0);
-  const [phoneExpireTime, setPhoneExpireTime] = useState(0);
 
   const [message, setMessage] = useState("");
   const [toast, setToast] = useState({
@@ -129,35 +121,6 @@ export const SignupPage = () => {
       clearTimeout(timer);
     };
   }, [emailExpireTime]);
-
-  // 휴대폰
-  useEffect(() => {
-    if (phoneCooldown <= 0) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setPhoneCooldown(phoneCooldown - 1);
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [phoneCooldown]);
-
-  useEffect(() => {
-    if (phoneExpireTime <= 0) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setPhoneExpireTime(phoneExpireTime - 1);
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [phoneExpireTime]);
 
   const getTermsList = () => {
     setTermsLoading(true);
@@ -253,12 +216,6 @@ export const SignupPage = () => {
       setEmailAuth(0);
       setEmailCooldown(0);
       setEmailExpireTime(0);
-    }
-
-    if (name === "phone") {
-      setPhoneAuth(0);
-      setPhoneCooldown(0);
-      setPhoneExpireTime(0);
     }
 
     setMessage("");
@@ -629,7 +586,7 @@ export const SignupPage = () => {
       });
   };
 
-  const movePhoneStep = () => {
+  const moveTermsStep = () => {
     const hasNickname = signup.nickname.trim().length > 0;
 
     if (fieldStatus.name !== "valid") {
@@ -672,106 +629,6 @@ export const SignupPage = () => {
         password: signup.password,
         passwordConfirm: signup.passwordConfirm,
       })
-      .then((res) => {
-        console.log(res);
-        setStep(2);
-        setMessage("");
-      })
-      .catch((err) => {
-        console.log(err);
-        showToast(
-          "error",
-          getApiMessage(err, "입력한 기본 정보를 다시 확인해주세요."),
-        );
-      });
-  };
-
-  const sendPhoneAuthCode = () => {
-    if (phoneSendLoading) {
-      return;
-    }
-
-    if (phoneCooldown > 0) {
-      showToast("error", `${phoneCooldown}초 후 다시 요청할 수 있습니다.`);
-      return;
-    }
-
-    if (!signup.phone.trim()) {
-      showToast("error", "휴대폰 번호를 입력해주세요.");
-      return;
-    }
-
-    setPhoneSendLoading(true);
-
-    axios
-      .post(`${BACKSERVER}/signup/auth/phone/send`, {
-        phone: signup.phone,
-      })
-      .then((res) => {
-        setPhoneAuth(1);
-        setPhoneCooldown(60);
-        setPhoneExpireTime(180);
-        logDevAuthCode("회원가입 휴대폰", res.data?.authCode);
-        showToast("success", res.data?.message || "휴대폰 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
-      })
-      .catch((err) => {
-        setPhoneAuth(0);
-        showToast(
-          "error",
-          getApiMessage(err, "휴대폰 번호와 요청 제한을 확인해주세요."),
-        );
-      })
-      .finally(() => {
-        setPhoneSendLoading(false);
-      });
-  };
-
-  const checkPhoneAuthCode = () => {
-    if (phoneAuth !== 1) {
-      showToast("error", "먼저 휴대폰 인증번호를 요청해주세요.");
-      return;
-    }
-
-    if (phoneExpireTime <= 0) {
-      showToast("error", "인증번호가 만료되었습니다. 다시 요청해주세요.");
-      return;
-    }
-
-    if (!signup.phoneCode.trim()) {
-      showToast("error", "휴대폰 인증번호를 입력해주세요.");
-      return;
-    }
-
-    axios
-      .post(`${BACKSERVER}/signup/auth/phone/verify`, {
-        phone: signup.phone,
-        authCode: signup.phoneCode,
-      })
-      .then((res) => {
-        setPhoneAuth(3);
-        setPhoneExpireTime(0);
-        showToast("success", res?.data?.message || "휴대폰 인증이 완료되었습니다.");
-      })
-      .catch((err) => {
-        setPhoneAuth(1);
-        showToast(
-          "error",
-          getApiMessage(err, "휴대폰 인증번호를 확인해주세요."),
-        );
-      });
-  };
-
-  // 폰인증 -> 약관동의
-  const moveTermsStep = () => {
-    if (phoneAuth !== 3) {
-      showToast("error", "휴대폰 인증을 완료해주세요.");
-      return;
-    }
-
-    axios
-      .post(`${BACKSERVER}/signup/validate/phone`, {
-        phone: signup.phone,
-      })
       .then(() => {
         return getTermsList();
       })
@@ -781,14 +638,14 @@ export const SignupPage = () => {
           return;
         }
 
-        setStep(3);
+        setStep(2);
         setMessage("");
       })
       .catch((err) => {
         console.log(err);
         showToast(
           "error",
-          getApiMessage(err, "휴대폰 인증 상태를 다시 확인해주세요."),
+          getApiMessage(err, "입력한 기본 정보를 다시 확인해주세요."),
         );
       });
   };
@@ -879,7 +736,6 @@ export const SignupPage = () => {
         email: signup.email,
         password: signup.password,
         passwordConfirm: signup.passwordConfirm,
-        phone: signup.phone,
         agreements: getAgreementList(),
       })
       .then((res) => {
@@ -926,15 +782,11 @@ export const SignupPage = () => {
       signup={signup}
       terms={terms}
       emailAuth={emailAuth}
-      phoneAuth={phoneAuth}
       message={message}
       toast={toast}
       inputSignup={inputSignup}
       sendEmailAuthCode={sendEmailAuthCode}
       checkEmailAuthCode={checkEmailAuthCode}
-      sendPhoneAuthCode={sendPhoneAuthCode}
-      checkPhoneAuthCode={checkPhoneAuthCode}
-      movePhoneStep={movePhoneStep}
       moveTermsStep={moveTermsStep}
       movePrevStep={movePrevStep}
       toggleTerm={toggleTerm}
@@ -952,9 +804,6 @@ export const SignupPage = () => {
       selectedTerm={selectedTerm}
       openTermContent={openTermContent}
       closeTermContent={closeTermContent}
-      phoneSendLoading={phoneSendLoading}
-      phoneCooldown={phoneCooldown}
-      phoneExpireTime={phoneExpireTime}
       termsLoading={termsLoading}
       signupSubmitting={signupSubmitting}
       signupCompleteModalOpen={signupCompleteModalOpen}

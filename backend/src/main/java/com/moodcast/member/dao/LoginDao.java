@@ -8,10 +8,6 @@ import org.apache.ibatis.annotations.Param;
 public interface LoginDao {
     Member findMemberByEmail(@Param("email") String email);
 
-    Member findMemberByNameAndPhone(@Param("name") String name, @Param("phone") String phone);
-
-    Member findMemberByEmailAndPhone(@Param("email") String email, @Param("phone") String phone);
-
     String findPasswordHashByEmail(@Param("email") String email);
 
     String findPasswordHashByMemberId(@Param("memberId") Long memberId);

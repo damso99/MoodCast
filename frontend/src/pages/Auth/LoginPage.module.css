@@ -193,6 +193,7 @@
 }
 
 .secondary {
+  width: 100%;
   min-height: 50px;
   border: 1px solid #ddd8ff;
   border-radius: 14px;

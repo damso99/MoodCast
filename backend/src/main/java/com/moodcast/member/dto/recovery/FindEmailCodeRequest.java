@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class FindEmailCodeRequest {
     private String name;
-    private String phone;
+    private String email;
 }

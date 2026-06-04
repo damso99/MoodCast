@@ -6,7 +6,6 @@ import AuthConfirmModal from "./components/AuthConfirmModal";
 import { getApiMessage, getToastDuration } from "./authFeedback";
 import styles from "./LoginPage.module.css";
 
-const phoneRegex = /^010[0-9]{8}$/;
 const passwordRegex =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
 const passwordPolicyMessage =
@@ -30,12 +29,11 @@ export const AccountRecoveryPage = () => {
   });
   const [findEmailForm, setFindEmailForm] = useState({
     name: "",
-    phone: "",
+    email: "",
     authCode: "",
   });
   const [passwordForm, setPasswordForm] = useState({
     email: "",
-    phone: "",
     authCode: "",
     newPassword: "",
     newPasswordConfirm: "",
@@ -82,7 +80,7 @@ export const AccountRecoveryPage = () => {
   };
 
   const inputPassword = (e) => {
-    const shouldResetVerification = ["email", "phone", "authCode"].includes(e.target.name);
+    const shouldResetVerification = ["email", "authCode"].includes(e.target.name);
     const nextValue = e.target.value;
     const nextPasswordForm = {
       ...passwordForm,
@@ -102,24 +100,24 @@ export const AccountRecoveryPage = () => {
       return;
     }
 
-    if (!phoneRegex.test(findEmailForm.phone.trim())) {
-      showToast("error", "휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
+    if (!findEmailForm.email.trim()) {
+      showToast("error", "이메일을 입력해주세요.");
       return;
     }
 
     setIsLoading(true);
 
     axios
-      .post(`${BACKSERVER}/auth/recovery/email/send-phone-code`, {
+      .post(`${BACKSERVER}/auth/recovery/email/send-code`, {
         name: findEmailForm.name,
-        phone: findEmailForm.phone,
+        email: findEmailForm.email,
       })
       .then((res) => {
-        logDevAuthCode("아이디 찾기 휴대폰", res.data?.authCode);
-        showToast("success", res.data.message || "아이디 찾기 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        logDevAuthCode("아이디 찾기 이메일", res.data?.authCode);
+        showToast("success", res.data.message || "가입 이메일로 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
-        showToast("error", getApiMessage(err, "이름과 휴대폰 번호를 다시 확인해주세요."));
+        showToast("error", getApiMessage(err, "이름과 이메일을 다시 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -142,6 +140,7 @@ export const AccountRecoveryPage = () => {
         setFoundAccount({
           email: res.data.email || "",
           kakaoLinked: Boolean(res.data.kakaoLinked),
+          googleLinked: Boolean(res.data.googleLinked),
         });
         showToast("success", res.data.message || "계정을 찾았습니다.");
       })
@@ -159,25 +158,19 @@ export const AccountRecoveryPage = () => {
       return;
     }
 
-    if (!phoneRegex.test(passwordForm.phone.trim())) {
-      showToast("error", "휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
-      return;
-    }
-
     setIsLoading(true);
     setPasswordCodeVerified(false);
 
     axios
-      .post(`${BACKSERVER}/auth/recovery/password/send-phone-code`, {
+      .post(`${BACKSERVER}/auth/recovery/password/send-code`, {
         email: passwordForm.email,
-        phone: passwordForm.phone,
       })
       .then((res) => {
-        logDevAuthCode("비밀번호 재설정 휴대폰", res.data?.authCode);
-        showToast("success", res.data.message || "비밀번호 재설정 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        logDevAuthCode("비밀번호 재설정 이메일", res.data?.authCode);
+        showToast("success", res.data.message || "비밀번호 재설정 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
-        showToast("error", getApiMessage(err, "이메일과 휴대폰 번호를 다시 확인해주세요."));
+        showToast("error", getApiMessage(err, "가입 이메일을 다시 확인해주세요."));
       })
       .finally(() => {
         setIsLoading(false);
@@ -195,12 +188,11 @@ export const AccountRecoveryPage = () => {
     axios
       .post(`${BACKSERVER}/auth/recovery/password/verify`, {
         email: passwordForm.email,
-        phone: passwordForm.phone,
         authCode: passwordForm.authCode,
       })
       .then((res) => {
         setPasswordCodeVerified(true);
-        showToast("success", res.data.message || "휴대폰 인증이 완료되었습니다.");
+        showToast("success", res.data.message || "이메일 인증이 완료되었습니다.");
       })
       .catch((err) => {
         setPasswordCodeVerified(false);
@@ -215,13 +207,12 @@ export const AccountRecoveryPage = () => {
     e.preventDefault();
 
     if (!passwordCodeVerified) {
-      showToast("error", "휴대폰 인증을 먼저 완료해주세요.");
+      showToast("error", "이메일 인증을 먼저 완료해주세요.");
       return;
     }
 
     const resetPayload = {
       email: passwordForm.email.trim().toLowerCase(),
-      phone: passwordForm.phone.trim(),
       authCode: passwordForm.authCode.trim(),
       newPassword: passwordForm.newPassword.trim(),
       newPasswordConfirm: passwordForm.newPasswordConfirm.trim(),
@@ -272,7 +263,7 @@ export const AccountRecoveryPage = () => {
             <strong>MoodCast</strong>
           </div>
           <h1>계정 찾기</h1>
-          <p>가입 정보와 휴대폰 인증으로 계정을 확인합니다</p>
+          <p>가입 이메일 인증으로 계정을 확인합니다</p>
         </header>
 
         <div className={styles.tabs}>
@@ -309,15 +300,16 @@ export const AccountRecoveryPage = () => {
 
             <div className={styles.codeRow}>
               <div className={styles.field}>
-                <label htmlFor="findEmailPhone">
-                  휴대폰 번호 <b>*</b>
+                <label htmlFor="findEmailAddress">
+                  이메일 <b>*</b>
                 </label>
                 <input
-                  id="findEmailPhone"
-                  name="phone"
-                  value={findEmailForm.phone}
+                  type="email"
+                  id="findEmailAddress"
+                  name="email"
+                  value={findEmailForm.email}
                   onChange={inputFindEmail}
-                  placeholder="01012345678"
+                  placeholder="가입 이메일 주소"
                 />
               </div>
               <button type="button" className={styles.secondary} onClick={sendFindEmailCode} disabled={isLoading}>
@@ -347,6 +339,7 @@ export const AccountRecoveryPage = () => {
               <p className={styles.resultBox}>
                 가입 이메일: {foundAccount.email}
                 {foundAccount.kakaoLinked ? <span>카카오 연동 계정입니다.</span> : null}
+                {foundAccount.googleLinked ? <span>Google 연동 계정입니다.</span> : null}
               </p>
             ) : null}
 
@@ -368,24 +361,9 @@ export const AccountRecoveryPage = () => {
               />
             </div>
 
-            <div className={styles.codeRow}>
-              <div className={styles.field}>
-                <label htmlFor="resetPhone">
-                  휴대폰 번호 <b>*</b>
-                </label>
-                <input
-                  id="resetPhone"
-                  name="phone"
-                  value={passwordForm.phone}
-                  onChange={inputPassword}
-                  placeholder="01012345678"
-                  readOnly={passwordCodeVerified}
-                />
-              </div>
-              <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading || passwordCodeVerified}>
-                {passwordCodeVerified ? "인증완료" : "인증번호 발송"}
-              </button>
-            </div>
+            <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading || passwordCodeVerified}>
+              {passwordCodeVerified ? "이메일 인증완료" : "이메일 인증번호 발송"}
+            </button>
 
             <div className={styles.codeRow}>
               <div className={styles.field}>
@@ -406,7 +384,7 @@ export const AccountRecoveryPage = () => {
               </button>
             </div>
 
-            {passwordCodeVerified ? <p className={styles.message}>휴대폰 인증이 완료되었습니다.</p> : null}
+            {passwordCodeVerified ? <p className={styles.message}>이메일 인증이 완료되었습니다.</p> : null}
 
             <div className={styles.field}>
               <label htmlFor="newPassword">

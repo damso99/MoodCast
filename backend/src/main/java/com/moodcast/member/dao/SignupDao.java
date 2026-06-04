@@ -10,7 +10,6 @@ import java.util.List;
 public interface SignupDao {
 
     int countByEmail(@Param("email") String email);
-    int countByPhone(@Param("phone") String phone);
     int countByNickname(@Param("nickname") String nickname);
 
     List<Terms> findActiveTerms();

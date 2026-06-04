@@ -8,4 +8,5 @@ import lombok.Getter;
 public class FindEmailResult {
     private String email;
     private boolean kakaoLinked;
+    private boolean googleLinked;
 }

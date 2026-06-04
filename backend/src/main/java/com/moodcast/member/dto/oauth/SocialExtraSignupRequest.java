@@ -10,6 +10,5 @@ public class SocialExtraSignupRequest {
     private String pendingToken;
     private String name;
     private String nickname;
-    private String phone;
     private List<SignupTermsAgreementRequest> agreements;
 }

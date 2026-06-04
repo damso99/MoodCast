@@ -2,7 +2,6 @@ package com.moodcast.member.service;
 
 import com.moodcast.member.dao.SignupDao;
 import com.moodcast.member.dto.signup.EmailAuthSendResult;
-import com.moodcast.member.dto.signup.PhoneAuthSendResult;
 import com.moodcast.member.dto.signup.SignupRequest;
 import com.moodcast.member.dto.signup.SignupTermsAgreementRequest;
 import com.moodcast.member.vo.Member;
@@ -32,9 +31,6 @@ public class SignupService {
     private EmailService emailService;
 
     @Autowired
-    private PhoneService phoneService;
-
-    @Autowired
     private AuthCodeRedisService authCodeRedisService;
 
     @Value("${app.dev-return-auth-code:false}")
@@ -58,9 +54,6 @@ public class SignupService {
     // {8,20} 최소 8자 최대 20자
     private static final Pattern PASSWORD_PATTERN =
             Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[?!@#$%^&*])[A-Za-z\\d?!@#$%^&*]{8,20}$");
-
-    // 전화번호 정규식 - 010만 허용 010포함 11자리 고정
-    private static final Pattern PHONE_PATTERN = Pattern.compile("^010[0-9]{8}$");
 
     // 랜덤 난수
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -131,35 +124,12 @@ public class SignupService {
         }
     }
 
-    // 전화번호 기본 검증 메서드
-    private String normalizePhone(String phone) {
-        if (phone == null) {
-            throw new IllegalArgumentException("전화번호를 입력해주세요.");
-        }
-        phone = phone.trim();
-        if (phone.isEmpty()) {
-            throw new IllegalArgumentException("전화번호를 입력해주세요.");
-        }
-        if (!PHONE_PATTERN.matcher(phone).matches()) {
-            throw new IllegalArgumentException("휴대폰 번호는 010으로 시작하는 11자리 숫자로 입력해주세요.");
-        }
-        return phone;
-    }
-
     // 이메일 중복 검증 메서드
     private void checkEmailDuplicate(String email) {
         int emailCount = signupDao.countByEmail(email);
 
         if (emailCount > 0) {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
-        }
-    }
-
-    // 전화번호 중복 검증 메서드
-    public void checkPhoneDuplicate(String phone) {
-        int phoneCount = signupDao.countByPhone(phone);
-        if (phoneCount > 0) {
-            throw new IllegalArgumentException("이미 사용 중인 휴대폰 번호입니다.");
         }
     }
 
@@ -227,15 +197,6 @@ public class SignupService {
         }
     }
 
-    // 휴대폰 인증 완료여부
-    private void checkPhoneVerified(String phone) {
-        boolean isVerified = authCodeRedisService.isVerified("SIGNUP", "PHONE", phone);
-
-        if (!isVerified) {
-            throw new IllegalArgumentException("휴대폰 인증 시간이 만료되었습니다. 인증번호를 다시 요청해주세요.");
-        }
-    }
-
     // 이메일 인증코드
     @Transactional
     public EmailAuthSendResult sendEmailAuthCode(String email) {
@@ -275,47 +236,12 @@ public class SignupService {
         return new EmailAuthSendResult(email, authCode);
     }
 
-    // 휴대폰 인증코드
-    @Transactional
-    public PhoneAuthSendResult sendPhoneAuthCode(String phone) {
-        return sendPhoneAuthCode(phone, "UNKNOWN");
-    }
-
-    // 휴대폰 인증코드
-    @Transactional
-    public PhoneAuthSendResult sendPhoneAuthCode(String phone, String clientIp) {
-        phone = normalizePhone(phone);
-        checkPhoneDuplicate(phone);
-
-        authCodeRedisService.checkCooldown("SIGNUP", "PHONE", phone);
-        authCodeRedisService.checkAndIncreaseIpSendCount("SIGNUP", "PHONE", clientIp);
-        authCodeRedisService.checkAndIncreaseSendCount("SIGNUP", "PHONE", phone);
-
-        String authCode = createAuthCode();
-        String hashCode = passwordEncoder.encode(authCode);
-
-        authCodeRedisService.saveAuthCode("SIGNUP", "PHONE", phone, hashCode);
-
-        // phoneService.sendSignupAuthCode(phone, authCode); 포인트 없어서 일단 주석
-        if (devReturnAuthCode) {
-            System.out.println("휴대폰 인증번호: " + authCode);
-        }
-        return new PhoneAuthSendResult(phone, authCode);
-    }
-
     // 이메일 인증코드 확인
     // IllegalArgumentException 예외는 사용자 문제이므로 롤백 대상에서 제외
     @Transactional(noRollbackFor = IllegalArgumentException.class)
     public void verifyEmailAuthCode(String email, String authCode) {
         email = normalizeEmail(email);
         checkRedisAuthCode("SIGNUP", "EMAIL", email, authCode);
-    }
-
-    // 휴대폰 인증코드 확인
-    @Transactional(noRollbackFor = IllegalArgumentException.class)
-    public void verifyPhoneAuthCode(String phone, String authCode) {
-        phone = normalizePhone(phone);
-        checkRedisAuthCode("SIGNUP", "PHONE", phone, authCode);
     }
 
     // 이메일 기본검사, 중복여부
@@ -404,12 +330,6 @@ public class SignupService {
     }
 
     // 회원가입 step2 검증
-    public void validatePhone(String phone) {
-        phone = normalizePhone(phone);
-        checkPhoneDuplicate(phone);
-        checkPhoneVerified(phone);
-    }
-
     // 회원가입 최종 검증
     @Transactional
     public void completeSignup(SignupRequest request) {
@@ -420,19 +340,16 @@ public class SignupService {
         String name = normalizeName(request.getName());
         String nickname = normalizeNickname(request.getNickname());
         String email = normalizeEmail(request.getEmail());
-        String phone = normalizePhone(request.getPhone());
 
         checkPassword(request.getPassword(), request.getPasswordConfirm());
 
         checkEmailDuplicate(email);
-        checkPhoneDuplicate(phone);
 
         if (nickname != null) {
             checkNicknameDuplicate(nickname);
         }
 
         checkEmailVerified(email);
-        checkPhoneVerified(phone);
         checkRequiredTermsAgreed(request.getAgreements());
 
         String passwordHash = passwordEncoder.encode(request.getPassword());
@@ -442,9 +359,9 @@ public class SignupService {
         member.setPasswordHash(passwordHash);
         member.setName(name);
         member.setNickname(nickname);
-        member.setPhone(phone);
+        member.setPhone(null);
         member.setEmailVerified(1);
-        member.setPhoneVerified(1);
+        member.setPhoneVerified(0);
 
         int memberResult = signupDao.insertMember(member);
 
@@ -455,6 +372,5 @@ public class SignupService {
         insertTermsAgreements(member.getMemberId(), request.getAgreements());
 
         authCodeRedisService.clearAuth("SIGNUP", "EMAIL", email);
-        authCodeRedisService.clearAuth("SIGNUP", "PHONE", phone);
     }
 }
