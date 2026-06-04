@@ -6,6 +6,7 @@ import com.moodcast.chat.dto.ChatRoomMessageResponseDto;
 import com.moodcast.chat.dto.ChatRoomMessageSendRequestDto;
 import com.moodcast.chat.dto.ChatRoomResponseDto;
 import com.moodcast.chat.mapper.GroupChatMapper;
+import com.moodcast.chat.service.GroupChatService;
 import com.moodcast.chat.vo.ChatMessageVo;
 import com.moodcast.chat.vo.ChatRoomMemberVo;
 import com.moodcast.chat.vo.ChatRoomVo;
@@ -43,10 +44,14 @@ public class ChatService {
             return null;
         }
 
-        ChatRoomVo room = ensureDirectRoom(chatVo.getSenderId(), chatVo.getReceiverId());
+        ChatRoomVo room = ensureDirectRoom(
+                Long.valueOf(chatVo.getSenderId()),
+                Long.valueOf(chatVo.getReceiverId())
+        );
         if (room == null || room.getRoomId() == null) {
             return null;
         }
+
 
         ChatRoomMessageSendRequestDto request = new ChatRoomMessageSendRequestDto();
         request.setSenderId((long) chatVo.getSenderId());
@@ -108,7 +113,7 @@ public class ChatService {
             return null;
         }
 
-        ChatRoomVo room = groupChatService.getRoomsByMemberId(memberId, ROOM_TYPE_DIRECT).stream()
+        ChatRoomResponseDto room = groupChatService.getRoomsByMemberId(memberId, ROOM_TYPE_DIRECT).stream()
                 .filter(item -> Objects.equals(item.getRoomId(), targetMessage.getRoomId()))
                 .findFirst()
                 .orElse(null);
@@ -212,7 +217,7 @@ public class ChatService {
         return groupChatService.findRoomByMemberIds(List.of(memberId, partnerId), ROOM_TYPE_DIRECT);
     }
 
-    private ChatThreadVo toDirectThread(Long memberId, ChatRoomVo room) {
+    private ChatThreadVo toDirectThread(Long memberId, ChatRoomResponseDto room) {
         if (room == null || room.getRoomId() == null) {
             return null;
         }
