@@ -22,12 +22,13 @@ export function ReportReasonStep({
 
       <div className={styles.drawerBody}>
         <p className={styles.guideText}>
-          관리자가 어떤 이유로 처리하는지 확인할 수 있도록 사유를 남깁니다.
+          {
+            "\uAD00\uB9AC\uC790\uAC00 \uC5B4\uB5A4 \uC774\uC720\uB85C \uCC98\uB9AC\uD588\uB294\uC9C0 \uD655\uC778\uD560 \uC218 \uC788\uB3C4\uB85D \uC0AC\uC720\uB97C \uB0A8\uAE41\uB2C8\uB2E4."
+          }
         </p>
 
-        {/* 경고/영구 정지 사유 입력 ---------------------------------- */}
         <section className={styles.formSection}>
-          <label htmlFor="reason-select">제재 사유 *</label>
+          <label htmlFor="reason-select">{"\uC81C\uC7AC \uC0AC\uC720 *"}</label>
           <select
             id="reason-select"
             value={selectedReason}
@@ -40,7 +41,7 @@ export function ReportReasonStep({
         </section>
 
         <section className={styles.formSection}>
-          <label htmlFor="reason-detail">상세 설명</label>
+          <label htmlFor="reason-detail">{"\uC0C1\uC138 \uC124\uBA85"}</label>
           <textarea
             id="reason-detail"
             maxLength={200}
@@ -53,15 +54,11 @@ export function ReportReasonStep({
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button
-          className={styles.secondaryButton}
-          type="button"
-          onClick={onBack}
-        >
-          이전
+        <button className={styles.secondaryButton} type="button" onClick={onBack}>
+          {"\uC774\uC804"}
         </button>
         <button className={styles.primaryButton} type="button" onClick={onNext}>
-          다음
+          {"\uB2E4\uC74C"}
         </button>
       </footer>
     </>

@@ -10,7 +10,7 @@ import { UserManagementPage } from "./adminComponentsJs/userManagement/UserManag
 import { pageTitles } from "./adminComponentsJs/common/adminConfig";
 import { useAuthStore } from "../../stores/useAuthStore";
 
-const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
+const ADMIN_ROLES = ["SUPER_ADMIN"];
 const SUPER_ADMIN_ROLE = "SUPER_ADMIN";
 
 /* ==========================================================================

@@ -20,7 +20,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
 /* ==========================================================================
  * 사용자 관리 페이지
  * --------------------------------------------------------------------------
- * 일반 회원, 정지 회원, 관리자 회원의 계정 권한을 관리하는 화면입니다.
+ * 일반 회원, 정지 회원, 슈퍼 관리자 계정 권한을 관리하는 화면입니다.
  *
  * 담당 기능:
  * - 회원 상태별 필터 버튼
@@ -42,7 +42,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  *
  * members 상태 설명:
  * - members 테이블에서 조회한 전체 회원 목록을 기억하는 배열입니다.
- * - "전체 / 일반 회원 / 관리자 회원" 탭에 맞춰 화면에서 필터링해서 출력합니다.
+ * - "전체 / 일반 회원 / 정지 회원 / 슈퍼 관리자" 탭에 맞춰 화면에서 필터링해서 출력합니다.
  * - 정지 회원 탭은 status가 SUSPENDED인 회원만 보여줍니다.
  *
  * searchField / searchKeyword 상태 설명:
@@ -229,11 +229,11 @@ export function UserManagementPage() {
 
   const tabFilteredMembers = members.filter((member) => {
     if (selectedUserType === "일반 회원") {
-      return member.role === "USER";
+      return member.role !== "SUPER_ADMIN";
     }
 
-    if (selectedUserType === "관리자 회원") {
-      return ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"].includes(member.role);
+    if (selectedUserType === "슈퍼 관리자") {
+      return member.role === "SUPER_ADMIN";
     }
 
     if (selectedUserType === "정지 회원") {
@@ -286,7 +286,7 @@ export function UserManagementPage() {
   }, [currentPage, totalPageCount]);
 
   const fallbackNormalMemberCount = members.filter(
-    (member) => member.role === "USER",
+    (member) => member.role !== "SUPER_ADMIN",
   ).length;
 
   // members 목록 중 status가 SUSPENDED인 회원만 세어서 "정지 회원" 카드에 표시합니다.
@@ -295,8 +295,8 @@ export function UserManagementPage() {
     (member) => normalizeMemberStatus(member.status) === "SUSPENDED",
   ).length;
 
-  const fallbackAdminMemberCount = members.filter((member) =>
-    ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"].includes(member.role),
+  const fallbackAdminMemberCount = members.filter(
+    (member) => member.role === "SUPER_ADMIN",
   ).length;
 
   const summaryTotalMemberCount =
@@ -392,12 +392,12 @@ export function UserManagementPage() {
       return "일반 회원";
     }
 
-    if (role === "ADMIN" || role === "NORMAL_ADMIN") {
-      return "관리자";
-    }
-
     if (role === "SUPER_ADMIN") {
       return "슈퍼 관리자";
+    }
+
+    if (role === "ADMIN" || role === "NORMAL_ADMIN") {
+      return "일반 회원";
     }
 
     return role || "-";
@@ -425,7 +425,7 @@ export function UserManagementPage() {
       <section className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <SegmentedControl
-            labels={["전체", "일반 회원", "정지 회원", "관리자 회원"]}
+            labels={["전체", "일반 회원", "정지 회원", "슈퍼 관리자"]}
             selectedLabel={selectedUserType}
             onSelect={setSelectedUserType}
           />
@@ -478,7 +478,7 @@ export function UserManagementPage() {
           accent="orange"
         />
         <MetricCard
-          label="관리자 회원"
+          label="슈퍼 관리자"
           value={adminMemberCount.toLocaleString()}
           icon={<DashboardOutlinedIcon />}
           accent="pink"

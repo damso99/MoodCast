@@ -3,8 +3,13 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
+import AuthConfirmModal from "./components/AuthConfirmModal";
 import { getApiMessage, getToastDuration } from "./authFeedback";
-import { startGoogleLogin, startKakaoLogin, startNaverLogin } from "./socialAuth";
+import {
+  startGoogleLogin,
+  startKakaoLogin,
+  startNaverLogin,
+} from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
 const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
@@ -24,6 +29,10 @@ export const LoginPage = () => {
   const [toast, setToast] = useState({
     show: false,
     type: "",
+    message: "",
+  });
+  const [sanctionModal, setSanctionModal] = useState({
+    open: false,
     message: "",
   });
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
@@ -80,7 +89,10 @@ export const LoginPage = () => {
     }
 
     if (!member.email.trim() || !member.password.trim()) {
-      showToast("error", "이메일과 비밀번호를 입력해주세요.");
+      showToast(
+        "error",
+        "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.",
+      );
       return;
     }
 
@@ -99,8 +111,6 @@ export const LoginPage = () => {
         },
       )
       .then((res) => {
-        console.log(res.data);
-
         if (member.rememberId) {
           window.localStorage.setItem(SAVED_EMAIL_KEY, member.email.trim());
         } else {
@@ -123,11 +133,25 @@ export const LoginPage = () => {
         }
       })
       .catch((err) => {
-        console.log(err);
-        showToast(
-          "error",
-          getApiMessage(err, "로그인 정보를 확인해주세요."),
+        const loginErrorMessage = getApiMessage(
+          err,
+          "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.",
         );
+
+        if (
+          loginErrorMessage.includes("\uC81C\uC7AC\uB41C \uACC4\uC815") ||
+          loginErrorMessage.includes(
+            "\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
+          )
+        ) {
+          setSanctionModal({
+            open: true,
+            message: loginErrorMessage,
+          });
+          return;
+        }
+
+        showToast("error", loginErrorMessage);
       })
       .finally(() => {
         setIsLoading(false);
@@ -135,7 +159,10 @@ export const LoginPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 또는 Google 로그인을 이용해주세요.`);
+    showToast(
+      "info",
+      `${label}\uC740 \uC544\uC9C1 \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4. \uD604\uC7AC\uB294 \uCE74\uCE74\uC624 \uB610\uB294 Google \uB85C\uADF8\uC778\uC744 \uC774\uC6A9\uD574\uC8FC\uC138\uC694.`,
+    );
   };
 
   const handleKakaoLogin = () => {
@@ -171,20 +198,30 @@ export const LoginPage = () => {
   };
 
   return (
-    <LoginView
-      member={member}
-      message={message}
-      toast={toast}
-      isLoading={isLoading}
-      inputMember={inputMember}
-      handleLogin={handleLogin}
-      handleKakaoLogin={handleKakaoLogin}
-      handleGoogleLogin={handleGoogleLogin}
-      handleNaverLogin={handleNaverLogin}
-      showReadyMessage={showReadyMessage}
-      goRecovery={goRecovery}
-      goSignup={goSignup}
-    />
+    <>
+      <LoginView
+        member={member}
+        message={message}
+        toast={toast}
+        isLoading={isLoading}
+        inputMember={inputMember}
+        handleLogin={handleLogin}
+        handleKakaoLogin={handleKakaoLogin}
+        handleGoogleLogin={handleGoogleLogin}
+        showReadyMessage={showReadyMessage}
+        goRecovery={goRecovery}
+        goSignup={goSignup}
+      />
+
+      <AuthConfirmModal
+        open={sanctionModal.open}
+        title={"\uB85C\uADF8\uC778 \uC81C\uD55C \uC548\uB0B4"}
+        description={sanctionModal.message}
+        confirmOnly
+        confirmText={"\uD655\uC778"}
+        onConfirm={() => setSanctionModal({ open: false, message: "" })}
+      />
+    </>
   );
 };
 

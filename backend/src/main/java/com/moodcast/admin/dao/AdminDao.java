@@ -12,6 +12,9 @@ import com.moodcast.admin.vo.AdminMemberDetail;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRecentMember;
+import com.moodcast.admin.vo.AdminReport;
+import com.moodcast.admin.vo.AdminReportActivity;
+import com.moodcast.admin.vo.AdminReportReporter;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
@@ -20,6 +23,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /* ==========================================================================
@@ -33,7 +37,7 @@ import java.time.LocalDateTime;
  *
  * 현재 단계:
  * - 다른 폴더의 mapper XML 파일을 수정하지 않기 위해 메서드는 아직 추가하지 않습니다.
- * - 나중에 관리자 회원 목록 조회, 관리자 승급/강등, 공지사항 관리 등이 필요해지면
+ * - 나중에 슈퍼 관리자 목록 조회, 관리자 승급/강등, 공지사항 관리 등이 필요해지면
  *   이 인터페이스에 메서드를 추가하고 mapper XML을 연결하면 됩니다.
  * ========================================================================== */
 @Mapper // MyBatis가 이 인터페이스를 DB Mapper로 인식하게 합니다.
@@ -150,7 +154,7 @@ public interface AdminDao {
             @Param("keyword") String keyword
     );
 
-    /* ACTIVE 상태의 일반 회원을 관리자 등급으로 변경합니다. */
+    /* ACTIVE 상태의 회원을 일반 회원 또는 슈퍼 관리자로 변경합니다. */
     int updateMemberRoleForAdminPromotion(
             @Param("memberId") Long memberId,
             @Param("role") String role
@@ -163,6 +167,8 @@ public interface AdminDao {
     );
 
     /* 정지된 회원을 다시 ACTIVE 상태로 변경합니다. */
+    int addWarningToMember(@Param("memberId") Long memberId);
+
     int restoreSuspendedMember(@Param("memberId") Long memberId);
 
     /* 관리자 작업 로그에 회원 정지 이력을 추가합니다. */
@@ -174,14 +180,48 @@ public interface AdminDao {
             @Param("actionDetail") String actionDetail
     );
 
+    /* 신고 및 제재 관리 페이지에서 신고 목록을 조회합니다. */
+    List<AdminReport> selectAdminReports(
+            @Param("status") String status,
+            @Param("targetType") String targetType,
+            @Param("processResult") String processResult
+    );
+
+    /* 신고 상세와 처리 후 갱신에 사용할 신고 단건 조회입니다. */
+    AdminReport selectAdminReportById(@Param("reportId") Long reportId);
+
+    /* 신고 상세 패널에 표시할 대상 회원의 최근 활동을 조회합니다. */
+    List<AdminReportActivity> selectAdminReportRecentActivities(@Param("memberId") Long memberId);
+
+    List<AdminReportReporter> selectAdminReportReporters(@Param("reportId") Long reportId);
+
+    /* 처리 대기 신고를 검토 중 상태로 전환합니다. */
+    int markAdminReportReviewing(@Param("reportId") Long reportId);
+
+    /* 신고 최종 처리 결과를 저장합니다. */
+    int processAdminReport(
+            @Param("reportId") Long reportId,
+            @Param("adminId") Long adminId,
+            @Param("processResult") String processResult,
+            @Param("handledMemo") String handledMemo
+    );
+
     /* 관리자 대시보드 상단 카드에 표시할 요약 숫자를 조회합니다. */
     AdminDashboardSummary selectDashboardSummary();
 
     /* 관리자 대시보드의 감정별 게시글 활동 수를 일/주/월 단위로 조회합니다. */
-    List<AdminEmotionActivity> selectDashboardEmotionActivity(@Param("period") String period);
+    List<AdminEmotionActivity> selectDashboardEmotionActivity(
+            @Param("period") String period,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     /* 관리자 대시보드의 시간별 활성 사용자 수를 일/주/월 단위로 조회합니다. */
-    List<AdminActiveUserStat> selectDashboardActiveUsers(@Param("period") String period);
+    List<AdminActiveUserStat> selectDashboardActiveUsers(
+            @Param("period") String period,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     /* 관리자 대시보드의 최근 활동을 최신 10개만 조회합니다. */
     List<AdminRecentActivity> selectRecentDashboardActivities();
@@ -190,13 +230,25 @@ public interface AdminDao {
     List<AdminRecentActivity> selectAllDashboardActivities();
 
     /* 통계 대시보드 상단 카드와 하단 요약에 사용할 기간별 요약 숫자를 조회합니다. */
-    AdminStatisticsSummary selectStatisticsSummary(@Param("period") String period);
+    AdminStatisticsSummary selectStatisticsSummary(
+            @Param("period") String period,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     /* 통계 대시보드 가입자 추이 차트에 사용할 기간별 가입자 흐름을 조회합니다. */
-    List<AdminStatisticsTrend> selectStatisticsSubscriberTrend(@Param("period") String period);
+    List<AdminStatisticsTrend> selectStatisticsSubscriberTrend(
+            @Param("period") String period,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     /* 통계 대시보드 콘텐츠 활동 막대 그래프에 사용할 게시글/댓글/공감 수를 조회합니다. */
-    List<AdminStatisticsTrend> selectStatisticsContentActivity(@Param("period") String period);
+    List<AdminStatisticsTrend> selectStatisticsContentActivity(
+            @Param("period") String period,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 
     /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
     AdminProfile selectAdminProfile(@Param("memberId") Long memberId);

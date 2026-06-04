@@ -27,6 +27,23 @@
   min-height: 0;
   padding: 20px 24px;
   overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(124, 77, 255, 0.32) rgba(124, 77, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.drawerBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.drawerBody::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.32);
+}
+
+.drawerBody::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
 }
 
 /* 신고 상세 정보 섹션 ----------------------------------
@@ -76,6 +93,10 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 0;
+}
+
+.userInfoCard dl {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .overviewCard dt,
@@ -131,6 +152,27 @@
   display: block;
   margin-bottom: 7px;
   color: #111827;
+  font-weight: 950;
+}
+
+.reportedContentBox {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.reportedContentBox span {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.reportedContentBox strong {
+  color: #111827;
+  font-size: 0.92rem;
   font-weight: 950;
 }
 
@@ -195,6 +237,14 @@
   font-size: 0.88rem;
 }
 
+.reporterList em {
+  color: #667085;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+  word-break: break-all;
+}
+
 .reporterList small {
   color: #667085;
   font-weight: 700;
@@ -233,6 +283,21 @@
   color: #667085;
   font-size: 0.8rem;
   font-weight: 700;
+}
+
+.modalActivityList {
+  gap: 14px;
+}
+
+.emptyActivity {
+  min-height: 72px;
+  place-items: center;
+  border-left: 0 !important;
+  border-radius: 14px;
+  color: #667085;
+  font-size: 0.9rem;
+  font-weight: 900;
+  background: #f8f9ff;
 }
 
 /* 사이드 패널 하단 버튼 영역 ----------------------------------
@@ -297,4 +362,115 @@
 
 .resultFooter .primaryButton {
   min-width: 140px;
+}
+
+.detailModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.detailModal {
+  width: min(420px, 100%);
+  max-height: min(620px, 86vh);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.18);
+}
+
+.detailModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(102, 112, 133, 0.14);
+}
+
+.detailModalHeader h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.detailModalHeader button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  color: #344054;
+  font-size: 1.5rem;
+  line-height: 1;
+  background: #f8f9ff;
+}
+
+.detailModalBody {
+  min-height: 0;
+  padding: 18px 20px 20px;
+  overflow: auto;
+  scrollbar-color: rgba(124, 77, 255, 0.32) rgba(124, 77, 255, 0.08);
+  scrollbar-width: thin;
+}
+
+.detailModalBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.detailModalBody::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.32);
+}
+
+.detailModalBody::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
+}
+
+.modalList {
+  display: grid;
+  gap: 10px;
+}
+
+.modalListItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8f9ff;
+}
+
+.modalListItem div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.modalListItem strong {
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.modalListItem small {
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 800;
+  word-break: break-all;
+}
+
+.modalListItem span {
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 800;
 }

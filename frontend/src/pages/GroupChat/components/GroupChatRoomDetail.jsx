@@ -745,7 +745,7 @@ export function GroupChatRoomDetail({
           }
 
           const isMine = Number(item.senderId) === Number(currentMemberId);
-          const senderName = item.senderName || "?뚯썝";
+          const senderName = item.senderName || "회원";
           const senderInitial = senderName.charAt(0).toUpperCase();
           const profileImageUrl = item.profileImageUrl || defaultAvatarSrc;
           const unreadCount = Number(item.unreadCount || 0);

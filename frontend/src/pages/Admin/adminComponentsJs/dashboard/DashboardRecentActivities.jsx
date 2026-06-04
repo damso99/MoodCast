@@ -16,6 +16,10 @@ const activityLabelMap = {
   SUSPENDED: "정지",
   RESTORE: "해제",
   RESTORED: "해제",
+  ROLE_CHANGED: "권한",
+  NOTICE_CREATED: "공지 작성",
+  NOTICE_UPDATED: "공지 수정",
+  NOTICE_DELETED: "공지 삭제",
 };
 
 /* ==========================================================================
@@ -88,6 +92,16 @@ export function DashboardRecentActivities() {
   };
 
   const getActivityTitle = (activity) => {
+    if (String(activity.activityType || "").startsWith("NOTICE_")) {
+      const adminName =
+        activity.adminName ||
+        activity.memberName ||
+        activity.adminNickname ||
+        "관리자";
+
+      return `${activity.activityDetail || "공지사항 처리"} · 처리 관리자: ${adminName}`;
+    }
+
     const memberName =
       activity.memberName ||
       activity.memberNickname ||
@@ -96,7 +110,12 @@ export function DashboardRecentActivities() {
       ? ` · 처리 관리자: ${activity.adminName}`
       : "";
 
-    return `${memberName}${adminText}`;
+    const detailText =
+      activity.activityType === "ROLE_CHANGED" && activity.activityDetail
+        ? ` · ${activity.activityDetail}`
+        : "";
+
+    return `${memberName}${adminText}${detailText}`;
   };
 
   const openAllActivities = () => {

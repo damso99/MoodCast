@@ -15,6 +15,8 @@ import com.moodcast.admin.vo.AdminNoticeRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
+import com.moodcast.admin.vo.AdminReport;
+import com.moodcast.admin.vo.AdminReportProcessRequest;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
@@ -421,14 +423,13 @@ public class AdminController {
     /* ==========================================================================
      * 회원 관리자 등급 변경 API
      * --------------------------------------------------------------------------
-     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 관리자 등급으로 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 슈퍼 관리자로 변경합니다.
      *
      * 요청 주소:
      * - PUT /admin/api/members/{memberId}/role
      *
      * 요청 body:
      * - { "role": "USER" }
-     * - { "role": "NORMAL_ADMIN" }
      * - { "role": "SUPER_ADMIN" }
      * ========================================================================== */
     @PutMapping("/members/{memberId}/role")
@@ -442,6 +443,69 @@ public class AdminController {
         return Map.of(
                 "success", true,
                 "message", "관리자 등급이 변경되었습니다."
+        );
+    }
+
+    /* ==========================================================================
+     * 신고 목록 조회 API
+     * --------------------------------------------------------------------------
+     * 신고 및 제재 관리 페이지에서 게시글/댓글 신고 목록을 조회합니다.
+     *
+     * 요청 예시:
+     * - GET /admin/api/reports
+     * - GET /admin/api/reports?status=PENDING&targetType=POST
+     * - GET /admin/api/reports?status=DONE&processResult=WARNING
+     * ========================================================================== */
+    @GetMapping("/reports")
+    public Map<String, List<AdminReport>> getAdminReports(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "ALL") String status,
+            @RequestParam(defaultValue = "ALL") String targetType,
+            @RequestParam(defaultValue = "ALL") String processResult
+    ) {
+        log.info(
+                "[ADMIN_API] GET /admin/api/reports requested status={} targetType={} processResult={}",
+                status,
+                targetType,
+                processResult
+        );
+        return Map.of(
+                "reports",
+                adminService.getAdminReports(authorizationHeader, status, targetType, processResult)
+        );
+    }
+
+    /* ==========================================================================
+     * 신고 상세 조회 API
+     * --------------------------------------------------------------------------
+     * 처리 대기 신고를 처음 열면 검토 중으로 전환합니다.
+     * ========================================================================== */
+    @GetMapping("/reports/{reportId}")
+    public Map<String, AdminReport> getAdminReportDetail(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long reportId
+    ) {
+        return Map.of(
+                "report",
+                adminService.getAdminReportDetail(authorizationHeader, reportId)
+        );
+    }
+
+    /* ==========================================================================
+     * 신고 최종 처리 API
+     * --------------------------------------------------------------------------
+     * 신고 처리 결과를 저장하고 신고 상태를 처리 완료로 변경합니다.
+     * ========================================================================== */
+    @PutMapping("/reports/{reportId}/process")
+    public Map<String, Object> processAdminReport(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable Long reportId,
+            @RequestBody AdminReportProcessRequest request
+    ) {
+        return Map.of(
+                "success", true,
+                "message", "신고 처리가 완료되었습니다.",
+                "report", adminService.processAdminReport(authorizationHeader, reportId, request)
         );
     }
 
@@ -473,11 +537,13 @@ public class AdminController {
     @GetMapping("/dashboard/emotion-activity")
     public Map<String, List<AdminEmotionActivity>> getDashboardEmotionActivity(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            @RequestParam(defaultValue = "day") String period
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
         return Map.of(
                 "items",
-                adminService.getDashboardEmotionActivity(authorizationHeader, period)
+                adminService.getDashboardEmotionActivity(authorizationHeader, period, startDate, endDate)
         );
     }
 
@@ -494,11 +560,13 @@ public class AdminController {
     @GetMapping("/dashboard/active-users")
     public Map<String, List<AdminActiveUserStat>> getDashboardActiveUsers(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            @RequestParam(defaultValue = "day") String period
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
         return Map.of(
                 "items",
-                adminService.getDashboardActiveUsers(authorizationHeader, period)
+                adminService.getDashboardActiveUsers(authorizationHeader, period, startDate, endDate)
         );
     }
 
@@ -535,9 +603,11 @@ public class AdminController {
     @GetMapping("/statistics/summary")
     public AdminStatisticsSummary getStatisticsSummary(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            @RequestParam(defaultValue = "day") String period
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
-        return adminService.getStatisticsSummary(authorizationHeader, period);
+        return adminService.getStatisticsSummary(authorizationHeader, period, startDate, endDate);
     }
 
     /*
@@ -548,11 +618,13 @@ public class AdminController {
     @GetMapping("/statistics/subscribers")
     public Map<String, List<AdminStatisticsTrend>> getStatisticsSubscriberTrend(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            @RequestParam(defaultValue = "day") String period
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
         return Map.of(
                 "items",
-                adminService.getStatisticsSubscriberTrend(authorizationHeader, period)
+                adminService.getStatisticsSubscriberTrend(authorizationHeader, period, startDate, endDate)
         );
     }
 
@@ -564,11 +636,13 @@ public class AdminController {
     @GetMapping("/statistics/content-activity")
     public Map<String, List<AdminStatisticsTrend>> getStatisticsContentActivity(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
-            @RequestParam(defaultValue = "day") String period
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
     ) {
         return Map.of(
                 "items",
-                adminService.getStatisticsContentActivity(authorizationHeader, period)
+                adminService.getStatisticsContentActivity(authorizationHeader, period, startDate, endDate)
         );
     }
 

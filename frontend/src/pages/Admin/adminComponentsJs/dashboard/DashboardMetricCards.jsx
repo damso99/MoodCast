@@ -8,26 +8,17 @@ import { MetricCard } from "../common/MetricCard";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/dashboard/DashboardMetricCards.module.css";
 
-/* ==========================================================================
- * 관리자 대시보드 상단 요약 카드
- * --------------------------------------------------------------------------
- * 대시보드 맨 위에 있는 전체 회원 수, 오늘 가입자 수, 게시글 수,
- * 신고 대기 수 카드를 담당하는 컴포넌트입니다.
- *
- * 초보자 설명:
- * - 이 컴포넌트는 화면에 필요한 숫자를 직접 API로 가져옵니다.
- * - 부모 페이지(AdminDashboardPage)는 "카드를 어디에 배치할지"만 담당합니다.
- * - setInterval을 사용해 10초마다 요약 숫자를 다시 조회합니다.
- * - 컴포넌트가 화면에서 사라질 때 clearInterval로 반복 조회를 정리합니다.
- * ========================================================================== */
+const DEFAULT_SUMMARY = {
+  totalMemberCount: null,
+  todayNewMemberCount: null,
+  postCount: null,
+  pendingReportCount: null,
+};
+
 export function DashboardMetricCards() {
-  const [dashboardSummary, setDashboardSummary] = useState({
-    totalMemberCount: null,
-    todayNewMemberCount: null,
-    postCount: null,
-  }); // 상단 카드에 보여줄 숫자 묶음입니다.
-  const [hasError, setHasError] = useState(false); // 요약 API 조회 실패 여부입니다.
-  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
+  const [dashboardSummary, setDashboardSummary] = useState(DEFAULT_SUMMARY);
+  const [hasError, setHasError] = useState(false);
+  const { accessToken } = useAuthStore();
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
@@ -47,26 +38,16 @@ export function DashboardMetricCards() {
         })
         .then((res) => {
           setDashboardSummary({
-            totalMemberCount:
-              typeof res.data?.totalMemberCount === "number"
-                ? res.data.totalMemberCount
-                : 0,
-            todayNewMemberCount:
-              typeof res.data?.todayNewMemberCount === "number"
-                ? res.data.todayNewMemberCount
-                : 0,
-            postCount:
-              typeof res.data?.postCount === "number" ? res.data.postCount : 0,
+            totalMemberCount: normalizeCount(res.data?.totalMemberCount),
+            todayNewMemberCount: normalizeCount(res.data?.todayNewMemberCount),
+            postCount: normalizeCount(res.data?.postCount),
+            pendingReportCount: normalizeCount(res.data?.pendingReportCount),
           });
           setHasError(false);
         })
         .catch((error) => {
-          console.log(error);
-          setDashboardSummary({
-            totalMemberCount: null,
-            todayNewMemberCount: null,
-            postCount: null,
-          });
+          console.error("[ADMIN_DASHBOARD_SUMMARY_ERROR]", error);
+          setDashboardSummary(DEFAULT_SUMMARY);
           setHasError(true);
         });
     };
@@ -83,44 +64,40 @@ export function DashboardMetricCards() {
   return (
     <section className={styles.metricGrid}>
       <MetricCard
-        label="회원 수"
-        value={
-          dashboardSummary.totalMemberCount === null
-            ? "-"
-            : dashboardSummary.totalMemberCount.toLocaleString()
-        }
-        helperText={hasError ? "조회 실패" : ""}
+        label={"\uD68C\uC6D0 \uC218"}
+        value={formatCount(dashboardSummary.totalMemberCount)}
+        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
         icon={<GroupOutlinedIcon />}
       />
       <MetricCard
-        label="오늘 가입자"
-        value={
-          dashboardSummary.todayNewMemberCount === null
-            ? "-"
-            : dashboardSummary.todayNewMemberCount.toLocaleString()
-        }
-        helperText={hasError ? "조회 실패" : ""}
+        label={"\uC624\uB298 \uAC00\uC785\uC790"}
+        value={formatCount(dashboardSummary.todayNewMemberCount)}
+        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
         icon={<AddOutlinedIcon />}
         accent="blue"
       />
       <MetricCard
-        label="게시글 수"
-        value={
-          dashboardSummary.postCount === null
-            ? "-"
-            : dashboardSummary.postCount.toLocaleString()
-        }
-        helperText={hasError ? "조회 실패" : ""}
+        label={"\uAC8C\uC2DC\uAE00 \uC218"}
+        value={formatCount(dashboardSummary.postCount)}
+        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
         icon={<Inventory2OutlinedIcon />}
         accent="pink"
       />
       <MetricCard
-        label="신고 대기"
-        value="-"
-        helperText="연결 예정"
+        label={"\uC2E0\uACE0 \uCC98\uB9AC \uB300\uAE30"}
+        value={formatCount(dashboardSummary.pendingReportCount)}
+        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
         icon={<GppMaybeOutlinedIcon />}
         accent="orange"
       />
     </section>
   );
+}
+
+function normalizeCount(value) {
+  return typeof value === "number" ? value : 0;
+}
+
+function formatCount(value) {
+  return value === null ? "-" : value.toLocaleString();
 }

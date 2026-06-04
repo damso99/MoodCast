@@ -14,6 +14,7 @@
   z-index: 1200;
   display: flex;
   justify-content: flex-end;
+  overflow: hidden;
   animation: drawerLayerFadeIn 0.18s ease-out;
 }
 
@@ -45,11 +46,12 @@
   width: min(480px, 100vw);
   min-height: 100vh;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 28px 28px 72px;
   background: #fff;
   box-shadow: -26px 0 60px rgba(15, 23, 42, 0.18);
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-color: rgba(124, 77, 255, 0.32) rgba(124, 77, 255, 0.08);
+  scrollbar-width: thin;
   animation: drawerSlideIn 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -58,7 +60,17 @@
 }
 
 .memberDrawer::-webkit-scrollbar {
-  display: none;
+  width: 8px;
+}
+
+.memberDrawer::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.32);
+}
+
+.memberDrawer::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
 }
 
 @keyframes drawerLayerFadeIn {

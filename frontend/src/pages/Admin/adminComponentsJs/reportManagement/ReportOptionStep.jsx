@@ -11,18 +11,23 @@ export function ReportOptionStep({
 }) {
   return (
     <>
-      <DrawerHeader title="처리 옵션 선택" onBack={onBack} onClose={onClose} />
+      <DrawerHeader
+        title="처리 옵션 선택"
+        onBack={onBack}
+        onClose={onClose}
+      />
 
       <div className={styles.drawerBody}>
         <p className={styles.guideText}>
-          선택한 신고를 어떤 방식으로 처리할지 선택해주세요.
+          {
+            "\uC120\uD0DD\uD55C \uC2E0\uACE0\uB97C \uC5B4\uB5A4 \uBC29\uC2DD\uC73C\uB85C \uCC98\uB9AC\uD560\uC9C0 \uC120\uD0DD\uD574\uC8FC\uC138\uC694."
+          }
         </p>
 
-        {/* 제재 옵션 선택 ---------------------------------- */}
         <section className={styles.optionList}>
           {sanctionOptions.map((option) => {
-            const Icon = option.icon; // 옵션별 아이콘입니다.
-            const isSelected = selectedAction === option.id; // 현재 선택된 옵션인지 확인합니다.
+            const Icon = option.icon;
+            const isSelected = selectedAction === option.id;
 
             return (
               <button
@@ -42,21 +47,24 @@ export function ReportOptionStep({
           })}
         </section>
 
-        {/* 제재 전 안내 ---------------------------------- */}
         <section className={styles.noticeBox}>
-          <strong>안내</strong>
-          <p>제재를 실행하기 전에 신고 내용과 증거를 충분히 검토해주세요.</p>
-          <p>잘못된 제재는 사용자 경험에 부정적인 영향을 줄 수 있습니다.</p>
+          <strong>{"\uC548\uB0B4"}</strong>
+          <p>
+            {
+              "\uC81C\uC7AC\uB97C \uC801\uC6A9\uD558\uAE30 \uC804\uC5D0 \uC2E0\uACE0 \uB0B4\uC6A9\uACFC \uC99D\uAC70\uB97C \uCDA9\uBD84\uD788 \uAC80\uD1A0\uD574\uC8FC\uC138\uC694."
+            }
+          </p>
+          <p>
+            {
+              "\uC798\uBABB\uB41C \uC81C\uC7AC\uB294 \uC0AC\uC6A9\uC790 \uACBD\uD5D8\uC5D0 \uBD80\uC815\uC801\uC778 \uC601\uD5A5\uC744 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+            }
+          </p>
         </section>
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button
-          className={styles.secondaryButton}
-          type="button"
-          onClick={onBack}
-        >
-          취소
+        <button className={styles.secondaryButton} type="button" onClick={onBack}>
+          {"\uCDE8\uC18C"}
         </button>
         <button
           className={styles.primaryButton}
@@ -64,7 +72,7 @@ export function ReportOptionStep({
           disabled={!selectedAction}
           onClick={onNext}
         >
-          다음
+          {"\uB2E4\uC74C"}
         </button>
       </footer>
     </>

@@ -1,29 +1,35 @@
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
-import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import { REPORT_LABELS } from "./reportConstants";
 
-/* ==========================================================================
- * 신고 및 제재 관리 유틸 함수
- * --------------------------------------------------------------------------
- * 화면 여러 곳에서 공통으로 사용하는 작은 계산 함수들을 모아둔 파일입니다.
- * ========================================================================== */
 export function getTypeIcon(type) {
-  if (type === "유저") return PersonOutlineOutlinedIcon;
-  if (type === "댓글") return ChatBubbleOutlineOutlinedIcon;
+  if (type === REPORT_LABELS.comment) return ChatBubbleOutlineOutlinedIcon;
   return ArticleOutlinedIcon;
 }
 
 export function getReleaseDate(days) {
-  if (days === "custom") return "직접 입력한 기간 기준으로 계산됩니다.";
+  if (days === "custom") {
+    return "\uC9C1\uC811 \uC785\uB825\uD55C \uAE30\uAC04 \uAE30\uC900\uC73C\uB85C \uACC4\uC0B0\uD569\uB2C8\uB2E4.";
+  }
+
   if (!days) return "-";
-  const releaseDay = 21 + Number(days);
-  return "2026.05." + String(releaseDay).padStart(2, "0") + " 14:30";
+
+  const releaseDate = new Date();
+  releaseDate.setDate(releaseDate.getDate() + Number(days));
+
+  return releaseDate.toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function countReportsByStatus(reports, statusTabs) {
   return statusTabs.reduce((counts, tabLabel) => {
     counts[tabLabel] =
-      tabLabel === "전체"
+      tabLabel === REPORT_LABELS.all
         ? reports.length
         : reports.filter((report) => report.status === tabLabel).length;
     return counts;
@@ -33,7 +39,7 @@ export function countReportsByStatus(reports, statusTabs) {
 export function countReportsByType(reports, typeTabs) {
   return typeTabs.reduce((counts, tabLabel) => {
     counts[tabLabel] =
-      tabLabel === "전체"
+      tabLabel === REPORT_LABELS.all
         ? reports.length
         : reports.filter((report) => report.type === tabLabel).length;
     return counts;

@@ -5,12 +5,11 @@ import styles from "../../adminComponentsCss/reportManagement/ReportDrawerHeader
 export function DrawerHeader({ title, onBack, onClose }) {
   return (
     <header className={styles.drawerHeader}>
-      {/* 패널 상단 뒤로가기/닫기 ---------------------------------- */}
       {onBack ? (
         <button
           className={styles.iconButton}
           type="button"
-          aria-label="이전 단계"
+          aria-label="\uC774\uC804 \uB2E8\uACC4"
           onClick={onBack}
         >
           <ArrowBackOutlinedIcon />
@@ -22,7 +21,7 @@ export function DrawerHeader({ title, onBack, onClose }) {
       <button
         className={styles.iconButton}
         type="button"
-        aria-label="패널 닫기"
+        aria-label="\uD328\uB110 \uB2EB\uAE30"
         onClick={onClose}
       >
         <CloseOutlinedIcon />

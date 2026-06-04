@@ -1,14 +1,12 @@
-import { statusMeta } from "./reportConstants";
+import { REPORT_LABELS, statusMeta } from "./reportConstants";
 import styles from "../../adminComponentsCss/reportManagement/ReportStatusTabs.module.css";
 
-/* ==========================================================================
- * 신고 처리 상태 탭 컴포넌트
- * --------------------------------------------------------------------------
- * 전체/처리 대기/검토 중/처리 완료/반려 필터와 현재 개수를 보여줍니다.
- * ========================================================================== */
 export function ReportStatusTabs({ tabs, selectedTab, counts, onSelect }) {
   return (
-    <div className={styles.statusTabs} aria-label="신고 처리 상태 필터">
+    <div
+      className={styles.statusTabs}
+      aria-label="\uC2E0\uACE0 \uCC98\uB9AC \uC0C1\uD0DC \uD544\uD130"
+    >
       {tabs.map((label) => (
         <button
           key={label}
@@ -19,12 +17,12 @@ export function ReportStatusTabs({ tabs, selectedTab, counts, onSelect }) {
           <span>{label}</span>
           <strong
             className={
-              label === "전체"
+              label === REPORT_LABELS.all
                 ? styles.totalCount
-                : styles[statusMeta[label].className]
+                : styles[statusMeta[label]?.className || "resolved"]
             }
           >
-            {counts[label]}
+            {counts[label] ?? 0}
           </strong>
         </button>
       ))}

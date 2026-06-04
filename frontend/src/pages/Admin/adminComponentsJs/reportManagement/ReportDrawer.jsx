@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ReportConfirmStep } from "./ReportConfirmStep";
 import { ReportDetailStep } from "./ReportDetailStep";
 import { ReportOptionStep } from "./ReportOptionStep";
@@ -5,12 +6,7 @@ import { ReportReasonStep } from "./ReportReasonStep";
 import { ReportTemporaryStep } from "./ReportTemporaryStep";
 import styles from "../../adminComponentsCss/reportManagement/ReportDrawer.module.css";
 
-/* ==========================================================================
- * 신고 처리 사이드 패널 컴포넌트
- * --------------------------------------------------------------------------
- * 오른쪽에서 열리는 패널 전체를 담당합니다.
- * panelStep 값에 따라 상세/옵션/사유/일시정지/최종확인 화면을 바꿔 보여줍니다.
- * ========================================================================== */
+/* 신고 상세와 제재 처리 단계를 오른쪽 패널 안에서 전환합니다. */
 export function ReportDrawer({
   report,
   panelStep,
@@ -35,24 +31,52 @@ export function ReportDrawer({
   onBackFromConfirm,
   onConfirm,
 }) {
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
+
+  const handleClose = () => {
+    if (isClosing) return;
+
+    setIsClosing(true);
+    window.setTimeout(() => {
+      onClose();
+    }, 220);
+  };
+
   return (
     <div
-      className={styles.overlay}
+      className={`${styles.overlay} ${isClosing ? styles.overlayClosing : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label="신고 상세 및 제재 처리 패널"
     >
       <button
-        className={styles.dimmedArea}
+        className={`${styles.dimmedArea} ${
+          isClosing ? styles.dimmedAreaClosing : ""
+        }`}
         type="button"
-        aria-label="패널 닫기"
-        onClick={onClose}
+        aria-label="신고 처리 패널 닫기"
+        onClick={handleClose}
       />
-      <aside className={styles.drawer}>
+      <aside
+        className={`${styles.drawer} ${isClosing ? styles.drawerClosing : ""}`}
+      >
         {panelStep === "detail" && (
           <ReportDetailStep
             report={report}
-            onClose={onClose}
+            onClose={handleClose}
             onProcess={onProcess}
           />
         )}
@@ -60,7 +84,7 @@ export function ReportDrawer({
           <ReportOptionStep
             selectedAction={selectedAction}
             onBack={onBackToDetail}
-            onClose={onClose}
+            onClose={handleClose}
             onSelectAction={onSelectAction}
             onNext={onNextFromOption}
           />
@@ -71,7 +95,7 @@ export function ReportDrawer({
             selectedReason={selectedReason}
             reasonDetail={reasonDetail}
             onBack={onBackToOption}
-            onClose={onClose}
+            onClose={handleClose}
             onChangeReason={onChangeReason}
             onChangeDetail={onChangeDetail}
             onNext={onGoConfirm}
@@ -86,7 +110,7 @@ export function ReportDrawer({
             customPeriod={customPeriod}
             releaseDate={releaseDate}
             onBack={onBackToOption}
-            onClose={onClose}
+            onClose={handleClose}
             onChangeReason={onChangeReason}
             onChangeDetail={onChangeDetail}
             onChangePeriod={onChangePeriod}
@@ -104,7 +128,7 @@ export function ReportDrawer({
             customPeriod={customPeriod}
             releaseDate={releaseDate}
             onBack={onBackFromConfirm}
-            onClose={onClose}
+            onClose={handleClose}
             onConfirm={onConfirm}
           />
         )}

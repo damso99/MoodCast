@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+﻿import axios from "axios";
+import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "../common/AdminLayout";
 import { SearchBar } from "../common/SearchBar";
 import {
+  processResultTabs,
+  REPORT_LABELS,
   reportStatusTabs,
   reportTypeTabs,
   sanctionOptions,
-  todayText,
 } from "./reportConstants";
 import {
   countReportsByStatus,
@@ -20,233 +22,405 @@ import { ReportStatusTabs } from "./ReportStatusTabs";
 import { ReportTypeTabs } from "./ReportTypeTabs";
 import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
-/* ==========================================================================
- * 신고 및 제재 관리 페이지
- * --------------------------------------------------------------------------
- * 신고된 사용자/게시글/댓글을 확인하고, 검토 후 경고/일시 정지/영구 정지/반려
- * 중 하나로 처리하는 관리자 화면입니다.
- *
- * 이 파일의 역할:
- * - 신고 목록 데이터 상태 관리
- * - 현재 선택된 필터 상태 관리
- * - 오른쪽 사이드 패널 단계 관리
- * - 제재 확정 시 신고 상태 변경
- * - 분리된 컴포넌트들을 한 화면으로 조립
- *
- * 컴포넌트를 분리한 이유:
- * - 기존 파일이 너무 길어져서 어떤 코드가 어떤 UI를 담당하는지 파악하기 어려웠습니다.
- * - 페이지 파일은 "상태와 흐름"만 담당하고, 실제 UI 덩어리는 별도 컴포넌트가 담당하게 했습니다.
- *
- * selectedStatusTab 상태 설명:
- * - "전체 / 처리 대기 / 검토 중 / 처리 완료 / 반려" 중 현재 선택한 상태 탭입니다.
- * - 이 값에 따라 신고 목록에 보여줄 데이터가 달라집니다.
- *
- * panelStep 상태 설명:
- * - 오른쪽 사이드 패널에서 현재 보고 있는 단계를 뜻합니다.
- * - detail: 신고 상세 정보
- * - option: 처리 옵션 선택
- * - reason: 경고/영구 정지 사유 설정
- * - temporary: 일시 정지 상세 설정
- * - confirm: 최종 제재 확인
- * ========================================================================== */
+const BACKSERVER =
+  import.meta.env.VITE_BACKSERVER || import.meta.env.VITE_API_BASE_URL;
+
+const STATUS_TO_API = {
+  [REPORT_LABELS.all]: "ALL",
+  [REPORT_LABELS.pending]: "PENDING",
+  [REPORT_LABELS.reviewing]: "REVIEWING",
+  [REPORT_LABELS.done]: "DONE",
+};
+
+const TYPE_TO_API = {
+  [REPORT_LABELS.all]: "ALL",
+  [REPORT_LABELS.post]: "POST",
+  [REPORT_LABELS.comment]: "COMMENT",
+};
+
+const RESULT_TO_API = {
+  [REPORT_LABELS.all]: "ALL",
+  [REPORT_LABELS.warning]: "WARNING",
+  [REPORT_LABELS.temporary]: "TEMPORARY_SUSPEND",
+  [REPORT_LABELS.permanent]: "PERMANENT_SUSPEND",
+  [REPORT_LABELS.reject]: "REJECT",
+};
+
+const ACTION_TO_RESULT = {
+  warning: "WARNING",
+  temporary: "TEMPORARY_SUSPEND",
+  permanent: "PERMANENT_SUSPEND",
+  reject: "REJECT",
+};
+
+const RESULT_TO_ACTION_LABEL = {
+  WARNING: REPORT_LABELS.warning,
+  TEMPORARY_SUSPEND: REPORT_LABELS.temporary,
+  PERMANENT_SUSPEND: REPORT_LABELS.permanent,
+  REJECT: REPORT_LABELS.reject,
+};
+
+const STATUS_TO_LABEL = {
+  PENDING: REPORT_LABELS.pending,
+  REVIEWING: REPORT_LABELS.reviewing,
+  DONE: REPORT_LABELS.done,
+};
+
+const TYPE_TO_LABEL = {
+  POST: REPORT_LABELS.post,
+  COMMENT: REPORT_LABELS.comment,
+};
+
+const SORT_LABELS = {
+  latest: "\uCD5C\uC2E0\uC21C",
+  count: "\uC2E0\uACE0 \uC218 \uB9CE\uC740 \uC21C",
+  old: "\uC624\uB798\uB41C \uC21C",
+};
+
+const TOP_TAB_LABELS = {
+  list: "\uC2E0\uACE0 \uBAA9\uB85D",
+  insight: "\uD1B5\uACC4 \uBC0F \uC81C\uC7AC \uC774\uB825",
+};
+
+const PERIOD_LABELS = {
+  day: "\uC77C",
+  week: "\uC8FC",
+  month: "\uC6D4",
+};
+
+const SERVICE_START_YEAR = 2026;
+
+const LINE_CHART_TEXT = {
+  day: {
+    title: "\uC77C\uBCC4 \uC2E0\uACE0 \uC720\uC785 \uCD94\uC774",
+    description: "\uC120\uD0DD\uD55C \uB0A0\uC9DC\uC5D0 \uC811\uC218\uB41C \uC2E0\uACE0 \uAC74\uC218",
+  },
+  week: {
+    title: "\uC8FC\uBCC4 \uC2E0\uACE0 \uC720\uC785 \uCD94\uC774",
+    description: "\uC120\uD0DD\uD55C \uC8FC\uC5D0 \uC811\uC218\uB41C \uC2E0\uACE0 \uAC74\uC218",
+  },
+  month: {
+    title: "\uC6D4\uBCC4 \uC2E0\uACE0 \uC720\uC785 \uCD94\uC774",
+    description: "\uC120\uD0DD\uD55C \uC5F0\uB3C4\uC5D0 \uC811\uC218\uB41C \uC2E0\uACE0 \uAC74\uC218",
+  },
+};
+
 export function ReportManagementPage() {
-  const [reports, setReports] = useState([]); // 신고 목록 데이터입니다. 더미데이터를 제거했기 때문에 백엔드 연결 전에는 빈 배열로 시작합니다.
-  const [selectedStatusTab, setSelectedStatusTab] = useState("전체"); // 현재 선택한 처리 상태 필터입니다.
-  const [selectedTypeTab, setSelectedTypeTab] = useState("전체"); // 현재 선택한 신고 대상 유형 필터입니다.
-  const [selectedReport, setSelectedReport] = useState(null); // 오른쪽 패널에서 자세히 볼 신고 1건입니다.
-  const [selectedResultReport, setSelectedResultReport] = useState(null); // 처리 완료/반려 결과 팝업에 보여줄 신고 1건입니다.
-  const [panelStep, setPanelStep] = useState("detail"); // 오른쪽 패널이 보여줄 현재 단계입니다.
-  const [selectedAction, setSelectedAction] = useState(""); // 경고/일시 정지/영구 정지/반려 중 선택한 처리 옵션입니다.
-  const [selectedReason, setSelectedReason] = useState("욕설/비하"); // 제재 사유 선택값입니다.
-  const [reasonDetail, setReasonDetail] = useState(""); // 관리자가 추가로 입력하는 상세 설명입니다.
-  const [selectedPeriod, setSelectedPeriod] = useState(7); // 일시 정지 기간 선택값입니다.
-  const [customPeriod, setCustomPeriod] = useState(""); // 직접 입력 기간을 선택했을 때 사용할 값입니다.
-  const [completionMessage, setCompletionMessage] = useState(""); // 제재 확정 후 상단에 보여줄 완료 안내 문구입니다.
+  const accessToken = localStorage.getItem("accessToken");
+  const authHeaders = useMemo(
+    () => ({ Authorization: `Bearer ${accessToken}` }),
+    [accessToken],
+  );
+
+  const [reports, setReports] = useState([]);
+  const [allReports, setAllReports] = useState([]);
+  const [selectedTopTab, setSelectedTopTab] = useState(TOP_TAB_LABELS.list);
+  const [selectedInsightPeriod, setSelectedInsightPeriod] = useState("day");
+  const [insightPeriodFilter, setInsightPeriodFilter] = useState(() =>
+    getInitialInsightPeriodFilter(),
+  );
+  const [selectedStatusTab, setSelectedStatusTab] = useState(REPORT_LABELS.all);
+  const [selectedTypeTab, setSelectedTypeTab] = useState(REPORT_LABELS.all);
+  const [selectedProcessResultTab, setSelectedProcessResultTab] = useState(
+    REPORT_LABELS.all,
+  );
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [sortType, setSortType] = useState(SORT_LABELS.latest);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedResultReport, setSelectedResultReport] = useState(null);
+  const [panelStep, setPanelStep] = useState("detail");
+  const [selectedAction, setSelectedAction] = useState("");
+  const [selectedReason, setSelectedReason] = useState(REPORT_LABELS.insult);
+  const [reasonDetail, setReasonDetail] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState(7);
+  const [customPeriod, setCustomPeriod] = useState("");
+  const [completionMessage, setCompletionMessage] = useState("");
+
+  useEffect(() => {
+    fetchReports();
+  }, [selectedStatusTab, selectedTypeTab, selectedProcessResultTab]);
+
+  useEffect(() => {
+    fetchAllReports();
+  }, []);
+
+  useEffect(() => {
+    if (
+      selectedStatusTab !== REPORT_LABELS.done &&
+      selectedProcessResultTab !== REPORT_LABELS.all
+    ) {
+      setSelectedProcessResultTab(REPORT_LABELS.all);
+    }
+  }, [selectedStatusTab, selectedProcessResultTab]);
 
   const filteredReports = useMemo(() => {
-    return reports.filter((report) => {
-      const statusMatched =
-        selectedStatusTab === "전체" || report.status === selectedStatusTab; // 상태 탭 조건입니다.
-      const typeMatched =
-        selectedTypeTab === "전체" || report.type === selectedTypeTab; // 유형 탭 조건입니다.
-      return statusMatched && typeMatched; // 두 조건을 모두 만족하는 신고만 목록에 보여줍니다.
+    const keyword = searchKeyword.trim().toLowerCase();
+    const searchedReports = keyword
+      ? reports.filter((report) =>
+          [
+            report.title,
+            report.targetName,
+            report.targetHandle,
+            report.reason,
+            report.detail,
+          ]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(keyword)),
+        )
+      : reports;
+
+    return [...searchedReports].sort((a, b) => {
+      if (sortType === SORT_LABELS.count) {
+        return Number(b.reportCount || 0) - Number(a.reportCount || 0);
+      }
+
+      if (sortType === SORT_LABELS.old) {
+        return getReportSortTime(a) - getReportSortTime(b);
+      }
+
+      return getReportSortTime(b) - getReportSortTime(a);
     });
-  }, [reports, selectedStatusTab, selectedTypeTab]);
+  }, [reports, searchKeyword, sortType]);
 
   const selectedActionMeta = sanctionOptions.find(
     (option) => option.id === selectedAction,
-  ); // 선택한 제재 옵션의 라벨/설명을 찾습니다.
+  );
   const releaseDate = getReleaseDate(
     selectedPeriod === "custom"
       ? Number(customPeriod) || "custom"
       : selectedPeriod,
-  ); // 일시 정지 예상 해제 일시입니다.
+  );
   const statusCounts = useMemo(
-    () => countReportsByStatus(reports, reportStatusTabs),
-    [reports],
-  ); // 상태 탭에 표시할 신고 개수입니다.
+    () =>
+      countReportsByStatus(
+        filterReportsByType(allReports, selectedTypeTab),
+        reportStatusTabs,
+      ),
+    [allReports, selectedTypeTab],
+  );
   const typeCounts = useMemo(
-    () => countReportsByType(reports, reportTypeTabs),
-    [reports],
-  ); // 유형 탭에 표시할 신고 개수입니다.
+    () =>
+      countReportsByType(
+        filterReportsByStatus(allReports, selectedStatusTab),
+        reportTypeTabs,
+      ),
+    [allReports, selectedStatusTab],
+  );
+  const processResultCounts = useMemo(
+    () =>
+      countReportsByProcessResult(
+        filterReportsByType(
+          filterReportsByStatus(allReports, REPORT_LABELS.done),
+          selectedTypeTab,
+        ),
+        processResultTabs,
+      ),
+    [allReports, selectedTypeTab],
+  );
+  const insightPeriodRange = useMemo(
+    () => buildInsightPeriodRange(selectedInsightPeriod, insightPeriodFilter),
+    [selectedInsightPeriod, insightPeriodFilter],
+  );
+  const insightReports = useMemo(
+    () => filterReportsByRange(allReports, insightPeriodRange),
+    [allReports, insightPeriodRange],
+  );
+  const reportInsights = useMemo(
+    () =>
+      buildReportInsights(
+        insightReports,
+        selectedInsightPeriod,
+        insightPeriodRange,
+      ),
+    [insightReports, selectedInsightPeriod, insightPeriodRange],
+  );
+  const sanctionHistories = useMemo(
+    () =>
+      allReports
+        .filter((report) => report.status === REPORT_LABELS.done)
+        .sort((a, b) => new Date(b.handledAtValue || 0) - new Date(a.handledAtValue || 0)),
+    [allReports],
+  );
 
-  const completionToast = completionMessage ? (
-    <ReportCompletionToast
-      message={completionMessage}
-      onClose={() => setCompletionMessage("")}
-    />
-  ) : null; // 제재/반려 완료 후 상단에 완료 메시지를 보여주는 컴포넌트입니다.
+  async function fetchReports() {
+    try {
+      const response = await axios.get(`${BACKSERVER}/admin/api/reports`, {
+        headers: authHeaders,
+        params: {
+          status: STATUS_TO_API[selectedStatusTab] || "ALL",
+          targetType: TYPE_TO_API[selectedTypeTab] || "ALL",
+          processResult:
+            selectedStatusTab === REPORT_LABELS.done
+              ? RESULT_TO_API[selectedProcessResultTab] || "ALL"
+              : "ALL",
+        },
+      });
 
-  const statusTabs = (
-    <ReportStatusTabs
-      tabs={reportStatusTabs}
-      selectedTab={selectedStatusTab}
-      counts={statusCounts}
-      onSelect={setSelectedStatusTab}
-    />
-  ); // 전체/처리 대기/검토 중/처리 완료/반려 상태 필터를 보여주는 컴포넌트입니다.
+      setReports((response.data?.reports || []).map(mapAdminReport));
+    } catch (error) {
+      console.error("[ADMIN_REPORT_LIST_ERROR]", {
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message,
+      });
+      setReports([]);
+    }
+  }
 
-  const typeTabs = (
-    <ReportTypeTabs
-      tabs={reportTypeTabs}
-      selectedTab={selectedTypeTab}
-      counts={typeCounts}
-      onSelect={setSelectedTypeTab}
-    />
-  ); // 전체/유저/게시글/댓글 신고 대상 유형 필터를 보여주는 컴포넌트입니다.
+  async function fetchAllReports() {
+    try {
+      const response = await axios.get(`${BACKSERVER}/admin/api/reports`, {
+        headers: authHeaders,
+        params: {
+          status: "ALL",
+          targetType: "ALL",
+          processResult: "ALL",
+        },
+      });
 
-  const reportList = (
-    <ReportList reports={filteredReports} onOpenReport={openDetailPanel} />
-  ); // 필터링된 신고 목록을 카드 형태로 보여주는 컴포넌트입니다.
+      setAllReports((response.data?.reports || []).map(mapAdminReport));
+    } catch (error) {
+      console.error("[ADMIN_REPORT_INSIGHT_ERROR]", {
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message,
+      });
+      setAllReports([]);
+    }
+  }
 
-  const reportDrawer = selectedReport ? (
-    <ReportDrawer
-      report={selectedReport}
-      panelStep={panelStep}
-      selectedAction={selectedAction}
-      selectedActionMeta={selectedActionMeta}
-      selectedReason={selectedReason}
-      reasonDetail={reasonDetail}
-      selectedPeriod={selectedPeriod}
-      customPeriod={customPeriod}
-      releaseDate={releaseDate}
-      onClose={closePanel}
-      onProcess={() => setPanelStep("option")}
-      onBackToDetail={() => setPanelStep("detail")}
-      onBackToOption={() => setPanelStep("option")}
-      onSelectAction={setSelectedAction}
-      onNextFromOption={moveNextFromOption}
-      onChangeReason={setSelectedReason}
-      onChangeDetail={setReasonDetail}
-      onChangePeriod={setSelectedPeriod}
-      onChangeCustomPeriod={setCustomPeriod}
-      onGoConfirm={() => setPanelStep("confirm")}
-      onBackFromConfirm={() =>
-        selectedAction === "temporary"
-          ? setPanelStep("temporary")
-          : setPanelStep(selectedAction === "reject" ? "option" : "reason")
-      }
-      onConfirm={confirmSanction}
-    />
-  ) : null; // 신고 상세 확인부터 제재 확정까지 오른쪽에서 단계별로 보여주는 사이드 패널 컴포넌트입니다.
-
-  const resultModal = selectedResultReport ? (
-    <ReportResultModal
-      report={selectedResultReport}
-      onClose={() => setSelectedResultReport(null)}
-    />
-  ) : null; // 이미 처리 완료/반려된 신고의 처리 결과를 조회하는 팝업 컴포넌트입니다.
-
-  function openDetailPanel(report) {
-    if (report.status === "처리 완료" || report.status === "반려") {
-      setSelectedResultReport(report); // 이미 처리된 신고는 검토 화면이 아니라 결과 조회 팝업으로 엽니다.
+  async function openDetailPanel(report) {
+    if (report.status === REPORT_LABELS.done) {
+      setSelectedResultReport(report);
       return;
     }
 
-    const nextReport =
-      report.status === "처리 대기" ? { ...report, status: "검토 중" } : report; // 처음 클릭한 신고는 검토 중으로 바꿉니다.
+    try {
+      const response = await axios.get(
+        `${BACKSERVER}/admin/api/reports/${report.id}`,
+        { headers: authHeaders },
+      );
+      const nextReport = mapAdminReport(response.data?.report);
 
-    if (report.status === "처리 대기") {
       setReports((prevReports) =>
-        prevReports.map((item) => (item.id === report.id ? nextReport : item)),
-      ); // 목록 상태도 검토 중으로 갱신합니다.
+        prevReports.map((item) =>
+          item.id === nextReport.id ? nextReport : item,
+        ),
+      );
+      setAllReports((prevReports) =>
+        prevReports.map((item) =>
+          item.id === nextReport.id ? nextReport : item,
+        ),
+      );
+      setSelectedReport(nextReport);
+    } catch (error) {
+      console.error("[ADMIN_REPORT_DETAIL_ERROR]", {
+        reportId: report.id,
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message,
+      });
+      setSelectedReport(report);
     }
 
-    setSelectedReport(nextReport); // 오른쪽 패널에 보여줄 신고를 저장합니다.
-    setPanelStep("detail"); // 패널 첫 화면은 신고 상세 정보입니다.
-    setSelectedAction(""); // 이전에 선택했던 제재 옵션을 초기화합니다.
-    setSelectedReason(report.reason); // 신고 사유를 기본 제재 사유로 넣습니다.
-    setReasonDetail(""); // 추가 설명 입력값을 초기화합니다.
-    setSelectedPeriod(7); // 일시 정지 기본 기간을 7일로 둡니다.
-    setCustomPeriod(""); // 직접 입력 기간을 초기화합니다.
+    setPanelStep("detail");
+    setSelectedAction("");
+    setSelectedReason(report.reason || REPORT_LABELS.insult);
+    setReasonDetail("");
+    setSelectedPeriod(7);
+    setCustomPeriod("");
   }
 
   function closePanel() {
-    setSelectedReport(null); // 선택된 신고를 비우면 오른쪽 패널이 닫힙니다.
+    setSelectedReport(null);
   }
 
   function moveNextFromOption() {
-    if (!selectedAction) return; // 옵션을 고르지 않았다면 다음 단계로 이동하지 않습니다.
-    if (selectedAction === "temporary")
-      setPanelStep("temporary"); // 일시 정지는 기간 설정 화면으로 이동합니다.
-    else if (selectedAction === "reject")
-      setPanelStep("confirm"); // 반려는 별도 설정 없이 최종 확인으로 이동합니다.
-    else setPanelStep("reason"); // 경고/영구 정지는 사유 입력 화면으로 이동합니다.
+    if (!selectedAction) return;
+    if (selectedAction === "temporary") setPanelStep("temporary");
+    else if (selectedAction === "reject") setPanelStep("confirm");
+    else setPanelStep("reason");
   }
 
-  function confirmSanction() {
-    const nextStatus = selectedAction === "reject" ? "반려" : "처리 완료"; // 반려만 반려 상태로, 나머지는 처리 완료로 바꿉니다.
-    const periodLabel =
-      selectedPeriod === "custom"
-        ? `${customPeriod || 0}일`
-        : `${selectedPeriod}일`; // 결과 조회에 보여줄 정지 기간입니다.
-    const sanctionResult = {
-      actionLabel: selectedActionMeta?.label,
-      reason: selectedAction === "reject" ? "반려" : selectedReason,
-      detail:
-        selectedAction === "reject"
-          ? "신고가 부적절하다고 판단되어 반려합니다."
-          : reasonDetail || selectedReport.detail,
-      periodLabel: selectedAction === "temporary" ? periodLabel : "",
-      startAt: selectedAction === "temporary" ? todayText : "",
-      releaseDate: selectedAction === "temporary" ? releaseDate : "",
-      handledAt: todayText,
-      adminName: "관리자",
-    };
+  async function confirmSanction() {
+    const processResult = ACTION_TO_RESULT[selectedAction];
 
-    setReports((prevReports) =>
-      prevReports.map((report) =>
-        report.id === selectedReport.id
-          ? {
-              ...report,
-              status: nextStatus,
-              sanctionResult,
-            }
-          : report,
-      ),
-    ); // 백엔드 연동 전까지는 프론트 상태만 바꿔 처리 결과를 확인합니다.
+    if (!processResult || !selectedReport) return;
 
-    setCompletionMessage(
-      selectedAction === "reject"
-        ? `${selectedReport.title} 신고를 반려 처리했습니다.`
-        : `${selectedReport.title} 신고에 ${selectedActionMeta?.label} 제재를 완료했습니다.`,
-    ); // 어떤 신고에 어떤 제재/반려를 완료했는지 화면에 알려줍니다.
+    try {
+      const response = await axios.put(
+        `${BACKSERVER}/admin/api/reports/${selectedReport.id}/process`,
+        {
+          processResult,
+          processReason:
+            selectedAction === "reject" ? REPORT_LABELS.reject : selectedReason,
+          suspendDays:
+            selectedAction === "temporary"
+              ? Number(
+                  selectedPeriod === "custom" ? customPeriod : selectedPeriod,
+                )
+              : null,
+        },
+        { headers: authHeaders },
+      );
+      const updatedReport = mapAdminReport(response.data?.report);
 
-    closePanel(); // 제재 확정 후 오른쪽 패널을 닫습니다.
+      setReports((prevReports) =>
+        prevReports.map((report) =>
+          report.id === updatedReport.id ? updatedReport : report,
+        ),
+      );
+      setAllReports((prevReports) =>
+        prevReports.map((report) =>
+          report.id === updatedReport.id ? updatedReport : report,
+        ),
+      );
+      setSelectedStatusTab(REPORT_LABELS.done);
+      setSelectedProcessResultTab(REPORT_LABELS.all);
+      setReports([updatedReport]);
+      setCompletionMessage(
+        response.data?.message ||
+          "\uC2E0\uACE0 \uCC98\uB9AC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+      );
+      closePanel();
+    } catch (error) {
+      console.error("[ADMIN_REPORT_PROCESS_ERROR]", {
+        reportId: selectedReport.id,
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message,
+      });
+      setCompletionMessage(
+        error.response?.data?.message ||
+          "\uC2E0\uACE0 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
+      );
+    }
   }
 
   return (
     <AdminLayout
       title="신고 및 제재 관리"
-      description="신고된 콘텐츠와 사용자를 검토하고 적절한 제재를 관리합니다."
+      description="신고된 콘텐츠를 검토하고 적절한 제재를 관리합니다."
     >
-      {completionToast}
+      {completionMessage && (
+        <ReportCompletionToast
+          message={completionMessage}
+          onClose={() => setCompletionMessage("")}
+        />
+      )}
 
-      <section className={styles.topTabs} aria-label="신고 관리 상위 탭">
-        {["신고 목록", "제재 이력", "통계"].map((label) => (
+      <section
+        className={styles.topTabs}
+        aria-label="\uC2E0\uACE0 \uAD00\uB9AC \uC0C1\uC704 \uD0ED"
+      >
+        {[
+          TOP_TAB_LABELS.list,
+          TOP_TAB_LABELS.insight,
+        ].map((label) => (
           <button
             key={label}
-            className={label === "신고 목록" ? styles.activeTopTab : ""}
+            className={label === selectedTopTab ? styles.activeTopTab : ""}
+            onClick={() => setSelectedTopTab(label)}
             type="button"
           >
             {label}
@@ -254,30 +428,829 @@ export function ReportManagementPage() {
         ))}
       </section>
 
-      <section className={styles.filterHeader}>
-        {statusTabs}
-        <SearchBar placeholder="신고자, 대상, 신고 사유 검색" />
-      </section>
+      {selectedTopTab === TOP_TAB_LABELS.list ? (
+        <>
+          <section className={styles.filterHeader}>
+            <ReportStatusTabs
+              tabs={reportStatusTabs}
+              selectedTab={selectedStatusTab}
+              counts={statusCounts}
+              onSelect={setSelectedStatusTab}
+            />
+            <SearchBar
+              placeholder="신고 대상 또는 신고 사유 검색"
+              value={searchKeyword}
+              onChange={(event) => setSearchKeyword(event.target.value)}
+            />
+          </section>
 
-      <section className={styles.reportPanel}>
-        <div className={styles.panelTitleRow}>
-          <div>
-            <h2>전체 신고 목록 ({reports.length})</h2>
-            <p>유저, 게시글, 댓글 신고를 한 화면에서 확인합니다.</p>
-          </div>
-          <select aria-label="신고 목록 정렬">
-            <option>최신순</option>
-            <option>신고 수 많은 순</option>
-            <option>오래된 순</option>
-          </select>
-        </div>
+          <section className={styles.reportPanel}>
+            <div className={styles.panelTitleRow}>
+              <div>
+                <h2>
+                  {"\uC804\uCCB4 \uC2E0\uACE0 \uBAA9\uB85D"} (
+                  {filteredReports.length})
+                </h2>
+                <p>
+                  {
+                    "\uAC8C\uC2DC\uAE00, \uB313\uAE00 \uC2E0\uACE0\uB97C \uD55C \uD654\uBA74\uC5D0\uC11C \uD655\uC778\uD569\uB2C8\uB2E4."
+                  }
+                </p>
+              </div>
+            </div>
 
-        {typeTabs}
-        {reportList}
-      </section>
+            <div className={styles.reportListControls}>
+              <ReportTypeTabs
+                tabs={reportTypeTabs}
+                selectedTab={selectedTypeTab}
+                counts={typeCounts}
+                onSelect={setSelectedTypeTab}
+              />
 
-      {reportDrawer}
-      {resultModal}
+              <div className={styles.reportSelectGroup}>
+                {selectedStatusTab === REPORT_LABELS.done && (
+                  <select
+                    aria-label="처리 결과 필터"
+                    value={selectedProcessResultTab}
+                    onChange={(event) => setSelectedProcessResultTab(event.target.value)}
+                  >
+                    {processResultTabs.map((label) => (
+                      <option key={label} value={label}>
+                        {label} {processResultCounts[label] ?? 0}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  aria-label="\uC2E0\uACE0 \uBAA9\uB85D \uC815\uB82C"
+                  value={sortType}
+                  onChange={(event) => setSortType(event.target.value)}
+                >
+                  <option>{SORT_LABELS.latest}</option>
+                  <option>{SORT_LABELS.count}</option>
+                  <option>{SORT_LABELS.old}</option>
+                </select>
+              </div>
+            </div>
+
+            <ReportList reports={filteredReports} onOpenReport={openDetailPanel} />
+          </section>
+        </>
+      ) : (
+        <ReportInsightSection
+          insights={reportInsights}
+          histories={sanctionHistories}
+          selectedPeriod={selectedInsightPeriod}
+          onSelectPeriod={setSelectedInsightPeriod}
+          periodFilter={insightPeriodFilter}
+          onChangePeriodFilter={(patch) =>
+            setInsightPeriodFilter((prevFilter) => ({
+              ...prevFilter,
+              ...patch,
+            }))
+          }
+          onResetPeriodFilter={() =>
+            setInsightPeriodFilter(getInitialInsightPeriodFilter())
+          }
+        />
+      )}
+
+      {selectedReport && (
+        <ReportDrawer
+          report={selectedReport}
+          panelStep={panelStep}
+          selectedAction={selectedAction}
+          selectedActionMeta={selectedActionMeta}
+          selectedReason={selectedReason}
+          reasonDetail={reasonDetail}
+          selectedPeriod={selectedPeriod}
+          customPeriod={customPeriod}
+          releaseDate={releaseDate}
+          onClose={closePanel}
+          onProcess={() => setPanelStep("option")}
+          onBackToDetail={() => setPanelStep("detail")}
+          onBackToOption={() => setPanelStep("option")}
+          onSelectAction={setSelectedAction}
+          onNextFromOption={moveNextFromOption}
+          onChangeReason={setSelectedReason}
+          onChangeDetail={setReasonDetail}
+          onChangePeriod={setSelectedPeriod}
+          onChangeCustomPeriod={setCustomPeriod}
+          onGoConfirm={() => setPanelStep("confirm")}
+          onBackFromConfirm={() =>
+            selectedAction === "temporary"
+              ? setPanelStep("temporary")
+              : setPanelStep(selectedAction === "reject" ? "option" : "reason")
+          }
+          onConfirm={confirmSanction}
+        />
+      )}
+
+      {selectedResultReport && (
+        <ReportResultModal
+          report={selectedResultReport}
+          onClose={() => setSelectedResultReport(null)}
+        />
+      )}
     </AdminLayout>
   );
+}
+
+function mapAdminReport(report) {
+  if (!report) return {};
+
+  const processResult = report.processResult;
+  const status = STATUS_TO_LABEL[report.reportStatus] || REPORT_LABELS.pending;
+  const type = TYPE_TO_LABEL[report.targetType] || REPORT_LABELS.post;
+  const title =
+    report.postTitle ||
+    (type === REPORT_LABELS.comment
+      ? `${REPORT_LABELS.comment} \uC2E0\uACE0 #${report.commentId}`
+      : `${REPORT_LABELS.post} \uC2E0\uACE0 #${report.postId}`);
+  const targetName =
+    report.targetMemberName ||
+    report.targetMemberNickname ||
+    "\uC54C \uC218 \uC5C6\uC74C";
+  const targetHandle = report.targetMemberEmail
+    ? `@${report.targetMemberEmail}`
+    : "-";
+
+  return {
+    id: report.reportId,
+    type,
+    title,
+    status,
+    targetName,
+    targetHandle,
+    reporter:
+      report.reporterName || report.reporterNickname || report.reporterEmail || "-",
+    reason: report.reason || REPORT_LABELS.etc,
+    detail: report.handledMemo || report.targetContent || "-",
+    reportCount: report.sameTargetReportCount || 1,
+    reporterCount:
+      report.sameTargetReporterCount ||
+      (Array.isArray(report.reporters) ? report.reporters.length : 1),
+    firstReportedAt: formatDateTime(report.createdAt),
+    latestReportedAt: formatDateTime(report.createdAt),
+    reportedAgo: formatDateTime(report.createdAt),
+    joinedAt: formatDate(report.targetMemberCreatedAt),
+    postCount: formatCount(report.targetPostCount),
+    commentCount: formatCount(report.targetCommentCount),
+    likeCount: formatCount(report.targetLikeCount),
+    createdAt: report.createdAt,
+    reviewedAtValue: report.reviewedAt,
+    handledAtValue: report.handledAt,
+    processResult,
+    targetContent: report.targetContent || "-",
+    commentContent: report.commentContent || "",
+    handledByMemberName: report.handledByMemberName || "",
+    reporters: mapReporters(report),
+    activities: Array.isArray(report.activities)
+      ? report.activities.map((activity, index) => ({
+          id: `${activity.type || "activity"}-${activity.time || index}-${index}`,
+          type: activity.type || "\uD65C\uB3D9",
+          text: activity.text || "-",
+          time: activity.time || "-",
+        }))
+      : [],
+    sanctionResult: processResult
+      ? {
+          actionLabel: RESULT_TO_ACTION_LABEL[processResult] || status,
+          reason: report.reason || REPORT_LABELS.etc,
+          detail: report.handledMemo || "-",
+          handledAt: formatDateTime(report.handledAt),
+          adminName:
+            report.handledByMemberName || "\uAD00\uB9AC\uC790",
+        }
+      : null,
+  };
+}
+
+function formatCount(value) {
+  return Number.isFinite(Number(value)) ? Number(value).toLocaleString("ko-KR") : "-";
+}
+
+function mapReporters(report) {
+  if (Array.isArray(report.reporters) && report.reporters.length > 0) {
+    return report.reporters.map((reporter, index) => ({
+      id: reporter.memberId || `${reporter.email || "reporter"}-${index}`,
+      name: reporter.name || reporter.nickname || reporter.email || "-",
+      handle: reporter.email ? `@${reporter.email}` : reporter.nickname || "",
+      reportCount: Number(reporter.reportCount || 0),
+      reportedAt: reporter.latestReportedAt || reporter.firstReportedAt || "-",
+      firstReportedAt: reporter.firstReportedAt || "-",
+      latestReportedAt: reporter.latestReportedAt || "-",
+    }));
+  }
+
+  return [
+    {
+      id: report.reporterMemberId || "reporter-0",
+      name: report.reporterName || report.reporterNickname || report.reporterEmail || "-",
+      handle: report.reporterEmail ? `@${report.reporterEmail}` : "",
+      reportCount: 1,
+      reportedAt: formatDateTime(report.createdAt),
+      firstReportedAt: formatDateTime(report.createdAt),
+      latestReportedAt: formatDateTime(report.createdAt),
+    },
+  ];
+}
+
+function formatDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
+
+  return date.toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function getReportSortTime(report) {
+  const getTime = (value) => {
+    const time = new Date(value || 0).getTime();
+    return Number.isNaN(time) ? 0 : time;
+  };
+
+  if (report.status === REPORT_LABELS.done) {
+    return getTime(report.handledAtValue || report.createdAt);
+  }
+
+  if (report.status === REPORT_LABELS.reviewing) {
+    return getTime(report.reviewedAtValue || report.createdAt);
+  }
+
+  return getTime(report.createdAt);
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
+
+  return date.toLocaleString("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function ReportInsightSection({
+  insights,
+  histories,
+  selectedPeriod,
+  onSelectPeriod,
+  periodFilter,
+  onChangePeriodFilter,
+  onResetPeriodFilter,
+}) {
+  const [historyPage, setHistoryPage] = useState(1);
+  const historiesPerPage = 10;
+  const totalHistoryPages = Math.max(
+    Math.ceil(histories.length / historiesPerPage),
+    1,
+  );
+  const normalizedHistoryPage = Math.min(historyPage, totalHistoryPages);
+  const visibleHistories = histories.slice(
+    (normalizedHistoryPage - 1) * historiesPerPage,
+    normalizedHistoryPage * historiesPerPage,
+  );
+  const historyPageGroupStart =
+    Math.floor((normalizedHistoryPage - 1) / 10) * 10 + 1;
+  const historyPageNumbers = Array.from(
+    {
+      length: Math.min(10, totalHistoryPages - historyPageGroupStart + 1),
+    },
+    (_, index) => historyPageGroupStart + index,
+  );
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [histories]);
+
+  return (
+    <section className={styles.insightGrid}>
+      <article className={styles.historyPanel}>
+        <div className={styles.panelTitleRow}>
+          <div>
+            <h2>{"\uC81C\uC7AC \uC774\uB825"}</h2>
+            <p>{"\uCC98\uB9AC \uC644\uB8CC\uB41C \uC2E0\uACE0\uC758 \uC81C\uC7AC \uAE30\uB85D\uC785\uB2C8\uB2E4."}</p>
+          </div>
+        </div>
+        <div className={styles.historyList}>
+          {histories.length === 0 ? (
+            <p className={styles.emptyText}>{"\uC81C\uC7AC \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."}</p>
+          ) : (
+            visibleHistories.map((report) => (
+              <div className={styles.historyItem} key={report.id}>
+                <div>
+                  <strong>{report.targetName}</strong>
+                  <span>{report.targetHandle}</span>
+                </div>
+                <p>{report.title}</p>
+                <dl>
+                  <div>
+                    <dt>{"\uCC98\uB9AC"}</dt>
+                    <dd>{report.sanctionResult?.actionLabel || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>{"\uC0AC\uC720"}</dt>
+                    <dd>{report.sanctionResult?.detail || report.reason}</dd>
+                  </div>
+                  <div>
+                    <dt>{"\uAD00\uB9AC\uC790"}</dt>
+                    <dd>{report.sanctionResult?.adminName || "-"}</dd>
+                  </div>
+                  <div>
+                    <dt>{"\uCC98\uB9AC\uC77C"}</dt>
+                    <dd>{report.sanctionResult?.handledAt || "-"}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))
+          )}
+        </div>
+        {histories.length > historiesPerPage && (
+          <nav
+            className={styles.historyPagination}
+            aria-label="\uC81C\uC7AC \uC774\uB825 \uD398\uC774\uC9C0 \uC774\uB3D9"
+          >
+            <button
+              type="button"
+              disabled={normalizedHistoryPage === 1}
+              onClick={() =>
+                setHistoryPage((prevPage) => Math.max(prevPage - 1, 1))
+              }
+            >
+              {"\uC774\uC804"}
+            </button>
+            {historyPageNumbers.map((pageNumber) => (
+              <button
+                type="button"
+                key={pageNumber}
+                className={
+                  pageNumber === normalizedHistoryPage ? styles.activeHistoryPage : ""
+                }
+                onClick={() => setHistoryPage(pageNumber)}
+              >
+                {pageNumber}
+              </button>
+            ))}
+            <button
+              type="button"
+              disabled={normalizedHistoryPage === totalHistoryPages}
+              onClick={() =>
+                setHistoryPage((prevPage) =>
+                  Math.min(prevPage + 1, totalHistoryPages),
+                )
+              }
+            >
+              {"\uB2E4\uC74C"}
+            </button>
+          </nav>
+        )}
+      </article>
+
+      <article className={styles.statsPanel}>
+        <div className={styles.statsHeader}>
+          <div>
+            <h2>{"\uC2E0\uACE0 \uD1B5\uACC4"}</h2>
+            <p>{"\uC2E0\uACE0 \uC720\uD615, \uCC98\uB9AC\uC728, \uCC98\uB9AC \uACB0\uACFC\uB97C \uD655\uC778\uD569\uB2C8\uB2E4."}</p>
+          </div>
+          <div className={styles.statsControlBar}>
+            <div className={styles.periodTabs}>
+              {Object.entries(PERIOD_LABELS).map(([value, label]) => (
+                <button
+                  className={value === selectedPeriod ? styles.activePeriod : ""}
+                  key={value}
+                  onClick={() => onSelectPeriod(value)}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <ReportInsightPeriodControl
+              period={selectedPeriod}
+              periodFilter={periodFilter}
+              onChangePeriodFilter={onChangePeriodFilter}
+              onResetPeriodFilter={onResetPeriodFilter}
+            />
+          </div>
+        </div>
+
+        <MetricLineChart items={insights.timeline} period={selectedPeriod} />
+        <MetricBarChart
+          title={"\uC2E0\uACE0 \uC720\uD615"}
+          items={insights.typeBars}
+        />
+        <ProcessRateChart done={insights.doneCount} open={insights.openCount} />
+        <MetricBarChart
+          title={"\uCC98\uB9AC \uACB0\uACFC"}
+          items={insights.resultBars}
+        />
+      </article>
+    </section>
+  );
+}
+
+function ReportInsightPeriodControl({
+  period,
+  periodFilter,
+  onChangePeriodFilter,
+  onResetPeriodFilter,
+}) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(
+    { length: Math.max(currentYear - SERVICE_START_YEAR + 1, 1) },
+    (_, index) => SERVICE_START_YEAR + index,
+  );
+
+  return (
+    <div className={styles.periodFilterControl}>
+      {period === "day" ? (
+        <label className={styles.periodField}>
+          <span>{"\uB0A0\uC9DC"}</span>
+          <input
+            type="date"
+            min={`${SERVICE_START_YEAR}-01-01`}
+            max={`${currentYear}-12-31`}
+            value={periodFilter.selectedDate}
+            onChange={(event) =>
+              onChangePeriodFilter({ selectedDate: event.target.value })
+            }
+          />
+        </label>
+      ) : null}
+
+      {period === "week" ? (
+        <label className={styles.periodField}>
+          <span>{"\uAE30\uC900\uC77C"}</span>
+          <input
+            type="date"
+            min={`${SERVICE_START_YEAR}-01-01`}
+            max={`${currentYear}-12-31`}
+            value={periodFilter.selectedWeekDate}
+            onChange={(event) =>
+              onChangePeriodFilter({ selectedWeekDate: event.target.value })
+            }
+          />
+        </label>
+      ) : null}
+
+      {period === "month" ? (
+        <label className={styles.periodField}>
+          <span>{"\uC5F0\uB3C4"}</span>
+          <select
+            value={periodFilter.selectedYear}
+            onChange={(event) =>
+              onChangePeriodFilter({ selectedYear: Number(event.target.value) })
+            }
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year}{"\uB144"}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+
+      <button
+        className={styles.periodResetButton}
+        type="button"
+        onClick={onResetPeriodFilter}
+      >
+        {"\uCD08\uAE30\uD654"}
+      </button>
+    </div>
+  );
+}
+
+function MetricLineChart({ items, period }) {
+  const maxValue = Math.max(...items.map((item) => item.value), 0);
+  const hasData = maxValue > 0;
+  const max = hasData ? Math.max(Math.ceil(maxValue / 4) * 4, 4) : 4;
+  const ySteps = hasData
+    ? [max, Math.round(max * 0.75), Math.round(max * 0.5), Math.round(max * 0.25), 0]
+    : [4, 3, 2, 1, 0];
+  const chartText = LINE_CHART_TEXT[period] || LINE_CHART_TEXT.day;
+  const chartLeft = 72;
+  const chartRight = 728;
+  const chartTop = 60;
+  const chartBottom = 300;
+  const chartLabelY = 344;
+  const chartItems = items.map((item, index) => {
+    const x =
+      items.length === 1
+        ? (chartLeft + chartRight) / 2
+        : chartLeft + (index / (items.length - 1)) * (chartRight - chartLeft);
+    const y = hasData
+      ? chartBottom - (item.value / max) * (chartBottom - chartTop)
+      : chartBottom;
+
+    return {
+      ...item,
+      x,
+      y,
+    };
+  });
+  const points = chartItems.map((item) => `${item.x},${item.y}`).join(" ");
+  const peakItem = chartItems.reduce(
+    (peak, item) => (item.value > peak.value ? item : peak),
+    chartItems[0] || { value: 0, x: 8, y: 84 },
+  );
+
+  return (
+    <div className={`${styles.chartCard} ${styles.lineChartCard}`}>
+      <div className={styles.lineChartHeader}>
+        <div>
+          <h3>{chartText.title}</h3>
+          <p>{chartText.description}</p>
+        </div>
+      </div>
+      <svg className={styles.lineChart} viewBox="0 0 780 360" preserveAspectRatio="xMidYMid meet">
+        {ySteps.map((step, index) => {
+          const y =
+            chartTop +
+            (index / (ySteps.length - 1)) * (chartBottom - chartTop);
+
+          return (
+            <g key={`${step}-${index}`}>
+              <line className={styles.chartGridLine} x1={chartLeft} x2={chartRight} y1={y} y2={y} />
+              <text className={styles.chartYAxisLabel} x="22" y={y + 5}>
+                {step}
+              </text>
+            </g>
+          );
+        })}
+        <polyline points={points} />
+        {hasData && chartItems.map((item) => (
+          <g className={styles.chartPointGroup} key={item.label}>
+            <line className={styles.chartHoverLine} x1={item.x} x2={item.x} y1={chartTop} y2={chartBottom} />
+            <circle
+              className={item === peakItem ? styles.peakPoint : styles.chartPoint}
+              cx={item.x}
+              cy={item.y}
+              r={item === peakItem ? 5 : 4}
+            />
+            <rect
+              className={styles.chartHitArea}
+              x={item.x - 24}
+              y={chartTop - 12}
+              width="48"
+              height={chartBottom - chartTop + 24}
+            />
+            <g className={styles.chartTooltip}>
+              <rect x={Math.min(Math.max(item.x - 30, 8), 712)} y={Math.max(item.y - 31, 10)} width="60" height="20" rx="10" />
+              <text x={Math.min(Math.max(item.x, 38), 742)} y={Math.max(item.y - 17, 24)}>
+                {item.value}건
+              </text>
+            </g>
+          </g>
+        ))}
+        {chartItems.map((item) => (
+          <text className={styles.chartXAxisLabel} key={`label-${item.label}`} x={item.x} y={chartLabelY}>
+            {item.label}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function MetricBarChart({ title, items }) {
+  const max = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <div className={styles.chartCard}>
+      <h3>{title}</h3>
+      <div className={styles.barList}>
+        {items.map((item) => (
+          <div className={styles.barRow} key={item.label}>
+            <span>{item.label}</span>
+            <div>
+              <i style={{ width: `${Math.max((item.value / max) * 100, item.value ? 8 : 0)}%` }} />
+            </div>
+            <strong>{item.value}</strong>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProcessRateChart({ done, open }) {
+  const total = done + open;
+  const doneRate = total ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <div className={styles.chartCard}>
+      <h3>{"\uCC98\uB9AC\uC728"}</h3>
+      <div className={styles.donutWrap}>
+        <div
+          className={styles.donut}
+          style={{
+            background: `conic-gradient(#7c4dff 0 ${doneRate}%, #eef2ff ${doneRate}% 100%)`,
+          }}
+        >
+          <strong>{doneRate}%</strong>
+        </div>
+        <div className={styles.rateLegend}>
+          <span>{"\uCC98\uB9AC \uC644\uB8CC"} {done}</span>
+          <span>{"\uBBF8\uCC98\uB9AC"} {open}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildReportInsights(reports, period, range) {
+  const doneCount = reports.filter((report) => report.status === REPORT_LABELS.done).length;
+  const openCount = reports.length - doneCount;
+
+  return {
+    doneCount,
+    openCount,
+    timeline: buildTimeline(reports, period, range),
+    typeBars: [
+      {
+        label: REPORT_LABELS.post,
+        value: reports.filter((report) => report.type === REPORT_LABELS.post).length,
+      },
+      {
+        label: REPORT_LABELS.comment,
+        value: reports.filter((report) => report.type === REPORT_LABELS.comment).length,
+      },
+    ],
+    resultBars: processResultTabs
+      .filter((label) => label !== REPORT_LABELS.all)
+      .map((label) => ({
+        label,
+        value: reports.filter((report) => report.sanctionResult?.actionLabel === label).length,
+      })),
+  };
+}
+
+function buildTimeline(reports, period, range) {
+  const buckets = buildTimelineBuckets(period);
+
+  reports.forEach((report) => {
+    const date = new Date(report.createdAt);
+    if (Number.isNaN(date.getTime())) return;
+
+    if (period === "day") {
+      const hour = date.getHours() === 23 ? 23 : Math.floor(date.getHours() / 3) * 3;
+      const label = String(hour);
+      buckets.set(label, (buckets.get(label) || 0) + 1);
+      return;
+    }
+
+    if (period === "week") {
+      const dayIndex = Math.floor(
+        (startOfDay(date) - startOfDay(range.start)) / 86400000,
+      );
+      const label = ["\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0"][dayIndex];
+
+      if (label) {
+        buckets.set(label, (buckets.get(label) || 0) + 1);
+      }
+      return;
+    }
+
+    const label = `${date.getMonth() + 1}\uC6D4`;
+    buckets.set(label, (buckets.get(label) || 0) + 1);
+  });
+
+  return [...buckets.entries()].map(([label, value]) => ({ label, value }));
+}
+
+function buildTimelineBuckets(period) {
+  if (period === "day") {
+    return new Map(
+      [0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => [
+        String(hour),
+        0,
+      ]),
+    );
+  }
+
+  if (period === "week") {
+    return new Map(
+      ["\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0"].map(
+        (label) => [label, 0],
+      ),
+    );
+  }
+
+  return new Map(
+    Array.from({ length: 12 }, (_, index) => [`${index + 1}\uC6D4`, 0]),
+  );
+}
+
+function filterReportsByType(reports, selectedTypeTab) {
+  if (selectedTypeTab === REPORT_LABELS.all) {
+    return reports;
+  }
+
+  return reports.filter((report) => report.type === selectedTypeTab);
+}
+
+function filterReportsByStatus(reports, selectedStatusTab) {
+  if (selectedStatusTab === REPORT_LABELS.all) {
+    return reports;
+  }
+
+  return reports.filter((report) => report.status === selectedStatusTab);
+}
+
+function countReportsByProcessResult(reports, resultTabs) {
+  return resultTabs.reduce((counts, tabLabel) => {
+    counts[tabLabel] =
+      tabLabel === REPORT_LABELS.all
+        ? reports.length
+        : reports.filter((report) => report.sanctionResult?.actionLabel === tabLabel).length;
+    return counts;
+  }, {});
+}
+
+function filterReportsByRange(reports, range) {
+  return reports.filter((report) => {
+    const createdAt = new Date(report.createdAt);
+    return (
+      !Number.isNaN(createdAt.getTime()) &&
+      createdAt >= range.start &&
+      createdAt <= range.end
+    );
+  });
+}
+
+function getInitialInsightPeriodFilter() {
+  const today = new Date();
+
+  return {
+    selectedDate: formatDateInputValue(today),
+    selectedWeekDate: formatDateInputValue(today),
+    selectedYear: Math.max(SERVICE_START_YEAR, today.getFullYear()),
+  };
+}
+
+function buildInsightPeriodRange(period, filter) {
+  if (period === "week") {
+    const selectedDate = parseDateInputValue(filter.selectedWeekDate);
+    const start = startOfDay(selectedDate);
+    const end = new Date(start);
+
+    start.setDate(start.getDate() - start.getDay());
+    end.setTime(start.getTime());
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+
+  if (period === "month") {
+    const year = Number(filter.selectedYear) || new Date().getFullYear();
+    const start = new Date(year, 0, 1, 0, 0, 0, 0);
+    const end = new Date(year, 11, 31, 23, 59, 59, 999);
+
+    return { start, end };
+  }
+
+  const selectedDate = parseDateInputValue(filter.selectedDate);
+  const start = startOfDay(selectedDate);
+  const end = new Date(start);
+
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
+function formatDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateInputValue(value) {
+  const date = value ? new Date(`${value}T00:00:00`) : new Date();
+
+  return Number.isNaN(date.getTime()) ? new Date() : date;
+}
+
+function startOfDay(date) {
+  const nextDate = new Date(date);
+
+  nextDate.setHours(0, 0, 0, 0);
+
+  return nextDate;
 }
