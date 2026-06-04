@@ -4,7 +4,7 @@ import axios from "axios";
 import { useAuthStore } from "../../stores/useAuthStore";
 import { LoginView } from "./components/LoginView";
 import { getApiMessage, getToastDuration } from "./authFeedback";
-import { startGoogleLogin, startKakaoLogin } from "./socialAuth";
+import { startGoogleLogin, startKakaoLogin, startNaverLogin } from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
 const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
@@ -154,6 +154,14 @@ export const LoginPage = () => {
     }
   };
 
+  const handleNaverLogin = () => {
+    try {
+      startNaverLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
   const goSignup = () => {
     navigate("/auth/signup");
   };
@@ -172,6 +180,7 @@ export const LoginPage = () => {
       handleLogin={handleLogin}
       handleKakaoLogin={handleKakaoLogin}
       handleGoogleLogin={handleGoogleLogin}
+      handleNaverLogin={handleNaverLogin}
       showReadyMessage={showReadyMessage}
       goRecovery={goRecovery}
       goSignup={goSignup}

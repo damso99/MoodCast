@@ -6,10 +6,13 @@ import AuthToast from "./components/AuthToast";
 import {
   getGoogleRedirectUri,
   getKakaoRedirectUri,
+  getNaverRedirectUri,
   GOOGLE_OAUTH_MODE_KEY,
   GOOGLE_OAUTH_STATE_KEY,
   KAKAO_OAUTH_MODE_KEY,
   KAKAO_OAUTH_STATE_KEY,
+  NAVER_OAUTH_MODE_KEY,
+  NAVER_OAUTH_STATE_KEY,
   OAUTH_MODE_LINK,
   SOCIAL_SIGNUP_PENDING_KEY,
 } from "./socialAuth";
@@ -23,13 +26,38 @@ export const SocialCallbackPage = () => {
   const calledRef = useRef(false);
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
-  const isGoogleCallback = window.location.pathname.includes("/auth/google/");
-  const providerLabel = isGoogleCallback ? "Google" : "카카오";
-  const stateKey = isGoogleCallback ? GOOGLE_OAUTH_STATE_KEY : KAKAO_OAUTH_STATE_KEY;
-  const modeKey = isGoogleCallback ? GOOGLE_OAUTH_MODE_KEY : KAKAO_OAUTH_MODE_KEY;
-  const redirectUri = isGoogleCallback ? getGoogleRedirectUri() : getKakaoRedirectUri();
-  const loginUrl = `${BACKSERVER}/oauth/${isGoogleCallback ? "google" : "kakao"}/login`;
-  const linkUrl = `${BACKSERVER}/oauth/${isGoogleCallback ? "google" : "kakao"}/link`;
+  const pathname = window.location.pathname;
+  const provider = pathname.includes("/auth/google/")
+    ? "google"
+    : pathname.includes("/auth/naver/")
+      ? "naver"
+      : "kakao";
+  const providerConfig = {
+    kakao: {
+      label: "카카오",
+      stateKey: KAKAO_OAUTH_STATE_KEY,
+      modeKey: KAKAO_OAUTH_MODE_KEY,
+      redirectUri: getKakaoRedirectUri(),
+    },
+    google: {
+      label: "Google",
+      stateKey: GOOGLE_OAUTH_STATE_KEY,
+      modeKey: GOOGLE_OAUTH_MODE_KEY,
+      redirectUri: getGoogleRedirectUri(),
+    },
+    naver: {
+      label: "네이버",
+      stateKey: NAVER_OAUTH_STATE_KEY,
+      modeKey: NAVER_OAUTH_MODE_KEY,
+      redirectUri: getNaverRedirectUri(),
+    },
+  }[provider];
+  const providerLabel = providerConfig.label;
+  const stateKey = providerConfig.stateKey;
+  const modeKey = providerConfig.modeKey;
+  const redirectUri = providerConfig.redirectUri;
+  const loginUrl = `${BACKSERVER}/oauth/${provider}/login`;
+  const linkUrl = `${BACKSERVER}/oauth/${provider}/link`;
 
   const showToast = (type, message) => {
     setToast({ show: true, type, message, duration: getToastDuration(type) });
@@ -83,6 +111,7 @@ export const SocialCallbackPage = () => {
           {
             code,
             redirectUri,
+            state,
           },
           {
             headers: {
@@ -110,6 +139,7 @@ export const SocialCallbackPage = () => {
         {
           code,
           redirectUri,
+          state,
         },
         {
           withCredentials: true,
