@@ -244,7 +244,6 @@ function PreviewLineChart({ items, color, emptyLabel }) {
         ))}
       </svg>
 
-      {!chart.hasData && <span className={styles.noDataCaption}>해당 기간에 집계된 데이터가 없습니다.</span>}
     </div>
   );
 }
@@ -290,7 +289,7 @@ function ChartCard({ title, description, loading, children }) {
     <article className={styles.chartCard}>
       <div className={styles.chartCardHead}>
         <h2>{title}</h2>
-        <p>{description}</p>
+        {description && <p>{description}</p>}
       </div>
       {loading ? <div className={styles.emptyChartState}>통계 데이터를 불러오는 중입니다.</div> : children}
     </article>
@@ -479,7 +478,6 @@ export function StatisticsDashboardPage() {
       <section className={styles.dashboardGrid}>
         <ChartCard
           title={`가입자 추이 (${periodLabel})`}
-          description="선택한 기간 기준 신규 가입 흐름입니다."
           loading={loading}
         >
           <PreviewLineChart
@@ -491,7 +489,6 @@ export function StatisticsDashboardPage() {
 
         <ChartCard
           title={`시간별 활성 사용자 (${periodLabel})`}
-          description="일은 시간별 수치, 주/월은 시간대별 평균 수치입니다."
           loading={loading}
         >
           <PreviewLineChart
@@ -503,7 +500,6 @@ export function StatisticsDashboardPage() {
 
         <ChartCard
           title={`콘텐츠 활동 (${periodLabel})`}
-          description="게시글, 댓글, 공감 수를 같은 기준으로 비교합니다."
           loading={loading}
         >
           <PreviewBarChart items={contentBars} emptyLabel="콘텐츠 활동 데이터가 없습니다." />
@@ -511,7 +507,6 @@ export function StatisticsDashboardPage() {
 
         <ChartCard
           title={`감정별 활동 구성 (${periodLabel})`}
-          description="게시글 작성 시 선택된 감정 분포를 보여줍니다."
           loading={loading}
         >
           <PreviewBarChart items={emotionBars} emptyLabel="감정별 활동 데이터가 없습니다." />

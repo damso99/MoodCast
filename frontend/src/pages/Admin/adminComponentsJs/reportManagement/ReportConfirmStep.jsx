@@ -12,14 +12,15 @@ export function ReportConfirmStep({
   selectedPeriod,
   customPeriod,
   releaseDate,
+  hideTargetContent,
   onBack,
   onClose,
   onConfirm,
 }) {
   const periodLabel =
     selectedPeriod === "custom"
-      ? `${customPeriod || 0}\uC77C`
-      : `${selectedPeriod}\uC77C`;
+      ? `${customPeriod || 0}일`
+      : `${selectedPeriod}일`;
   const isTemporary = actionMeta?.id === "temporary";
   const isReject = actionMeta?.id === "reject";
 
@@ -33,9 +34,7 @@ export function ReportConfirmStep({
 
       <div className={styles.drawerBody}>
         <p className={styles.guideText}>
-          {
-            "\uC544\uB798 \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uACE0 \uC2E0\uACE0 \uCC98\uB9AC\uB97C \uCD5C\uC885 \uD655\uC815\uD574\uC8FC\uC138\uC694."
-          }
+          아래 내용을 확인하고 신고 처리를 최종 확정해주세요.
         </p>
 
         <section className={styles.confirmTarget}>
@@ -48,32 +47,28 @@ export function ReportConfirmStep({
           </div>
           <dl>
             <div>
-              <dt>{"\uC2E0\uACE0 \uC218"}</dt>
-              <dd>{report.reportCount}{"\uAC74"}</dd>
+              <dt>신고 수</dt>
+              <dd>{report.reportCount}건</dd>
             </div>
             <div>
-              <dt>{"\uAC00\uC785\uC77C"}</dt>
+              <dt>가입일</dt>
               <dd>{report.joinedAt}</dd>
             </div>
           </dl>
         </section>
 
         <section className={styles.confirmTable}>
-          <h3>{"\uCC98\uB9AC \uC0AC\uC720"}</h3>
+          <h3>처리 사유</h3>
           <dl>
             <div>
-              <dt>
-                {isReject
-                  ? "\uCC98\uB9AC \uC720\uD615"
-                  : "\uC81C\uC7AC \uC0AC\uC720"}
-              </dt>
-              <dd>{isReject ? "\uBC18\uB824" : selectedReason}</dd>
+              <dt>{isReject ? "처리 유형" : "제재 사유"}</dt>
+              <dd>{isReject ? "반려" : selectedReason}</dd>
             </div>
             <div>
-              <dt>{"\uC0C1\uC138 \uC124\uBA85"}</dt>
+              <dt>상세 설명</dt>
               <dd>
                 {isReject
-                  ? "\uC2E0\uACE0\uAC00 \uBD80\uC801\uC808\uD558\uB2E4\uACE0 \uD310\uB2E8\uB418\uC5B4 \uBC18\uB824\uD569\uB2C8\uB2E4."
+                  ? "신고가 부적절하다고 판단되어 반려합니다."
                   : reasonDetail || report.detail}
               </dd>
             </div>
@@ -81,47 +76,53 @@ export function ReportConfirmStep({
         </section>
 
         <section className={styles.confirmTable}>
-          <h3>{"\uCC98\uB9AC \uB0B4\uC6A9"}</h3>
+          <h3>처리 내용</h3>
           <dl>
             <div>
-              <dt>
-                {isReject
-                  ? "\uCC98\uB9AC \uC720\uD615"
-                  : "\uC81C\uC7AC \uC720\uD615"}
-              </dt>
+              <dt>{isReject ? "처리 유형" : "제재 유형"}</dt>
               <dd>{actionMeta?.label}</dd>
             </div>
             {isTemporary && (
               <>
                 <div>
-                  <dt>{"\uC815\uC9C0 \uAE30\uAC04"}</dt>
+                  <dt>정지 기간</dt>
                   <dd>{periodLabel}</dd>
                 </div>
                 <div>
-                  <dt>{"\uC2DC\uC791 \uC2DC\uAC04"}</dt>
+                  <dt>시작 시간</dt>
                   <dd>{todayText}</dd>
                 </div>
                 <div>
-                  <dt>{"\uC608\uC0C1 \uD574\uC81C \uC2DC\uAC04"}</dt>
+                  <dt>예상 해제 시간</dt>
                   <dd>{releaseDate}</dd>
                 </div>
                 <div>
-                  <dt>{"\uC801\uC6A9 \uBC94\uC704"}</dt>
-                  <dd>{"\uB85C\uADF8\uC778 \uBC0F \uC11C\uBE44\uC2A4 \uC774\uC6A9 \uC81C\uD55C"}</dd>
+                  <dt>적용 범위</dt>
+                  <dd>로그인 및 서비스 이용 제한</dd>
+                </div>
+                <div>
+                  <dt>콘텐츠 상태</dt>
+                  <dd>{hideTargetContent ? "신고 대상 숨김" : "신고 대상 공개 유지"}</dd>
                 </div>
               </>
             )}
             {!isTemporary && (
               <div>
-                <dt>{"\uCC98\uB9AC \uB0B4\uC6A9"}</dt>
+                <dt>처리 내용</dt>
                 <dd>
                   {actionMeta?.id === "warning" &&
-                    "\uC0AC\uC6A9\uC790 \uACBD\uACE0 \uD69F\uC218\uB97C \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."}
+                    "사용자 경고 횟수를 증가시킵니다."}
                   {actionMeta?.id === "permanent" &&
-                    "\uD574\uB2F9 \uC0AC\uC6A9\uC790\uC758 \uACC4\uC815\uC744 \uC601\uAD6C \uC815\uC9C0\uD569\uB2C8\uB2E4."}
+                    "해당 사용자의 계정을 영구 정지합니다."}
                   {actionMeta?.id === "reject" &&
-                    "\uC2E0\uACE0\uAC00 \uBD80\uC801\uC808\uD558\uB2E4\uACE0 \uD310\uB2E8\uD558\uC5EC \uBC18\uB824\uD569\uB2C8\uB2E4."}
+                    "신고가 부적절하다고 판단하여 반려합니다."}
                 </dd>
+              </div>
+            )}
+            {!isReject && !isTemporary && (
+              <div>
+                <dt>콘텐츠 상태</dt>
+                <dd>{hideTargetContent ? "신고 대상 숨김" : "신고 대상 공개 유지"}</dd>
               </div>
             )}
           </dl>
@@ -130,11 +131,9 @@ export function ReportConfirmStep({
         <section className={styles.warningBox}>
           <ErrorOutlineOutlinedIcon />
           <div>
-            <strong>{actionMeta?.label}{"\uCC98\uB9AC\uB97C \uC801\uC6A9\uD569\uB2C8\uB2E4."}</strong>
+            <strong>{actionMeta?.label} 처리를 적용합니다.</strong>
             <p>
-              {
-                "\uCC98\uB9AC \uD655\uC815 \uD6C4\uC5D0\uB294 \uC774\uB825\uC774 \uB0A8\uC73C\uBBC0\uB85C \uC2E0\uC911\uD558\uAC8C \uACB0\uC815\uD574\uC8FC\uC138\uC694."
-              }
+              처리 확정 후에는 이력이 남으므로 신중하게 결정해주세요.
             </p>
           </div>
         </section>
@@ -142,10 +141,10 @@ export function ReportConfirmStep({
 
       <footer className={styles.drawerFooter}>
         <button className={styles.secondaryButton} type="button" onClick={onBack}>
-          {"\uCDE8\uC18C"}
+          취소
         </button>
         <button className={styles.primaryButton} type="button" onClick={onConfirm}>
-          {"\uCC98\uB9AC \uD655\uC815"}
+          처리 확정
         </button>
       </footer>
     </>

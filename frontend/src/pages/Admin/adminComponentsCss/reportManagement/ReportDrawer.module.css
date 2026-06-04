@@ -1,4 +1,4 @@
-/* 신고 처리 우측 패널 전체 레이어입니다. */
+/* 신고 처리 오른쪽 사이드 패널 전체 레이어입니다. */
 .overlay {
   position: fixed;
   inset: 0;
@@ -27,7 +27,7 @@
   animation: drawerDimFadeOut 0.22s ease-in forwards;
 }
 
-/* 사용자 관리의 관리 패널과 같은 방향/속도로 열리는 신고 처리 패널입니다. */
+/* 사용자 관리의 관리 패널과 같은 방향과 속도로 열리는 신고 처리 패널입니다. */
 .drawer {
   position: relative;
   z-index: 1;

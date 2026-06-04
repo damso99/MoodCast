@@ -6,7 +6,9 @@ import styles from "../../adminComponentsCss/reportManagement/ReportDetailStep.m
 export function ReportDetailStep({ report, onClose, onProcess }) {
   const [isReporterModalOpen, setIsReporterModalOpen] = useState(false);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isPostDetailModalOpen, setIsPostDetailModalOpen] = useState(false);
   const visibleActivities = (report.activities || []).slice(0, 5);
+  const isCommentReport = report.type === "댓글";
 
   return (
     <>
@@ -14,29 +16,29 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
 
       <div className={styles.drawerBody}>
         <section className={styles.detailSection}>
-          <h3>{"\uC2E0\uACE0 \uAC1C\uC694"}</h3>
+          <h3>신고 개요</h3>
           <div className={styles.overviewCard}>
             <div className={styles.profileThumb}>
               <PersonOutlineOutlinedIcon />
             </div>
             <dl>
               <div>
-                <dt>{"\uC2E0\uACE0 \uB300\uC0C1"}</dt>
+                <dt>신고 대상</dt>
                 <dd>
                   <strong>{report.targetName}</strong>
                   <span>{report.targetHandle}</span>
                 </dd>
               </div>
               <div>
-                <dt>{"\uC2E0\uACE0 \uC218"}</dt>
-                <dd>{report.reportCount}{"\uAC74"}</dd>
+                <dt>신고 수</dt>
+                <dd>{report.reportCount}건</dd>
               </div>
               <div>
-                <dt>{"\uCD5C\uCD08 \uC2E0\uACE0"}</dt>
+                <dt>최초 신고</dt>
                 <dd>{report.firstReportedAt}</dd>
               </div>
               <div>
-                <dt>{"\uCD5C\uADFC \uC2E0\uACE0"}</dt>
+                <dt>최근 신고</dt>
                 <dd>{report.latestReportedAt}</dd>
               </div>
             </dl>
@@ -44,18 +46,34 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
         </section>
 
         <section className={styles.detailSection}>
-          <h3>{"\uC2E0\uACE0 \uC0AC\uC720"}</h3>
+          <h3>신고 사유</h3>
           <strong className={styles.reasonText}>{report.reason}</strong>
-          {report.type === "\uB313\uAE00" ? (
+          {isCommentReport ? (
             <div className={styles.reportedContentBox}>
-              <span>{"\uAC8C\uC2DC\uAE00"}</span>
+              <span>게시글</span>
               <strong>{report.title}</strong>
-              <span>{"\uB313\uAE00 \uB0B4\uC6A9"}</span>
+              <button
+                className={styles.inlineDetailButton}
+                type="button"
+                onClick={() => setIsPostDetailModalOpen(true)}
+              >
+                게시글 상세 보기
+              </button>
+              <span>댓글 내용</span>
               <p>{report.commentContent || report.targetContent || "-"}</p>
             </div>
           ) : (
             <div className={styles.reportedContentBox}>
-              <span>{"\uAC8C\uC2DC\uAE00 \uB0B4\uC6A9"}</span>
+              <div className={styles.reportedContentHead}>
+                <span>게시글 내용</span>
+                <button
+                  className={styles.inlineDetailButton}
+                  type="button"
+                  onClick={() => setIsPostDetailModalOpen(true)}
+                >
+                  게시글 상세 보기
+                </button>
+              </div>
               <p>{report.targetContent || report.detail}</p>
             </div>
           )}
@@ -63,11 +81,9 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
 
         <section className={styles.detailSection}>
           <div className={styles.sectionHead}>
-            <h3>
-              {"\uC2E0\uACE0\uC790"}({report.reporterCount})
-            </h3>
+            <h3>신고자({report.reporterCount})</h3>
             <button type="button" onClick={() => setIsReporterModalOpen(true)}>
-              {"\uC804\uCCB4 \uBCF4\uAE30"}
+              전체 보기
             </button>
           </div>
           <div className={styles.reporterList}>
@@ -78,7 +94,7 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
                 {reporter.handle && <em>{reporter.handle}</em>}
                 <small>
                   {reporter.reportCount > 1
-                    ? `${reporter.reportCount}\uAC74 · ${reporter.reportedAt}`
+                    ? `${reporter.reportCount}건 · ${reporter.reportedAt}`
                     : reporter.reportedAt}
                 </small>
               </div>
@@ -87,7 +103,7 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
         </section>
 
         <section className={styles.detailSection}>
-          <h3>{"\uB300\uC0C1 \uC0AC\uC6A9\uC790 \uC815\uBCF4"}</h3>
+          <h3>대상 사용자 정보</h3>
           <div className={styles.userInfoCard}>
             <div>
               <strong>{report.targetName}</strong>
@@ -95,32 +111,32 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
             </div>
             <dl>
               <div>
-                <dt>{"\uAC00\uC785\uC77C"}</dt>
+                <dt>가입일</dt>
                 <dd>{report.joinedAt}</dd>
               </div>
               <div>
-                <dt>{"\uAC8C\uC2DC\uAE00"}</dt>
+                <dt>게시글</dt>
                 <dd>{report.postCount}</dd>
               </div>
               <div>
-                <dt>{"\uB313\uAE00"}</dt>
+                <dt>댓글</dt>
                 <dd>{report.commentCount}</dd>
               </div>
               <div>
-                <dt>{"\uC88B\uC544\uC694"}</dt>
+                <dt>좋아요</dt>
                 <dd>{report.likeCount}</dd>
               </div>
               <div>
-                <dt>{"\uC2E0\uACE0 \uD69F\uC218"}</dt>
-                <dd>{"\uC5F0\uACB0 \uC608\uC815"}</dd>
+                <dt>신고 횟수</dt>
+                <dd>연결 예정</dd>
               </div>
               <div>
-                <dt>{"\uACBD\uACE0 \uD69F\uC218"}</dt>
-                <dd>{"\uC5F0\uACB0 \uC608\uC815"}</dd>
+                <dt>경고 횟수</dt>
+                <dd>연결 예정</dd>
               </div>
               <div>
-                <dt>{"\uC815\uC9C0 \uD69F\uC218"}</dt>
-                <dd>{"\uC5F0\uACB0 \uC608\uC815"}</dd>
+                <dt>정지 횟수</dt>
+                <dd>연결 예정</dd>
               </div>
             </dl>
           </div>
@@ -128,9 +144,9 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
 
         <section className={styles.detailSection}>
           <div className={styles.sectionHead}>
-            <h3>{"\uCD5C\uADFC \uD65C\uB3D9"}</h3>
+            <h3>최근 활동</h3>
             <button type="button" onClick={() => setIsActivityModalOpen(true)}>
-              {"\uC804\uCCB4 \uBCF4\uAE30"}
+              전체 보기
             </button>
           </div>
           <ul className={styles.activityList}>
@@ -143,40 +159,43 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
                 </li>
               ))
             ) : (
-              <li className={styles.emptyActivity}>
-                {"\uCD5C\uADFC \uD65C\uB3D9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."}
-              </li>
+              <li className={styles.emptyActivity}>최근 활동이 없습니다.</li>
             )}
           </ul>
         </section>
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button className={styles.secondaryButton} type="button">
-          {"\uC804\uCCB4 \uD65C\uB3D9 \uBCF4\uAE30"}
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={() => setIsActivityModalOpen(true)}
+        >
+          전체 활동 보기
         </button>
         <button className={styles.primaryButton} type="button" onClick={onProcess}>
-          {"\uC2E0\uACE0 \uAC80\uD1A0 \uBC0F \uCC98\uB9AC"}
+          신고 검토 및 처리
         </button>
       </footer>
 
       {isReporterModalOpen && (
         <DetailListModal
-          title={"\uC2E0\uACE0\uC790 \uC804\uCCB4 \uBCF4\uAE30"}
+          title="신고자 전체 보기"
           onClose={() => setIsReporterModalOpen(false)}
         >
           <div className={styles.modalList}>
             {(report.reporters || []).map((reporter, index) => (
-              <div className={styles.modalListItem} key={reporter.id || `${reporter.name}-${index}`}>
+              <div
+                className={styles.modalListItem}
+                key={reporter.id || `${reporter.name}-${index}`}
+              >
                 <div>
-                  <strong>{index + 1}. {reporter.name}</strong>
+                  <strong>
+                    {index + 1}. {reporter.name}
+                  </strong>
                   {reporter.handle && <small>{reporter.handle}</small>}
                   {reporter.reportCount > 1 && (
-                    <small>
-                      {"\uC2E0\uACE0 "}
-                      {reporter.reportCount}
-                      {"\uAC74"}
-                    </small>
+                    <small>신고 {reporter.reportCount}건</small>
                   )}
                 </div>
                 <span>{reporter.reportedAt}</span>
@@ -188,7 +207,7 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
 
       {isActivityModalOpen && (
         <DetailListModal
-          title={"\uC804\uCCB4 \uD65C\uB3D9 \uBCF4\uAE30"}
+          title="전체 활동 보기"
           onClose={() => setIsActivityModalOpen(false)}
         >
           <ul className={`${styles.activityList} ${styles.modalActivityList}`}>
@@ -201,11 +220,50 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
                 </li>
               ))
             ) : (
-              <li className={styles.emptyActivity}>
-                {"\uCD5C\uADFC \uD65C\uB3D9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."}
-              </li>
+              <li className={styles.emptyActivity}>최근 활동이 없습니다.</li>
             )}
           </ul>
+        </DetailListModal>
+      )}
+
+      {isPostDetailModalOpen && (
+        <DetailListModal
+          title="게시글 상세 보기"
+          onClose={() => setIsPostDetailModalOpen(false)}
+        >
+          <article className={styles.postDetailModalContent}>
+            <div>
+              <span>유형</span>
+              <strong>{report.type}</strong>
+            </div>
+            <div>
+              <span>제목</span>
+              <strong>{report.title}</strong>
+            </div>
+            <div>
+              <span>신고 대상</span>
+              <strong>{report.targetName}</strong>
+              <small>{report.targetHandle}</small>
+            </div>
+            <div>
+              <span>{isCommentReport ? "댓글 내용" : "게시글 내용"}</span>
+              <p>
+                {isCommentReport
+                  ? report.commentContent || "-"
+                  : report.targetContent || "-"}
+              </p>
+            </div>
+            {isCommentReport && (
+              <div>
+                <span>원 게시글 내용</span>
+                <p>{report.targetContent || "-"}</p>
+              </div>
+            )}
+            <div>
+              <span>신고 사유</span>
+              <p>{report.reason}</p>
+            </div>
+          </article>
         </DetailListModal>
       )}
     </>

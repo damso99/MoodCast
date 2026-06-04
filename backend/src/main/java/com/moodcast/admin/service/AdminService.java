@@ -802,6 +802,7 @@ public class AdminService {
         LocalDateTime suspendedUntil = calculateReportSuspendedUntil(processResult, request);
 
         applyReportProcessToTargetMember(loginMember, report, processResult, suspendedUntil);
+        applyReportTargetContentVisibility(loginMember, report, request.getHideTargetContent(), processResult);
 
         int updated = adminDao.processAdminReport(
                 reportId,
@@ -830,6 +831,60 @@ public class AdminService {
         );
 
         return selectRequiredAdminReport(reportId);
+    }
+
+    /*
+     * 신고 처리와 함께 대상 게시글/댓글의 노출 상태를 정리합니다.
+     * 반려는 제재가 아니므로 콘텐츠 상태를 건드리지 않고, 관리자가 숨김을 해제한 경우에도 공개 상태를 유지합니다.
+     */
+    private void applyReportTargetContentVisibility(
+            LoginMemberResponse loginMember,
+            AdminReport report,
+            Boolean hideTargetContent,
+            String processResult
+    ) {
+        if (!Boolean.TRUE.equals(hideTargetContent) || "REJECT".equals(processResult)) {
+            return;
+        }
+
+        if ("POST".equals(report.getTargetType())) {
+            Long postId = report.getPostId();
+
+            if (postId == null) {
+                log.warn("[ADMIN_REPORT_HIDE_TARGET_SKIP] reportId={} targetType=POST reason=missingPostId", report.getReportId());
+                return;
+            }
+
+            int updated = adminDao.hideAdminContentPost(postId);
+
+            if (updated > 0) {
+                adminDao.insertAdminActionLog(
+                        loginMember.getMemberId(),
+                        "HIDE_POST",
+                        "POST",
+                        postId,
+                        "\uC2E0\uACE0 \uCC98\uB9AC\uC5D0 \uB530\uB978 \uAC8C\uC2DC\uAE00 \uC228\uAE40"
+                );
+            }
+            return;
+        }
+
+        if ("COMMENT".equals(report.getTargetType())) {
+            Long commentId = report.getCommentId();
+
+            if (commentId == null) {
+                log.warn("[ADMIN_REPORT_HIDE_TARGET_SKIP] reportId={} targetType=COMMENT reason=missingCommentId", report.getReportId());
+                return;
+            }
+
+            adminDao.insertAdminActionLog(
+                    loginMember.getMemberId(),
+                    "HIDE",
+                    "COMMENT",
+                    commentId,
+                    "\uC2E0\uACE0 \uCC98\uB9AC\uC5D0 \uB530\uB978 \uB313\uAE00 \uC228\uAE40"
+            );
+        }
     }
 
     private void applyReportProcessToTargetMember(

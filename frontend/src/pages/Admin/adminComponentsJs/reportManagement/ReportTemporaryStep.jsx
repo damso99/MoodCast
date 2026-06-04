@@ -10,12 +10,14 @@ export function ReportTemporaryStep({
   selectedPeriod,
   customPeriod,
   releaseDate,
+  hideTargetContent,
   onBack,
   onClose,
   onChangeReason,
   onChangeDetail,
   onChangePeriod,
   onChangeCustomPeriod,
+  onChangeHideTargetContent,
   onNext,
 }) {
   return (
@@ -28,12 +30,8 @@ export function ReportTemporaryStep({
 
       <div className={styles.drawerBody}>
         <section className={styles.noticeBox}>
-          <strong>{"\uC548\uB0B4"}</strong>
-          <p>
-            {
-              "\uC77C\uC2DC\uC815\uC9C0 \uAE30\uAC04 \uB3D9\uC548 \uB85C\uADF8\uC778 \uBC0F \uC11C\uBE44\uC2A4 \uC774\uC6A9\uC744 \uC81C\uD55C\uD569\uB2C8\uB2E4."
-            }
-          </p>
+          <strong>안내</strong>
+          <p>일시정지 기간 동안 로그인 및 서비스 이용을 제한합니다.</p>
         </section>
 
         <section className={styles.targetMiniCard}>
@@ -46,18 +44,18 @@ export function ReportTemporaryStep({
           </div>
           <dl>
             <div>
-              <dt>{"\uC2E0\uACE0 \uC218"}</dt>
-              <dd>{report.reportCount}{"\uAC74"}</dd>
+              <dt>신고 수</dt>
+              <dd>{report.reportCount}건</dd>
             </div>
             <div>
-              <dt>{"\uAC00\uC785\uC77C"}</dt>
+              <dt>가입일</dt>
               <dd>{report.joinedAt}</dd>
             </div>
           </dl>
         </section>
 
         <section className={styles.formSection}>
-          <label htmlFor="temporary-reason">{"\uC81C\uC7AC \uC0AC\uC720 *"}</label>
+          <label htmlFor="temporary-reason">제재 사유 *</label>
           <select
             id="temporary-reason"
             value={selectedReason}
@@ -70,9 +68,7 @@ export function ReportTemporaryStep({
         </section>
 
         <section className={styles.formSection}>
-          <label htmlFor="temporary-detail">
-            {"\uC120\uD0DD\uD55C \uC0AC\uC720\uC5D0 \uB300\uD55C \uCD94\uAC00 \uC124\uBA85"}
-          </label>
+          <label htmlFor="temporary-detail">선택한 사유에 대한 추가 설명</label>
           <textarea
             id="temporary-detail"
             maxLength={200}
@@ -83,8 +79,20 @@ export function ReportTemporaryStep({
           <small>{reasonDetail.length}/200</small>
         </section>
 
+        <label className={styles.hideOption}>
+          <input
+            type="checkbox"
+            checked={hideTargetContent}
+            onChange={(event) => onChangeHideTargetContent(event.target.checked)}
+          />
+          <span>
+            <strong>숨김</strong>
+            <small>체크하면 신고 대상 게시글 또는 댓글을 숨김 처리합니다.</small>
+          </span>
+        </label>
+
         <section className={styles.periodSection}>
-          <h3>{"\uC77C\uC2DC\uC815\uC9C0 \uAE30\uAC04 \uC120\uD0DD"}</h3>
+          <h3>일시정지 기간 선택</h3>
           {suspensionPeriods.map((period) => (
             <label
               key={period.label}
@@ -120,22 +128,18 @@ export function ReportTemporaryStep({
         </section>
 
         <section className={styles.releaseBox}>
-          <span>{"\uC608\uC0C1 \uD574\uC81C \uC77C\uC2DC"}</span>
+          <span>예상 해제 일시</span>
           <strong>{releaseDate}</strong>
-          <p>
-            {
-              "* \uD604\uC7AC \uC2DC\uAC04 \uAE30\uC900\uC73C\uB85C \uACC4\uC0B0\uD55C \uC608\uC0C1 \uD574\uC81C \uC77C\uC2DC\uC785\uB2C8\uB2E4."
-            }
-          </p>
+          <p>* 현재 시간 기준으로 계산한 예상 해제 일시입니다.</p>
         </section>
       </div>
 
       <footer className={styles.drawerFooter}>
         <button className={styles.secondaryButton} type="button" onClick={onBack}>
-          {"\uCDE8\uC18C"}
+          취소
         </button>
         <button className={styles.primaryButton} type="button" onClick={onNext}>
-          {"\uB2E4\uC74C"}
+          다음
         </button>
       </footer>
     </>

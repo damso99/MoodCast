@@ -145,6 +145,20 @@
   .reportSelectGroup select {
     flex: 1 1 0;
   }
+
+  .historyControls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .historyFilterGroup,
+  .historyControls select {
+    width: 100%;
+  }
+
+  .historyFilterGroup button {
+    flex: 1 1 0;
+  }
 }
 
 .insightGrid {
@@ -156,8 +170,61 @@
 
 .historyPanel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 12px;
   min-height: 0;
+}
+
+.historyControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.historyControls select {
+  height: 38px;
+  min-width: 116px;
+  padding: 0 12px;
+  border: 1px solid rgba(102, 112, 133, 0.2);
+  border-radius: 12px;
+  color: #111827;
+  font-weight: 850;
+  background: #fff;
+}
+
+.historyFilterGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #f3f0ff;
+}
+
+.historyFilterGroup button {
+  min-width: 54px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 10px;
+  color: #64748b;
+  font-weight: 900;
+  background: transparent;
+  transition:
+    transform 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.historyFilterGroup button:hover {
+  color: #633df2;
+  background: #fff;
+}
+
+.historyFilterGroup .activeHistoryFilter {
+  color: #fff;
+  background: linear-gradient(135deg, #7c4dff, #633df2);
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.18);
 }
 
 .historyList {

@@ -1,6 +1,4 @@
-/* 공통 입력/select 스타일 ----------------------------------
- * 정렬 select, 제재 사유 select, 직접 입력 input에 공통 적용되는 디자인입니다.
- */
+/* 입력/select 공통 스타일입니다. */
 .panelTitleRow select,
 .formSection select,
 .customPeriodInput {
@@ -13,9 +11,7 @@
   background: #fff;
 }
 
-/* 사이드 패널 본문 ----------------------------------
- * 패널 안에서 스크롤되는 실제 내용 영역입니다.
- */
+/* 사이드 패널 본문 영역입니다. */
 .drawerBody {
   min-height: 0;
   padding: 20px 24px;
@@ -39,9 +35,7 @@
   background: rgba(124, 77, 255, 0.08);
 }
 
-/* 상세 설명 텍스트 공통 스타일 ----------------------------------
- * 신고 사유 설명, 안내 박스 설명, 경고 박스 설명에 쓰이는 문장 스타일입니다.
- */
+/* 안내 문구 스타일입니다. */
 .detailSection p,
 .guideText,
 .noticeBox p,
@@ -54,9 +48,7 @@
   line-height: 1.65;
 }
 
-/* 사이드 패널 하단 버튼 영역 ----------------------------------
- * 취소/다음/제재 확정 같은 하단 버튼을 2열로 배치합니다.
- */
+/* 사이드 패널 하단 버튼 영역입니다. */
 .drawerFooter {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -66,9 +58,7 @@
   background: #fff;
 }
 
-/* 공통 주요 버튼/보조 버튼 ----------------------------------
- * 보라색 기본 버튼과 흰색 보조 버튼의 공통 디자인입니다.
- */
+/* 공통 주요/보조 버튼 스타일입니다. */
 .primaryButton,
 .secondaryButton {
   min-height: 46px;
@@ -114,9 +104,7 @@
   transform: translateY(0) scale(0.98);
 }
 
-/* 제재 사유 입력 폼 ----------------------------------
- * 제재 사유 select, 상세 설명 textarea, 글자 수 표시 영역입니다.
- */
+/* 제재 사유 입력 영역입니다. */
 .formSection {
   display: grid;
   gap: 8px;
@@ -145,6 +133,43 @@
   color: #667085;
   font-size: 0.78rem;
   font-weight: 800;
+}
+
+/* 신고 대상 콘텐츠 숨김 여부를 선택하는 옵션입니다. */
+.hideOption {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.18);
+  border-radius: 14px;
+  color: #111827;
+  background: #fbfaff;
+  cursor: pointer;
+}
+
+.hideOption input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #7c4dff;
+}
+
+.hideOption span {
+  display: grid;
+  gap: 4px;
+}
+
+.hideOption strong {
+  font-size: 0.9rem;
+  font-weight: 950;
+}
+
+.hideOption small {
+  color: #667085;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .resultFooter .primaryButton {

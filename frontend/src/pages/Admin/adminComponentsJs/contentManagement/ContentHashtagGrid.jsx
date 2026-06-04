@@ -27,11 +27,11 @@ export function ContentHashtagGrid({
         ) : hashtagsError ? (
           <div className={styles.emptyFeed}>
             <strong>해시태그 조회 실패</strong>
-            <span>백엔드 API 응답을 확인해주세요.</span>
+            <span>해시태그 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</span>
           </div>
         ) : paginatedHashtags.length === 0 ? (
           <div className={styles.emptyFeed}>
-            <strong>해시태그 데이터 없음</strong>
+            <strong>해시태그 없음</strong>
             <span>검색어를 바꾸거나 다른 탭을 확인해주세요.</span>
           </div>
         ) : (

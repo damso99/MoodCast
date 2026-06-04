@@ -1,11 +1,13 @@
-import AppConfirmModal from "../../../components/common/AppConfirmModal";
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import styles from "./AuthConfirmModal.module.css";
 
 const AuthConfirmModal = ({
   open,
   title,
   description,
-  cancelText = "\uCDE8\uC18C",
-  confirmText = "\uD655\uC778",
+  cancelText = "취소",
+  confirmText = "확인",
   confirmOnly = false,
   onCancel,
   onConfirm,

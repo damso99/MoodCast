@@ -77,6 +77,11 @@ const SORT_LABELS = {
   old: "\uC624\uB798\uB41C \uC21C",
 };
 
+const HISTORY_SORT_LABELS = {
+  latest: "최신순",
+  old: "오래된 순",
+};
+
 const TOP_TAB_LABELS = {
   list: "\uC2E0\uACE0 \uBAA9\uB85D",
   insight: "\uD1B5\uACC4 \uBC0F \uC81C\uC7AC \uC774\uB825",
@@ -134,6 +139,7 @@ export function ReportManagementPage() {
   const [reasonDetail, setReasonDetail] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState(7);
   const [customPeriod, setCustomPeriod] = useState("");
+  const [hideTargetContent, setHideTargetContent] = useState(true);
   const [completionMessage, setCompletionMessage] = useState("");
 
   useEffect(() => {
@@ -329,6 +335,7 @@ export function ReportManagementPage() {
     setReasonDetail("");
     setSelectedPeriod(7);
     setCustomPeriod("");
+    setHideTargetContent(true);
   }
 
   function closePanel() {
@@ -360,6 +367,7 @@ export function ReportManagementPage() {
                   selectedPeriod === "custom" ? customPeriod : selectedPeriod,
                 )
               : null,
+          hideTargetContent: selectedAction !== "reject" && hideTargetContent,
         },
         { headers: authHeaders },
       );
@@ -526,6 +534,7 @@ export function ReportManagementPage() {
           selectedPeriod={selectedPeriod}
           customPeriod={customPeriod}
           releaseDate={releaseDate}
+          hideTargetContent={hideTargetContent}
           onClose={closePanel}
           onProcess={() => setPanelStep("option")}
           onBackToDetail={() => setPanelStep("detail")}
@@ -536,6 +545,7 @@ export function ReportManagementPage() {
           onChangeDetail={setReasonDetail}
           onChangePeriod={setSelectedPeriod}
           onChangeCustomPeriod={setCustomPeriod}
+          onChangeHideTargetContent={setHideTargetContent}
           onGoConfirm={() => setPanelStep("confirm")}
           onBackFromConfirm={() =>
             selectedAction === "temporary"
@@ -581,6 +591,7 @@ function mapAdminReport(report) {
     title,
     status,
     targetName,
+    targetNickname: report.targetMemberNickname || "",
     targetHandle,
     reporter:
       report.reporterName || report.reporterNickname || report.reporterEmail || "-",
@@ -712,13 +723,26 @@ function ReportInsightSection({
   onResetPeriodFilter,
 }) {
   const [historyPage, setHistoryPage] = useState(1);
+  const [historySortType, setHistorySortType] = useState(HISTORY_SORT_LABELS.latest);
+  const [historyTypeFilter, setHistoryTypeFilter] = useState(REPORT_LABELS.all);
+  const [historySearchKeyword, setHistorySearchKeyword] = useState("");
   const historiesPerPage = 10;
+  const filteredHistories = useMemo(
+    () =>
+      filterAndSortSanctionHistories(
+        histories,
+        historyTypeFilter,
+        historySearchKeyword,
+        historySortType,
+      ),
+    [histories, historyTypeFilter, historySearchKeyword, historySortType],
+  );
   const totalHistoryPages = Math.max(
-    Math.ceil(histories.length / historiesPerPage),
+    Math.ceil(filteredHistories.length / historiesPerPage),
     1,
   );
   const normalizedHistoryPage = Math.min(historyPage, totalHistoryPages);
-  const visibleHistories = histories.slice(
+  const visibleHistories = filteredHistories.slice(
     (normalizedHistoryPage - 1) * historiesPerPage,
     normalizedHistoryPage * historiesPerPage,
   );
@@ -733,20 +757,49 @@ function ReportInsightSection({
 
   useEffect(() => {
     setHistoryPage(1);
-  }, [histories]);
+  }, [filteredHistories]);
 
   return (
     <section className={styles.insightGrid}>
       <article className={styles.historyPanel}>
         <div className={styles.panelTitleRow}>
           <div>
-            <h2>{"\uC81C\uC7AC \uC774\uB825"}</h2>
-            <p>{"\uCC98\uB9AC \uC644\uB8CC\uB41C \uC2E0\uACE0\uC758 \uC81C\uC7AC \uAE30\uB85D\uC785\uB2C8\uB2E4."}</p>
+            <h2>제재 이력</h2>
+            <p>처리 완료된 신고의 제재 기록입니다.</p>
           </div>
         </div>
+        <div className={styles.historyControls}>
+          <div className={styles.historyFilterGroup} aria-label="제재 이력 유형 필터">
+            {[REPORT_LABELS.all, REPORT_LABELS.post, REPORT_LABELS.comment].map(
+              (label) => (
+                <button
+                  key={label}
+                  className={label === historyTypeFilter ? styles.activeHistoryFilter : ""}
+                  type="button"
+                  onClick={() => setHistoryTypeFilter(label)}
+                >
+                  {label}
+                </button>
+              ),
+            )}
+          </div>
+          <select
+            aria-label="제재 이력 정렬"
+            value={historySortType}
+            onChange={(event) => setHistorySortType(event.target.value)}
+          >
+            <option>{HISTORY_SORT_LABELS.latest}</option>
+            <option>{HISTORY_SORT_LABELS.old}</option>
+          </select>
+        </div>
+        <SearchBar
+          placeholder="이름, 닉네임, 제목 또는 내용 검색"
+          value={historySearchKeyword}
+          onChange={(event) => setHistorySearchKeyword(event.target.value)}
+        />
         <div className={styles.historyList}>
-          {histories.length === 0 ? (
-            <p className={styles.emptyText}>{"\uC81C\uC7AC \uC774\uB825\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."}</p>
+          {filteredHistories.length === 0 ? (
+            <p className={styles.emptyText}>제재 이력이 없습니다.</p>
           ) : (
             visibleHistories.map((report) => (
               <div className={styles.historyItem} key={report.id}>
@@ -757,19 +810,19 @@ function ReportInsightSection({
                 <p>{report.title}</p>
                 <dl>
                   <div>
-                    <dt>{"\uCC98\uB9AC"}</dt>
+                    <dt>처리</dt>
                     <dd>{report.sanctionResult?.actionLabel || "-"}</dd>
                   </div>
                   <div>
-                    <dt>{"\uC0AC\uC720"}</dt>
+                    <dt>사유</dt>
                     <dd>{report.sanctionResult?.detail || report.reason}</dd>
                   </div>
                   <div>
-                    <dt>{"\uAD00\uB9AC\uC790"}</dt>
+                    <dt>관리자</dt>
                     <dd>{report.sanctionResult?.adminName || "-"}</dd>
                   </div>
                   <div>
-                    <dt>{"\uCC98\uB9AC\uC77C"}</dt>
+                    <dt>처리일</dt>
                     <dd>{report.sanctionResult?.handledAt || "-"}</dd>
                   </div>
                 </dl>
@@ -777,7 +830,7 @@ function ReportInsightSection({
             ))
           )}
         </div>
-        {histories.length > historiesPerPage && (
+        {filteredHistories.length > historiesPerPage && (
           <nav
             className={styles.historyPagination}
             aria-label="\uC81C\uC7AC \uC774\uB825 \uD398\uC774\uC9C0 \uC774\uB3D9"
@@ -1179,6 +1232,43 @@ function countReportsByProcessResult(reports, resultTabs) {
         : reports.filter((report) => report.sanctionResult?.actionLabel === tabLabel).length;
     return counts;
   }, {});
+}
+
+function filterAndSortSanctionHistories(
+  histories,
+  selectedType,
+  searchKeyword,
+  sortType,
+) {
+  const keyword = searchKeyword.trim().toLowerCase();
+  const filteredByType =
+    selectedType === REPORT_LABELS.all
+      ? histories
+      : histories.filter((report) => report.type === selectedType);
+  const filteredByKeyword = keyword
+    ? filteredByType.filter((report) =>
+        [
+          report.targetName,
+          report.targetNickname,
+          report.targetHandle,
+          report.title,
+          report.detail,
+          report.targetContent,
+          report.commentContent,
+          report.reason,
+          report.sanctionResult?.detail,
+        ]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword)),
+      )
+    : filteredByType;
+
+  return [...filteredByKeyword].sort((a, b) => {
+    const aTime = getReportSortTime(a);
+    const bTime = getReportSortTime(b);
+
+    return sortType === HISTORY_SORT_LABELS.old ? aTime - bTime : bTime - aTime;
+  });
 }
 
 function filterReportsByRange(reports, range) {

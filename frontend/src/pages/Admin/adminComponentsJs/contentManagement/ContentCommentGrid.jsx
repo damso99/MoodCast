@@ -30,11 +30,11 @@ export function ContentCommentGrid({
         ) : commentsError ? (
           <div className={styles.emptyFeed}>
             <strong>댓글 조회 실패</strong>
-            <span>백엔드 API 응답을 확인해주세요.</span>
+            <span>댓글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</span>
           </div>
         ) : paginatedComments.length === 0 ? (
           <div className={styles.emptyFeed}>
-            <strong>댓글 데이터 없음</strong>
+            <strong>댓글 없음</strong>
             <span>검색어를 바꾸거나 다른 탭을 확인해주세요.</span>
           </div>
         ) : (

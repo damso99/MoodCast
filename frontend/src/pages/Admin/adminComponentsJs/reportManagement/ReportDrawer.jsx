@@ -6,7 +6,7 @@ import { ReportReasonStep } from "./ReportReasonStep";
 import { ReportTemporaryStep } from "./ReportTemporaryStep";
 import styles from "../../adminComponentsCss/reportManagement/ReportDrawer.module.css";
 
-/* 신고 상세와 제재 처리 단계를 오른쪽 패널 안에서 전환합니다. */
+/* 신고 상세와 제재 처리 단계를 오른쪽 사이드 패널 안에서 전환합니다. */
 export function ReportDrawer({
   report,
   panelStep,
@@ -17,6 +17,7 @@ export function ReportDrawer({
   selectedPeriod,
   customPeriod,
   releaseDate,
+  hideTargetContent,
   onClose,
   onProcess,
   onBackToDetail,
@@ -27,6 +28,7 @@ export function ReportDrawer({
   onChangeDetail,
   onChangePeriod,
   onChangeCustomPeriod,
+  onChangeHideTargetContent,
   onGoConfirm,
   onBackFromConfirm,
   onConfirm,
@@ -94,10 +96,12 @@ export function ReportDrawer({
             actionMeta={selectedActionMeta}
             selectedReason={selectedReason}
             reasonDetail={reasonDetail}
+            hideTargetContent={hideTargetContent}
             onBack={onBackToOption}
             onClose={handleClose}
             onChangeReason={onChangeReason}
             onChangeDetail={onChangeDetail}
+            onChangeHideTargetContent={onChangeHideTargetContent}
             onNext={onGoConfirm}
           />
         )}
@@ -109,12 +113,14 @@ export function ReportDrawer({
             selectedPeriod={selectedPeriod}
             customPeriod={customPeriod}
             releaseDate={releaseDate}
+            hideTargetContent={hideTargetContent}
             onBack={onBackToOption}
             onClose={handleClose}
             onChangeReason={onChangeReason}
             onChangeDetail={onChangeDetail}
             onChangePeriod={onChangePeriod}
             onChangeCustomPeriod={onChangeCustomPeriod}
+            onChangeHideTargetContent={onChangeHideTargetContent}
             onNext={onGoConfirm}
           />
         )}
@@ -127,6 +133,7 @@ export function ReportDrawer({
             selectedPeriod={selectedPeriod}
             customPeriod={customPeriod}
             releaseDate={releaseDate}
+            hideTargetContent={hideTargetContent}
             onBack={onBackFromConfirm}
             onClose={handleClose}
             onConfirm={onConfirm}

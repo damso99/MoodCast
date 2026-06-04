@@ -13,4 +13,5 @@ public class AdminReportProcessRequest {
     private String processReason;
     private Integer suspendDays;
     private String suspendedUntil;
+    private Boolean hideTargetContent;
 }

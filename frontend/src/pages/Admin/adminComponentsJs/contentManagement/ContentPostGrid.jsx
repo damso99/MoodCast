@@ -207,11 +207,11 @@ export function ContentPostGrid({
         ) : postsError ? (
           <div className={styles.emptyFeed}>
             <strong>게시글 조회 실패</strong>
-            <span>백엔드 API 응답을 확인해주세요.</span>
+            <span>게시글 목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</span>
           </div>
         ) : paginatedPosts.length === 0 ? (
           <div className={styles.emptyFeed}>
-            <strong>게시글 데이터 없음</strong>
+            <strong>게시글 없음</strong>
             <span>검색 조건 또는 필터를 변경해보세요.</span>
           </div>
         ) : (
