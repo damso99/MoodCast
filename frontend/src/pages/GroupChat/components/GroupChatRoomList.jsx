@@ -1,6 +1,28 @@
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import { formatKoreanTime } from '../../../shared/lib/dateTime';
-import { formatChatPreview } from '../../../shared/lib/chatContent';
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import { formatKoreanTime } from "../../../shared/lib/dateTime";
+import { formatChatPreview } from "../../../shared/lib/chatContent";
+
+function getDisplayRoomTitle(room) {
+  const roomTitle = String(room?.roomName || "").trim();
+  const memberCount = Number(room?.memberCount || 0);
+  const matchedTitle = roomTitle.match(/^(.*?)(?:\s외\s\d+명)$/);
+
+  if (!matchedTitle) {
+    return roomTitle || "그룹 채팅방";
+  }
+
+  const baseTitle = matchedTitle[1].trim();
+
+  if (!baseTitle) {
+    return roomTitle || "그룹 채팅방";
+  }
+
+  if (memberCount <= 1) {
+    return baseTitle;
+  }
+
+  return `${baseTitle} 외 ${memberCount - 1}명`;
+}
 
 export function GroupChatRoomList({
   rooms,
@@ -20,7 +42,7 @@ export function GroupChatRoomList({
       <div className="group-chat-card-head">
         <div>
           <strong>그룹 채팅방</strong>
-          <p>부드러운 카드형 UI로 그룹 대화를 이어가세요.</p>
+          <p>부서별 카드형 UI로 그룹 대화를 이어가세요.</p>
         </div>
       </div>
 
@@ -39,7 +61,7 @@ export function GroupChatRoomList({
         />
         <input
           type="text"
-          placeholder="초대할 memberId (쉼표로 구분)"
+          placeholder="초대 memberId (쉼표로 구분)"
           value={invitedMemberIds}
           onChange={onInvitedMemberIdsChange}
         />
@@ -58,32 +80,32 @@ export function GroupChatRoomList({
           <button
             key={room.roomId}
             type="button"
-            className={`group-chat-room-item ${Number(activeRoomId) === Number(room.roomId) ? 'is-active' : ''}`}
+            className={`group-chat-room-item ${Number(activeRoomId) === Number(room.roomId) ? "is-active" : ""}`}
             onClick={() => onSelectRoom(room)}
           >
             <div className="group-chat-room-main">
-              <strong>{room.roomName}</strong>
-              <p>{formatChatPreview(room.lastMessage) || room.roomDescription || '새로운 대화를 시작해보세요.'}</p>
+              <strong>{getDisplayRoomTitle(room)}</strong>
+              <p>{formatChatPreview(room.lastMessage) || room.roomDescription || "새로운 대화를 시작해보세요."}</p>
             </div>
             <div className="group-chat-room-meta">
               <span>{room.memberCount || 0}명</span>
               {Number(room.unreadCount || 0) > 0 ? (
                 <span
                   style={{
-                    minWidth: '20px',
-                    padding: '2px 6px',
-                    borderRadius: '999px',
-                    background: '#7c4dff',
-                    color: '#fff',
-                    fontSize: '0.74rem',
+                    minWidth: "20px",
+                    padding: "2px 6px",
+                    borderRadius: "999px",
+                    background: "#7c4dff",
+                    color: "#fff",
+                    fontSize: "0.74rem",
                     fontWeight: 700,
-                    textAlign: 'center',
+                    textAlign: "center",
                   }}
                 >
                   {room.unreadCount}
                 </span>
               ) : null}
-              <span>{formatKoreanTime(room.lastMessageAt) || room.lastMessageAt || ''}</span>
+              <span>{formatKoreanTime(room.lastMessageAt) || room.lastMessageAt || ""}</span>
             </div>
           </button>
         ))}

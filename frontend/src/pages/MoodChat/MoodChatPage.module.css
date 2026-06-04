@@ -1078,7 +1078,7 @@
 
 :global(.moodchat-memberItem) {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 40px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
   width: 100%;

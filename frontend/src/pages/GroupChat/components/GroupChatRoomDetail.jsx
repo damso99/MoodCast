@@ -17,8 +17,26 @@ import { uploadChatImages } from "../../../shared/api/fileUploadApi";
 import { EmojiPicker } from "../../../shared/ui/emoji-picker/EmojiPicker";
 import { RichTextContent } from "../../../shared/ui/rich-text/RichTextContent";
 
-function getRoomTitle(activeRoom) {
-  return activeRoom?.roomName || "그룹 채팅방";
+function getDisplayRoomTitle(activeRoom) {
+  const roomTitle = String(activeRoom?.roomName || "").trim();
+  const memberCount = Number(activeRoom?.memberCount || 0);
+  const matchedTitle = roomTitle.match(/^(.*?)(?:\s외\s\d+명)$/);
+
+  if (!matchedTitle) {
+    return roomTitle || "그룹 채팅방";
+  }
+
+  const baseTitle = matchedTitle[1].trim();
+
+  if (!baseTitle) {
+    return roomTitle || "그룹 채팅방";
+  }
+
+  if (memberCount <= 1) {
+    return baseTitle;
+  }
+
+  return `${baseTitle} 외 ${memberCount - 1}명`;
 }
 
 function getRoomSubtitleParts(activeRoom, connected) {
@@ -469,8 +487,8 @@ export function GroupChatRoomDetail({
     return null;
   }
 
-  const roomTitle = getRoomTitle(activeRoom);
-  const roomInitial = roomTitle.charAt(0).toUpperCase();
+  const displayRoomTitle = getDisplayRoomTitle(activeRoom);
+  const roomInitial = displayRoomTitle.charAt(0).toUpperCase();
   const roomSubtitle = getRoomSubtitleParts(activeRoom, connected);
 
   const handleSubmit = async (event) => {
@@ -562,7 +580,7 @@ export function GroupChatRoomDetail({
         </button>
         <div className={styles.headerAvatar}>{roomInitial}</div>
         <div className={styles.roomTitle}>
-          <strong>{roomTitle}</strong>
+          <strong>{displayRoomTitle}</strong>
           <span>
             <button
               type="button"
@@ -1029,7 +1047,7 @@ export function GroupChatRoomDetail({
             </div>
 
             <div className="moodchat-modalSummary">
-              <span>{roomTitle}</span>
+              <span>{displayRoomTitle}</span>
               <strong>{Number(activeRoom?.memberCount || 0)}명</strong>
             </div>
 
@@ -1062,7 +1080,20 @@ export function GroupChatRoomDetail({
                     const isCurrentUser = Number(currentMemberId) === memberId;
 
                     return (
-                      <div key={memberId || displayName} className="moodchat-memberItem">
+                      <div
+                        key={memberId || displayName}
+                        className="moodchat-memberItem"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => onProfileClick?.(memberId)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onProfileClick?.(memberId);
+                          }
+                        }}
+                        aria-label={`${displayName} 프로필 보기`}
+                      >
                         <img
                           className="moodchat-memberAvatar"
                           src={profileImageSrc}
@@ -1078,11 +1109,6 @@ export function GroupChatRoomDetail({
                           </strong>
                           <span>{memberEmail || "이메일 정보 없음"}</span>
                         </div>
-                        <span className="moodchat-checkbox">
-                          {member?.joinedAt
-                            ? formatKoreanTime(member.joinedAt) || member.joinedAt
-                            : "참여"}
-                        </span>
                       </div>
                     );
                   })
