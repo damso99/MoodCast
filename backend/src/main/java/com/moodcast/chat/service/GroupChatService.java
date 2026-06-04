@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class GroupChatService {
 
+    public static final String ROOM_TYPE_GROUP = "GROUP";
+    public static final String ROOM_TYPE_DIRECT = "DIRECT";
+
     private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
     private static final DateTimeFormatter CHAT_TIME_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -37,6 +40,7 @@ public class GroupChatService {
     public ChatRoomResponseDto createChatRoom(ChatRoomCreateRequestDto request) {
         validateRoomCreateRequest(request);
 
+        String roomType = normalizeRoomType(request.getRoomType());
         Set<Long> memberIds = new LinkedHashSet<>();
         memberIds.add(request.getCreatorId());
         if (request.getMemberIds() != null) {
@@ -48,34 +52,64 @@ public class GroupChatService {
             );
         }
 
+        if (ROOM_TYPE_DIRECT.equals(roomType)) {
+            ChatRoomVo existingRoom = findRoomByMemberIds(List.copyOf(memberIds), roomType);
+            if (existingRoom != null) {
+                activateRoomMembers(existingRoom.getRoomId(), memberIds);
+                return toRoomResponse(requireRoomSummary(existingRoom.getRoomId()));
+            }
+        }
+
         ChatRoomVo chatRoomVo = new ChatRoomVo();
+        chatRoomVo.setRoomType(roomType);
         chatRoomVo.setRoomName(normalizeRoomName(request.getRoomName()));
         chatRoomVo.setRoomDescription(normalizeRoomDescription(request.getRoomDescription()));
         chatRoomVo.setCreatedBy(request.getCreatorId());
         chatRoomVo.setDeletedYn("N");
         groupChatMapper.insertChatRoom(chatRoomVo);
 
-        for (Long memberId : memberIds) {
-            ChatRoomMemberVo roomMemberVo = new ChatRoomMemberVo();
-            roomMemberVo.setRoomId(chatRoomVo.getRoomId());
-            roomMemberVo.setMemberId(memberId);
-            roomMemberVo.setDeletedYn("N");
-            groupChatMapper.upsertChatRoomMember(roomMemberVo);
-        }
-
+        activateRoomMembers(chatRoomVo.getRoomId(), memberIds);
         return toRoomResponse(requireRoomSummary(chatRoomVo.getRoomId()));
     }
 
     @Transactional(readOnly = true)
     public List<ChatRoomResponseDto> getRoomsByMemberId(Long memberId) {
+        return getRoomsByMemberId(memberId, ROOM_TYPE_GROUP);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ChatRoomResponseDto> getRoomsByMemberId(Long memberId, String roomType) {
         if (memberId == null || memberId <= 0) {
             return List.of();
         }
 
-        return groupChatMapper.selectChatRoomsByMemberId(memberId)
+        return groupChatMapper.selectChatRoomsByMemberId(memberId, normalizeRoomType(roomType))
                 .stream()
                 .map(this::toRoomResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public ChatRoomVo findRoomByMemberIds(List<Long> memberIds, String roomType) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return null;
+        }
+
+        List<Long> normalizedMemberIds = memberIds.stream()
+                .filter(Objects::nonNull)
+                .filter(memberId -> memberId > 0)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (normalizedMemberIds.isEmpty()) {
+            return null;
+        }
+
+        return groupChatMapper.selectChatRoomByMemberIds(
+                normalizedMemberIds,
+                normalizedMemberIds.size(),
+                normalizeRoomType(roomType)
+        );
     }
 
     @Transactional(readOnly = true)
@@ -140,14 +174,7 @@ public class GroupChatService {
                 .filter(memberId -> memberId > 0)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        for (Long memberId : memberIds) {
-            ChatRoomMemberVo roomMemberVo = new ChatRoomMemberVo();
-            roomMemberVo.setRoomId(roomId);
-            roomMemberVo.setMemberId(memberId);
-            roomMemberVo.setDeletedYn("N");
-            groupChatMapper.upsertChatRoomMember(roomMemberVo);
-        }
-
+        activateRoomMembers(roomId, memberIds);
         return toRoomResponse(requireRoomSummary(roomId));
     }
 
@@ -319,6 +346,7 @@ public class GroupChatService {
 
         return new ChatRoomResponseDto(
                 room.getRoomId(),
+                room.getRoomType(),
                 room.getRoomName(),
                 room.getRoomDescription(),
                 room.getCreatedBy(),
@@ -373,6 +401,11 @@ public class GroupChatService {
         return roomDescription == null ? null : roomDescription.trim();
     }
 
+    private String normalizeRoomType(String roomType) {
+        String normalized = roomType == null ? "" : roomType.trim().toUpperCase();
+        return normalized.isEmpty() ? ROOM_TYPE_GROUP : normalized;
+    }
+
     private String normalizeMessageContent(String content) {
         return content == null ? "" : content.trim();
     }
@@ -384,6 +417,20 @@ public class GroupChatService {
 
         String trimmed = displayName.trim();
         return trimmed.isEmpty() ? "회원" : trimmed;
+    }
+
+    private void activateRoomMembers(Long roomId, Set<Long> memberIds) {
+        if (roomId == null || memberIds == null || memberIds.isEmpty()) {
+            return;
+        }
+
+        for (Long memberId : memberIds) {
+            ChatRoomMemberVo roomMemberVo = new ChatRoomMemberVo();
+            roomMemberVo.setRoomId(roomId);
+            roomMemberVo.setMemberId(memberId);
+            roomMemberVo.setDeletedYn("N");
+            groupChatMapper.upsertChatRoomMember(roomMemberVo);
+        }
     }
 
     private String nowText() {

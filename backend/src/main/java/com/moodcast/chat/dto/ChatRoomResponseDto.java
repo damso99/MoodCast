@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class ChatRoomResponseDto {
     private Long roomId;
+    private String roomType;
     private String roomName;
     private String roomDescription;
     private Long createdBy;
