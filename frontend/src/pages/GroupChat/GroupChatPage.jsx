@@ -94,6 +94,24 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   const [mobileRoomOpen, setMobileRoomOpen] = useState(false);
   const [error, setError] = useState("");
   const lastSentReadMessageIdRef = useRef(0);
+  const displayedActiveRoom = useMemo(() => {
+    if (!activeRoom?.roomId) {
+      return activeRoom;
+    }
+
+    const latestRoom = rooms.find(
+      (room) => Number(room.roomId) === Number(activeRoom.roomId),
+    );
+
+    if (!latestRoom) {
+      return activeRoom;
+    }
+
+    return {
+      ...activeRoom,
+      memberCount: latestRoom.memberCount,
+    };
+  }, [activeRoom, rooms]);
 
   useEffect(() => {
     if (!accessToken || !currentMemberId) {
@@ -207,6 +225,9 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
     }
 
     const normalized = normalizeMessage(payload, groupMessageTimeCacheRef.current);
+    const isSystemMessage = normalized.eventType === "CHAT_SYSTEM";
+    const shouldRefreshRooms =
+      isSystemMessage || Number(activeRoom?.roomId) !== Number(normalized.roomId);
 
     setRooms((previousRooms) =>
       previousRooms.map((room) =>
@@ -220,8 +241,11 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       ),
     );
 
-    if (Number(activeRoom?.roomId) !== Number(normalized.roomId)) {
+    if (shouldRefreshRooms) {
       refreshRooms();
+    }
+
+    if (Number(activeRoom?.roomId) !== Number(normalized.roomId)) {
       return;
     }
 
@@ -540,8 +564,8 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
   );
 
   const roomDetail = (
-      <GroupChatRoomDetail
-      activeRoom={activeRoom}
+    <GroupChatRoomDetail
+      activeRoom={displayedActiveRoom}
       messages={messages}
       connected={connected}
       currentMemberId={currentMemberId}

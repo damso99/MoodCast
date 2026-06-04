@@ -279,6 +279,7 @@ public class GroupChatService {
                 .map(member -> new ChatRoomMemberResponseDto(
                         member.getMemberId(),
                         member.getMemberName(),
+                        member.getEmail(),
                         member.getProfileImageUrl(),
                         member.getJoinedAt()
                 ))

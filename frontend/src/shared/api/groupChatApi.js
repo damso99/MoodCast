@@ -52,6 +52,13 @@ export function inviteGroupChatMembers(roomId, payload) {
   );
 }
 
+export function fetchGroupChatMembers(roomId) {
+  return requestWithFallback(
+    () => axios.get(`${API_BASE}/api/chat/rooms/${roomId}/members`),
+    () => axios.get(`${API_BASE}/chat/rooms/${roomId}/members`),
+  ).catch(() => ({ data: [] }));
+}
+
 export function leaveGroupChatRoom(roomId, memberId) {
   return requestWithFallback(
     () =>

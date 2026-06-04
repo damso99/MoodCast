@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 public class ChatRoomMemberResponseDto {
     private Long memberId;
     private String memberName;
+    private String email;
     private String profileImageUrl;
     private String joinedAt;
 }
