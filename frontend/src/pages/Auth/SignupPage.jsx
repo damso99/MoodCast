@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { SignupView } from "./components/SignupView";
 import { getApiMessage, getToastDuration } from "./authFeedback";
-import { startGoogleLogin, startKakaoLogin } from "./socialAuth";
+import { startGoogleLogin, startKakaoLogin, startNaverLogin } from "./socialAuth";
 
 const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
 const nameRegex = /^[가-힣]{2,10}$/;
@@ -772,6 +772,14 @@ export const SignupPage = () => {
     }
   };
 
+  const handleNaverLogin = () => {
+    try {
+      startNaverLogin();
+    } catch (error) {
+      showToast("error", error.message);
+    }
+  };
+
   const goLogin = () => {
     navigate("/auth/login");
   };
@@ -793,6 +801,7 @@ export const SignupPage = () => {
       completeSignup={completeSignup}
       handleKakaoLogin={handleKakaoLogin}
       handleGoogleLogin={handleGoogleLogin}
+      handleNaverLogin={handleNaverLogin}
       showReadyMessage={showReadyMessage}
       goLogin={goLogin}
       fieldMessage={fieldMessage}

@@ -21,6 +21,7 @@ export const SignupView = ({
   completeSignup,
   handleKakaoLogin,
   handleGoogleLogin,
+  handleNaverLogin,
   showReadyMessage,
   goLogin,
   toast,
@@ -363,7 +364,7 @@ export const SignupView = ({
                     <button
                       type="button"
                       className={`${styles.socialButton} ${styles.naver}`}
-                      onClick={() => showReadyMessage("네이버 간편가입")}
+                      onClick={handleNaverLogin}
                       aria-label="네이버로 간편가입"
                     >
                       <b>N</b>

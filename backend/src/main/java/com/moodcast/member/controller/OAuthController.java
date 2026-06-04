@@ -120,6 +120,12 @@ public class OAuthController {
         return handleSocialLoginResult("GOOGLE", "Google", oAuthService.loginWithGoogle(request), httpRequest);
     }
 
+    // 네이버 인가 code를 검증하고 기존 연결 계정이면 바로 로그인 처리함
+    @PostMapping("naver/login")
+    public ResponseEntity<?> loginWithNaver(@RequestBody KakaoLoginRequest request, HttpServletRequest httpRequest) {
+        return handleSocialLoginResult("NAVER", "네이버", oAuthService.loginWithNaver(request), httpRequest);
+    }
+
     // 현재 로그인 회원의 카카오 연결 여부를 조회함
     @GetMapping("kakao/status")
     public ResponseEntity<?> getKakaoLinkStatus(
@@ -136,6 +142,14 @@ public class OAuthController {
         return ResponseEntity.ok(oAuthService.getGoogleLinkStatus(authorizationHeader));
     }
 
+    // 현재 로그인 회원의 네이버 연결 여부를 조회함
+    @GetMapping("naver/status")
+    public ResponseEntity<?> getNaverLinkStatus(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        return ResponseEntity.ok(oAuthService.getNaverLinkStatus(authorizationHeader));
+    }
+
     private ResponseEntity<?> linkSocialAccount(
             String provider,
             String providerLabel,
@@ -144,9 +158,11 @@ public class OAuthController {
             HttpServletRequest httpRequest
     ) {
         try {
-            Member member = "GOOGLE".equals(provider)
-                    ? oAuthService.linkGoogleAccount(authorizationHeader, request)
-                    : oAuthService.linkKakaoAccount(authorizationHeader, request);
+            Member member = switch (provider) {
+                case "GOOGLE" -> oAuthService.linkGoogleAccount(authorizationHeader, request);
+                case "NAVER" -> oAuthService.linkNaverAccount(authorizationHeader, request);
+                default -> oAuthService.linkKakaoAccount(authorizationHeader, request);
+            };
 
             loginAuditService.record(
                     member.getMemberId(),
@@ -201,6 +217,16 @@ public class OAuthController {
         return linkSocialAccount("GOOGLE", "Google", authorizationHeader, request, httpRequest);
     }
 
+    // 로그인된 일반 회원에게 네이버 계정을 연결함
+    @PostMapping("naver/link")
+    public ResponseEntity<?> linkNaverAccount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestBody KakaoLoginRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return linkSocialAccount("NAVER", "네이버", authorizationHeader, request, httpRequest);
+    }
+
     private ResponseEntity<?> unlinkSocialAccount(
             String provider,
             String providerLabel,
@@ -208,9 +234,11 @@ public class OAuthController {
             HttpServletRequest httpRequest
     ) {
         try {
-            Member member = "GOOGLE".equals(provider)
-                    ? oAuthService.unlinkGoogleAccount(authorizationHeader)
-                    : oAuthService.unlinkKakaoAccount(authorizationHeader);
+            Member member = switch (provider) {
+                case "GOOGLE" -> oAuthService.unlinkGoogleAccount(authorizationHeader);
+                case "NAVER" -> oAuthService.unlinkNaverAccount(authorizationHeader);
+                default -> oAuthService.unlinkKakaoAccount(authorizationHeader);
+            };
 
             loginAuditService.record(
                     member.getMemberId(),
@@ -261,6 +289,15 @@ public class OAuthController {
             HttpServletRequest httpRequest
     ) {
         return unlinkSocialAccount("GOOGLE", "Google", authorizationHeader, httpRequest);
+    }
+
+    // 로그인 수단이 남아 있는 경우에만 네이버 연결을 해제함
+    @DeleteMapping("naver/link")
+    public ResponseEntity<?> unlinkNaverAccount(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest httpRequest
+    ) {
+        return unlinkSocialAccount("NAVER", "네이버", authorizationHeader, httpRequest);
     }
 
     // 신규 소셜 사용자의 추가정보 입력 후 회원가입과 소셜 계정 연결을 완료함

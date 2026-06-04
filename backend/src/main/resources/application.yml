@@ -22,6 +22,10 @@ oauth:
     client-id: ${GOOGLE_CLIENT_ID:}
     client-secret: ${GOOGLE_CLIENT_SECRET:}
     allowed-redirect-uris: "${GOOGLE_ALLOWED_REDIRECT_URIS:http://localhost:5173/auth/google/callback,http://moodcast-frontend-s3-qqqq.s3-website.ap-northeast-2.amazonaws.com/auth/google/callback}"
+  naver:
+    client-id: ${NAVER_CLIENT_ID:}
+    client-secret: ${NAVER_CLIENT_SECRET:}
+    allowed-redirect-uris: "${NAVER_ALLOWED_REDIRECT_URIS:http://localhost:5173/auth/naver/callback,http://moodcast-frontend-s3-qqqq.s3-website.ap-northeast-2.amazonaws.com/auth/naver/callback}"
 
 spring:
   config:

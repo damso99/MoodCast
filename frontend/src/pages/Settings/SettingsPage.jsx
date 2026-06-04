@@ -5,7 +5,7 @@ import { DesktopShell } from '../../components/layout/DesktopShell';
 import { MobileShell } from '../../components/layout/MobileShell';
 import { useIsDesktop } from '../../hooks/useViewportWidth';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { startGoogleLink, startKakaoLink } from '../Auth/socialAuth';
+import { startGoogleLink, startKakaoLink, startNaverLink } from '../Auth/socialAuth';
 import AuthToast from '../Auth/components/AuthToast';
 import AuthConfirmModal from '../Auth/components/AuthConfirmModal';
 import { getApiMessage, getToastDuration } from '../Auth/authFeedback';
@@ -33,10 +33,13 @@ export function SettingsPage() {
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
   const [kakaoLinked, setKakaoLinked] = useState(false);
   const [googleLinked, setGoogleLinked] = useState(false);
+  const [naverLinked, setNaverLinked] = useState(false);
   const [kakaoCanUnlink, setKakaoCanUnlink] = useState(false);
   const [googleCanUnlink, setGoogleCanUnlink] = useState(false);
+  const [naverCanUnlink, setNaverCanUnlink] = useState(false);
   const [kakaoLinkModalOpen, setKakaoLinkModalOpen] = useState(false);
   const [googleLinkModalOpen, setGoogleLinkModalOpen] = useState(false);
+  const [naverLinkModalOpen, setNaverLinkModalOpen] = useState(false);
   const [unlinkModal, setUnlinkModal] = useState(null);
   const [passwordSuccessModalOpen, setPasswordSuccessModalOpen] = useState(false);
   const [withdrawConfirmModalOpen, setWithdrawConfirmModalOpen] = useState(false);
@@ -74,20 +77,25 @@ export function SettingsPage() {
       Authorization: 'Bearer ' + accessToken,
     };
 
-    const [kakaoResult, googleResult] = await Promise.allSettled([
+    const [kakaoResult, googleResult, naverResult] = await Promise.allSettled([
       axios.get(`${BACKSERVER}/oauth/kakao/status`, { headers }),
       axios.get(`${BACKSERVER}/oauth/google/status`, { headers }),
+      axios.get(`${BACKSERVER}/oauth/naver/status`, { headers }),
     ]);
 
     const kakaoData =
       kakaoResult.status === 'fulfilled' ? kakaoResult.value.data : {};
     const googleData =
       googleResult.status === 'fulfilled' ? googleResult.value.data : {};
+    const naverData =
+      naverResult.status === 'fulfilled' ? naverResult.value.data : {};
 
     setKakaoLinked(Boolean(kakaoData?.linked));
     setKakaoCanUnlink(Boolean(kakaoData?.canUnlink));
     setGoogleLinked(Boolean(googleData?.linked));
     setGoogleCanUnlink(Boolean(googleData?.canUnlink));
+    setNaverLinked(Boolean(naverData?.linked));
+    setNaverCanUnlink(Boolean(naverData?.canUnlink));
   };
 
   const handleKakaoLink = () => {
@@ -131,6 +139,29 @@ export function SettingsPage() {
     try {
       setGoogleLinkModalOpen(false);
       startGoogleLink();
+    } catch (error) {
+      showToast('error', error.message);
+    }
+  };
+
+  const handleNaverLink = () => {
+    if (naverLinked) {
+      if (!naverCanUnlink) {
+        showToast('error', '네이버 계정은 마지막 로그인 수단이라 바로 해제할 수 없습니다.');
+        return;
+      }
+
+      setUnlinkModal({ provider: 'naver', label: '네이버' });
+      return;
+    }
+
+    setNaverLinkModalOpen(true);
+  };
+
+  const confirmNaverLink = () => {
+    try {
+      setNaverLinkModalOpen(false);
+      startNaverLink();
     } catch (error) {
       showToast('error', error.message);
     }
@@ -372,6 +403,15 @@ export function SettingsPage() {
         onConfirm={confirmGoogleLink}
       />
       <AuthConfirmModal
+        open={naverLinkModalOpen}
+        title="네이버 계정을 연결할까요?"
+        description="현재 MoodCast 계정에 네이버 로그인을 추가합니다. 연결 후에는 같은 이메일의 네이버 계정으로도 로그인할 수 있습니다."
+        cancelText="취소"
+        confirmText="연결하기"
+        onCancel={() => setNaverLinkModalOpen(false)}
+        onConfirm={confirmNaverLink}
+      />
+      <AuthConfirmModal
         open={Boolean(unlinkModal)}
         title={`${unlinkModal?.label || '소셜'} 계정 연결을 해제할까요?`}
         description={`해제하면 ${unlinkModal?.label || '소셜'} 로그인은 사용할 수 없습니다. MoodCast 계정과 기존 게시글은 그대로 유지됩니다.`}
@@ -455,6 +495,25 @@ export function SettingsPage() {
                       onClick={handleGoogleLink}
                     >
                       {googleLinked ? (googleCanUnlink ? '해제' : '해제불가') : '연결'}
+                    </button>
+                  </div>
+                  <div className={styles.providerRow}>
+                    <div className={styles.providerMeta}>
+                      <strong>네이버</strong>
+                      <span>
+                        {naverLinked
+                          ? naverCanUnlink
+                            ? '연결됨'
+                            : '연결됨 · 마지막 로그인 수단'
+                          : '미연결'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={naverLinked && naverCanUnlink ? styles.unlinkButton : undefined}
+                      onClick={handleNaverLink}
+                    >
+                      {naverLinked ? (naverCanUnlink ? '해제' : '해제불가') : '연결'}
                     </button>
                   </div>
                 </div>
