@@ -10,6 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 @Data
 public class ChatRoomCreateRequestDto {
+    private String roomType;
     private String roomName;
     private String roomDescription;
     private Long creatorId;

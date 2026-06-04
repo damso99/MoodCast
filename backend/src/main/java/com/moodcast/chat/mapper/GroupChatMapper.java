@@ -30,7 +30,16 @@ public interface GroupChatMapper {
 
     ChatRoomVo selectChatRoomById(@Param("roomId") Long roomId);
 
-    List<ChatRoomVo> selectChatRoomsByMemberId(@Param("memberId") Long memberId);
+    ChatRoomVo selectChatRoomByMemberIds(
+            @Param("memberIds") List<Long> memberIds,
+            @Param("memberCount") int memberCount,
+            @Param("roomType") String roomType
+    );
+
+    List<ChatRoomVo> selectChatRoomsByMemberId(
+            @Param("memberId") Long memberId,
+            @Param("roomType") String roomType
+    );
 
     ChatRoomMemberVo selectChatRoomMemberByRoomIdAndMemberId(@Param("roomId") Long roomId, @Param("memberId") Long memberId);
 

@@ -3,11 +3,13 @@
 <mapper namespace="com.moodcast.chat.mapper.GroupChatMapper">
     <insert id="insertChatRoom" parameterType="com.moodcast.chat.vo.ChatRoomVo" useGeneratedKeys="true" keyProperty="roomId">
         INSERT INTO chat_room (
+            room_type,
             room_name,
             room_description,
             created_by,
             deleted_yn
         ) VALUES (
+            COALESCE(#{roomType}, 'GROUP'),
             #{roomName},
             #{roomDescription},
             #{createdBy},
@@ -114,6 +116,7 @@
     <select id="selectChatRoomById" resultType="com.moodcast.chat.vo.ChatRoomVo">
         SELECT
             r.room_id AS roomId,
+            r.room_type AS roomType,
             r.room_name AS roomName,
             r.room_description AS roomDescription,
             r.created_by AS createdBy,
@@ -152,9 +155,79 @@
         LIMIT 1
     </select>
 
+    <select id="selectChatRoomByMemberIds" resultType="com.moodcast.chat.vo.ChatRoomVo">
+        SELECT
+            r.room_id AS roomId,
+            r.room_type AS roomType,
+            r.room_name AS roomName,
+            r.room_description AS roomDescription,
+            r.created_by AS createdBy,
+            DATE_FORMAT(r.created_at, '%Y-%m-%dT%H:%i:%s') AS createdAt,
+            r.deleted_yn AS deletedYn,
+            COALESCE(mc.member_count, 0) AS memberCount,
+            latest.last_message AS lastMessage,
+            latest.last_message_at AS lastMessageAt,
+            0 AS unreadCount
+        FROM chat_room r
+        JOIN chat_room_member rm
+          ON rm.room_id = r.room_id
+         AND rm.deleted_yn = 'N'
+        LEFT JOIN (
+            SELECT
+                room_id,
+                COUNT(*) AS member_count
+            FROM chat_room_member
+            WHERE deleted_yn = 'N'
+              AND left_at IS NULL
+              AND is_active = 1
+            GROUP BY room_id
+        ) mc ON mc.room_id = r.room_id
+        LEFT JOIN (
+            SELECT
+                room_id,
+                DATE_FORMAT(MAX(created_at), '%Y-%m-%dT%H:%i:%s') AS last_message_at,
+                SUBSTRING_INDEX(
+                    GROUP_CONCAT(content ORDER BY created_at DESC, message_id DESC SEPARATOR '|||'),
+                    '|||',
+                    1
+                ) AS last_message
+            FROM chat_message
+            WHERE deleted_yn = 'N'
+            GROUP BY room_id
+        ) latest ON latest.room_id = r.room_id
+        WHERE r.deleted_yn = 'N'
+        <if test="roomType != null and roomType != ''">
+            AND r.room_type = #{roomType}
+        </if>
+        GROUP BY
+            r.room_id,
+            r.room_type,
+            r.room_name,
+            r.room_description,
+            r.created_by,
+            r.created_at,
+            r.deleted_yn,
+            mc.member_count,
+            latest.last_message,
+            latest.last_message_at
+        HAVING COUNT(DISTINCT rm.member_id) = #{memberCount}
+           AND SUM(
+                CASE
+                    WHEN rm.member_id IN
+                    <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+                        #{memberId}
+                    </foreach>
+                    THEN 1
+                    ELSE 0
+                END
+           ) = #{memberCount}
+        LIMIT 1
+    </select>
+
     <select id="selectChatRoomsByMemberId" resultType="com.moodcast.chat.vo.ChatRoomVo">
         SELECT
             r.room_id AS roomId,
+            r.room_type AS roomType,
             r.room_name AS roomName,
             r.room_description AS roomDescription,
             r.created_by AS createdBy,
@@ -169,6 +242,9 @@
           ON rm.room_id = r.room_id
          AND rm.member_id = #{memberId}
          AND rm.deleted_yn = 'N'
+        <if test="roomType != null and roomType != ''">
+            AND r.room_type = #{roomType}
+        </if>
         LEFT JOIN (
             SELECT
                 room_id,
