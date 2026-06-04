@@ -5,6 +5,7 @@ import com.moodcast.chat.dto.ChatRoomMemberResponseDto;
 import com.moodcast.chat.dto.ChatRoomMessageResponseDto;
 import com.moodcast.chat.dto.ChatRoomMessageSendRequestDto;
 import com.moodcast.chat.dto.ChatRoomResponseDto;
+import com.moodcast.moodchat.dao.ChatDao;
 import com.moodcast.chat.mapper.GroupChatMapper;
 import com.moodcast.chat.service.GroupChatService;
 import com.moodcast.chat.vo.ChatMessageVo;
@@ -21,7 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -36,6 +40,7 @@ public class ChatService {
 
     private final GroupChatService groupChatService;
     private final GroupChatMapper groupChatMapper;
+    private final ChatDao chatDao;
     private final LoginDao loginDao;
 
     @Transactional
@@ -73,33 +78,50 @@ public class ChatService {
     }
 
     public List<ChatThreadVo> selectChatThreads(Long memberId) {
-        return groupChatService.getRoomsByMemberId(memberId, ROOM_TYPE_DIRECT).stream()
-                .map(room -> toDirectThread(memberId, room))
-                .filter(Objects::nonNull)
-                .toList();
-    }
-
-    public List<ChatVo> selectChatMessages(Long memberId, Long partnerId) {
-        ChatRoomVo room = ensureDirectRoom(memberId, partnerId);
-        if (room == null || room.getRoomId() == null) {
+        if (memberId == null || memberId <= 0) {
             return List.of();
         }
 
-        return groupChatService.getMessagesByRoomId(room.getRoomId(), memberId).stream()
+        List<ChatThreadVo> legacyThreads = chatDao.selectChatThreads(memberId);
+        List<ChatThreadVo> roomThreads = groupChatService.getRoomsByMemberId(memberId, ROOM_TYPE_DIRECT).stream()
+                .map(room -> toDirectThread(memberId, room))
+                .filter(Objects::nonNull)
+                .toList();
+        return mergeDirectThreads(legacyThreads, roomThreads);
+    }
+
+    public List<ChatVo> selectChatMessages(Long memberId, Long partnerId) {
+        if (memberId == null || partnerId == null || memberId <= 0 || partnerId <= 0) {
+            return List.of();
+        }
+
+        List<ChatVo> legacyMessages = chatDao.selectChatMessages(memberId, partnerId);
+        ChatRoomVo room = groupChatService.findRoomByMemberIds(List.of(memberId, partnerId), ROOM_TYPE_DIRECT);
+        if (room == null || room.getRoomId() == null) {
+            return legacyMessages;
+        }
+
+        List<ChatVo> roomMessages = groupChatService.getMessagesByRoomId(room.getRoomId(), memberId).stream()
                 .map(message -> toChatVo(message, partnerId))
                 .toList();
+        return mergeDirectMessages(legacyMessages, roomMessages);
     }
 
     public int markMessagesAsRead(Long memberId, Long partnerId) {
+        if (memberId == null || partnerId == null || memberId <= 0 || partnerId <= 0) {
+            return 0;
+        }
+
+        int legacyUpdatedCount = chatDao.updateMessagesRead(memberId, partnerId);
         ChatRoomVo room = groupChatService.findRoomByMemberIds(List.of(memberId, partnerId), ROOM_TYPE_DIRECT);
         if (room == null || room.getRoomId() == null) {
-            return 0;
+            return legacyUpdatedCount;
         }
 
         List<ChatRoomMessageResponseDto> messages = groupChatService.getMessagesByRoomId(room.getRoomId(), memberId);
         Long lastMessageId = getLatestMessageId(messages);
         groupChatService.markRoomAsRead(room.getRoomId(), memberId, lastMessageId);
-        return 1;
+        return legacyUpdatedCount > 0 ? legacyUpdatedCount : 1;
     }
 
     @Transactional
@@ -317,5 +339,63 @@ public class ChatService {
 
     private String nowText() {
         return LocalDateTime.now(KOREA_ZONE).format(CHAT_TIME_FORMATTER);
+    }
+
+    private List<ChatThreadVo> mergeDirectThreads(List<ChatThreadVo> legacyThreads, List<ChatThreadVo> roomThreads) {
+        Map<Long, ChatThreadVo> mergedThreads = new LinkedHashMap<>();
+        addThreads(mergedThreads, legacyThreads);
+        addThreads(mergedThreads, roomThreads);
+
+        return mergedThreads.values().stream()
+                .sorted(Comparator.comparingLong(this::toThreadSortValue).reversed())
+                .toList();
+    }
+
+    private void addThreads(Map<Long, ChatThreadVo> mergedThreads, List<ChatThreadVo> threads) {
+        if (threads == null || threads.isEmpty()) {
+            return;
+        }
+
+        for (ChatThreadVo thread : threads) {
+            if (thread == null || thread.getPartnerMemberId() == null) {
+                continue;
+            }
+
+            Long partnerMemberId = thread.getPartnerMemberId();
+            ChatThreadVo current = mergedThreads.get(partnerMemberId);
+            if (current == null || toThreadSortValue(thread) >= toThreadSortValue(current)) {
+                mergedThreads.put(partnerMemberId, thread);
+            }
+        }
+    }
+
+    private List<ChatVo> mergeDirectMessages(List<ChatVo> legacyMessages, List<ChatVo> roomMessages) {
+        return java.util.stream.Stream.concat(
+                        legacyMessages == null ? java.util.stream.Stream.empty() : legacyMessages.stream(),
+                        roomMessages == null ? java.util.stream.Stream.empty() : roomMessages.stream())
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingLong(this::toMessageSortValue))
+                .toList();
+    }
+
+    private long toThreadSortValue(ChatThreadVo thread) {
+        return parseChatTime(thread == null ? null : thread.getLastMessageAt());
+    }
+
+    private long toMessageSortValue(ChatVo chatVo) {
+        return parseChatTime(chatVo == null ? null : chatVo.getCreatedAt());
+    }
+
+    private long parseChatTime(String value) {
+        if (value == null || value.isBlank()) {
+            return 0L;
+        }
+
+        try {
+            LocalDateTime parsed = LocalDateTime.parse(value, CHAT_TIME_FORMATTER);
+            return parsed.atZone(KOREA_ZONE).toInstant().toEpochMilli();
+        } catch (Exception ignored) {
+            return 0L;
+        }
     }
 }
