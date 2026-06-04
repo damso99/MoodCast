@@ -18,21 +18,26 @@ export function ReportConfirmStep({
 }) {
   const periodLabel =
     selectedPeriod === "custom"
-      ? `${customPeriod || 0}일`
-      : `${selectedPeriod}일`; // 최종 확인 화면에 보여줄 정지 기간입니다.
-  const isTemporary = actionMeta?.id === "temporary"; // 일시 정지인지 판단합니다.
-  const isReject = actionMeta?.id === "reject"; // 반려인지 판단합니다.
+      ? `${customPeriod || 0}\uC77C`
+      : `${selectedPeriod}\uC77C`;
+  const isTemporary = actionMeta?.id === "temporary";
+  const isReject = actionMeta?.id === "reject";
 
   return (
     <>
-      <DrawerHeader title="제재 내용 확인" onBack={onBack} onClose={onClose} />
+      <DrawerHeader
+        title="처리 내용 확인"
+        onBack={onBack}
+        onClose={onClose}
+      />
 
       <div className={styles.drawerBody}>
         <p className={styles.guideText}>
-          아래 내용을 확인하고 제재를 최종 확정해주세요.
+          {
+            "\uC544\uB798 \uB0B4\uC6A9\uC744 \uD655\uC778\uD558\uACE0 \uC2E0\uACE0 \uCC98\uB9AC\uB97C \uCD5C\uC885 \uD655\uC815\uD574\uC8FC\uC138\uC694."
+          }
         </p>
 
-        {/* 신고 대상 확인 ---------------------------------- */}
         <section className={styles.confirmTarget}>
           <div className={styles.profileThumb}>
             <PersonOutlineOutlinedIcon />
@@ -43,118 +48,104 @@ export function ReportConfirmStep({
           </div>
           <dl>
             <div>
-              <dt>신고 수</dt>
-              <dd>{report.reportCount}건</dd>
+              <dt>{"\uC2E0\uACE0 \uC218"}</dt>
+              <dd>{report.reportCount}{"\uAC74"}</dd>
             </div>
             <div>
-              <dt>가입일</dt>
+              <dt>{"\uAC00\uC785\uC77C"}</dt>
               <dd>{report.joinedAt}</dd>
             </div>
           </dl>
         </section>
 
-        {/* 제재 사유 확인 ---------------------------------- */}
         <section className={styles.confirmTable}>
-          <h3>제재 사유</h3>
+          <h3>{"\uCC98\uB9AC \uC0AC\uC720"}</h3>
           <dl>
             <div>
-              <dt>{isReject ? "처리 유형" : "제재 사유"}</dt>
-              <dd>{isReject ? "반려" : selectedReason}</dd>
+              <dt>
+                {isReject
+                  ? "\uCC98\uB9AC \uC720\uD615"
+                  : "\uC81C\uC7AC \uC0AC\uC720"}
+              </dt>
+              <dd>{isReject ? "\uBC18\uB824" : selectedReason}</dd>
             </div>
             <div>
-              <dt>상세 설명</dt>
+              <dt>{"\uC0C1\uC138 \uC124\uBA85"}</dt>
               <dd>
                 {isReject
-                  ? "신고가 부적절하다고 판단되어 반려합니다."
+                  ? "\uC2E0\uACE0\uAC00 \uBD80\uC801\uC808\uD558\uB2E4\uACE0 \uD310\uB2E8\uB418\uC5B4 \uBC18\uB824\uD569\uB2C8\uB2E4."
                   : reasonDetail || report.detail}
               </dd>
             </div>
           </dl>
         </section>
 
-        {/* 제재 내용 확인 ---------------------------------- */}
         <section className={styles.confirmTable}>
-          <h3>제재 내용</h3>
+          <h3>{"\uCC98\uB9AC \uB0B4\uC6A9"}</h3>
           <dl>
             <div>
-              <dt>{isReject ? "처리 유형" : "제재 유형"}</dt>
+              <dt>
+                {isReject
+                  ? "\uCC98\uB9AC \uC720\uD615"
+                  : "\uC81C\uC7AC \uC720\uD615"}
+              </dt>
               <dd>{actionMeta?.label}</dd>
             </div>
             {isTemporary && (
               <>
                 <div>
-                  <dt>정지 기간</dt>
+                  <dt>{"\uC815\uC9C0 \uAE30\uAC04"}</dt>
                   <dd>{periodLabel}</dd>
                 </div>
                 <div>
-                  <dt>시작 시간</dt>
+                  <dt>{"\uC2DC\uC791 \uC2DC\uAC04"}</dt>
                   <dd>{todayText}</dd>
                 </div>
                 <div>
-                  <dt>예상 해제 시간</dt>
+                  <dt>{"\uC608\uC0C1 \uD574\uC81C \uC2DC\uAC04"}</dt>
                   <dd>{releaseDate}</dd>
                 </div>
                 <div>
-                  <dt>적용 범위</dt>
-                  <dd>로그인 및 서비스 이용 제한</dd>
+                  <dt>{"\uC801\uC6A9 \uBC94\uC704"}</dt>
+                  <dd>{"\uB85C\uADF8\uC778 \uBC0F \uC11C\uBE44\uC2A4 \uC774\uC6A9 \uC81C\uD55C"}</dd>
                 </div>
               </>
             )}
             {!isTemporary && (
               <div>
-                <dt>처리 내용</dt>
+                <dt>{"\uCC98\uB9AC \uB0B4\uC6A9"}</dt>
                 <dd>
                   {actionMeta?.id === "warning" &&
-                    "사용자에게 경고 메시지를 발송합니다."}
+                    "\uC0AC\uC6A9\uC790 \uACBD\uACE0 \uD69F\uC218\uB97C \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."}
                   {actionMeta?.id === "permanent" &&
-                    "해당 사용자의 계정을 영구 정지합니다."}
+                    "\uD574\uB2F9 \uC0AC\uC6A9\uC790\uC758 \uACC4\uC815\uC744 \uC601\uAD6C \uC815\uC9C0\uD569\uB2C8\uB2E4."}
                   {actionMeta?.id === "reject" &&
-                    "신고가 부적절하다고 판단되어 반려합니다."}
+                    "\uC2E0\uACE0\uAC00 \uBD80\uC801\uC808\uD558\uB2E4\uACE0 \uD310\uB2E8\uD558\uC5EC \uBC18\uB824\uD569\uB2C8\uB2E4."}
                 </dd>
               </div>
             )}
           </dl>
         </section>
 
-        {/* 최종 확인 안내 ---------------------------------- */}
         <section className={styles.warningBox}>
           <ErrorOutlineOutlinedIcon />
           <div>
-            <strong>{actionMeta?.label} 처리를 적용하면?</strong>
-            <p>제재를 확정하면 되돌릴 수 없으므로 신중하게 결정해주세요.</p>
+            <strong>{actionMeta?.label}{"\uCC98\uB9AC\uB97C \uC801\uC6A9\uD569\uB2C8\uB2E4."}</strong>
+            <p>
+              {
+                "\uCC98\uB9AC \uD655\uC815 \uD6C4\uC5D0\uB294 \uC774\uB825\uC774 \uB0A8\uC73C\uBBC0\uB85C \uC2E0\uC911\uD558\uAC8C \uACB0\uC815\uD574\uC8FC\uC138\uC694."
+              }
+            </p>
           </div>
         </section>
-
-        {!isReject && (
-          <section className={styles.checkSection}>
-            {/* 알림 옵션 ---------------------------------- */}
-            <h3>추가 옵션</h3>
-            <label>
-              <input type="checkbox" defaultChecked />
-              신고자에게 결과 알림
-            </label>
-            <label>
-              <input type="checkbox" defaultChecked />
-              사용자에게 결과 알림
-            </label>
-          </section>
-        )}
       </div>
 
       <footer className={styles.drawerFooter}>
-        <button
-          className={styles.secondaryButton}
-          type="button"
-          onClick={onBack}
-        >
-          취소
+        <button className={styles.secondaryButton} type="button" onClick={onBack}>
+          {"\uCDE8\uC18C"}
         </button>
-        <button
-          className={styles.primaryButton}
-          type="button"
-          onClick={onConfirm}
-        >
-          제재 확정
+        <button className={styles.primaryButton} type="button" onClick={onConfirm}>
+          {"\uCC98\uB9AC \uD655\uC815"}
         </button>
       </footer>
     </>

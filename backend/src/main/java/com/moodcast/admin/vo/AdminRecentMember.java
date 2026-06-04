@@ -32,7 +32,7 @@ public class AdminRecentMember {
 
     private String status; // members.status: ACTIVE, SUSPENDED, DELETED 같은 회원 상태입니다.
 
-    private String role; // members.role: USER, NORMAL_ADMIN, SUPER_ADMIN 같은 권한입니다.
+    private String role; // members.role: USER 또는 SUPER_ADMIN 같은 권한입니다.
 
     private LocalDateTime createdAt; // members.created_at 또는 로그 발생 시간입니다.
 

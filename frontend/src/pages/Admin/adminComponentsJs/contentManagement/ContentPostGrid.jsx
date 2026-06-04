@@ -1,5 +1,14 @@
 import styles from "../../adminComponentsCss/contentManagement/ContentPostGrid.module.css";
 
+function extractPostTags(post) {
+  if (typeof post?.tags !== "string") return [];
+
+  return post.tags
+    .split(/\s+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.startsWith("#") && tag.length > 1);
+}
+
 /* ==========================================================================
  * 콘텐츠 관리 게시글 그리드 컴포넌트
  * --------------------------------------------------------------------------
@@ -106,6 +115,7 @@ export function ContentPostGrid({
     const emotionMeta = getEmotionMeta(post.emotionId);
     const EmotionIcon = emotionMeta.icon;
     const isSelected = selectedPostIds.includes(post.postId);
+    const postTags = extractPostTags(post);
 
     return (
       <article
@@ -164,6 +174,16 @@ export function ContentPostGrid({
           </div>
 
           <p>{cardText}</p>
+
+          {postTags.length > 0 ? (
+            <div className={styles.hashtagRow} aria-label="게시글 해시태그">
+              {postTags.map((tag) => (
+                <span className={styles.hashtagChip} key={`${post.postId}-${tag}`}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className={styles.statRow}>

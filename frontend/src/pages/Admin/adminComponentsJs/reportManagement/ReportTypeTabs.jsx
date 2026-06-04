@@ -1,16 +1,15 @@
 import { typeMeta } from "./reportConstants";
 import styles from "../../adminComponentsCss/reportManagement/ReportTypeTabs.module.css";
 
-/* ==========================================================================
- * 신고 대상 유형 탭 컴포넌트
- * --------------------------------------------------------------------------
- * 전체/유저/게시글/댓글 필터와 현재 개수를 보여줍니다.
- * ========================================================================== */
 export function ReportTypeTabs({ tabs, selectedTab, counts, onSelect }) {
   return (
-    <div className={styles.typeTabs} aria-label="신고 대상 유형 필터">
+    <div
+      className={styles.typeTabs}
+      aria-label="\uC2E0\uACE0 \uB300\uC0C1 \uC720\uD615 \uD544\uD130"
+    >
       {tabs.map((label) => {
-        const Icon = typeMeta[label].icon;
+        const Icon = typeMeta[label]?.icon;
+
         return (
           <button
             key={label}
@@ -18,9 +17,9 @@ export function ReportTypeTabs({ tabs, selectedTab, counts, onSelect }) {
             type="button"
             onClick={() => onSelect(label)}
           >
-            <Icon />
+            {Icon && <Icon />}
             <span>{label}</span>
-            <strong>{counts[label]}</strong>
+            <strong>{counts[label] ?? 0}</strong>
           </button>
         );
       })}

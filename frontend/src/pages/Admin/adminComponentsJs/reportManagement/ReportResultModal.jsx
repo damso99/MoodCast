@@ -4,45 +4,42 @@ import { statusMeta } from "./reportConstants";
 import styles from "../../adminComponentsCss/reportManagement/ReportResultModal.module.css";
 
 export function ReportResultModal({ report, onClose }) {
-  const result = report.sanctionResult; // 처리 완료/반려 시 저장된 처리 결과 정보입니다.
+  const result = report.sanctionResult;
 
   return (
     <div
       className={styles.resultOverlay}
       role="dialog"
       aria-modal="true"
-      aria-label="신고 처리 결과 조회"
+      aria-label="\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC \uC870\uD68C"
     >
-      {/* 처리 결과 팝업 배경 ---------------------------------- */}
       <button
         className={styles.resultDimmedArea}
         type="button"
-        aria-label="처리 결과 팝업 닫기"
+        aria-label="\uCC98\uB9AC \uACB0\uACFC \uD31D\uC5C5 \uB2EB\uAE30"
         onClick={onClose}
       />
 
       <section className={styles.resultModal}>
-        {/* 처리 결과 팝업 상단 ---------------------------------- */}
         <header className={styles.resultHeader}>
           <div>
             <span
-              className={`${styles.statusBadge} ${styles[statusMeta[report.status]?.className || "rejected"]}`}
+              className={`${styles.statusBadge} ${styles[statusMeta[report.status]?.className || "resolved"]}`}
             >
               {report.status}
             </span>
-            <h2>신고 처리 결과</h2>
+            <h2>{"\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC"}</h2>
           </div>
           <button
             className={styles.iconButton}
             type="button"
-            aria-label="처리 결과 팝업 닫기"
+            aria-label="\uCC98\uB9AC \uACB0\uACFC \uD31D\uC5C5 \uB2EB\uAE30"
             onClick={onClose}
           >
             <CloseOutlinedIcon />
           </button>
         </header>
 
-        {/* 신고 대상 요약 ---------------------------------- */}
         <section className={styles.confirmTarget}>
           <div className={styles.profileThumb}>
             <PersonOutlineOutlinedIcon />
@@ -53,66 +50,45 @@ export function ReportResultModal({ report, onClose }) {
           </div>
           <dl>
             <div>
-              <dt>신고 번호</dt>
+              <dt>{"\uC2E0\uACE0 \uBC88\uD638"}</dt>
               <dd>#{report.id}</dd>
             </div>
             <div>
-              <dt>신고 수</dt>
-              <dd>{report.reportCount}건</dd>
+              <dt>{"\uC2E0\uACE0 \uC218"}</dt>
+              <dd>{report.reportCount}{"\uAC74"}</dd>
             </div>
           </dl>
         </section>
 
-        {/* 처리 결과 상세 ---------------------------------- */}
         <section className={styles.confirmTable}>
-          <h3>처리 내용</h3>
+          <h3>{"\uCC98\uB9AC \uB0B4\uC6A9"}</h3>
           <dl>
             <div>
-              <dt>처리 유형</dt>
+              <dt>{"\uCC98\uB9AC \uC720\uD615"}</dt>
               <dd>{result?.actionLabel || report.status}</dd>
             </div>
             <div>
-              <dt>처리 사유</dt>
+              <dt>{"\uCC98\uB9AC \uC0AC\uC720"}</dt>
               <dd>{result?.reason || report.reason}</dd>
             </div>
             <div>
-              <dt>상세 설명</dt>
+              <dt>{"\uC0C1\uC138 \uC124\uBA85"}</dt>
               <dd>{result?.detail || report.detail}</dd>
             </div>
-            {result?.periodLabel && (
-              <>
-                <div>
-                  <dt>정지 기간</dt>
-                  <dd>{result.periodLabel}</dd>
-                </div>
-                <div>
-                  <dt>시작 시간</dt>
-                  <dd>{result.startAt}</dd>
-                </div>
-                <div>
-                  <dt>예상 해제 시간</dt>
-                  <dd>{result.releaseDate}</dd>
-                </div>
-              </>
-            )}
             <div>
-              <dt>처리 관리자</dt>
-              <dd>{result?.adminName || "관리자"}</dd>
+              <dt>{"\uCC98\uB9AC \uAD00\uB9AC\uC790"}</dt>
+              <dd>{result?.adminName || "\uAD00\uB9AC\uC790"}</dd>
             </div>
             <div>
-              <dt>처리 시간</dt>
+              <dt>{"\uCC98\uB9AC \uC2DC\uAC04"}</dt>
               <dd>{result?.handledAt || "-"}</dd>
             </div>
           </dl>
         </section>
 
         <footer className={styles.resultFooter}>
-          <button
-            className={styles.primaryButton}
-            type="button"
-            onClick={onClose}
-          >
-            확인
+          <button className={styles.primaryButton} type="button" onClick={onClose}>
+            {"\uD655\uC778"}
           </button>
         </footer>
       </section>

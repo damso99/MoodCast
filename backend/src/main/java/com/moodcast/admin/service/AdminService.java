@@ -15,6 +15,10 @@ import com.moodcast.admin.vo.AdminNoticeRequest;
 import com.moodcast.admin.vo.AdminProfile;
 import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
+import com.moodcast.admin.vo.AdminReport;
+import com.moodcast.admin.vo.AdminReportActivity;
+import com.moodcast.admin.vo.AdminReportProcessRequest;
+import com.moodcast.admin.vo.AdminReportReporter;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
@@ -26,16 +30,22 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
 
 /* ==========================================================================
  * 관리자 페이지 공통 서비스
@@ -66,6 +76,9 @@ public class AdminService {
     @Autowired
     private RefreshTokenRedisService refreshTokenRedisService;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
     /* ==========================================================================
      * 관리자 권한 확인
      * --------------------------------------------------------------------------
@@ -73,12 +86,12 @@ public class AdminService {
      *
      * 처리 순서:
      * 1. Authorization 헤더의 accessToken으로 현재 로그인 회원을 조회합니다.
-     * 2. 회원 role이 ADMIN, NORMAL_ADMIN, SUPER_ADMIN 중 하나인지 확인합니다.
-     * 3. 일반 회원이면 403 FORBIDDEN으로 막습니다.
+     * 2. 회원 role이 SUPER_ADMIN인지 확인합니다.
+     * 3. 일반 회원 또는 기존 일반 관리자 권한이면 403 FORBIDDEN으로 막습니다.
      *
-     * NORMAL_ADMIN을 포함한 이유:
-     * - 프로젝트 규칙에서 일반 관리자 role 이름으로 NORMAL_ADMIN을 사용한 기록이 있습니다.
-     * - 현재 DB가 ADMIN을 쓰더라도, NORMAL_ADMIN 데이터가 있어도 막히지 않게 하기 위함입니다.
+     * 주의:
+     * - ADMIN, NORMAL_ADMIN은 과거 호환 데이터로만 남을 수 있습니다.
+     * - 현재 정책은 슈퍼 관리자와 일반 회원만 사용하므로 관리자 API 접근은 SUPER_ADMIN만 허용합니다.
      * ========================================================================== */
     private LoginMemberResponse validateAdmin(String authorizationHeader) {
         log.info("[ADMIN_API] validateAdmin start hasAuthorizationHeader={}", authorizationHeader != null && !authorizationHeader.isBlank());
@@ -86,10 +99,7 @@ public class AdminService {
         LoginMemberResponse loginMember = loginService.getLoginMemberByHeader(authorizationHeader);
         String role = loginMember.getRole();
 
-        boolean isAdmin =
-                "ADMIN".equals(role)
-                        || "NORMAL_ADMIN".equals(role)
-                        || "SUPER_ADMIN".equals(role);
+        boolean isAdmin = "SUPER_ADMIN".equals(role);
 
         if (!isAdmin) {
             log.warn("[ADMIN_API] validateAdmin forbidden memberId={} role={}", loginMember.getMemberId(), role);
@@ -109,7 +119,7 @@ public class AdminService {
      * 처리 흐름:
      * 1. validateAdmin()으로 로그인 여부와 관리자 권한 여부를 먼저 확인합니다.
      * 2. role이 SUPER_ADMIN인지 한 번 더 확인합니다.
-     * 3. 일반 관리자라면 403 FORBIDDEN으로 요청을 막습니다.
+     * 3. 슈퍼 관리자가 아니라면 403 FORBIDDEN으로 요청을 막습니다.
      */
     private LoginMemberResponse validateSuperAdmin(String authorizationHeader) {
         LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
@@ -144,7 +154,7 @@ public class AdminService {
      * members 테이블의 회원 목록을 조회해서 사용자 관리 테이블에 전달합니다.
      *
      * 지금은 "전체" 탭에만 표시할 데이터이므로 별도 조건을 걸지 않습니다.
-     * 나중에 일반 회원, 정지 회원, 관리자 회원 탭을 실제로 동작시킬 때는
+     * 나중에 일반 회원, 정지 회원, 슈퍼 관리자 탭 조건을 백엔드로 옮길 때는
      * 이 메서드에 role/status 조건을 추가하거나 별도 메서드로 분리하면 됩니다.
      * ========================================================================== */
     public List<AdminMember> getMembers(String authorizationHeader) {
@@ -579,11 +589,11 @@ public class AdminService {
                     String role = member.getRole();
                     String status = member.getStatus();
 
-                    if ("USER".equals(role) || "MEMBER".equals(role)) {
+                    if (!"SUPER_ADMIN".equals(role)) {
                         normalMemberCount++;
                     }
 
-                    if ("ADMIN".equals(role) || "NORMAL_ADMIN".equals(role) || "SUPER_ADMIN".equals(role)) {
+                    if ("SUPER_ADMIN".equals(role)) {
                         adminMemberCount++;
                     }
 
@@ -695,19 +705,317 @@ public class AdminService {
     }
 
     /* ==========================================================================
-     * 회원 상세 정보 조회
+     * 관리자 신고 목록 조회
      * --------------------------------------------------------------------------
-     * 사용자 관리 페이지에서 "회원 정보 전체 보기" 버튼을 눌렀을 때 호출됩니다.
+     * 신고 및 제재 관리 페이지의 신고 목록에서 사용하는 API 로직입니다.
      *
-     * 처리 흐름:
-     * 1. 요청자가 관리자 권한을 가진 사용자인지 먼저 확인합니다.
-     * 2. memberId가 비어 있으면 잘못된 요청으로 처리합니다.
-     * 3. DAO를 통해 members 테이블의 상세 정보를 조회합니다.
-     * 4. 조회 결과가 없으면 404 NOT_FOUND로 응답합니다.
-     *
-     * 보안 기준:
-     * - password_hash는 VO와 SQL에서 제외되어 있어 응답에 포함되지 않습니다.
+     * 필터 기준:
+     * - status: ALL, PENDING, REVIEWING, DONE
+     * - targetType: ALL, POST, COMMENT
+     * - processResult: ALL, WARNING, TEMPORARY_SUSPEND, PERMANENT_SUSPEND, REJECT
      * ========================================================================== */
+    public List<AdminReport> getAdminReports(
+            String authorizationHeader,
+            String status,
+            String targetType,
+            String processResult
+    ) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedStatus = normalizeReportStatus(status);
+        String normalizedTargetType = normalizeReportTargetType(targetType);
+        String normalizedProcessResult = normalizeReportProcessResult(processResult);
+
+        log.info(
+                "[ADMIN_API] selectAdminReports start status={} targetType={} processResult={}",
+                normalizedStatus,
+                normalizedTargetType,
+                normalizedProcessResult
+        );
+        List<AdminReport> reports = adminDao.selectAdminReports(
+                normalizedStatus,
+                normalizedTargetType,
+                normalizedProcessResult
+        );
+        log.info("[ADMIN_API] selectAdminReports success size={}", reports == null ? 0 : reports.size());
+
+        return reports == null ? Collections.emptyList() : reports;
+    }
+
+    /* ==========================================================================
+     * 관리자 신고 상세 조회
+     * --------------------------------------------------------------------------
+     * 처리 대기 신고를 관리자가 처음 열면 검토 중 상태로 전환합니다.
+     * 이미 검토 중이거나 처리 완료된 신고는 상태를 변경하지 않고 그대로 반환합니다.
+     * ========================================================================== */
+    @Transactional
+    public AdminReport getAdminReportDetail(String authorizationHeader, Long reportId) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validateReportId(reportId);
+
+        AdminReport report = selectRequiredAdminReport(reportId);
+
+        if ("PENDING".equals(report.getReportStatus()) || "REVIEWING".equals(report.getReportStatus())) {
+            adminDao.markAdminReportReviewing(reportId);
+            if ("PENDING".equals(report.getReportStatus())) {
+                adminDao.insertAdminActionLog(
+                        loginMember.getMemberId(),
+                        "REVIEW_REPORT",
+                        "REPORT",
+                        reportId,
+                        "신고 검토 시작"
+                );
+            }
+            report = selectRequiredAdminReport(reportId);
+        }
+
+        return report;
+    }
+
+    /* ==========================================================================
+     * 관리자 신고 최종 처리
+     * --------------------------------------------------------------------------
+     * 신고 상태를 처리 완료로 변경하고 처리 결과를 저장합니다.
+     * 반려는 신고만 완료 처리하고, 경고/정지는 신고 대상 회원 정보에도 즉시 반영합니다.
+     * ========================================================================== */
+    @Transactional
+    public AdminReport processAdminReport(
+            String authorizationHeader,
+            Long reportId,
+            AdminReportProcessRequest request
+    ) {
+        LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+        validateReportId(reportId);
+
+        if (request == null) {
+            throw new IllegalArgumentException("\uC2E0\uACE0 \uCC98\uB9AC \uC815\uBCF4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+        }
+
+        AdminReport report = selectRequiredAdminReport(reportId);
+
+        if ("DONE".equals(report.getReportStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "\uC774\uBBF8 \uCC98\uB9AC \uC644\uB8CC\uB41C \uC2E0\uACE0\uC785\uB2C8\uB2E4.");
+        }
+
+        String processResult = normalizeRequiredReportProcessResult(request.getProcessResult());
+        String processReason = normalizeRequiredText(request.getProcessReason(), "\uCC98\uB9AC \uC0AC\uC720\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+        LocalDateTime suspendedUntil = calculateReportSuspendedUntil(processResult, request);
+
+        applyReportProcessToTargetMember(loginMember, report, processResult, suspendedUntil);
+
+        int updated = adminDao.processAdminReport(
+                reportId,
+                loginMember.getMemberId(),
+                processResult,
+                processReason
+        );
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "\uCC98\uB9AC \uAC00\uB2A5\uD55C \uC2E0\uACE0\uAC00 \uC544\uB2D9\uB2C8\uB2E4.");
+        }
+
+        adminDao.insertAdminActionLog(
+                loginMember.getMemberId(),
+                "PROCESS_REPORT",
+                "REPORT",
+                reportId,
+                buildReportProcessActionDetail(processResult, processReason, suspendedUntil)
+        );
+
+        publishAccountSanctionAfterCommit(
+                report.getTargetMemberId(),
+                processResult,
+                processReason,
+                suspendedUntil
+        );
+
+        return selectRequiredAdminReport(reportId);
+    }
+
+    private void applyReportProcessToTargetMember(
+            LoginMemberResponse loginMember,
+            AdminReport report,
+            String processResult,
+            LocalDateTime suspendedUntil
+    ) {
+        if ("REJECT".equals(processResult)) {
+            return;
+        }
+
+        Long targetMemberId = report.getTargetMemberId();
+
+        if (targetMemberId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "\uC81C\uC7AC \uB300\uC0C1 \uD68C\uC6D0\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        }
+
+        if (Objects.equals(loginMember.getMemberId(), targetMemberId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "\uBCF8\uC778 \uACC4\uC815\uC740 \uC81C\uC7AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        }
+
+        AdminMemberDetail targetMember = adminDao.selectMemberDetail(targetMemberId);
+
+        if (targetMember == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "\uC81C\uC7AC \uB300\uC0C1 \uD68C\uC6D0 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        }
+
+        if (isAdminRole(targetMember.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "\uAD00\uB9AC\uC790 \uACC4\uC815\uC740 \uC81C\uC7AC\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        }
+
+        int updated;
+
+        if ("WARNING".equals(processResult)) {
+            updated = adminDao.addWarningToMember(targetMemberId);
+        } else {
+            updated = adminDao.suspendMember(targetMemberId, suspendedUntil);
+            refreshTokenRedisService.deleteAllRefreshTokens(targetMemberId);
+        }
+
+        if (updated != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "\uD68C\uC6D0 \uC81C\uC7AC \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        }
+    }
+
+    private void validateReportId(Long reportId) {
+        if (reportId == null) {
+            throw new IllegalArgumentException("\uC2E0\uACE0\uB97C \uC120\uD0DD\uD574\uC8FC\uC138\uC694.");
+        }
+    }
+
+    private AdminReport selectRequiredAdminReport(Long reportId) {
+        AdminReport report = adminDao.selectAdminReportById(reportId);
+
+        if (report == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "\uC2E0\uACE0 \uC815\uBCF4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+        }
+
+        attachRecentActivities(report);
+        attachReporters(report);
+
+        return report;
+    }
+
+    private void attachRecentActivities(AdminReport report) {
+        if (report == null || report.getTargetMemberId() == null) {
+            if (report != null) {
+                report.setActivities(Collections.emptyList());
+            }
+            return;
+        }
+
+        List<AdminReportActivity> activities = adminDao.selectAdminReportRecentActivities(report.getTargetMemberId());
+        report.setActivities(activities == null ? Collections.emptyList() : activities);
+    }
+
+    private void attachReporters(AdminReport report) {
+        if (report == null || report.getReportId() == null) {
+            if (report != null) {
+                report.setReporters(Collections.emptyList());
+            }
+            return;
+        }
+
+        List<AdminReportReporter> reporters = adminDao.selectAdminReportReporters(report.getReportId());
+        report.setReporters(reporters == null ? Collections.emptyList() : reporters);
+    }
+
+    private String normalizeReportStatus(String status) {
+        String normalized = status == null || status.isBlank() ? "ALL" : status.trim().toUpperCase();
+
+        if ("ALL".equals(normalized)
+                || "PENDING".equals(normalized)
+                || "REVIEWING".equals(normalized)
+                || "DONE".equals(normalized)) {
+            return normalized;
+        }
+
+        throw new IllegalArgumentException("\uC2E0\uACE0 \uC0C1\uD0DC \uD544\uD130\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    }
+
+    private String normalizeReportTargetType(String targetType) {
+        String normalized = targetType == null || targetType.isBlank() ? "ALL" : targetType.trim().toUpperCase();
+
+        if ("ALL".equals(normalized) || "POST".equals(normalized) || "COMMENT".equals(normalized)) {
+            return normalized;
+        }
+
+        throw new IllegalArgumentException("\uC2E0\uACE0 \uC720\uD615 \uD544\uD130\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
+    }
+
+    private String normalizeReportProcessResult(String processResult) {
+        String normalized = processResult == null || processResult.isBlank() ? "ALL" : processResult.trim().toUpperCase();
+
+        if ("ALL".equals(normalized)) {
+            return normalized;
+        }
+
+        return normalizeRequiredReportProcessResult(normalized);
+    }
+
+    private String normalizeRequiredReportProcessResult(String processResult) {
+        String normalized = processResult == null || processResult.isBlank() ? "" : processResult.trim().toUpperCase();
+
+        if ("WARNING".equals(normalized)
+                || "TEMPORARY_SUSPEND".equals(normalized)
+                || "PERMANENT_SUSPEND".equals(normalized)
+                || "REJECT".equals(normalized)) {
+            return normalized;
+        }
+
+        throw new IllegalArgumentException("\uCC98\uB9AC \uACB0\uACFC\uB97C \uC62C\uBC14\uB974\uAC8C \uC120\uD0DD\uD574\uC8FC\uC138\uC694.");
+    }
+
+    private LocalDateTime calculateReportSuspendedUntil(
+            String processResult,
+            AdminReportProcessRequest request
+    ) {
+        if ("PERMANENT_SUSPEND".equals(processResult) || "WARNING".equals(processResult) || "REJECT".equals(processResult)) {
+            return null;
+        }
+
+        if (!"TEMPORARY_SUSPEND".equals(processResult)) {
+            throw new IllegalArgumentException("\uCC98\uB9AC \uACB0\uACFC\uB97C \uC62C\uBC14\uB974\uAC8C \uC120\uD0DD\uD574\uC8FC\uC138\uC694.");
+        }
+
+        if (request.getSuspendedUntil() != null && !request.getSuspendedUntil().trim().isEmpty()) {
+            LocalDateTime customSuspendedUntil = LocalDate.parse(request.getSuspendedUntil().trim()).atTime(23, 59, 59);
+
+            if (!customSuspendedUntil.isAfter(LocalDateTime.now(KOREA_ZONE))) {
+                throw new IllegalArgumentException("\uC815\uC9C0 \uD574\uC81C\uC77C\uC740 \uD604\uC7AC\uBCF4\uB2E4 \uC774\uD6C4 \uB0A0\uC9DC\uB85C \uC120\uD0DD\uD574\uC8FC\uC138\uC694.");
+            }
+
+            return customSuspendedUntil;
+        }
+
+        Integer suspendDays = request.getSuspendDays();
+
+        if (suspendDays == null || suspendDays <= 0) {
+            throw new IllegalArgumentException("\uC77C\uC2DC \uC815\uC9C0 \uAE30\uAC04\uC744 \uC120\uD0DD\uD574\uC8FC\uC138\uC694.");
+        }
+
+        return LocalDateTime.now(KOREA_ZONE).plusDays(suspendDays);
+    }
+
+    private String buildReportProcessActionDetail(
+            String processResult,
+            String processReason,
+            LocalDateTime suspendedUntil
+    ) {
+        if ("TEMPORARY_SUSPEND".equals(processResult)) {
+            return "\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC: \uC77C\uC2DC \uC815\uC9C0, \uC0AC\uC720: " + processReason + ", \uD574\uC81C \uC608\uC815\uC77C: " + suspendedUntil;
+        }
+
+        if ("PERMANENT_SUSPEND".equals(processResult)) {
+            return "\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC: \uC601\uAD6C \uC815\uC9C0, \uC0AC\uC720: " + processReason;
+        }
+
+        if ("WARNING".equals(processResult)) {
+            return "\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC: \uACBD\uACE0, \uC0AC\uC720: " + processReason;
+        }
+
+        return "\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC: \uBC18\uB824, \uC0AC\uC720: " + processReason;
+    }
+
     public AdminMemberDetail getMemberDetail(String authorizationHeader, Long memberId) {
         validateAdmin(authorizationHeader);
 
@@ -789,7 +1097,72 @@ public class AdminService {
                 actionDetail
         );
 
+        publishAccountSanctionAfterCommit(
+                memberId,
+                suspendedUntil == null ? "PERMANENT_SUSPEND" : "TEMPORARY_SUSPEND",
+                actionDetail,
+                suspendedUntil
+        );
+
         return adminDao.selectMemberDetail(memberId);
+    }
+
+    private void publishAccountSanctionAfterCommit(
+            Long memberId,
+            String processResult,
+            String reason,
+            LocalDateTime suspendedUntil
+    ) {
+        if (memberId == null || processResult == null) {
+            return;
+        }
+
+        Runnable publisher = () -> sendAccountSanctionNotification(memberId, processResult, reason, suspendedUntil);
+
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            publisher.run();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                publisher.run();
+            }
+        });
+    }
+
+    private void sendAccountSanctionNotification(
+            Long memberId,
+            String processResult,
+            String reason,
+            LocalDateTime suspendedUntil
+    ) {
+        boolean isWarning = "WARNING".equals(processResult);
+        boolean isSuspended = "TEMPORARY_SUSPEND".equals(processResult) || "PERMANENT_SUSPEND".equals(processResult);
+
+        if (!isWarning && !isSuspended) {
+            return;
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("eventType", "ACCOUNT_SANCTION");
+        payload.put("notificationId", "account-sanction-" + memberId + "-" + System.currentTimeMillis());
+        payload.put("memberId", memberId);
+        payload.put("sanctionType", isWarning ? "WARNING" : "SUSPENDED");
+        payload.put("reason", reason == null || reason.isBlank() ? "관리자 제재 처리" : reason);
+        payload.put(
+                "message",
+                isWarning
+                        ? "관리자로부터 경고를 받았습니다. 서비스 이용 규칙을 확인해주세요."
+                        : "계정이 정지되어 로그아웃됩니다. 자세한 내용은 관리자에게 문의해주세요."
+        );
+
+        if (suspendedUntil != null) {
+            payload.put("suspendedUntil", suspendedUntil.toString());
+        }
+
+        messagingTemplate.convertAndSend("/sub/notifications/" + memberId, payload);
     }
 
     private LocalDateTime calculateSuspendedUntil(AdminMemberSuspendRequest request) {
@@ -929,7 +1302,8 @@ public class AdminService {
      * 처리 규칙:
      * - 변경 가능한 role은 USER, SUPER_ADMIN 두 가지입니다.
      * - 일반 관리자(NORMAL_ADMIN)는 새로 부여하지 않습니다.
-     * - 기존 관리자 계정은 서로 관리하지 못하게 막고, 본인 계정 강등만 허용합니다.
+     * - 기존 관리자 계정에 새 관리자 권한을 덮어씌우는 관리는 막습니다.
+     * - 단, 슈퍼 관리자가 관리자 권한을 일반 회원(USER)으로 내리는 강등은 허용합니다.
      * - SQL에서도 ACTIVE 상태와 변경 가능한 role 조건을 다시 확인합니다.
      * - 조건에 맞지 않으면 400 BAD_REQUEST로 실패 처리합니다.
      * ========================================================================== */
@@ -951,11 +1325,19 @@ public class AdminService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관리자 등급을 변경할 회원 정보를 찾을 수 없습니다.");
         }
 
-        if (isAdminRole(targetMember.getRole()) && !Objects.equals(loginMember.getMemberId(), memberId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정끼리는 등급을 변경할 수 없습니다.");
+        String normalizedRole = normalizeAdminRole(role);
+
+        /*
+         * 관리자 권한 변경 정책:
+         * - USER/MEMBER 같은 일반 회원을 SUPER_ADMIN으로 승급하는 것은 허용합니다.
+         * - SUPER_ADMIN 계정을 USER로 강등하는 것은 허용합니다.
+         * - SUPER_ADMIN 계정을 다른 관리자 등급으로 다시 조정하는 것은 관리 사고 위험이 있어 막습니다.
+         * - ADMIN/NORMAL_ADMIN은 더 이상 관리자 권한으로 쓰지 않으므로 일반 회원처럼 처리합니다.
+         */
+        if (isAdminRole(targetMember.getRole()) && !"USER".equals(normalizedRole)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정은 일반 회원으로 강등만 할 수 있습니다.");
         }
 
-        String normalizedRole = normalizeAdminRole(role);
         int updated = adminDao.updateMemberRoleForAdminPromotion(memberId, normalizedRole);
 
         if (updated != 1) {
@@ -987,7 +1369,7 @@ public class AdminService {
     }
 
     private boolean isAdminRole(String role) {
-        return "ADMIN".equals(role) || "NORMAL_ADMIN".equals(role) || "SUPER_ADMIN".equals(role);
+        return "SUPER_ADMIN".equals(role);
     }
 
     /* ==========================================================================
@@ -1012,12 +1394,19 @@ public class AdminService {
      */
     public List<AdminEmotionActivity> getDashboardEmotionActivity(
             String authorizationHeader,
-            String period
+            String period,
+            String startDate,
+            String endDate
     ) {
         validateAdmin(authorizationHeader);
 
         String normalizedPeriod = normalizeDashboardPeriod(period);
-        List<AdminEmotionActivity> activities = adminDao.selectDashboardEmotionActivity(normalizedPeriod);
+        AdminDateRange dateRange = resolveAdminDateRange(normalizedPeriod, startDate, endDate);
+        List<AdminEmotionActivity> activities = adminDao.selectDashboardEmotionActivity(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
 
         return activities == null ? Collections.emptyList() : activities;
     }
@@ -1029,12 +1418,19 @@ public class AdminService {
      */
     public List<AdminActiveUserStat> getDashboardActiveUsers(
             String authorizationHeader,
-            String period
+            String period,
+            String startDate,
+            String endDate
     ) {
         validateAdmin(authorizationHeader);
 
         String normalizedPeriod = normalizeDashboardPeriod(period);
-        List<AdminActiveUserStat> activeUsers = adminDao.selectDashboardActiveUsers(normalizedPeriod);
+        AdminDateRange dateRange = resolveAdminDateRange(normalizedPeriod, startDate, endDate);
+        List<AdminActiveUserStat> activeUsers = adminDao.selectDashboardActiveUsers(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
 
         return activeUsers == null ? Collections.emptyList() : activeUsers;
     }
@@ -1071,11 +1467,21 @@ public class AdminService {
      * 프론트에서 선택한 일/주/월 값을 백엔드에서 한 번 더 검증한 뒤 DB에 전달합니다.
      * 이렇게 하면 프론트가 잘못된 period 값을 보내도 SQL 조건이 깨지지 않습니다.
      */
-    public AdminStatisticsSummary getStatisticsSummary(String authorizationHeader, String period) {
+    public AdminStatisticsSummary getStatisticsSummary(
+            String authorizationHeader,
+            String period,
+            String startDate,
+            String endDate
+    ) {
         validateAdmin(authorizationHeader);
 
         String normalizedPeriod = normalizeDashboardPeriod(period);
-        AdminStatisticsSummary summary = adminDao.selectStatisticsSummary(normalizedPeriod);
+        AdminDateRange dateRange = resolveAdminDateRange(normalizedPeriod, startDate, endDate);
+        AdminStatisticsSummary summary = adminDao.selectStatisticsSummary(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
 
         return summary == null ? new AdminStatisticsSummary(0L, 0L, 0L, 0L, 0L, 0L) : summary;
     }
@@ -1085,11 +1491,21 @@ public class AdminService {
      * --------------------------------------------------------------------------
      * day는 00~23시, week는 최근 7일, month는 최근 4주 단위로 가입자 흐름을 가져옵니다.
      */
-    public List<AdminStatisticsTrend> getStatisticsSubscriberTrend(String authorizationHeader, String period) {
+    public List<AdminStatisticsTrend> getStatisticsSubscriberTrend(
+            String authorizationHeader,
+            String period,
+            String startDate,
+            String endDate
+    ) {
         validateAdmin(authorizationHeader);
 
         String normalizedPeriod = normalizeDashboardPeriod(period);
-        List<AdminStatisticsTrend> trends = adminDao.selectStatisticsSubscriberTrend(normalizedPeriod);
+        AdminDateRange dateRange = resolveAdminDateRange(normalizedPeriod, startDate, endDate);
+        List<AdminStatisticsTrend> trends = adminDao.selectStatisticsSubscriberTrend(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
 
         return trends == null ? Collections.emptyList() : trends;
     }
@@ -1099,11 +1515,21 @@ public class AdminService {
      * --------------------------------------------------------------------------
      * 게시글, 댓글, 공감 수를 같은 형태(label/value)로 내려주면 프론트 막대 그래프가 단순해집니다.
      */
-    public List<AdminStatisticsTrend> getStatisticsContentActivity(String authorizationHeader, String period) {
+    public List<AdminStatisticsTrend> getStatisticsContentActivity(
+            String authorizationHeader,
+            String period,
+            String startDate,
+            String endDate
+    ) {
         validateAdmin(authorizationHeader);
 
         String normalizedPeriod = normalizeDashboardPeriod(period);
-        List<AdminStatisticsTrend> activities = adminDao.selectStatisticsContentActivity(normalizedPeriod);
+        AdminDateRange dateRange = resolveAdminDateRange(normalizedPeriod, startDate, endDate);
+        List<AdminStatisticsTrend> activities = adminDao.selectStatisticsContentActivity(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
 
         return activities == null ? Collections.emptyList() : activities;
     }
@@ -1114,6 +1540,62 @@ public class AdminService {
         }
 
         return "day";
+    }
+
+    /*
+     * 관리자 기간 조회 범위 검증
+     * --------------------------------------------------------------------------
+     * 프론트가 보내는 startDate/endDate는 yyyy-MM-dd 형식만 허용합니다.
+     * 값이 없으면 서울 시간 기준 오늘으로 초기화하고, 기간 탭에 맞는 기본 범위를 계산합니다.
+     */
+    private AdminDateRange resolveAdminDateRange(String period, String startDate, String endDate) {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        LocalDate start = parseAdminDate(startDate);
+        LocalDate end = parseAdminDate(endDate);
+
+        if (start == null || end == null) {
+            if ("week".equals(period)) {
+                start = today.minusDays(6);
+                end = today;
+            } else if ("month".equals(period)) {
+                start = today.withDayOfMonth(1);
+                end = today.withDayOfMonth(today.lengthOfMonth());
+            } else {
+                start = today;
+                end = today;
+            }
+        }
+
+        LocalDate serviceStartDate = LocalDate.of(2026, 1, 1);
+
+        if (start.isBefore(serviceStartDate) || end.isBefore(serviceStartDate)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "2026년 이후 기간만 조회할 수 있습니다.");
+        }
+
+        if (start.isAfter(end)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회 시작일은 종료일보다 늦을 수 없습니다.");
+        }
+
+        if ("day".equals(period) && !start.equals(end)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "일 단위 조회는 하루 범위만 선택할 수 있습니다.");
+        }
+
+        return new AdminDateRange(start, end);
+    }
+
+    private LocalDate parseAdminDate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "날짜 형식은 yyyy-MM-dd로 입력해주세요.");
+        }
+    }
+
+    private record AdminDateRange(LocalDate startDate, LocalDate endDate) {
     }
 
     public List<Notice> getAdminNotices(String authorizationHeader, String status) {
@@ -1320,3 +1802,4 @@ public class AdminService {
         return value.trim();
     }
 }
+

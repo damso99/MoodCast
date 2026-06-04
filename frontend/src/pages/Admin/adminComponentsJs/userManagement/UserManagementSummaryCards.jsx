@@ -10,7 +10,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementSummar
  * - 부모 컴포넌트(UserManagementPage.jsx)가 API로 받은 데이터를 props로 넘겨줍니다.
  * - 이 컴포넌트는 받은 데이터를 원형 그래프와 텍스트 정보로 보여주는 역할만 합니다.
  * - 정지 회원은 role과 별개로 status가 SUSPENDED인 회원이기 때문에,
- *   일반 회원/관리자 회원 수와 겹쳐서 계산될 수 있습니다.
+ *   일반 회원/슈퍼 관리자 수와 겹쳐서 계산될 수 있습니다.
  * - 그래서 그래프는 "전체 회원 수"를 기준으로 각 항목의 비율을 계산합니다.
  * ========================================================================== */
 export function UserManagementSummaryCards({
@@ -34,8 +34,8 @@ export function UserManagementSummaryCards({
   /*
    * 원형 그래프용 회원 수 보정
    * ------------------------------------------------------------------------
-   * DB 기준으로는 정지 회원도 role은 USER/MEMBER 또는 ADMIN 계열 값을 그대로 가집니다.
-   * 그래서 일반 회원 수 + 관리자 회원 수가 이미 전체 회원 수와 같아질 수 있고,
+   * DB 기준으로는 정지 회원도 role 값을 그대로 가집니다.
+   * 그래서 일반 회원 수 + 슈퍼 관리자 수가 이미 전체 회원 수와 같아질 수 있고,
    * 여기에 정지 회원 수를 세 번째 구간으로 추가하면 앞의 두 구간이 100%를 채워
    * 정지 회원 색상이 그래프에 보이지 않는 문제가 생깁니다.
    *
@@ -45,7 +45,7 @@ export function UserManagementSummaryCards({
    *
    * 현재 정책상 관리자가 슈퍼 관리자를 정지할 수 없고, 보통 정지는 일반 회원에게
    * 적용되므로 일반 회원 수에서 먼저 차감합니다. 일반 회원 수보다 정지 회원 수가
-   * 더 큰 비정상 데이터가 들어와도 남은 수만 관리자 구간에서 한 번 더 차감합니다.
+   * 더 큰 비정상 데이터가 들어와도 남은 수만 슈퍼 관리자 구간에서 한 번 더 차감합니다.
    */
   const chartSuspendedCount = Math.min(
     safeSuspendedMemberCount,
@@ -80,7 +80,7 @@ export function UserManagementSummaryCards({
       percent: getChartPercent(chartNormalMemberCount),
     },
     {
-      label: "관리자 회원",
+      label: "슈퍼 관리자",
       count: chartAdminMemberCount,
       color: "#12b76a",
       percent: getChartPercent(chartAdminMemberCount),

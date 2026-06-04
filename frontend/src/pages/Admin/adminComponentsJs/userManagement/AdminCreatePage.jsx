@@ -16,7 +16,7 @@ import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.modu
  *
  * 해당 기능:
  * - 이름, 닉네임, 이메일 기준으로 회원 검색
- * - ACTIVE 상태인 일반 회원과 관리자 회원을 검색 결과로 표시
+ * - ACTIVE 상태인 일반 회원과 슈퍼 관리자를 검색 결과로 표시
  * - 검색 결과에서 권한을 변경할 회원 선택
  * - 일반 회원 / 슈퍼 관리자 중 하나를 선택해 등급 변경
  *
@@ -35,6 +35,7 @@ export function AdminCreatePage() {
   const [promoteLoading, setPromoteLoading] = useState(false); // 관리자 권한 변경 API 호출 중인지 표시합니다.
   const [searchError, setSearchError] = useState(""); // 검색 또는 권한 변경 실패 메시지를 저장합니다.
   const [successMessage, setSuccessMessage] = useState(""); // 권한 변경 성공 메시지를 저장합니다.
+  const [roleResultPopup, setRoleResultPopup] = useState(null); // 권한 변경 성공/실패 결과를 중앙 팝업으로 보여줍니다.
   const [members, setMembers] = useState([]); // 검색 결과로 받은 회원 목록입니다.
   const [selectedMemberId, setSelectedMemberId] = useState(null); // 라디오 버튼으로 선택한 권한 변경 대상 회원 id입니다.
   const [selectedRole, setSelectedRole] = useState("SUPER_ADMIN"); // 선택한 관리자 등급입니다.
@@ -61,7 +62,7 @@ export function AdminCreatePage() {
     }
 
     if (role === "ADMIN" || role === "NORMAL_ADMIN") {
-      return "일반 관리자";
+      return "일반 회원";
     }
 
     if (role === "USER" || role === "MEMBER") {
@@ -196,9 +197,11 @@ export function AdminCreatePage() {
         },
       )
       .then(() => {
-        setSuccessMessage(
-          `${selectedName} 회원의 권한이 변경되었습니다.`,
-        );
+        setRoleResultPopup({
+          type: "success",
+          title: "처리 완료",
+          message: `${selectedName} 회원의 권한이 변경되었습니다.`,
+        });
         setMembers((prevMembers) =>
           prevMembers.map((memberItem) =>
             memberItem.memberId === selectedMemberId
@@ -211,7 +214,13 @@ export function AdminCreatePage() {
       })
       .catch((error) => {
         console.log(error);
-        setSearchError("관리자 등급 변경 중 문제가 발생했습니다.");
+        setRoleResultPopup({
+          type: "error",
+          title: "처리 실패",
+          message:
+            error.response?.data?.message ||
+            "관리자 등급 변경 중 문제가 발생했습니다.",
+        });
       })
       .finally(() => {
         setPromoteLoading(false);
@@ -269,7 +278,7 @@ export function AdminCreatePage() {
         {!searched && (
           <EmptyState
             title="검색 전"
-            description="이름, 닉네임, 이메일로 ACTIVE 상태의 일반 회원과 관리자 회원을 검색할 수 있습니다."
+            description="이름, 닉네임, 이메일로 ACTIVE 상태의 일반 회원과 슈퍼 관리자를 검색할 수 있습니다."
           />
         )}
       </section>
@@ -361,6 +370,37 @@ export function AdminCreatePage() {
           </div>
         </form>
       </section>
+
+      {roleResultPopup ? (
+        <section
+          className={styles.roleResultLayer}
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="role-result-title"
+        >
+          <button
+            type="button"
+            className={styles.roleResultDim}
+            aria-label="권한 변경 결과 팝업 닫기"
+            onClick={() => setRoleResultPopup(null)}
+          />
+
+          <article className={styles.roleResultPopup}>
+            <span
+              className={`${styles.roleResultBadge} ${
+                roleResultPopup.type === "error" ? styles.roleResultError : ""
+              }`}
+            >
+              {roleResultPopup.type === "error" ? "실패" : "성공"}
+            </span>
+            <h3 id="role-result-title">{roleResultPopup.title}</h3>
+            <p>{roleResultPopup.message}</p>
+            <button type="button" onClick={() => setRoleResultPopup(null)}>
+              확인
+            </button>
+          </article>
+        </section>
+      ) : null}
     </AdminLayout>
   );
 }

@@ -81,23 +81,27 @@ public class LoginController {
             return "UNKNOWN";
         }
 
-        if (message.contains("실패 횟수")) {
+        if (message.contains("\uC2E4\uD328 \uD69F\uC218")) {
             return "ACCOUNT_LOCKED";
         }
 
-        if (message.contains("정지")) {
+        if (message.contains("\uC81C\uC7AC\uB41C \uACC4\uC815") || message.contains("\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4")) {
             return "SUSPENDED";
         }
 
-        if (message.contains("탈퇴")) {
+        if (message.contains("\uD0C8\uD1F4 \uCC98\uB9AC")) {
             return "WITHDRAW";
         }
 
-        if (message.contains("이메일 인증")) {
+        if (message.contains("\uC774\uBA54\uC77C \uC778\uC99D")) {
             return "EMAIL_NOT_VERIFIED";
         }
 
-        if (message.contains("비밀번호")) {
+        if (message.contains("\uD734\uB300\uD3F0 \uC778\uC99D")) {
+            return "PHONE_NOT_VERIFIED";
+        }
+
+        if (message.contains("\uBE44\uBC00\uBC88\uD638")) {
             return "PASSWORD_MISMATCH";
         }
 
@@ -128,19 +132,23 @@ public class LoginController {
             return "UNKNOWN";
         }
 
-        if (message.contains("정지")) {
+        if (message.contains("\uC81C\uC7AC\uB41C \uACC4\uC815") || message.contains("\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4")) {
             return "SUSPENDED";
         }
 
-        if (message.contains("탈퇴")) {
+        if (message.contains("\uD0C8\uD1F4 \uCC98\uB9AC")) {
             return "WITHDRAW";
         }
 
-        if (message.contains("이메일 인증")) {
+        if (message.contains("\uC774\uBA54\uC77C \uC778\uC99D")) {
             return "EMAIL_NOT_VERIFIED";
         }
 
-        if (auditMember != null && message.contains("로그인")) {
+        if (message.contains("\uD734\uB300\uD3F0 \uC778\uC99D")) {
+            return "PHONE_NOT_VERIFIED";
+        }
+
+        if (auditMember != null && message.contains("\uB85C\uADF8\uC778")) {
             return "REFRESH_MISMATCH";
         }
 
@@ -167,7 +175,7 @@ public class LoginController {
 
             LoginResponse response = new LoginResponse(
                     true,
-                    "로그인 성공",
+                    "\uB85C\uADF8\uC778 \uC131\uACF5",
                     result.getAccessToken(),
                     result.getMember()
             );
@@ -196,7 +204,7 @@ public class LoginController {
     @GetMapping("me")
     public ResponseEntity<?> me(@RequestHeader(value = "Authorization", required = false) String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         String accessToken = authorization.substring(7);
@@ -214,7 +222,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "프로필이 수정되었습니다.",
+                        "message", "\uD504\uB85C\uD544\uC774 \uC218\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
                         "member", loginService.updateProfile(authorizationHeader, request)
                 )
         );
@@ -247,7 +255,7 @@ public class LoginController {
                 .body(
                         Map.of(
                                 "success", true,
-                                "message", "비밀번호가 변경되었습니다. 다시 로그인해주세요."
+                                "message", "\uBE44\uBC00\uBC88\uD638\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uB85C\uADF8\uC778\uD574\uC8FC\uC138\uC694."
                         )
                 );
     }
@@ -261,7 +269,7 @@ public class LoginController {
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "가입 이메일로 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("message", "\uAC00\uC785 \uC774\uBA54\uC77C\uB85C \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
@@ -277,7 +285,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "가입 계정을 찾았습니다.",
+                        "message", "\uAC00\uC785 \uACC4\uC815\uC744 \uCC3E\uC558\uC2B5\uB2C8\uB2E4.",
                         "email", result.getEmail(),
                         "kakaoLinked", result.isKakaoLinked(),
                         "googleLinked", result.isGoogleLinked()
@@ -294,7 +302,7 @@ public class LoginController {
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "비밀번호 재설정 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("message", "\uBE44\uBC00\uBC88\uD638 \uC7AC\uC124\uC815 \uC774\uBA54\uC77C \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
@@ -310,7 +318,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "이메일 인증이 완료되었습니다. 새 비밀번호를 입력해주세요."
+                        "message", "\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694."
                 )
         );
     }
@@ -336,7 +344,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "비밀번호가 재설정되었습니다. 다시 로그인해주세요."
+                        "message", "\uBE44\uBC00\uBC88\uD638\uAC00 \uC7AC\uC124\uC815\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uB85C\uADF8\uC778\uD574\uC8FC\uC138\uC694."
                 )
         );
     }
@@ -350,7 +358,7 @@ public class LoginController {
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "탈퇴 확인 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
+        response.put("message", "\uD0C8\uD1F4 \uD655\uC778 \uC774\uBA54\uC77C \uC778\uC99D\uBC88\uD638\uB97C \uBC1C\uC1A1\uD588\uC2B5\uB2C8\uB2E4. 3\uBD84 \uC548\uC5D0 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         response.put("email", result.getEmail());
         if (devReturnAuthCode) {
             response.put("authCode", result.getAuthCode());
@@ -369,7 +377,7 @@ public class LoginController {
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
-                        "message", "탈퇴 이메일 인증이 완료되었습니다."
+                        "message", "\uD0C8\uD1F4 \uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
                 )
         );
     }
@@ -401,7 +409,7 @@ public class LoginController {
                 .body(
                         Map.of(
                                 "success", true,
-                                "message", "회원 탈퇴가 완료되었습니다."
+                                "message", "\uD68C\uC6D0 \uD0C8\uD1F4\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
                         )
                 );
     }
@@ -415,8 +423,7 @@ public class LoginController {
                 )
         );
     }
-
-    // 팔로우 토글
+    // Authentication request handling.
     @PostMapping("follow/{memberId}")
     public ResponseEntity<FollowResponse> toggleFollow(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -424,8 +431,7 @@ public class LoginController {
     ) {
         return ResponseEntity.ok(loginService.toggleFollow(authHeader, memberId));
     }
-
-    // 팔로우 상태 및 카운트 조회
+    // Authentication request handling.
     @GetMapping("follow/status/{memberId}")
     public ResponseEntity<FollowCheckResponse> getFollowStatus(
             @RequestHeader(value = "Authorization", required = false) String authHeader,
@@ -449,13 +455,11 @@ public class LoginController {
     ) {
         return ResponseEntity.ok(loginService.getFollowingList(authHeader, memberId));
     }
-
-    // 로그아웃
+    // Authentication request handling.
     @PostMapping("logout")
     public ResponseEntity<?> logout(HttpServletRequest request) {
         String refreshToken = null;
-
-        // 쿠키에서 리프레시 토큰 찾기
+    // Authentication request handling.
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
@@ -481,7 +485,7 @@ public class LoginController {
                         getUserAgent(request)
                 );
             } catch (AuthException | IllegalArgumentException e) {
-                // refresh token이 이미 만료/삭제되어도 로그아웃은 쿠키 정리까지 성공 처리함
+    // Authentication request handling.
                 loginAuditService.record(
                         getAuditMemberId(auditMember),
                         getAuditMemberEmail(auditMember),
@@ -502,7 +506,7 @@ public class LoginController {
                 .body(
                         Map.of(
                                 "success", true,
-                                "message", "로그아웃되었습니다."
+                                "message", "\uB85C\uADF8\uC544\uC6C3\uD558\uC600\uC2B5\uB2C8\uB2E4."
                         )
                 );
     }
@@ -510,14 +514,13 @@ public class LoginController {
     @PostMapping("refresh")
     public ResponseEntity<?> refresh(HttpServletRequest request) {
         String refreshToken = null;
-
-        // npe 방어
+    // Authentication request handling.
         if (request.getCookies() != null) {
-            // 쿠키 하나씩 꺼내서 변수에 담기
+    // Authentication request handling.
             for (Cookie cookie : request.getCookies()) {
-                // 쿠키중에 리프레시 쿠키 이름 있으면
+    // Authentication request handling.
                 if (jwtService.getRefreshCookieName().equals(cookie.getName())) {
-                    // 리프레시 토큰 꺼내서 담기
+    // Authentication request handling.
                     refreshToken = cookie.getValue();
                     break;
                 }
@@ -553,20 +556,20 @@ public class LoginController {
 
             throw e;
         }
-
-        // dto에 담아서
+    // Authentication request handling.
         LoginResponse response = new LoginResponse(
                 true,
-                "토큰 재발급 성공",
+                "\uD1A0\uD070 \uC7AC\uBC1C\uAE09 \uC131\uACF5",
                 result.getAccessToken(),
                 result.getMember()
         );
-        // 새 refreshToken을 쿠키에 다시 저장
+    // Authentication request handling.
         ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
-
-        // 응답
+    // Authentication request handling.
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(response);
     }
 }
+
+

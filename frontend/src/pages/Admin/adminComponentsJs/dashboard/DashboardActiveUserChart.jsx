@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { EmptyState } from "../common/EmptyState";
+import { AdminPeriodRangeControl } from "../common/AdminPeriodRangeControl";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/dashboard/DashboardActiveUserChart.module.css";
@@ -45,6 +46,17 @@ const formatAverageValue = (value) => {
   });
 };
 
+const buildEvenAxisLabels = (points) => {
+  const visibleLabels = points.filter((point) => point.shouldShowAxisLabel);
+  const graphWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
+  const lastVisibleIndex = Math.max(visibleLabels.length - 1, 1);
+
+  return visibleLabels.map((point, index) => ({
+    ...point,
+    x: CHART_PADDING.left + (graphWidth / lastVisibleIndex) * index,
+  }));
+};
+
 /* ==========================================================================
  * 시간별 활성 사용자 차트
  * --------------------------------------------------------------------------
@@ -59,6 +71,7 @@ const formatAverageValue = (value) => {
 export function DashboardActiveUserChart() {
   const [activePeriod, setActivePeriod] = useState("일"); // 현재 선택한 조회 기간입니다.
   const [activeUserItems, setActiveUserItems] = useState([]); // 백엔드에서 받은 시간대별 활성 사용자 데이터입니다.
+  const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" }); // 기간 지정 조회에 사용할 시작일/종료일입니다.
   const [isLoading, setIsLoading] = useState(false); // API 호출 중인지 표시합니다.
   const [hasError, setHasError] = useState(false); // API 호출 실패 여부를 표시합니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
@@ -82,6 +95,7 @@ export function DashboardActiveUserChart() {
         },
         params: {
           period: periodApiValue[activePeriod], // 선택 기간을 백엔드용 값으로 변환합니다.
+          ...dateRange,
         },
       })
       .then((res) => {
@@ -97,17 +111,30 @@ export function DashboardActiveUserChart() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [BACKSERVER, accessToken, activePeriod]);
+  }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
   const chartData = useMemo(() => {
     const graphWidth =
       CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
     const graphHeight =
       CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
-    const maxActiveUserCount = Math.max(
+    const rawMaxActiveUserCount = Math.max(
       ...activeUserItems.map((item) => Number(item.activeUserCount ?? 0)),
-      1,
+      0,
     );
+    const hasData = rawMaxActiveUserCount > 0;
+    const maxActiveUserCount = hasData
+      ? Math.max(Math.ceil(rawMaxActiveUserCount / 4) * 4, 4)
+      : 4;
+    const ySteps = hasData
+      ? [
+          maxActiveUserCount,
+          Math.round(maxActiveUserCount * 0.75),
+          Math.round(maxActiveUserCount * 0.5),
+          Math.round(maxActiveUserCount * 0.25),
+          0,
+        ]
+      : [4, 3, 2, 1, 0];
     const lastIndex = Math.max(activeUserItems.length - 1, 1);
 
     // 백엔드 데이터를 SVG 좌표로 변환합니다.
@@ -119,10 +146,15 @@ export function DashboardActiveUserChart() {
         CHART_PADDING.top +
         graphHeight -
         (activeUserCount / maxActiveUserCount) * graphHeight;
+      const shouldShowAxisLabel =
+        activeUserItems.length <= 10 ||
+        index % 3 === 0 ||
+        index === activeUserItems.length - 1;
 
       return {
         label: item.label,
         activeUserCount,
+        shouldShowAxisLabel,
         x,
         y,
       };
@@ -138,9 +170,18 @@ export function DashboardActiveUserChart() {
 
     return {
       points,
+      axisLabels: buildEvenAxisLabels(points),
       linePoints,
       areaPoints,
       maxActiveUserCount,
+      displayMaxActiveUserCount: rawMaxActiveUserCount,
+      hasData,
+      ySteps,
+      peakPoint: points.reduce(
+        (peak, point) =>
+          point.activeUserCount > peak.activeUserCount ? point : peak,
+        points[0] || { activeUserCount: 0 },
+      ),
     };
   }, [activeUserItems]);
 
@@ -148,11 +189,17 @@ export function DashboardActiveUserChart() {
     <section className={`${styles.panel} ${styles.widePanel}`}>
       <div className={styles.panelHead}>
         <h2>시간별 활성 사용자</h2>
-        <SegmentedControl
-          labels={["일", "주", "월"]}
-          selectedLabel={activePeriod}
-          onSelect={setActivePeriod}
-        />
+        <div className={styles.panelControls}>
+          <SegmentedControl
+            labels={["일", "주", "월"]}
+            selectedLabel={activePeriod}
+            onSelect={setActivePeriod}
+          />
+          <AdminPeriodRangeControl
+            period={periodApiValue[activePeriod]}
+            onRangeChange={setDateRange}
+          />
+        </div>
       </div>
 
       {isLoading ? (
@@ -183,22 +230,26 @@ export function DashboardActiveUserChart() {
             aria-label={`${activePeriod} 단위 시간대별 활성 사용자 차트`}
           >
             {/* 차트 값을 비교하기 쉽도록 옅은 가로 기준선을 그립니다. */}
-            {[0, 1, 2, 3].map((gridIndex) => {
+            {chartData.ySteps.map((step, gridIndex) => {
               const y =
                 CHART_PADDING.top +
                 ((CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom) /
-                  3) *
+                  (chartData.ySteps.length - 1)) *
                   gridIndex;
 
               return (
-                <line
-                  key={gridIndex}
-                  className={styles.activeUserGridLine}
-                  x1={CHART_PADDING.left}
-                  x2={CHART_WIDTH - CHART_PADDING.right}
-                  y1={y}
-                  y2={y}
-                />
+                <g key={`${step}-${gridIndex}`}>
+                  <line
+                    className={styles.activeUserGridLine}
+                    x1={CHART_PADDING.left}
+                    x2={CHART_WIDTH - CHART_PADDING.right}
+                    y1={y}
+                    y2={y}
+                  />
+                  <text className={styles.activeUserYAxisLabel} x="14" y={y + 5}>
+                    {formatAverageValue(step)}
+                  </text>
+                </g>
               );
             })}
 
@@ -215,22 +266,58 @@ export function DashboardActiveUserChart() {
             />
 
             {/* 각 지점의 점, 값, 하단 시간 라벨을 표시합니다. */}
-            {chartData.points.map((point) => (
-              <g key={point.label}>
-                <circle
-                  className={styles.activeUserPoint}
-                  cx={point.x}
-                  cy={point.y}
-                  r="3.6"
-                />
-                <text
-                  className={styles.activeUserPointValue}
-                  x={point.x}
-                  y={Math.max(16, point.y - 12)}
-                  textAnchor="middle"
-                >
-                  {formatAverageValue(point.activeUserCount)}
-                </text>
+            {chartData.hasData &&
+              chartData.points.map((point) => (
+                <g className={styles.activeUserPointGroup} key={point.label}>
+                  <line
+                    className={styles.activeUserHoverLine}
+                    x1={point.x}
+                    x2={point.x}
+                    y1={CHART_PADDING.top}
+                    y2={CHART_HEIGHT - CHART_PADDING.bottom}
+                  />
+                  <circle
+                    className={
+                      point === chartData.peakPoint
+                        ? styles.activeUserPeakPoint
+                        : styles.activeUserPoint
+                    }
+                    cx={point.x}
+                    cy={point.y}
+                    r={point === chartData.peakPoint ? 5 : 4}
+                  />
+                  <rect
+                    className={styles.activeUserHitArea}
+                    x={point.x - 24}
+                    y={CHART_PADDING.top - 12}
+                    width="48"
+                    height={
+                      CHART_HEIGHT -
+                      CHART_PADDING.top -
+                      CHART_PADDING.bottom +
+                      24
+                    }
+                  />
+                  <g className={styles.activeUserTooltip}>
+                    <rect
+                      x={Math.min(Math.max(point.x - 34, 8), CHART_WIDTH - 76)}
+                      y={Math.max(point.y - 31, 10)}
+                      width="68"
+                      height="20"
+                      rx="10"
+                    />
+                    <text
+                      x={Math.min(Math.max(point.x, 42), CHART_WIDTH - 42)}
+                      y={Math.max(point.y - 17, 24)}
+                    >
+                      {formatAverageValue(point.activeUserCount)}명
+                    </text>
+                  </g>
+                </g>
+              ))}
+
+            {chartData.axisLabels.map((point) => (
+              <g key={`label-${point.label}`}>
                 <text
                   className={styles.activeUserAxisLabel}
                   x={point.x}
@@ -245,7 +332,7 @@ export function DashboardActiveUserChart() {
 
           <p className={styles.activeUserChartSummary}>
             최고 시간대 활성 사용자{" "}
-            <strong>{formatAverageValue(chartData.maxActiveUserCount)}</strong>
+            <strong>{formatAverageValue(chartData.displayMaxActiveUserCount)}</strong>
             명
           </p>
         </div>

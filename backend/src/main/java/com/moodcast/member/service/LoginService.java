@@ -71,58 +71,56 @@ public class LoginService {
         int number = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(number);
     }
-
-    // 비밀번호 null, 빈값 체크
+    // Internal authentication and member-account workflow.
     private String checkPasswordInput(String password) {
         if (password == null || password.trim().isEmpty()) {
-            throw new IllegalArgumentException("비밀번호를 입력해주세요.");
+            throw new IllegalArgumentException("\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
         return password;
     }
-
-    // 새 비밀번호 정책과 확인값 일치를 검증함
+    // Internal authentication and member-account workflow.
     private void checkNewPassword(String newPassword, String newPasswordConfirm) {
         if (newPassword == null || newPassword.trim().isEmpty()) {
-            throw new IllegalArgumentException("새 비밀번호를 입력해주세요.");
+            throw new IllegalArgumentException("\uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
         if (!PASSWORD_PATTERN.matcher(newPassword).matches()) {
-            throw new IllegalArgumentException("비밀번호는 영문, 숫자, 특수문자를 포함한 8~20자입니다.");
+            throw new IllegalArgumentException("\uBE44\uBC00\uBC88\uD638\uB294 \uC601\uBB38, \uC22B\uC790, \uD2B9\uC218\uBB38\uC790\uB97C \uD3EC\uD568\uD55C 8~20\uC790\uC785\uB2C8\uB2E4.");
         }
 
         if (newPasswordConfirm == null || newPasswordConfirm.trim().isEmpty()) {
-            throw new IllegalArgumentException("새 비밀번호 확인을 입력해주세요.");
+            throw new IllegalArgumentException("\uC0C8 \uBE44\uBC00\uBC88\uD638 \uD655\uC778\uC744 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
         if (!newPassword.equals(newPasswordConfirm)) {
-            throw new IllegalArgumentException("새 비밀번호가 일치하지 않습니다.");
+            throw new IllegalArgumentException("\uC0C8 \uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
         }
     }
-
-    // 회원이 로그인 가능한 상태인지 체크
-    // 인증 미완료, 탈퇴, 정지 체크
+    // Internal authentication and member-account workflow.
     public void checkLoginAllowed(Member member) {
         if ("SUSPENDED".equals(member.getStatus())) {
-            throw new IllegalArgumentException("현재 이용이 제한된 계정입니다. 계정 상태를 확인해주세요.");
+            throw new IllegalArgumentException("\uC81C\uC7AC\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4. \uAD00\uB9AC\uC790\uC758 \uC81C\uC7AC\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
         }
 
         if ("WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null) {
-            throw new IllegalArgumentException("탈퇴 처리된 계정입니다. 다른 계정으로 로그인해주세요.");
+            throw new IllegalArgumentException("\uD0C8\uD1F4 \uCC98\uB9AC\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4. \uB2E4\uB978 \uACC4\uC815\uC73C\uB85C \uB85C\uADF8\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         if (!Integer.valueOf(1).equals(member.getEmailVerified())) {
-            throw new IllegalArgumentException("이메일 인증이 완료되지 않은 계정입니다.");
+            throw new IllegalArgumentException("\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
         }
 
+        if (!Integer.valueOf(1).equals(member.getPhoneVerified())) {
+            throw new IllegalArgumentException("\uD734\uB300\uD3F0 \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
+        }
     }
-
     private String getLoginMemberEmail(String authorizationHeader) {
         Long memberId = getMemberIdFromHeader(authorizationHeader);
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         checkLoginAllowed(member);
@@ -132,28 +130,28 @@ public class LoginService {
 
     private void checkWithdrawAuthCode(String email, String authCode) {
         if (authCode == null || authCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("인증번호를 입력해주세요.");
+            throw new IllegalArgumentException("\uC778\uC99D\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
         authCode = authCode.trim();
         if (!authCode.matches("^[0-9]{6}$")) {
-            throw new IllegalArgumentException("인증번호는 6자리 숫자입니다.");
+            throw new IllegalArgumentException("\uC778\uC99D\uBC88\uD638\uB294 6\uC790\uB9AC \uC22B\uC790\uC785\uB2C8\uB2E4.");
         }
 
         String savedHashCode = authCodeRedisService.getAuthCodeHash(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
         if (savedHashCode == null || savedHashCode.trim().isEmpty()) {
-            throw new IllegalArgumentException("인증번호 시간이 만료되었습니다. 다시 요청해주세요.");
+            throw new IllegalArgumentException("\uC778\uC99D\uBC88\uD638 \uC2DC\uAC04\uC774 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC694\uCCAD\uD574\uC8FC\uC138\uC694.");
         }
 
         long currentAttemptCount = authCodeRedisService.getAttemptCount(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
         if (currentAttemptCount >= 5) {
-            throw new IllegalArgumentException("인증번호 입력 횟수를 초과했습니다. 인증번호를 다시 요청해주세요.");
+            throw new IllegalArgumentException("\uC778\uC99D\uBC88\uD638 \uC785\uB825 \uD69F\uC218\uB97C \uCD08\uACFC\uD588\uC2B5\uB2C8\uB2E4. \uC778\uC99D\uBC88\uD638\uB97C \uB2E4\uC2DC \uC694\uCCAD\uD574\uC8FC\uC138\uC694.");
         }
 
         if (!passwordEncoder.matches(authCode, savedHashCode)) {
             Long attemptCount = authCodeRedisService.increaseAttempt(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
             long remainingCount = Math.max(0, 5 - attemptCount);
-            throw new IllegalArgumentException("인증번호가 올바르지 않습니다. 남은 시도 횟수: " + remainingCount + "회");
+            throw new IllegalArgumentException("\uC778\uC99D\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uB0A8\uC740 \uC2DC\uB3C4 \uD69F\uC218: " + remainingCount + "\uD68C");
         }
 
         authCodeRedisService.markVerified(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
@@ -171,18 +169,17 @@ public class LoginService {
                 member.getCreatedAt()
         );
     }
-
-    // 이메일/비밀번호 실패 메시지를 통일하고 Redis 실패 횟수를 기록함
+    // Internal authentication and member-account workflow.
     private void failLogin(String email) {
         loginAttemptRedisService.recordFailure(email);
 
-        throw new IllegalArgumentException("이메일 또는 비밀번호가 올바르지 않습니다.");
+        throw new IllegalArgumentException("\uC774\uBA54\uC77C \uB610\uB294 \uBE44\uBC00\uBC88\uD638\uAC00 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
     }
 
     @Transactional
     public LoginResult login(LoginRequest request) {
         if (request == null) {
-            throw new IllegalArgumentException("이메일과 비밀번호를 입력해주세요.");
+            throw new IllegalArgumentException("\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
         String email = memberValidationService.normalizeEmail(request.getEmail());
@@ -208,17 +205,15 @@ public class LoginService {
 
         int result = loginDao.updateLastLoginAt(member.getMemberId());
         if (result <= 0) {
-            throw new IllegalStateException("로그인 처리에 실패했습니다.");
+            throw new IllegalStateException("\uB85C\uADF8\uC778 \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
 
         return issueLoginTokens(member);
     }
-
-
-    // 일반 로그인과 소셜 로그인이 같은 방식으로 access/refresh 토큰을 발급받게 함
+    // Internal authentication and member-account workflow.
     public LoginResult issueLoginTokens(Member member) {
         if (member == null || member.getMemberId() == null) {
-            throw new IllegalArgumentException("로그인이 필요합니다.");
+            throw new IllegalArgumentException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         String accessToken = jwtService.createAccessToken(member);
@@ -244,14 +239,14 @@ public class LoginService {
 
     public LoginMemberResponse getLoginMember(String accessToken) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         checkLoginAllowed(member);
@@ -266,21 +261,20 @@ public class LoginService {
 
         return getLoginMember(accessToken);
     }
-
-    // 비밀번호 변경 후 모든 refresh 세션을 삭제해서 재로그인을 강제함
+    // Internal authentication and member-account workflow.
     @Transactional
     public void changePassword(String authorizationHeader, PasswordChangeRequest request) {
         Long memberId = getMemberIdFromHeader(authorizationHeader);
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         checkLoginAllowed(member);
 
         if (request == null) {
-            throw new IllegalArgumentException("비밀번호 변경 정보를 입력해주세요.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         String currentPassword = checkPasswordInput(request.getCurrentPassword());
@@ -289,21 +283,21 @@ public class LoginService {
         String currentPasswordHash = loginDao.findPasswordHashByMemberId(memberId);
 
         if (currentPasswordHash == null || currentPasswordHash.trim().isEmpty()) {
-            throw new IllegalArgumentException("소셜 로그인 계정은 비밀번호 변경을 사용할 수 없습니다. 연결된 소셜 로그인을 이용해주세요.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         if (!passwordEncoder.matches(currentPassword, currentPasswordHash)) {
-            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         if (passwordEncoder.matches(request.getNewPassword(), currentPasswordHash)) {
-            throw new IllegalArgumentException("현재 비밀번호와 다른 비밀번호를 사용해주세요.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         List<String> recentPasswordHashes = passwordHistoryDao.findRecentPasswordHashes(memberId, 3);
         for (String recentPasswordHash : recentPasswordHashes) {
             if (passwordEncoder.matches(request.getNewPassword(), recentPasswordHash)) {
-                throw new IllegalArgumentException("최근 사용한 비밀번호는 다시 사용할 수 없습니다.");
+                throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
             }
         }
 
@@ -311,14 +305,13 @@ public class LoginService {
 
         int updateResult = loginDao.updatePasswordHash(memberId, newPasswordHash);
         if (updateResult != 1) {
-            throw new IllegalStateException("비밀번호 변경에 실패했습니다.");
+            throw new IllegalStateException("\uC694\uCCAD \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
 
         passwordHistoryDao.insertPasswordHistory(memberId, currentPasswordHash);
         refreshTokenRedisService.deleteAllRefreshTokens(memberId);
     }
-
-    // 회원 row는 삭제하지 않고 WITHDRAW 상태와 deleted_at으로 탈퇴 처리함
+    // Internal authentication and member-account workflow.
     @Transactional
     public EmailAuthSendResult sendWithdrawEmailAuthCode(String authorizationHeader, String clientIp) {
         String email = getLoginMemberEmail(authorizationHeader);
@@ -334,11 +327,11 @@ public class LoginService {
             emailService.sendWithdrawAuthCode(email, authCode);
         } catch (MailException e) {
             authCodeRedisService.clearAuth(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
-            throw new IllegalStateException("이메일 인증번호를 발송하지 못했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해주세요.");
+            throw new IllegalStateException("\uC694\uCCAD \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
 
         if (devReturnAuthCode) {
-            System.out.println("회원 탈퇴 이메일 인증번호: " + authCode);
+            System.out.println("Withdraw email auth code: " + authCode);
         }
 
         return new EmailAuthSendResult(email, authCode);
@@ -349,35 +342,34 @@ public class LoginService {
         String email = getLoginMemberEmail(authorizationHeader);
         checkWithdrawAuthCode(email, authCode);
     }
-
-    // 회원 row는 삭제하지 않고 WITHDRAW 상태와 deleted_at으로 탈퇴 처리함
+    // Internal authentication and member-account workflow.
     @Transactional
     public void withdraw(String authorizationHeader, WithdrawRequest request) {
         Long memberId = getMemberIdFromHeader(authorizationHeader);
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         checkLoginAllowed(member);
 
         if (request == null) {
-            throw new IllegalArgumentException("회원 탈퇴 정보를 입력해주세요.");
+            throw new IllegalArgumentException("\uD68C\uC6D0 \uD0C8\uD1F4 \uC815\uBCF4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
-        if (!"탈퇴합니다".equals(request.getConfirmText())) {
-            throw new IllegalArgumentException("탈퇴 확인 문구는 '탈퇴합니다'로 정확히 입력해주세요.");
+        if (!"\uD0C8\uD1F4\uD569\uB2C8\uB2E4.".equals(request.getConfirmText())) {
+            throw new IllegalArgumentException("\uD0C8\uD1F4 \uD655\uC778 \uBB38\uAD6C\uB97C '\uD0C8\uD1F4\uD569\uB2C8\uB2E4.'\uB85C \uC815\uD655\uD788 \uC785\uB825\uD574\uC8FC\uC138\uC694.");
         }
 
         String email = memberValidationService.normalizeEmail(member.getEmail());
         if (!authCodeRedisService.isVerified(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email)) {
-            throw new IllegalArgumentException("이메일 인증이 필요합니다. 인증번호 확인 후 다시 시도해주세요.");
+            throw new IllegalArgumentException("\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uD544\uC694\uD569\uB2C8\uB2E4. \uC778\uC99D\uBC88\uD638 \uD655\uC778 \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574\uC8FC\uC138\uC694.");
         }
 
         int result = loginDao.withdrawMember(memberId);
         if (result != 1) {
-            throw new IllegalStateException("회원 탈퇴 처리에 실패했습니다.");
+            throw new IllegalStateException("\uD68C\uC6D0 \uD0C8\uD1F4 \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
 
         authCodeRedisService.clearAuth(WITHDRAW_PURPOSE, EMAIL_TARGET_TYPE, email);
@@ -387,7 +379,7 @@ public class LoginService {
     public LoginMemberResponse getMemberById(Long memberId) {
         Member member = loginDao.findMemberById(memberId);
         if (member == null) {
-            throw new IllegalArgumentException("사용자를 찾을 수 없습니다.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
         return toLoginMemberResponse(member);
     }
@@ -412,23 +404,23 @@ public class LoginService {
     @Transactional
     public LoginMemberResponse updateProfile(String authorizationHeader, UpdateProfileRequest request) {
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         String accessToken = authorizationHeader.substring(7).trim();
         if (accessToken.isEmpty()) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         if (request == null || request.getNickname() == null || request.getNickname().trim().isEmpty()) {
-            throw new IllegalArgumentException("닉네임을 입력해주세요.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         Long memberId = jwtService.getMemberIdFromAccessToken(accessToken);
         Member member = loginDao.findMemberById(memberId);
 
         if (member == null) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         checkLoginAllowed(member);
@@ -437,7 +429,7 @@ public class LoginService {
 
         Member updated = loginDao.findMemberById(memberId);
         if (updated == null) {
-            throw new IllegalStateException("프로필 정보를 불러올 수 없습니다.");
+            throw new IllegalStateException("\uC694\uCCAD \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
 
         return toLoginMemberResponse(updated);
@@ -447,16 +439,16 @@ public class LoginService {
     public FollowResponse toggleFollow(String authHeader, Long followingId) {
         Long followerId = getMemberIdFromHeader(authHeader);
         if (followerId.equals(followingId)) {
-            throw new IllegalArgumentException("자기 자신을 팔로우할 수 없습니다.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         boolean isFollowing = loginDao.isFollowing(followerId, followingId) > 0;
         if (isFollowing) {
             loginDao.unfollow(followerId, followingId);
-            return new FollowResponse(true, "팔로우가 취소되었습니다.", false);
+            return new FollowResponse(true, "\uD314\uB85C\uC6B0\uB97C \uCDE8\uC18C\uD588\uC2B5\uB2C8\uB2E4.", false);
         } else {
             loginDao.follow(followerId, followingId);
-            return new FollowResponse(true, "팔로우되었습니다.", true);
+            return new FollowResponse(true, "\uD314\uB85C\uC6B0\uD588\uC2B5\uB2C8\uB2E4.", true);
         }
     }
 
@@ -475,16 +467,13 @@ public class LoginService {
         long followingCount = loginDao.countFollowing(targetMemberId);
         long postCount = loginDao.countPosts(targetMemberId);
         long savedCount = loginDao.countSavedPosts(targetMemberId);
-
-        // 감정 공감률 계산: 내가 쓴 게시물에 대한 좋아요 비율임
-        // 좋아요, 댓글, 저장을 모두 반응으로 보고, 그중 좋아요 비율을 퍼센트로 계산함
+    // Internal authentication and member-account workflow.
         long likes = loginDao.countPostLikes(targetMemberId);
         long comments = loginDao.countPostComments(targetMemberId);
         long saves = loginDao.countPostSaves(targetMemberId);
         long totalReactions = likes + comments + saves;
         int emotionEmpathyRate = totalReactions == 0 ? 0 : (int) Math.round((double) likes * 100 / totalReactions);
-
-        // 주간 반응 계산: 최근 7일간 내 게시물에 달린 좋아요/댓글/저장 수 합임
+    // Internal authentication and member-account workflow.
         long weeklyReactions = loginDao.countWeeklyPostReactions(targetMemberId);
 
         return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount, emotionEmpathyRate, weeklyReactions);
@@ -514,7 +503,7 @@ public class LoginService {
 
     public List<MentionCandidateResponse> getMentionCandidates(Long memberId, String keyword) {
         if (memberId == null) {
-            throw new IllegalArgumentException("멤버 ID가 필요합니다.");
+            throw new IllegalArgumentException("\uC694\uCCAD \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.");
         }
 
         String normalizedKeyword = keyword == null ? null : keyword.trim();
@@ -533,49 +522,41 @@ public class LoginService {
 
     private String extractAccessToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         String token = authHeader.substring(7).trim();
 
         if (token.isEmpty()) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
         return token;
     }
-
-    // accessToken 재발급
+    // Internal authentication and member-account workflow.
     public LoginResult refreshAccessToken(String refreshToken) {
-        // 토큰 검증 및 memberId 추출
+    // Internal authentication and member-account workflow.
         RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
         Long memberId = refreshTokenInfo.getMemberId();
         String tokenId = refreshTokenInfo.getTokenId();
-
-        // redis의 최신 refreshToken과 일치하는지 체크
+    // Internal authentication and member-account workflow.
         if (!refreshTokenRedisService.matchesRefreshToken(memberId, tokenId, refreshToken)) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
-
-        // 회원있는지 체크
+    // Internal authentication and member-account workflow.
         Member member = loginDao.findMemberById(memberId);
         if (member == null) {
-            throw new AuthException("로그인이 필요합니다.");
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
-
-        // 로그인 가능여부 서비스 정책 체크
+    // Internal authentication and member-account workflow.
         checkLoginAllowed(member);
-
-        // 기존 refreshToken은 재사용하지 못하게 삭제
+    // Internal authentication and member-account workflow.
         refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
-
-        // 새 로그인 세션 tokenId 생성
+    // Internal authentication and member-account workflow.
         String newTokenId = UUID.randomUUID().toString();
-
-        // accessToken과 refreshToken 새로 발급
+    // Internal authentication and member-account workflow.
         String newAccessToken = jwtService.createAccessToken(member);
         String newRefreshToken = jwtService.createRefreshToken(member, newTokenId);
-
-        // 새 refreshToken을 Redis에 저장
+    // Internal authentication and member-account workflow.
         refreshTokenRedisService.saveRefreshToken(
                 member.getMemberId(),
                 newTokenId,
@@ -591,10 +572,10 @@ public class LoginService {
                 loginMemberResponse
         );
     }
-
-    // 로그아웃 시 refreshToken 있으면 redis에서 삭제
+    // Internal authentication and member-account workflow.
     public void logout(String refreshToken) {
         RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
         refreshTokenRedisService.deleteRefreshToken(refreshTokenInfo.getMemberId(), refreshTokenInfo.getTokenId());
     }
 }
+

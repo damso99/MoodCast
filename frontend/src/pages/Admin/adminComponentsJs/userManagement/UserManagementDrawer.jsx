@@ -56,6 +56,23 @@ export function UserManagementDrawer({
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
   ).replace(/\/$/, "");
 
+  useEffect(() => {
+    if (!selectedManagedMember) {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [selectedManagedMember]);
+
   /*
    * 선택 회원이 바뀔 때 패널 내부 상태 초기화
    * ------------------------------------------------------------------------
@@ -113,8 +130,7 @@ export function UserManagementDrawer({
 
   const isTargetSelf =
     Number(selectedManagedMember.memberId) === Number(currentAdminMemberId);
-  const isAdminRole = (role) =>
-    role === "ADMIN" || role === "NORMAL_ADMIN" || role === "SUPER_ADMIN";
+  const isAdminRole = (role) => role === "SUPER_ADMIN";
   const isTargetSuperAdmin = selectedManagedMember.role === "SUPER_ADMIN";
   const isTargetAdmin = isAdminRole(selectedManagedMember.role);
   const isAdminBlockedTarget = isTargetSelf || isTargetAdmin;
@@ -154,7 +170,7 @@ export function UserManagementDrawer({
 
   const getRoleLabel = (role) => {
     if (role === "USER" || role === "MEMBER") return "일반 회원";
-    if (role === "ADMIN" || role === "NORMAL_ADMIN") return "관리자";
+    if (role === "ADMIN" || role === "NORMAL_ADMIN") return "일반 회원";
     if (role === "SUPER_ADMIN") return "슈퍼 관리자";
     return role || "-";
   };

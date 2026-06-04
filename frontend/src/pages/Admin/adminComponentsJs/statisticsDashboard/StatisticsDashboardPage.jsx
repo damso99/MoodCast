@@ -13,24 +13,25 @@ import MoodBadIcon from "@mui/icons-material/MoodBad";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 import { AdminLayout } from "../common/AdminLayout";
+import { AdminPeriodRangeControl } from "../common/AdminPeriodRangeControl";
 import { MetricCard } from "../common/MetricCard";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/statisticsDashboard/StatisticsDashboardPage.module.css";
 
-const chartWidth = 320;
-const chartHeight = 120;
+const chartWidth = 760;
+const chartHeight = 260;
 const chartPadding = {
-  top: 14,
-  right: 18,
-  bottom: 22,
-  left: 24,
+  top: 28,
+  right: 34,
+  bottom: 46,
+  left: 46,
 };
 
 const periodOptions = [
-  { label: "일", value: "day", helper: "오늘 00시부터 현재까지의 통계입니다." },
-  { label: "주", value: "week", helper: "오늘을 포함한 최근 7일 기준 통계입니다." },
-  { label: "월", value: "month", helper: "오늘을 포함한 최근 1개월 기준 통계입니다." },
+  { label: "일", value: "day" },
+  { label: "주", value: "week" },
+  { label: "월", value: "month" },
 ];
 
 const emptySummary = {
@@ -77,10 +78,21 @@ function buildLineChartPoints(items) {
   const graphWidth = chartWidth - chartPadding.left - chartPadding.right;
   const graphHeight = chartHeight - chartPadding.top - chartPadding.bottom;
   const values = items.map((item) => Number(item.value || item.activeUserCount || 0));
-  const maxValue = Math.max(...values, 1);
+  const rawMaxValue = Math.max(...values, 0);
+  const hasData = rawMaxValue > 0;
+  const maxValue = hasData ? Math.max(Math.ceil(rawMaxValue / 4) * 4, 4) : 4;
+  const ySteps = hasData
+    ? [
+        maxValue,
+        Math.round(maxValue * 0.75),
+        Math.round(maxValue * 0.5),
+        Math.round(maxValue * 0.25),
+        0,
+      ]
+    : [4, 3, 2, 1, 0];
   const lastIndex = Math.max(items.length - 1, 1);
 
-  return items.map((item, index) => {
+  const points = items.map((item, index) => {
     const value = Number(item.value || item.activeUserCount || 0);
     const x = chartPadding.left + (graphWidth / lastIndex) * index;
     const y = chartPadding.top + graphHeight - (value / maxValue) * graphHeight;
@@ -92,11 +104,34 @@ function buildLineChartPoints(items) {
       value,
     };
   });
+
+  return {
+    hasData,
+    maxValue,
+    ySteps,
+    points,
+    peakPoint: points.reduce(
+      (peak, point) => (point.value > peak.value ? point : peak),
+      points[0] || { value: 0 },
+    ),
+  };
 }
 
 function PreviewLineChart({ items, color, emptyLabel }) {
-  const hasData = items.some((item) => Number(item.value || item.activeUserCount || 0) > 0);
-  const points = buildLineChartPoints(items);
+  const chart = buildLineChartPoints(items);
+  const points = chart.points;
+  const visibleAxisPoints = points.filter(
+    (_, index) => points.length <= 8 || index % 3 === 0 || index === points.length - 1,
+  );
+  const evenAxisPoints = visibleAxisPoints.map((point, index) => {
+    const graphWidth = chartWidth - chartPadding.left - chartPadding.right;
+    const lastVisibleIndex = Math.max(visibleAxisPoints.length - 1, 1);
+
+    return {
+      ...point,
+      x: chartPadding.left + (graphWidth / lastVisibleIndex) * index,
+    };
+  });
   const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
   const areaPoints =
     points.length > 0
@@ -117,20 +152,26 @@ function PreviewLineChart({ items, color, emptyLabel }) {
         role="img"
         aria-label="통계 선 그래프"
       >
-        {[0, 1, 2].map((gridIndex) => {
+        {chart.ySteps.map((step, gridIndex) => {
           const y =
             chartPadding.top +
-            ((chartHeight - chartPadding.top - chartPadding.bottom) / 2) * gridIndex;
+            ((chartHeight - chartPadding.top - chartPadding.bottom) /
+              (chart.ySteps.length - 1)) *
+            gridIndex;
 
           return (
-            <line
-              key={gridIndex}
-              className={styles.chartGridLine}
-              x1={chartPadding.left}
-              x2={chartWidth - chartPadding.right}
-              y1={y}
-              y2={y}
-            />
+            <g key={`${step}-${gridIndex}`}>
+              <line
+                className={styles.chartGridLine}
+                x1={chartPadding.left}
+                x2={chartWidth - chartPadding.right}
+                y1={y}
+                y2={y}
+              />
+              <text className={styles.chartYAxisLabel} x="14" y={y + 5}>
+                {formatNumber(step)}
+              </text>
+            </g>
           );
         })}
 
@@ -142,38 +183,68 @@ function PreviewLineChart({ items, color, emptyLabel }) {
         <polyline
           className={styles.chartLine}
           points={linePoints}
-          style={{ stroke: color }}
+          style={{ stroke: color || "#3293ff" }}
         />
 
-        {points.map((point, index) => {
-          const shouldShowLabel =
-            points.length <= 8 || index % 3 === 0 || index === points.length - 1;
-
-          return (
+        {points.map((point, index) => (
             <g key={`${point.label}-${index}`}>
-              <circle
-                className={styles.chartPoint}
-                cx={point.x}
-                cy={point.y}
-                r="2"
-                style={{ fill: color }}
-              />
-              {shouldShowLabel && (
-                <text
-                  className={styles.chartAxisLabel}
-                  x={point.x}
-                  y={chartHeight - 8}
-                  textAnchor="middle"
-                >
-                  {point.label}
-                </text>
+              {chart.hasData && (
+                <g className={styles.chartPointGroup}>
+                  <line
+                    className={styles.chartHoverLine}
+                    x1={point.x}
+                    x2={point.x}
+                    y1={chartPadding.top}
+                    y2={chartHeight - chartPadding.bottom}
+                  />
+                  <circle
+                    className={
+                      point === chart.peakPoint ? styles.peakPoint : styles.chartPoint
+                    }
+                    cx={point.x}
+                    cy={point.y}
+                    r={point === chart.peakPoint ? 5 : 4}
+                  />
+                  <rect
+                    className={styles.chartHitArea}
+                    x={point.x - 24}
+                    y={chartPadding.top - 12}
+                    width="48"
+                    height={chartHeight - chartPadding.top - chartPadding.bottom + 24}
+                  />
+                  <g className={styles.chartTooltip}>
+                    <rect
+                      x={Math.min(Math.max(point.x - 30, 8), chartWidth - 68)}
+                      y={Math.max(point.y - 31, 10)}
+                      width="60"
+                      height="20"
+                      rx="10"
+                    />
+                    <text
+                      x={Math.min(Math.max(point.x, 38), chartWidth - 38)}
+                      y={Math.max(point.y - 17, 24)}
+                    >
+                      {formatNumber(point.value)}
+                    </text>
+                  </g>
+                </g>
               )}
             </g>
-          );
-        })}
+        ))}
+        {evenAxisPoints.map((point) => (
+          <text
+            className={styles.chartAxisLabel}
+            key={`label-${point.label}`}
+            x={point.x}
+            y={chartHeight - 8}
+            textAnchor="middle"
+          >
+            {point.label}
+          </text>
+        ))}
       </svg>
 
-      {!hasData && <span className={styles.noDataCaption}>해당 기간에 집계된 데이터가 없습니다.</span>}
+      {!chart.hasData && <span className={styles.noDataCaption}>해당 기간에 집계된 데이터가 없습니다.</span>}
     </div>
   );
 }
@@ -239,13 +310,13 @@ function ChartCard({ title, description, loading, children }) {
  * ========================================================================== */
 export function StatisticsDashboardPage() {
   const [periodLabel, setPeriodLabel] = useState("일"); // 화면에서 선택된 기간 라벨입니다. "일", "주", "월" 중 하나입니다.
+  const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" }); // 선택한 일/주/월 기간의 시작일과 종료일입니다.
   const [summary, setSummary] = useState(emptySummary); // 상단 카드와 하단 요약에 표시할 숫자 데이터입니다.
   const [subscriberTrend, setSubscriberTrend] = useState([]); // 가입자 추이 선 그래프 데이터입니다.
   const [activeUserTrend, setActiveUserTrend] = useState([]); // 시간별 활성 사용자 선 그래프 데이터입니다.
   const [contentActivity, setContentActivity] = useState([]); // 게시글/댓글/공감 막대 그래프 데이터입니다.
   const [emotionActivity, setEmotionActivity] = useState([]); // 감정별 활동 막대 그래프 데이터입니다.
   const [loading, setLoading] = useState(false); // 여러 통계 API를 불러오는 중인지 저장합니다.
-  const [errorMessage, setErrorMessage] = useState(""); // API 조회 실패 시 관리자에게 보여줄 메시지입니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
@@ -253,12 +324,10 @@ export function StatisticsDashboardPage() {
 
   useEffect(() => {
     if (!accessToken) {
-      setErrorMessage("로그인 정보가 없어 통계 데이터를 조회할 수 없습니다.");
       return;
     }
 
     setLoading(true);
-    setErrorMessage("");
 
     const requestConfig = {
       headers: {
@@ -266,6 +335,7 @@ export function StatisticsDashboardPage() {
       },
       params: {
         period: currentPeriod.value,
+        ...dateRange,
       },
     };
 
@@ -309,12 +379,11 @@ export function StatisticsDashboardPage() {
         setActiveUserTrend([]);
         setContentActivity([]);
         setEmotionActivity([]);
-        setErrorMessage("통계 데이터를 불러오지 못했습니다. 백엔드 API 응답을 확인해주세요.");
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [BACKSERVER, accessToken, currentPeriod.value]);
+  }, [BACKSERVER, accessToken, currentPeriod.value, dateRange]);
 
   const metricCards = useMemo(
     () => [
@@ -381,15 +450,15 @@ export function StatisticsDashboardPage() {
   return (
     <AdminLayout title="통계 대시보드" description="주요 지표를 기간별 차트로 확인하세요.">
       <section className={styles.toolbar}>
-        <div className={styles.toolbarText}>
-          <p>{currentPeriod.helper}</p>
-          {errorMessage ? <span className={styles.errorText}>{errorMessage}</span> : null}
-        </div>
         <div className={styles.toolbarPeriod}>
           <SegmentedControl
             labels={periodOptions.map((option) => option.label)}
             selectedLabel={periodLabel}
             onSelect={setPeriodLabel}
+          />
+          <AdminPeriodRangeControl
+            period={currentPeriod.value}
+            onRangeChange={setDateRange}
           />
         </div>
       </section>
@@ -415,7 +484,7 @@ export function StatisticsDashboardPage() {
         >
           <PreviewLineChart
             items={subscriberTrend}
-            color="#7c4dff"
+            color="#3293ff"
             emptyLabel="가입자 추이 데이터가 없습니다."
           />
         </ChartCard>
@@ -427,7 +496,7 @@ export function StatisticsDashboardPage() {
         >
           <PreviewLineChart
             items={activeUserTrend}
-            color="#2f7efb"
+            color="#3293ff"
             emptyLabel="활성 사용자 데이터가 없습니다."
           />
         </ChartCard>

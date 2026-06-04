@@ -43,4 +43,6 @@ public class AdminContentPost {
     private Long commentCount; // comment_tbl 기준 삭제되지 않은 댓글 수입니다.
 
     private Long hashtagCount; // post_hashtag 기준 연결된 해시태그 수입니다.
+
+    private String tags; // post_hashtag와 hashtag를 조합한 "#태그" 문자열입니다.
 }

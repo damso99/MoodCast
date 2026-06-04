@@ -9,8 +9,8 @@ import styles from "../../adminComponentsCss/dashboard/AdminDashboardPage.module
 export function AdminDashboardPage() {
   return (
     <AdminLayout
-      title="관리자 대시보드"
-      description="회원, 게시글, 활동 현황을 한눈에 확인하세요."
+      title={"\uAD00\uB9AC\uC790 \uB300\uC2DC\uBCF4\uB4DC"}
+      description={"\uD68C\uC6D0, \uAC8C\uC2DC\uAE00, \uD65C\uB3D9 \uD604\uD669\uC744 \uD55C\uB208\uC5D0 \uD655\uC778\uD558\uC138\uC694."}
     >
       <DashboardNoticeModal />
       <DashboardMetricCards />

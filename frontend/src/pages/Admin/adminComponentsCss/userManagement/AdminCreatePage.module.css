@@ -288,6 +288,83 @@
   outline-offset: 2px;
 }
 
+.roleResultLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.roleResultDim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 24, 39, 0.42);
+  cursor: pointer;
+}
+
+.roleResultPopup {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: min(360px, 100%);
+  padding: 24px;
+  border: 1px solid rgba(102, 112, 133, 0.14);
+  border-radius: 18px;
+  text-align: center;
+  background: #ffffff;
+  box-shadow: 0 24px 70px rgba(17, 24, 39, 0.24);
+}
+
+.roleResultBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: #027a48;
+  font-size: 0.78rem;
+  font-weight: 950;
+  background: rgba(236, 253, 243, 0.96);
+}
+
+.roleResultError {
+  color: #b42318;
+  background: rgba(254, 242, 242, 0.96);
+}
+
+.roleResultPopup h3 {
+  margin: 2px 0 0;
+  color: #111827;
+  font-size: 1.04rem;
+  font-weight: 950;
+}
+
+.roleResultPopup p {
+  margin: 0;
+  color: #475467;
+  font-size: 0.9rem;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.roleResultPopup button {
+  min-width: 96px;
+  min-height: 36px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 10px;
+  color: #ffffff;
+  font-weight: 900;
+  background: #7c4dff;
+  cursor: pointer;
+}
+
 @media (max-width: 760px) {
   .searchForm {
     grid-template-columns: minmax(108px, 128px) minmax(0, 1fr);

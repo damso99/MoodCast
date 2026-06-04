@@ -11,6 +11,7 @@
         <result property="totalMemberCount" column="total_member_count"/>
         <result property="todayNewMemberCount" column="today_new_member_count"/>
         <result property="postCount" column="post_count"/>
+        <result property="pendingReportCount" column="pending_report_count"/>
     </resultMap>
 
     <!-- adminMemberMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
@@ -45,6 +46,7 @@
         <result property="authorNickname" column="author_nickname"/>
         <result property="commentCount" column="comment_count"/>
         <result property="hashtagCount" column="hashtag_count"/>
+        <result property="tags" column="tags"/>
     </resultMap>
 
     <!-- adminContentCommentMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
@@ -196,6 +198,58 @@
         <result property="deletedAt" column="deleted_at"/>
     </resultMap>
 
+    <!-- adminReportMap 결과 매핑입니다. 신고 및 제재 관리 화면의 신고 목록/상세 값을 연결합니다. -->
+    <resultMap id="adminReportMap" type="com.moodcast.admin.vo.AdminReport">
+        <id property="reportId" column="report_id"/>
+        <result property="targetType" column="target_type"/>
+        <result property="reporterMemberId" column="reporter_member_id"/>
+        <result property="reporterName" column="reporter_name"/>
+        <result property="reporterNickname" column="reporter_nickname"/>
+        <result property="reporterEmail" column="reporter_email"/>
+        <result property="targetMemberId" column="target_member_id"/>
+        <result property="targetMemberName" column="target_member_name"/>
+        <result property="targetMemberNickname" column="target_member_nickname"/>
+        <result property="targetMemberEmail" column="target_member_email"/>
+        <result property="targetMemberCreatedAt" column="target_member_created_at"/>
+        <result property="targetPostCount" column="target_post_count"/>
+        <result property="targetCommentCount" column="target_comment_count"/>
+        <result property="targetLikeCount" column="target_like_count"/>
+        <result property="postId" column="post_id"/>
+        <result property="commentId" column="comment_id"/>
+        <result property="postTitle" column="post_title"/>
+        <result property="targetContent" column="target_content"/>
+        <result property="commentContent" column="comment_content"/>
+        <result property="reason" column="reason"/>
+        <result property="reportStatus" column="report_status"/>
+        <result property="processResult" column="process_result"/>
+        <result property="handledMemo" column="handled_memo"/>
+        <result property="handledByMemberId" column="handled_by_member_id"/>
+        <result property="handledByMemberName" column="handled_by_member_name"/>
+        <result property="reviewedAt" column="reviewed_at"/>
+        <result property="handledAt" column="handled_at"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="sameTargetReportCount" column="same_target_report_count"/>
+        <result property="sameTargetReporterCount" column="same_target_reporter_count"/>
+    </resultMap>
+
+    <!-- 신고 상세 패널의 최근 활동 결과 매핑입니다. -->
+    <resultMap id="adminReportActivityMap" type="com.moodcast.admin.vo.AdminReportActivity">
+        <result property="type" column="type"/>
+        <result property="text" column="text"/>
+        <result property="time" column="time"/>
+    </resultMap>
+
+    <!-- 신고 상세 패널의 동일 대상 신고자 결과 매핑입니다. -->
+    <resultMap id="adminReportReporterMap" type="com.moodcast.admin.vo.AdminReportReporter">
+        <result property="memberId" column="member_id"/>
+        <result property="name" column="name"/>
+        <result property="nickname" column="nickname"/>
+        <result property="email" column="email"/>
+        <result property="reportCount" column="report_count"/>
+        <result property="firstReportedAt" column="first_reported_at"/>
+        <result property="latestReportedAt" column="latest_reported_at"/>
+    </resultMap>
+
     <!-- selectTotalMemberCount 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectTotalMemberCount" resultType="long">
         select count(*)
@@ -246,7 +300,13 @@
                 select count(*)
                 from post_hashtag ph
                 where ph.post_id = p.post_id
-            ), 0) as hashtag_count
+            ), 0) as hashtag_count,
+            coalesce((
+                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                from post_hashtag ph
+                join hashtag h on h.hashtag_id = ph.hashtag_id
+                where ph.post_id = p.post_id
+            ), '') as tags
         from post_tbl p
         left join members m on m.member_id = p.member_id
         order by p.created_at desc
@@ -409,7 +469,13 @@
                 select count(*)
                 from post_hashtag ph
                 where ph.post_id = p.post_id
-            ), 0) as hashtag_count
+            ), 0) as hashtag_count,
+            coalesce((
+                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                from post_hashtag ph
+                join hashtag h on h.hashtag_id = ph.hashtag_id
+                where ph.post_id = p.post_id
+            ), '') as tags
         from post_tbl p
         left join members m on m.member_id = p.member_id
         where p.post_id = #{postId}
@@ -514,8 +580,8 @@
     <select id="selectUserManagementSummaryCounts" resultMap="adminUserManagementSummaryMap">
         select
             count(*) as total_member_count,
-            coalesce(sum(case when role in ('USER', 'MEMBER') then 1 else 0 end), 0) as normal_member_count,
-            coalesce(sum(case when role in ('ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN') then 1 else 0 end), 0) as admin_member_count,
+            coalesce(sum(case when role != 'SUPER_ADMIN' then 1 else 0 end), 0) as normal_member_count,
+            coalesce(sum(case when role = 'SUPER_ADMIN' then 1 else 0 end), 0) as admin_member_count,
             coalesce(sum(case when status = 'SUSPENDED' then 1 else 0 end), 0) as suspended_member_count
         from members
     </select>
@@ -708,6 +774,15 @@
           and deleted_at is null
     </update>
 
+    <!-- addWarningToMember 수정 쿼리입니다. 신고 처리 결과가 경고일 때 경고 횟수를 증가시킵니다. -->
+    <update id="addWarningToMember">
+        update members
+        set warning_count = coalesce(warning_count, 0) + 1,
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where member_id = #{memberId}
+          and deleted_at is null
+    </update>
+
     <!-- restoreSuspendedMember 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="restoreSuspendedMember">
         update members
@@ -738,6 +813,341 @@
         )
     </insert>
 
+    <!-- selectAdminReports 조회 쿼리입니다. 신고 목록에서 게시글/댓글 신고를 함께 조회합니다. -->
+    <select id="selectAdminReports" resultMap="adminReportMap">
+        select
+            r.report_id,
+            case
+                when r.post_id is not null then 'POST'
+                else 'COMMENT'
+            end as target_type,
+            r.reporter_member_id,
+            reporter.name as reporter_name,
+            reporter.nickname as reporter_nickname,
+            reporter.email as reporter_email,
+            case
+                when r.post_id is not null then post_author.member_id
+                else comment_author.member_id
+            end as target_member_id,
+            case
+                when r.post_id is not null then post_author.name
+                else comment_author.name
+            end as target_member_name,
+            case
+                when r.post_id is not null then post_author.nickname
+                else comment_author.nickname
+            end as target_member_nickname,
+            case
+                when r.post_id is not null then post_author.email
+                else comment_author.email
+            end as target_member_email,
+            case
+                when r.post_id is not null then post_author.created_at
+                else comment_author.created_at
+            end as target_member_created_at,
+            (
+                select count(*)
+                from post_tbl target_post_count
+                where target_post_count.member_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+                  and coalesce(target_post_count.deleted_yn, 'N') = 'N'
+            ) as target_post_count,
+            (
+                select count(*)
+                from comment_tbl target_comment_count
+                where target_comment_count.member_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+                  and coalesce(target_comment_count.deleted_yn, 'N') = 'N'
+            ) as target_comment_count,
+            (
+                select count(*)
+                from post_like target_like_count
+                where target_like_count.member_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+            ) as target_like_count,
+            r.post_id,
+            r.comment_id,
+            coalesce(post_target.title, comment_post.title) as post_title,
+            case
+                when r.post_id is not null then post_target.content
+                else comment_target.content
+            end as target_content,
+            comment_target.content as comment_content,
+            r.reason,
+            r.report_status,
+            r.process_result,
+            r.handled_memo,
+            r.handled_by_member_id,
+            handled_member.name as handled_by_member_name,
+            r.reviewed_at,
+            r.handled_at,
+            r.created_at,
+            (
+                select count(*)
+                from report same_report
+                where (
+                    r.post_id is not null
+                    and same_report.post_id = r.post_id
+                )
+                or (
+                    r.comment_id is not null
+                    and same_report.comment_id = r.comment_id
+                )
+            ) as same_target_report_count,
+            (
+                select count(distinct same_report.reporter_member_id)
+                from report same_report
+                where (
+                    r.post_id is not null
+                    and same_report.post_id = r.post_id
+                )
+                or (
+                    r.comment_id is not null
+                    and same_report.comment_id = r.comment_id
+                )
+            ) as same_target_reporter_count
+        from report r
+        left join members reporter on reporter.member_id = r.reporter_member_id
+        left join post_tbl post_target on post_target.post_id = r.post_id
+        left join members post_author on post_author.member_id = post_target.member_id
+        left join comment_tbl comment_target on comment_target.comment_id = r.comment_id
+        left join post_tbl comment_post on comment_post.post_id = comment_target.post_id
+        left join members comment_author on comment_author.member_id = comment_target.member_id
+        left join members handled_member on handled_member.member_id = r.handled_by_member_id
+        where 1 = 1
+        <if test="status != null and status != '' and status != 'ALL'">
+            and r.report_status = #{status}
+        </if>
+        <if test="targetType != null and targetType != '' and targetType != 'ALL'">
+            <choose>
+                <when test="targetType == 'POST'">
+                    and r.post_id is not null
+                </when>
+                <when test="targetType == 'COMMENT'">
+                    and r.comment_id is not null
+                </when>
+            </choose>
+        </if>
+        <if test="processResult != null and processResult != '' and processResult != 'ALL'">
+            and r.process_result = #{processResult}
+        </if>
+        order by
+            case
+                when r.report_status = 'DONE' and r.handled_at is not null then r.handled_at
+                when r.report_status = 'REVIEWING' and r.reviewed_at is not null then r.reviewed_at
+                else r.created_at
+            end desc,
+            r.report_id desc
+    </select>
+
+    <!-- selectAdminReportById 조회 쿼리입니다. 신고 상세와 처리 후 갱신에 사용합니다. -->
+    <select id="selectAdminReportById" resultMap="adminReportMap">
+        select *
+        from (
+            select
+                r.report_id,
+                case
+                    when r.post_id is not null then 'POST'
+                    else 'COMMENT'
+                end as target_type,
+                r.reporter_member_id,
+                reporter.name as reporter_name,
+                reporter.nickname as reporter_nickname,
+                reporter.email as reporter_email,
+                case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end as target_member_id,
+                case
+                    when r.post_id is not null then post_author.name
+                    else comment_author.name
+                end as target_member_name,
+                case
+                    when r.post_id is not null then post_author.nickname
+                    else comment_author.nickname
+                end as target_member_nickname,
+                case
+                    when r.post_id is not null then post_author.email
+                    else comment_author.email
+                end as target_member_email,
+                case
+                    when r.post_id is not null then post_author.created_at
+                    else comment_author.created_at
+                end as target_member_created_at,
+                (
+                    select count(*)
+                    from post_tbl target_post_count
+                    where target_post_count.member_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                      and coalesce(target_post_count.deleted_yn, 'N') = 'N'
+                ) as target_post_count,
+                (
+                    select count(*)
+                    from comment_tbl target_comment_count
+                    where target_comment_count.member_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                      and coalesce(target_comment_count.deleted_yn, 'N') = 'N'
+                ) as target_comment_count,
+                (
+                    select count(*)
+                    from post_like target_like_count
+                    where target_like_count.member_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                ) as target_like_count,
+                r.post_id,
+                r.comment_id,
+                coalesce(post_target.title, comment_post.title) as post_title,
+                case
+                    when r.post_id is not null then post_target.content
+                    else comment_target.content
+                end as target_content,
+                comment_target.content as comment_content,
+                r.reason,
+                r.report_status,
+                r.process_result,
+                r.handled_memo,
+                r.handled_by_member_id,
+                handled_member.name as handled_by_member_name,
+                r.reviewed_at,
+                r.handled_at,
+                r.created_at,
+                (
+                    select count(*)
+                    from report same_report
+                    where (
+                        r.post_id is not null
+                        and same_report.post_id = r.post_id
+                    )
+                    or (
+                        r.comment_id is not null
+                        and same_report.comment_id = r.comment_id
+                    )
+                ) as same_target_report_count,
+                (
+                    select count(distinct same_report.reporter_member_id)
+                    from report same_report
+                    where (
+                        r.post_id is not null
+                        and same_report.post_id = r.post_id
+                    )
+                    or (
+                        r.comment_id is not null
+                        and same_report.comment_id = r.comment_id
+                    )
+                ) as same_target_reporter_count
+            from report r
+            left join members reporter on reporter.member_id = r.reporter_member_id
+            left join post_tbl post_target on post_target.post_id = r.post_id
+            left join members post_author on post_author.member_id = post_target.member_id
+            left join comment_tbl comment_target on comment_target.comment_id = r.comment_id
+            left join post_tbl comment_post on comment_post.post_id = comment_target.post_id
+            left join members comment_author on comment_author.member_id = comment_target.member_id
+            left join members handled_member on handled_member.member_id = r.handled_by_member_id
+            where r.report_id = #{reportId}
+        ) report_detail
+    </select>
+
+    <!-- selectAdminReportRecentActivities 조회 쿼리입니다. 신고 대상 회원의 최근 게시글, 댓글, 제재 로그를 합쳐 조회합니다. -->
+    <select id="selectAdminReportRecentActivities" resultMap="adminReportActivityMap">
+        select
+            activity_type as type,
+            activity_text as text,
+            date_format(activity_created_at, '%Y-%m-%d %H:%i') as time
+        from (
+            select
+                '게시글' as activity_type,
+                coalesce(nullif(p.title, ''), '제목 없는 게시글') as activity_text,
+                p.created_at as activity_created_at
+            from post_tbl p
+            where p.member_id = #{memberId}
+
+            union all
+
+            select
+                '댓글' as activity_type,
+                coalesce(nullif(c.content, ''), '내용 없는 댓글') as activity_text,
+                c.created_at as activity_created_at
+            from comment_tbl c
+            where c.member_id = #{memberId}
+
+            union all
+
+            select
+                '제재' as activity_type,
+                coalesce(nullif(log.action_detail, ''), log.action_type) as activity_text,
+                log.created_at as activity_created_at
+            from admin_action_logs log
+            where log.target_type = 'USER'
+              and log.target_id = #{memberId}
+              and log.action_type in ('SUSPEND', 'RESTORE')
+        ) recent_activity
+        order by activity_created_at desc
+        limit 50
+    </select>
+
+    <!-- selectAdminReportReporters 조회 쿼리입니다. 같은 게시글/댓글을 신고한 신고자 목록을 조회합니다. -->
+    <select id="selectAdminReportReporters" resultMap="adminReportReporterMap">
+        select
+            reporter.member_id,
+            reporter.name,
+            reporter.nickname,
+            reporter.email,
+            count(*) as report_count,
+            date_format(min(same_report.created_at), '%Y-%m-%d %H:%i') as first_reported_at,
+            date_format(max(same_report.created_at), '%Y-%m-%d %H:%i') as latest_reported_at
+        from report base_report
+        join report same_report
+          on (
+                base_report.post_id is not null
+                and same_report.post_id = base_report.post_id
+             )
+          or (
+                base_report.comment_id is not null
+                and same_report.comment_id = base_report.comment_id
+             )
+        left join members reporter on reporter.member_id = same_report.reporter_member_id
+        where base_report.report_id = #{reportId}
+        group by
+            reporter.member_id,
+            reporter.name,
+            reporter.nickname,
+            reporter.email
+        order by max(same_report.created_at) desc, max(same_report.report_id) desc
+    </select>
+
+    <!-- markAdminReportReviewing 수정 쿼리입니다. 처음 확인한 신고를 검토 중으로 전환합니다. -->
+    <update id="markAdminReportReviewing">
+        update report
+        set report_status = 'REVIEWING',
+            reviewed_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where report_id = #{reportId}
+          and report_status in ('PENDING', 'REVIEWING')
+    </update>
+
+    <!-- processAdminReport 수정 쿼리입니다. 신고를 처리 완료 상태로 저장합니다. -->
+    <update id="processAdminReport">
+        update report
+        set report_status = 'DONE',
+            process_result = #{processResult},
+            handled_memo = #{handledMemo},
+            handled_by_member_id = #{adminId},
+            handled_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where report_id = #{reportId}
+          and report_status in ('PENDING', 'REVIEWING')
+    </update>
+
     <!-- selectDashboardSummary 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
     <select id="selectDashboardSummary" resultMap="adminDashboardSummaryMap">
         select
@@ -749,7 +1159,10 @@
                and created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day)) as today_new_member_count,
             (select count(*)
              from post_tbl
-             where deleted_yn = 'N') as post_count
+             where deleted_yn = 'N') as post_count,
+            (select count(*)
+             from report
+             where report_status in ('PENDING', 'REVIEWING')) as pending_report_count
     </select>
 
     <!-- selectDashboardEmotionActivity 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
@@ -760,19 +1173,8 @@
         from post_tbl p
         where p.deleted_yn = 'N'
           and p.emotion_id is not null
-          and (
-            (#{period} = 'day'
-             and p.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-             and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-            or
-            (#{period} = 'week'
-             and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-             and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-            or
-            (#{period} = 'month'
-             and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-             and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-          )
+          and p.created_at &gt;= #{startDate}
+          and p.created_at &lt; date_add(#{endDate}, interval 1 day)
         group by p.emotion_id
         order by p.emotion_id
     </select>
@@ -786,7 +1188,7 @@
                     union all
                     select day_index + 1
                     from day_numbers
-                    where day_index &lt; 6
+                    where day_index &lt; datediff(#{endDate}, #{startDate})
                 ),
                 hour_numbers(hour_index) as (
                     select 0
@@ -797,7 +1199,7 @@
                 ),
                 day_hour_slots as (
                     select
-                        date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval d.day_index day) as slot_date,
+                        date_add(#{startDate}, interval d.day_index day) as slot_date,
                         h.hour_index
                     from day_numbers d
                     cross join hour_numbers h
@@ -828,7 +1230,7 @@
                     union all
                     select day_index + 1
                     from day_numbers
-                    where day_index &lt; 27
+                    where day_index &lt; datediff(#{endDate}, #{startDate})
                 ),
                 hour_numbers(hour_index) as (
                     select 0
@@ -840,7 +1242,7 @@
                 day_hour_slots as (
                     select
                         floor(d.day_index / 7) + 1 as week_index,
-                        date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 27 day), interval d.day_index day) as slot_date,
+                        date_add(#{startDate}, interval d.day_index day) as slot_date,
                         h.hour_index
                     from day_numbers d
                     cross join hour_numbers h
@@ -889,8 +1291,8 @@
                 left join login_audit_logs l
                   on l.success = 1
                  and l.member_id is not null
-                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval h.hour_index hour)
-                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval (h.hour_index + 1) hour)
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(#{startDate}, interval h.hour_index hour)
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(#{startDate}, interval (h.hour_index + 1) hour)
                 group by h.hour_index
                 order by h.hour_index
             </otherwise>
@@ -951,6 +1353,47 @@
             left join members admin_member on admin_member.member_id = log.admin_id
             where log.target_type = 'USER'
               and log.action_type in ('SUSPEND', 'RESTORE')
+
+            union all
+
+            select
+                'ROLE_CHANGED' as activity_type,
+                coalesce(target_member.member_id, log.target_id) as member_id,
+                target_member.name as member_name,
+                target_member.nickname as member_nickname,
+                target_member.email as member_email,
+                log.admin_id,
+                admin_member.name as admin_name,
+                admin_member.nickname as admin_nickname,
+                log.action_detail,
+                log.created_at
+            from admin_action_logs log
+            left join members target_member on target_member.member_id = log.target_id
+            left join members admin_member on admin_member.member_id = log.admin_id
+            where log.target_type = 'USER'
+              and log.action_type = 'UPDATE_ADMIN_ROLE'
+
+            union all
+
+            select
+                case
+                    when log.action_type = 'CREATE' then 'NOTICE_CREATED'
+                    when log.action_type = 'UPDATE' then 'NOTICE_UPDATED'
+                    else 'NOTICE_DELETED'
+                end as activity_type,
+                log.admin_id as member_id,
+                admin_member.name as member_name,
+                admin_member.nickname as member_nickname,
+                admin_member.email as member_email,
+                log.admin_id,
+                admin_member.name as admin_name,
+                admin_member.nickname as admin_nickname,
+                log.action_detail,
+                log.created_at
+            from admin_action_logs log
+            left join members admin_member on admin_member.member_id = log.admin_id
+            where log.target_type = 'NOTICE'
+              and log.action_type in ('CREATE', 'UPDATE', 'DELETE')
         ) recent_activity
         where created_at is not null
         order by created_at desc
@@ -1012,6 +1455,47 @@
             left join members admin_member on admin_member.member_id = log.admin_id
             where log.target_type = 'USER'
               and log.action_type in ('SUSPEND', 'RESTORE')
+
+            union all
+
+            select
+                'ROLE_CHANGED' as activity_type,
+                coalesce(target_member.member_id, log.target_id) as member_id,
+                target_member.name as member_name,
+                target_member.nickname as member_nickname,
+                target_member.email as member_email,
+                log.admin_id,
+                admin_member.name as admin_name,
+                admin_member.nickname as admin_nickname,
+                log.action_detail,
+                log.created_at
+            from admin_action_logs log
+            left join members target_member on target_member.member_id = log.target_id
+            left join members admin_member on admin_member.member_id = log.admin_id
+            where log.target_type = 'USER'
+              and log.action_type = 'UPDATE_ADMIN_ROLE'
+
+            union all
+
+            select
+                case
+                    when log.action_type = 'CREATE' then 'NOTICE_CREATED'
+                    when log.action_type = 'UPDATE' then 'NOTICE_UPDATED'
+                    else 'NOTICE_DELETED'
+                end as activity_type,
+                log.admin_id as member_id,
+                admin_member.name as member_name,
+                admin_member.nickname as member_nickname,
+                admin_member.email as member_email,
+                log.admin_id,
+                admin_member.name as admin_name,
+                admin_member.nickname as admin_nickname,
+                log.action_detail,
+                log.created_at
+            from admin_action_logs log
+            left join members admin_member on admin_member.member_id = log.admin_id
+            where log.target_type = 'NOTICE'
+              and log.action_type in ('CREATE', 'UPDATE', 'DELETE')
         ) recent_activity
         where created_at is not null
         order by created_at desc
@@ -1025,87 +1509,32 @@
             (select count(*)
              from members m
              where m.created_at is not null
-               and (
-                    (#{period} = 'day'
-                     and m.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                     and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'week'
-                     and m.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                     and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'month'
-                     and m.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                     and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               )) as new_member_count,
+               and m.created_at &gt;= #{startDate}
+               and m.created_at &lt; date_add(#{endDate}, interval 1 day)) as new_member_count,
             (select count(distinct l.member_id)
              from login_audit_logs l
              where l.success = 1
                and l.member_id is not null
-               and (
-                    (#{period} = 'day'
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'week'
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'month'
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               )) as active_user_count,
+               and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= #{startDate}
+               and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(#{endDate}, interval 1 day)) as active_user_count,
             (select count(*)
              from post_tbl p
              where p.deleted_yn = 'N'
-               and (
-                    (#{period} = 'day'
-                     and p.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                     and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'week'
-                     and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                     and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'month'
-                     and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                     and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               )) as post_count,
+               and p.created_at &gt;= #{startDate}
+               and p.created_at &lt; date_add(#{endDate}, interval 1 day)) as post_count,
             (select count(*)
              from comment_tbl c
              join post_tbl p on p.post_id = c.post_id
              where c.deleted_yn = 'N'
                and p.deleted_yn = 'N'
-               and (
-                    (#{period} = 'day'
-                     and c.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                     and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'week'
-                     and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                     and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'month'
-                     and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                     and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               )) as comment_count,
+               and c.created_at &gt;= #{startDate}
+               and c.created_at &lt; date_add(#{endDate}, interval 1 day)) as comment_count,
             (select count(*)
              from user_post_like l
              join post_tbl p on p.post_id = l.post_id
              where p.deleted_yn = 'N'
-               and (
-                    (#{period} = 'day'
-                     and l.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                     and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'week'
-                     and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                     and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-                    or
-                    (#{period} = 'month'
-                     and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                     and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               )) as empathy_count
+               and l.created_at &gt;= #{startDate}
+               and l.created_at &lt; date_add(#{endDate}, interval 1 day)) as empathy_count
     </select>
 
     <!-- selectStatisticsSubscriberTrend 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->
@@ -1117,33 +1546,40 @@
                     union all
                     select day_index + 1
                     from day_numbers
-                    where day_index &lt; 6
+                    where day_index &lt; datediff(#{endDate}, #{startDate})
                 )
                 select
-                    date_format(date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval d.day_index day), '%m/%d') as label,
+                    date_format(date_add(#{startDate}, interval d.day_index day), '%m/%d') as label,
                     count(m.member_id) as value
                 from day_numbers d
                 left join members m
-                  on m.created_at &gt;= date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval d.day_index day)
-                 and m.created_at &lt; date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day), interval (d.day_index + 1) day)
+                  on m.created_at &gt;= date_add(#{startDate}, interval d.day_index day)
+                 and m.created_at &lt; date_add(#{startDate}, interval (d.day_index + 1) day)
                 group by d.day_index
                 order by d.day_index
             </when>
             <when test="period == 'month'">
-                with recursive week_numbers(week_index) as (
+                with recursive day_numbers(day_index) as (
+                    select 0
+                    union all
+                    select day_index + 1
+                    from day_numbers
+                    where day_index &lt; datediff(#{endDate}, #{startDate})
+                ),
+                week_numbers(week_index) as (
                     select 0
                     union all
                     select week_index + 1
                     from week_numbers
-                    where week_index &lt; 3
+                    where week_index &lt; floor(datediff(#{endDate}, #{startDate}) / 7)
                 )
                 select
                     concat(week_index + 1, CHAR(51452, 52264 USING utf8mb4)) as label,
                     count(m.member_id) as value
                 from week_numbers
                 left join members m
-                  on m.created_at &gt;= date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 27 day), interval (week_index * 7) day)
-                 and m.created_at &lt; date_add(date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 27 day), interval ((week_index + 1) * 7) day)
+                  on m.created_at &gt;= date_add(#{startDate}, interval (week_index * 7) day)
+                 and m.created_at &lt; least(date_add(#{startDate}, interval ((week_index + 1) * 7) day), date_add(#{endDate}, interval 1 day))
                 group by week_index
                 order by week_index
             </when>
@@ -1160,8 +1596,8 @@
                     count(m.member_id) as value
                 from hour_numbers h
                 left join members m
-                  on m.created_at &gt;= date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval h.hour_index hour)
-                 and m.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval (h.hour_index + 1) hour)
+                  on m.created_at &gt;= date_add(#{startDate}, interval h.hour_index hour)
+                 and m.created_at &lt; date_add(#{startDate}, interval (h.hour_index + 1) hour)
                 group by h.hour_index
                 order by h.hour_index
             </otherwise>
@@ -1175,19 +1611,8 @@
             count(*) as value
         from post_tbl p
         where p.deleted_yn = 'N'
-          and (
-               (#{period} = 'day'
-                and p.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               or
-               (#{period} = 'week'
-                and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               or
-               (#{period} = 'month'
-                and p.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                and p.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-          )
+          and p.created_at &gt;= #{startDate}
+          and p.created_at &lt; date_add(#{endDate}, interval 1 day)
         union all
         select
             CHAR(45843, 44544 USING utf8mb4) as label,
@@ -1196,19 +1621,8 @@
         join post_tbl p on p.post_id = c.post_id
         where c.deleted_yn = 'N'
           and p.deleted_yn = 'N'
-          and (
-               (#{period} = 'day'
-                and c.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               or
-               (#{period} = 'week'
-                and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               or
-               (#{period} = 'month'
-                and c.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                and c.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-          )
+          and c.created_at &gt;= #{startDate}
+          and c.created_at &lt; date_add(#{endDate}, interval 1 day)
         union all
         select
             CHAR(44277, 44048 USING utf8mb4) as label,
@@ -1216,19 +1630,8 @@
         from user_post_like l
         join post_tbl p on p.post_id = l.post_id
         where p.deleted_yn = 'N'
-          and (
-               (#{period} = 'day'
-                and l.created_at &gt;= date(CONVERT_TZ(NOW(6), '+00:00', '+09:00'))
-                and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               or
-               (#{period} = 'week'
-                and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 6 day)
-                and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-               or
-               (#{period} = 'month'
-                and l.created_at &gt;= date_sub(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 month)
-                and l.created_at &lt; date_add(date(CONVERT_TZ(NOW(6), '+00:00', '+09:00')), interval 1 day))
-          )
+          and l.created_at &gt;= #{startDate}
+          and l.created_at &lt; date_add(#{endDate}, interval 1 day)
     </select>
 
     <!-- selectAdminProfile 조회 쿼리입니다. 관리자 화면에서 필요한 데이터를 조회합니다. -->

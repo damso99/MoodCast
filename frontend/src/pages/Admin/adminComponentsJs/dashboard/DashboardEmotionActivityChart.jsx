@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { EmptyState } from "../common/EmptyState";
+import { AdminPeriodRangeControl } from "../common/AdminPeriodRangeControl";
 import { SegmentedControl } from "../common/SegmentedControl";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/dashboard/DashboardEmotionActivityChart.module.css";
@@ -34,6 +35,7 @@ const emotionMeta = {
 export function DashboardEmotionActivityChart() {
   const [activePeriod, setActivePeriod] = useState("일"); // 일/주/월 중 선택된 탭입니다.
   const [emotionItems, setEmotionItems] = useState([]); // 백엔드에서 받은 감정별 활동 목록입니다.
+  const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" }); // 기간 지정 조회에 사용할 시작일/종료일입니다.
   const [isLoading, setIsLoading] = useState(false); // API 호출 중인지 표시합니다.
   const [hasError, setHasError] = useState(false); // API 호출 실패 여부입니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
@@ -57,6 +59,7 @@ export function DashboardEmotionActivityChart() {
         },
         params: {
           period: periodApiValue[activePeriod],
+          ...dateRange,
         },
       })
       .then((res) => {
@@ -70,7 +73,7 @@ export function DashboardEmotionActivityChart() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [BACKSERVER, accessToken, activePeriod]);
+  }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
   const maxActivityCount = Math.max(
     ...emotionItems.map((item) => Number(item.activityCount ?? 0)),
@@ -81,11 +84,17 @@ export function DashboardEmotionActivityChart() {
     <section className={`${styles.panel} ${styles.widePanel}`}>
       <div className={styles.panelHead}>
         <h2>감정별 활동 분포</h2>
-        <SegmentedControl
-          labels={["일", "주", "월"]}
-          selectedLabel={activePeriod}
-          onSelect={setActivePeriod}
-        />
+        <div className={styles.panelControls}>
+          <SegmentedControl
+            labels={["일", "주", "월"]}
+            selectedLabel={activePeriod}
+            onSelect={setActivePeriod}
+          />
+          <AdminPeriodRangeControl
+            period={periodApiValue[activePeriod]}
+            onRangeChange={setDateRange}
+          />
+        </div>
       </div>
 
       {isLoading ? (

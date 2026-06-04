@@ -1,6 +1,3 @@
-/* 상단 기능 탭 ----------------------------------
- * 신고 목록 / 제재 이력 / 통계 탭의 박스와 버튼 디자인입니다.
- */
 .topTabs {
   display: flex;
   align-items: center;
@@ -48,20 +45,26 @@
   box-shadow: 0 12px 24px rgba(124, 77, 255, 0.24);
 }
 
-/* 상태 필터와 검색 영역 ----------------------------------
- * 처리 상태 탭 묶음과 오른쪽 검색창을 한 줄로 배치하는 상단 필터 영역입니다.
- */
 .filterHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 18px;
+  flex-wrap: wrap;
 }
 
-/* 신고 목록 전체 패널 ----------------------------------
- * 신고 목록을 감싸는 큰 카드형 컨테이너입니다.
- */
-.reportPanel {
+.filterHeader > :first-child {
+  flex: 0 1 auto;
+}
+
+.filterHeader > :last-child {
+  flex: 0 0 min(340px, 100%);
+  margin-left: auto;
+}
+
+.reportPanel,
+.historyPanel,
+.statsPanel {
   padding: 20px;
   border: 1px solid rgba(124, 77, 255, 0.12);
   border-radius: 20px;
@@ -69,10 +72,8 @@
   box-shadow: 0 24px 60px rgba(17, 24, 39, 0.055);
 }
 
-/* 신고 목록 제목 줄 ----------------------------------
- * '전체 신고 목록' 제목, 설명 문구, 정렬 select가 있는 영역입니다.
- */
-.panelTitleRow {
+.panelTitleRow,
+.statsHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -80,31 +81,514 @@
   margin-bottom: 14px;
 }
 
-.panelTitleRow h2 {
+.panelTitleRow h2,
+.statsHeader h2 {
   margin: 0;
   color: #111827;
   font-size: 1.02rem;
   font-weight: 900;
 }
 
-.panelTitleRow p {
+.panelTitleRow p,
+.statsHeader p {
   margin: 6px 0 0;
   color: #667085;
   font-size: 0.86rem;
   font-weight: 700;
 }
 
-/* 공통 입력/select 스타일 ----------------------------------
- * 정렬 select, 제재 사유 select, 직접 입력 input에 공통 적용되는 디자인입니다.
- */
-.panelTitleRow select,
+.reportListControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(102, 112, 133, 0.12);
+}
+
+.reportSelectGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.reportSelectGroup select,
 .formSection select,
 .customPeriodInput {
-  min-height: 40px;
+  height: 42px;
+  min-height: 42px;
+  min-width: 136px;
   padding: 0 14px;
   border: 1px solid rgba(102, 112, 133, 0.2);
   border-radius: 12px;
   color: #111827;
   font-weight: 800;
   background: #fff;
+}
+
+@media (max-width: 860px) {
+  .filterHeader,
+  .reportListControls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filterHeader > :last-child,
+  .reportSelectGroup {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .reportSelectGroup select {
+    flex: 1 1 0;
+  }
+}
+
+.insightGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.historyPanel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.historyList {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.historyList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.historyList::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.32);
+}
+
+.historyList::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
+}
+
+.historyItem {
+  padding: 16px;
+  border: 1px solid rgba(124, 77, 255, 0.12);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.historyItem > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.historyItem strong {
+  color: #111827;
+  font-size: 0.96rem;
+  font-weight: 900;
+}
+
+.historyItem span {
+  color: #667085;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.historyItem p {
+  margin: 8px 0 12px;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.historyItem dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.historyItem dt {
+  margin-bottom: 3px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.historyItem dd {
+  margin: 0;
+  color: #111827;
+  font-size: 0.82rem;
+  font-weight: 800;
+  word-break: keep-all;
+}
+
+.historyPagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(102, 112, 133, 0.12);
+}
+
+.historyPagination button {
+  min-width: 34px;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid #ddd8ff;
+  border-radius: 12px;
+  color: #7b3ff2;
+  font-size: 0.82rem;
+  font-weight: 900;
+  background: #fff;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    background 0.14s ease,
+    color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.historyPagination button:hover:not(:disabled) {
+  color: #fff;
+  background: linear-gradient(135deg, #7c4dff, #633df2);
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.historyPagination button:disabled {
+  color: #b6bfd0;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.historyPagination .activeHistoryPage {
+  color: #fff;
+  background: linear-gradient(135deg, #7c4dff, #633df2);
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.18);
+}
+
+.statsPanel {
+  display: grid;
+  gap: 14px;
+}
+
+.statsControlBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.periodTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 14px;
+  background: #f3f0ff;
+}
+
+.periodTabs button {
+  min-width: 38px;
+  min-height: 34px;
+  border: 0;
+  border-radius: 10px;
+  color: #64748b;
+  font-weight: 900;
+  background: transparent;
+}
+
+.periodTabs .activePeriod {
+  color: #fff;
+  background: linear-gradient(135deg, #7c4dff, #633df2);
+  box-shadow: 0 10px 22px rgba(124, 77, 255, 0.22);
+}
+
+.periodFilterControl {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.periodField {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.periodField span {
+  color: #667085;
+  font-size: 0.76rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.periodField input,
+.periodField select {
+  height: 30px;
+  min-width: 112px;
+  border: 0;
+  outline: 0;
+  color: #111827;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 850;
+  background: transparent;
+}
+
+.periodResetButton {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(124, 77, 255, 0.22);
+  border-radius: 12px;
+  color: #7c4dff;
+  font-size: 0.82rem;
+  font-weight: 900;
+  background: rgba(124, 77, 255, 0.08);
+  cursor: pointer;
+}
+
+.periodResetButton:hover {
+  background: rgba(124, 77, 255, 0.13);
+}
+
+.chartCard {
+  padding: 16px;
+  border: 1px solid rgba(124, 77, 255, 0.11);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.chartCard h3 {
+  margin: 0 0 14px;
+  color: #111827;
+  font-size: 0.92rem;
+  font-weight: 900;
+}
+
+.lineChartCard {
+  padding: 20px;
+}
+
+.lineChartHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.lineChartHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.lineChartHeader p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.lineChart {
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.lineChart polyline {
+  fill: none;
+  stroke: #3293ff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartGridLine {
+  stroke: rgba(148, 163, 184, 0.32);
+  stroke-dasharray: 5 5;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartYAxisLabel {
+  fill: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  dominant-baseline: middle;
+}
+
+.chartXAxisLabel {
+  fill: #6b7280;
+  font-size: 14px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.chartPoint {
+  fill: #fff;
+  opacity: 0;
+  stroke: #3293ff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.peakPoint {
+  fill: #3293ff;
+  stroke: #fff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartHoverLine {
+  opacity: 0;
+  stroke: rgba(50, 147, 255, 0.45);
+  stroke-dasharray: 2 2;
+  stroke-width: 0.9;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartHitArea {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.chartTooltip {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+
+.chartTooltip rect {
+  fill: #111827;
+}
+
+.chartTooltip text {
+  fill: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+.chartPointGroup:hover .chartPoint,
+.chartPointGroup:hover .chartHoverLine,
+.chartPointGroup:hover .chartTooltip {
+  opacity: 1;
+}
+
+.barList {
+  display: grid;
+  gap: 10px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.barRow > div {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2ff;
+}
+
+.barRow i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #7c4dff, #e637c9);
+}
+
+.barRow strong {
+  text-align: right;
+  color: #111827;
+}
+
+.donutWrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.donut {
+  position: relative;
+  display: grid;
+  width: 108px;
+  height: 108px;
+  place-items: center;
+  border-radius: 999px;
+}
+
+.donut::after {
+  position: absolute;
+  inset: 18px;
+  border-radius: inherit;
+  background: #fff;
+  content: "";
+}
+
+.donut strong {
+  position: relative;
+  z-index: 1;
+  color: #111827;
+  font-size: 1.2rem;
+  font-weight: 950;
+}
+
+.rateLegend {
+  display: grid;
+  gap: 8px;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.emptyText {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  margin: 0;
+  color: #94a3b8;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+@media (max-width: 1180px) {
+  .insightGrid {
+    grid-template-columns: 1fr;
+  }
 }

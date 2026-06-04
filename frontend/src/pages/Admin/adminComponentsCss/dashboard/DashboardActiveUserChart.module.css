@@ -13,8 +13,9 @@
 
 .panelHead {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 14px;
   margin-bottom: 14px;
 }
@@ -26,17 +27,21 @@
   font-weight: 900;
 }
 
+.panelControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
 .activeUserChartBox {
   display: grid;
   gap: 10px;
-  padding: 16px;
-  border: 1px solid rgba(102, 112, 133, 0.12);
-  border-radius: 12px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.92),
-    rgba(248, 250, 252, 0.78)
-  );
+  padding: 20px;
+  border: 1px solid rgba(124, 77, 255, 0.11);
+  border-radius: 16px;
+  background: #fff;
 }
 
 .activeUserChart {
@@ -53,39 +58,92 @@
 }
 
 .activeUserGridLine {
-  stroke: rgba(102, 112, 133, 0.18);
+  stroke: rgba(148, 163, 184, 0.32);
   stroke-width: 1;
-  stroke-dasharray: 5 7;
+  stroke-dasharray: 5 5;
+  vector-effect: non-scaling-stroke;
 }
 
 .activeUserArea {
-  fill: rgba(47, 126, 251, 0.12);
+  fill: transparent;
 }
 
 .activeUserLine {
   fill: none;
-  stroke: #2f7efb;
-  stroke-width: 2.4;
+  stroke: #3293ff;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 
 .activeUserPoint {
-  fill: #ffffff;
-  stroke: #2f7efb;
-  stroke-width: 2.4;
+  fill: #fff;
+  opacity: 0;
+  stroke: #3293ff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
 }
 
-.activeUserPointValue {
+.activeUserPeakPoint {
+  fill: #3293ff;
+  stroke: #fff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.activeUserHoverLine {
+  opacity: 0;
+  stroke: rgba(50, 147, 255, 0.45);
+  stroke-dasharray: 2 2;
+  stroke-width: 0.9;
+  vector-effect: non-scaling-stroke;
+}
+
+.activeUserHitArea {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.activeUserTooltip {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+}
+
+.activeUserTooltip rect {
   fill: #111827;
-  font-size: 0.58rem;
+}
+
+.activeUserTooltip text {
+  fill: #fff;
+  font-size: 12px;
   font-weight: 900;
+  text-anchor: middle;
+}
+
+.activeUserPointGroup:hover .activeUserPoint,
+.activeUserPointGroup:hover .activeUserHoverLine,
+.activeUserPointGroup:hover .activeUserTooltip {
+  opacity: 1;
+}
+
+.activeUserPointGroup:hover .activeUserPeakPoint {
+  fill: #3293ff;
 }
 
 .activeUserAxisLabel {
-  fill: #667085;
-  font-size: 0.58rem;
+  fill: #6b7280;
+  font-size: 14px;
   font-weight: 800;
+  text-anchor: middle;
+}
+
+.activeUserYAxisLabel {
+  fill: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  dominant-baseline: middle;
 }
 
 .activeUserChartSummary {

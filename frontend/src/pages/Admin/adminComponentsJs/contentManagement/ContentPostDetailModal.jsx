@@ -1,6 +1,15 @@
 import { useEffect } from "react";
 import styles from "../../adminComponentsCss/contentManagement/ContentPostDetailModal.module.css";
 
+function extractPostTags(post) {
+  if (typeof post?.tags !== "string") return [];
+
+  return post.tags
+    .split(/\s+/)
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.startsWith("#") && tag.length > 1);
+}
+
 /* ==========================================================================
  * 콘텐츠 관리 게시글 상세보기 모달
  * --------------------------------------------------------------------------
@@ -30,6 +39,7 @@ export function ContentPostDetailModal({
   const EmotionIcon = emotionMeta.icon; // 피드와 같은 감정 아이콘을 상세 모달 감정 배지에 표시합니다.
   const { imageSrc, hasImage } = getPostImageInfo(post); // 카드에서 쓰던 이미지 계산 로직을 상세 모달에서도 재사용합니다.
   const postText = stripHtml(post.content) || "본문 없음"; // HTML 태그를 제거한 안전한 본문 텍스트입니다.
+  const postTags = extractPostTags(post);
 
   useEffect(() => {
     // Esc 키를 누르면 모달을 닫을 수 있게 해 관리자 화면 조작을 편하게 만듭니다.
@@ -121,6 +131,19 @@ export function ContentPostDetailModal({
           <h3>본문</h3>
           <p>{postText}</p>
         </section>
+
+        {postTags.length > 0 ? (
+          <section className={styles.tagBox}>
+            <h3>해시태그</h3>
+            <div className={styles.hashtagRow}>
+              {postTags.map((tag) => (
+                <span className={styles.hashtagChip} key={`${post.postId}-${tag}`}>
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </article>
     </div>
   );

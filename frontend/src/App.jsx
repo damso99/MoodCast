@@ -24,16 +24,19 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useAuthStore } from "./stores/useAuthStore";
 import { RequireAuth } from "./components/common/RequireAuth";
+import { useRealtimeAccountSanction } from "./hooks/useRealtimeAccountSanction";
 
 function AppRoutes() {
   // 화면 너비에 따라 데스크톱 버전 또는 모바일 버전을 자동으로 선택합니다.
   const desktop = useIsDesktop();
   const [authChecked, setAuthChecked] = useState(false);
-  const { accessToken, setAuthData, clearAuthData } = useAuthStore();
+  const { accessToken, member, isLoggedIn, setAuthData, clearAuthData } = useAuthStore();
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
   const authRoute = (element) => (
     <RequireAuth authChecked={authChecked}>{element}</RequireAuth>
   );
+
+  useRealtimeAccountSanction(isLoggedIn ? member?.memberId : null);
 
   /*
     새로고침 후 sessionStorage에 남아있는 accessToken이
