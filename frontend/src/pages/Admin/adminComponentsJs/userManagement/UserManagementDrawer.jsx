@@ -137,7 +137,7 @@ export function UserManagementDrawer({
   const blockReason = isTargetSelf
     ? "본인 계정은 정지하거나 정지 해제할 수 없습니다."
     : isTargetSuperAdmin
-      ? "슈퍼 관리자 계정은 정지하거나 정지 해제할 수 없습니다."
+      ? "관리자 계정은 정지하거나 정지 해제할 수 없습니다."
       : "관리자 계정은 정지하거나 정지 해제할 수 없습니다.";
 
   const formatDate = (value) => formatKoreanDate(value);
@@ -171,7 +171,7 @@ export function UserManagementDrawer({
   const getRoleLabel = (role) => {
     if (role === "USER" || role === "MEMBER") return "일반 회원";
     if (role === "ADMIN" || role === "NORMAL_ADMIN") return "일반 회원";
-    if (role === "SUPER_ADMIN") return "슈퍼 관리자";
+    if (role === "SUPER_ADMIN") return "관리자";
     return role || "-";
   };
 

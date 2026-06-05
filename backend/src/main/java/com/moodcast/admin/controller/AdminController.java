@@ -17,6 +17,7 @@ import com.moodcast.admin.vo.AdminProfileUpdateRequest;
 import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminReport;
 import com.moodcast.admin.vo.AdminReportProcessRequest;
+import com.moodcast.admin.vo.AdminReportProcessRateStat;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
@@ -423,7 +424,7 @@ public class AdminController {
     /* ==========================================================================
      * 회원 관리자 등급 변경 API
      * --------------------------------------------------------------------------
-     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 슈퍼 관리자로 변경합니다.
+     * 관리자 권한 관리 페이지에서 선택한 ACTIVE 회원을 일반 회원 또는 관리자로 변경합니다.
      *
      * 요청 주소:
      * - PUT /admin/api/members/{memberId}/role
@@ -473,6 +474,16 @@ public class AdminController {
                 "reports",
                 adminService.getAdminReports(authorizationHeader, status, targetType, processResult)
         );
+    }
+
+    /* 관리자 기능 담당 작업(문건우): 신고 처리율을 전체 목록 조회 없이 기간 기준으로 집계합니다. */
+    @GetMapping("/reports/process-rate")
+    public AdminReportProcessRateStat getAdminReportProcessRate(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return adminService.getAdminReportProcessRate(authorizationHeader, startDate, endDate);
     }
 
     /* ==========================================================================

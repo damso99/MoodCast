@@ -14,6 +14,8 @@ const periodApiValue = {
   월: "month",
 };
 
+const DASHBOARD_POLLING_INTERVAL_MS = 10000;
+
 // 기간별 차트 설명입니다.
 // 일/주/월 모두 00시~23시 축을 유지해서 어느 시간대에 사용자가 몰리는지 확인할 수 있게 합니다.
 const periodDescription = {
@@ -85,32 +87,54 @@ export function DashboardActiveUserChart() {
       return;
     }
 
-    setIsLoading(true);
-    setHasError(false);
+    /*
+     * 관리자 기능 담당 작업(문건우): 시간별 활성 사용자는 로그인 감사 로그 기반 값이라 새 로그인이 생기면 바뀝니다.
+     * 10초마다 같은 조건으로 API를 재조회해 차트를 갱신하고, 기간 조건이 바뀌면 이전 폴링을 정리한 뒤 새 폴링을 시작합니다.
+     * 자동 갱신 때마다 로딩 화면을 띄우면 차트가 깜빡이므로 첫 조회 때만 로딩 상태를 표시합니다.
+     */
+    const fetchActiveUsers = ({ showLoading = false } = {}) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setHasError(false);
 
-    axios
-      .get(`${BACKSERVER}/admin/api/dashboard/active-users`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          period: periodApiValue[activePeriod], // 선택 기간을 백엔드용 값으로 변환합니다.
-          ...dateRange,
-        },
-      })
-      .then((res) => {
-        setActiveUserItems(
-          Array.isArray(res.data?.items) ? res.data.items : [],
-        );
-      })
-      .catch((error) => {
-        console.log(error);
-        setActiveUserItems([]);
-        setHasError(true);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      axios
+        .get(`${BACKSERVER}/admin/api/dashboard/active-users`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          params: {
+            period: periodApiValue[activePeriod], // 선택 기간을 백엔드용 값으로 변환합니다.
+            ...dateRange,
+          },
+        })
+        .then((res) => {
+          setActiveUserItems(
+            Array.isArray(res.data?.items) ? res.data.items : [],
+          );
+        })
+        .catch((error) => {
+          console.log(error);
+          setActiveUserItems([]);
+          setHasError(true);
+        })
+        .finally(() => {
+          if (showLoading) {
+            setIsLoading(false);
+          }
+        });
+    };
+
+    fetchActiveUsers({ showLoading: true });
+
+    const pollingId = window.setInterval(
+      fetchActiveUsers,
+      DASHBOARD_POLLING_INTERVAL_MS,
+    );
+
+    return () => {
+      window.clearInterval(pollingId);
+    };
   }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
   const chartData = useMemo(() => {

@@ -45,9 +45,17 @@ const emptySummary = {
 
 const contentColors = {
   게시글: "#7c4dff",
-  댓글: "#2f7efb",
-  공감: "#f79009",
+  댓글: "#9b6dff",
+  공감: "#c04dff",
 };
+
+const contentIconMap = {
+  게시글: ArticleOutlinedIcon,
+  댓글: ChatBubbleOutlineOutlinedIcon,
+  공감: AddOutlinedIcon,
+};
+
+const defaultContentBars = ["게시글", "댓글", "공감"];
 
 const emotionMetaMap = {
   1: { label: "행복", color: "#FFD700", icon: EmojiEmotionsIcon },
@@ -60,6 +68,18 @@ const emotionMetaMap = {
 
 function formatNumber(value) {
   return Number(value || 0).toLocaleString();
+}
+
+function readTrendValue(item) {
+  return Number(
+    item?.value ??
+      item?.count ??
+      item?.activityCount ??
+      item?.postCount ??
+      item?.commentCount ??
+      item?.empathyCount ??
+      0,
+  );
 }
 
 function getCurrentPeriodOption(selectedLabel) {
@@ -248,17 +268,23 @@ function PreviewLineChart({ items, color, emptyLabel }) {
   );
 }
 
-function PreviewBarChart({ items, emptyLabel }) {
-  const maxValue = Math.max(...items.map((item) => Number(item.value || 0)), 1);
-
-  if (items.length === 0) {
-    return <div className={styles.emptyChartState}>{emptyLabel}</div>;
-  }
+function PreviewBarChart({ items, maxRows }) {
+  const displayItems = items
+    .filter((item) => String(item.label || "").trim())
+    .slice(0, maxRows || items.length);
+  const maxValue = Math.max(
+    ...displayItems.map((item) => Number(item.value || 0)),
+    1,
+  );
 
   return (
     <div className={styles.previewBarChart}>
-      {items.map((item) => {
-        const widthPercent = Math.max(6, Math.round((Number(item.value || 0) / maxValue) * 100));
+      {displayItems.map((item) => {
+        const rawValue = Number(item.value || 0);
+        const widthPercent =
+          rawValue === 0
+            ? 1
+            : Math.max(6, Math.round((rawValue / maxValue) * 100));
         const Icon = item.icon;
 
         return (
@@ -417,34 +443,33 @@ export function StatisticsDashboardPage() {
     [periodLabel, summary],
   );
 
-  const contentBars = useMemo(
-    () =>
-      contentActivity.map((item) => ({
-        label: item.label,
-        value: item.value,
-        color: contentColors[item.label] || "#7c4dff",
-      })),
-    [contentActivity],
-  );
+  const contentBars = useMemo(() => {
+    const valueMap = contentActivity.reduce((map, item) => {
+      map[item.label] = readTrendValue(item);
+      return map;
+    }, {});
 
-  const emotionBars = useMemo(
-    () =>
-      emotionActivity.map((item) => {
-        const emotionMeta = emotionMetaMap[item.emotionId] || {
-          label: `감정 ${item.emotionId}`,
-          color: "#667085",
-          icon: SentimentNeutralIcon,
-        };
+    return defaultContentBars.map((label, index) => ({
+      label,
+      value: valueMap[label] ?? readTrendValue(contentActivity[index]),
+      color: contentColors[label] || "#7c4dff",
+      icon: contentIconMap[label],
+    }));
+  }, [contentActivity]);
 
-        return {
-          label: emotionMeta.label,
-          value: item.activityCount,
-          color: emotionMeta.color,
-          icon: emotionMeta.icon,
-        };
-      }),
-    [emotionActivity],
-  );
+  const emotionBars = useMemo(() => {
+    const valueMap = emotionActivity.reduce((map, item) => {
+      map[String(item.emotionId)] = Number(item.activityCount || 0);
+      return map;
+    }, {});
+
+    return Object.entries(emotionMetaMap).map(([emotionId, emotionMeta]) => ({
+      label: emotionMeta.label,
+      value: valueMap[emotionId] ?? 0,
+      color: emotionMeta.color,
+      icon: emotionMeta.icon,
+    }));
+  }, [emotionActivity]);
 
   return (
     <AdminLayout title="통계 대시보드" description="주요 지표를 기간별 차트로 확인하세요.">
@@ -502,14 +527,14 @@ export function StatisticsDashboardPage() {
           title={`콘텐츠 활동 (${periodLabel})`}
           loading={loading}
         >
-          <PreviewBarChart items={contentBars} emptyLabel="콘텐츠 활동 데이터가 없습니다." />
+          <PreviewBarChart items={contentBars} maxRows={3} />
         </ChartCard>
 
         <ChartCard
           title={`감정별 활동 구성 (${periodLabel})`}
           loading={loading}
         >
-          <PreviewBarChart items={emotionBars} emptyLabel="감정별 활동 데이터가 없습니다." />
+          <PreviewBarChart items={emotionBars} />
         </ChartCard>
       </section>
 

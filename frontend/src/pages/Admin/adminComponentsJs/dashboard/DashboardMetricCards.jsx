@@ -15,6 +15,8 @@ const DEFAULT_SUMMARY = {
   pendingReportCount: null,
 };
 
+const DASHBOARD_POLLING_INTERVAL_MS = 10000;
+
 export function DashboardMetricCards() {
   const [dashboardSummary, setDashboardSummary] = useState(DEFAULT_SUMMARY);
   const [hasError, setHasError] = useState(false);
@@ -29,6 +31,10 @@ export function DashboardMetricCards() {
       return;
     }
 
+    /*
+     * 관리자 기능 담당 작업(문건우): 대시보드 핵심 숫자는 10초마다 같은 API를 다시 호출해 최신 값으로 갱신합니다.
+     * 폴링은 WebSocket 없이도 화면을 자동 갱신하는 방식이며, 컴포넌트가 사라질 때 clearInterval로 반드시 중지합니다.
+     */
     const fetchDashboardSummary = () => {
       axios
         .get(`${BACKSERVER}/admin/api/dashboard/summary`, {
@@ -54,7 +60,10 @@ export function DashboardMetricCards() {
 
     fetchDashboardSummary();
 
-    const pollingId = window.setInterval(fetchDashboardSummary, 10000);
+    const pollingId = window.setInterval(
+      fetchDashboardSummary,
+      DASHBOARD_POLLING_INTERVAL_MS,
+    );
 
     return () => {
       window.clearInterval(pollingId);

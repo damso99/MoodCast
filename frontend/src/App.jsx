@@ -149,7 +149,7 @@ function AppRoutes() {
         path="/app/community"
         element={authRoute(<Navigate to="/app/feed" replace />)}
       />
-      <Route path="/admin/*" element={<AdminRoutes />} />
+      <Route path="/admin/*" element={authRoute(<AdminRoutes />)} />
       {/* 그 외 모든 경로는 기본 피드 홈으로 보냅니다. */}
       <Route path="*" element={<Navigate to="/app/feed" replace />} />
     </Routes>

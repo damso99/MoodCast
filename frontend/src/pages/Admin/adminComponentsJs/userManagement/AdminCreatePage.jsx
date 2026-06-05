@@ -16,14 +16,14 @@ import styles from "../../adminComponentsCss/userManagement/AdminCreatePage.modu
  *
  * 해당 기능:
  * - 이름, 닉네임, 이메일 기준으로 회원 검색
- * - ACTIVE 상태인 일반 회원과 슈퍼 관리자를 검색 결과로 표시
+ * - ACTIVE 상태인 일반 회원과 관리자를 검색 결과로 표시
  * - 검색 결과에서 권한을 변경할 회원 선택
- * - 일반 회원 / 슈퍼 관리자 중 하나를 선택해 등급 변경
+ * - 일반 회원 / 관리자 중 하나를 선택해 등급 변경
  *
  * 큰 흐름:
- * 1. 슈퍼 관리자가 이름/닉네임/이메일 중 하나를 선택해서 회원을 검색합니다.
+ * 1. 관리자가 이름/닉네임/이메일 중 하나를 선택해서 회원을 검색합니다.
  * 2. 검색 결과 중 권한을 변경할 회원을 선택합니다.
- * 3. 일반 회원, 슈퍼 관리자 중 등급을 고릅니다.
+ * 3. 일반 회원, 관리자 중 등급을 고릅니다.
  * 4. 백엔드 API로 role 변경 요청을 보냅니다.
  *
  * ========================================================================== */
@@ -48,7 +48,7 @@ export function AdminCreatePage() {
   const roleDescription =
     selectedRole === "USER"
       ? "일반 회원은 관리자 페이지에 접근할 수 없습니다."
-      : "슈퍼 관리자는 관리자 권한 부여와 해제까지 사용할 수 있습니다.";
+      : "관리자는 관리자 권한 부여와 해제까지 사용할 수 있습니다.";
 
   const searchPlaceholder = {
     name: "회원 이름",
@@ -58,7 +58,7 @@ export function AdminCreatePage() {
 
   const getRoleLabel = (role) => {
     if (role === "SUPER_ADMIN") {
-      return "슈퍼 관리자";
+      return "관리자";
     }
 
     if (role === "ADMIN" || role === "NORMAL_ADMIN") {
@@ -140,7 +140,7 @@ export function AdminCreatePage() {
 
   const resetSelection = () => {
     setSelectedMemberId(null); // 선택된 회원을 비웁니다.
-    setSelectedRole("SUPER_ADMIN"); // 권한 선택은 기본값인 슈퍼 관리자로 되돌립니다.
+    setSelectedRole("SUPER_ADMIN"); // 권한 선택은 기본값인 관리자로 되돌립니다.
     setSearchError(""); // 이전 오류 메시지를 지웁니다.
     setSuccessMessage(""); // 이전 성공 메시지를 지웁니다.
   };
@@ -278,7 +278,7 @@ export function AdminCreatePage() {
         {!searched && (
           <EmptyState
             title="검색 전"
-            description="이름, 닉네임, 이메일로 ACTIVE 상태의 일반 회원과 슈퍼 관리자를 검색할 수 있습니다."
+            description="이름, 닉네임, 이메일로 ACTIVE 상태의 일반 회원과 관리자를 검색할 수 있습니다."
           />
         )}
       </section>
@@ -343,7 +343,7 @@ export function AdminCreatePage() {
                 checked={selectedRole === "SUPER_ADMIN"}
                 onChange={() => setSelectedRole("SUPER_ADMIN")}
               />
-              슈퍼 관리자
+              관리자
             </label>
           </fieldset>
 
@@ -351,7 +351,7 @@ export function AdminCreatePage() {
             <strong>
               {selectedRole === "USER"
                 ? "일반 회원 권한"
-                : "슈퍼 관리자 권한"}
+                : "관리자 권한"}
             </strong>
             <p>{roleDescription}</p>
           </div>

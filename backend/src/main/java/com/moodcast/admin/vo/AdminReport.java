@@ -30,10 +30,14 @@ public class AdminReport {
     private Long targetPostCount;
     private Long targetCommentCount;
     private Long targetLikeCount;
+    private Long targetReportCount;
+    private Long targetWarningCount;
+    private Long targetSuspendCount;
 
     private Long postId;
     private Long commentId;
     private String postTitle;
+    private String postTags;
     private String targetContent;
     private String commentContent;
 

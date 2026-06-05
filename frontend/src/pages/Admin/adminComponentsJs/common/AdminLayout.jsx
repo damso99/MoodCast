@@ -38,7 +38,7 @@ export function AdminLayout({ children, title, description }) {
   ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하되, 끝의 /는 제거해서 API 경로가 중복되지 않게 합니다.
 
   const adminRoleLabel =
-    member?.role === "SUPER_ADMIN" ? "super" : "user"; // 사이드바에 표시할 권한 문구입니다.
+    member?.role === "SUPER_ADMIN" ? "관리자" : "user"; // 사이드바에 표시할 권한 문구입니다.
 
   /* ==========================================================================
    * 관리자 로그아웃 처리

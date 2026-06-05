@@ -5,6 +5,7 @@ import { SearchBar } from "../common/SearchBar";
 import {
   processResultTabs,
   REPORT_LABELS,
+  reasonOptions,
   reportStatusTabs,
   reportTypeTabs,
   sanctionOptions,
@@ -45,6 +46,8 @@ const RESULT_TO_API = {
   [REPORT_LABELS.permanent]: "PERMANENT_SUSPEND",
   [REPORT_LABELS.reject]: "REJECT",
 };
+
+const reportReasonTabs = [REPORT_LABELS.all, ...reasonOptions];
 
 const ACTION_TO_RESULT = {
   warning: "WARNING",
@@ -129,6 +132,7 @@ export function ReportManagementPage() {
   const [selectedProcessResultTab, setSelectedProcessResultTab] = useState(
     REPORT_LABELS.all,
   );
+  const [selectedReasonFilter, setSelectedReasonFilter] = useState(REPORT_LABELS.all);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [sortType, setSortType] = useState(SORT_LABELS.latest);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -141,6 +145,7 @@ export function ReportManagementPage() {
   const [customPeriod, setCustomPeriod] = useState("");
   const [hideTargetContent, setHideTargetContent] = useState(true);
   const [completionMessage, setCompletionMessage] = useState("");
+  const [processRateStat, setProcessRateStat] = useState(null);
 
   useEffect(() => {
     fetchReports();
@@ -160,9 +165,15 @@ export function ReportManagementPage() {
   }, [selectedStatusTab, selectedProcessResultTab]);
 
   const filteredReports = useMemo(() => {
+    const reasonFilteredReports =
+      selectedReasonFilter === REPORT_LABELS.all
+        ? reports
+        : reports.filter(
+            (report) => normalizeReportReason(report.reason) === selectedReasonFilter,
+          );
     const keyword = searchKeyword.trim().toLowerCase();
     const searchedReports = keyword
-      ? reports.filter((report) =>
+      ? reasonFilteredReports.filter((report) =>
           [
             report.title,
             report.targetName,
@@ -173,7 +184,7 @@ export function ReportManagementPage() {
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(keyword)),
         )
-      : reports;
+      : reasonFilteredReports;
 
     return [...searchedReports].sort((a, b) => {
       if (sortType === SORT_LABELS.count) {
@@ -186,7 +197,7 @@ export function ReportManagementPage() {
 
       return getReportSortTime(b) - getReportSortTime(a);
     });
-  }, [reports, searchKeyword, sortType]);
+  }, [reports, selectedReasonFilter, searchKeyword, sortType]);
 
   const selectedActionMeta = sanctionOptions.find(
     (option) => option.id === selectedAction,
@@ -223,6 +234,10 @@ export function ReportManagementPage() {
       ),
     [allReports, selectedTypeTab],
   );
+  const reasonCounts = useMemo(
+    () => countReportsByReason(reports, reportReasonTabs),
+    [reports],
+  );
   const insightPeriodRange = useMemo(
     () => buildInsightPeriodRange(selectedInsightPeriod, insightPeriodFilter),
     [selectedInsightPeriod, insightPeriodFilter],
@@ -240,13 +255,25 @@ export function ReportManagementPage() {
       ),
     [insightReports, selectedInsightPeriod, insightPeriodRange],
   );
+  const processRateCounts = processRateStat || {
+    doneCount: reportInsights.doneCount,
+    openCount: reportInsights.openCount,
+  };
   const sanctionHistories = useMemo(
     () =>
       allReports
         .filter((report) => report.status === REPORT_LABELS.done)
-        .sort((a, b) => new Date(b.handledAtValue || 0) - new Date(a.handledAtValue || 0)),
+        .sort(
+          (a, b) =>
+            parseAdminLocalDateTime(b.handledAtValue || b.createdAt).getTime() -
+            parseAdminLocalDateTime(a.handledAtValue || a.createdAt).getTime(),
+        ),
     [allReports],
   );
+
+  useEffect(() => {
+    fetchReportProcessRate();
+  }, [insightPeriodRange]);
 
   async function fetchReports() {
     try {
@@ -292,6 +319,34 @@ export function ReportManagementPage() {
         message: error.message,
       });
       setAllReports([]);
+    }
+  }
+
+  // 관리자 기능 담당 작업(문건우): 신고 처리율은 전체 목록 집계보다 전용 통계 API 값을 우선 사용합니다.
+  async function fetchReportProcessRate() {
+    try {
+      const response = await axios.get(
+        `${BACKSERVER}/admin/api/reports/process-rate`,
+        {
+          headers: authHeaders,
+          params: {
+            startDate: formatDateInputValue(insightPeriodRange.start),
+            endDate: formatDateInputValue(insightPeriodRange.end),
+          },
+        },
+      );
+
+      setProcessRateStat({
+        doneCount: Number(response.data?.doneCount || 0),
+        openCount: Number(response.data?.openCount || 0),
+      });
+    } catch (error) {
+      console.error("[ADMIN_REPORT_PROCESS_RATE_ERROR]", {
+        status: error.response?.status,
+        response: error.response?.data,
+        message: error.message,
+      });
+      setProcessRateStat(null);
     }
   }
 
@@ -476,6 +531,17 @@ export function ReportManagementPage() {
               />
 
               <div className={styles.reportSelectGroup}>
+                <select
+                  aria-label="신고 사유 필터"
+                  value={selectedReasonFilter}
+                  onChange={(event) => setSelectedReasonFilter(event.target.value)}
+                >
+                  {reportReasonTabs.map((label) => (
+                    <option key={label} value={label}>
+                      {label} {reasonCounts[label] ?? 0}
+                    </option>
+                  ))}
+                </select>
                 {selectedStatusTab === REPORT_LABELS.done && (
                   <select
                     aria-label="처리 결과 필터"
@@ -507,6 +573,7 @@ export function ReportManagementPage() {
       ) : (
         <ReportInsightSection
           insights={reportInsights}
+          processRateCounts={processRateCounts}
           histories={sanctionHistories}
           selectedPeriod={selectedInsightPeriod}
           onSelectPeriod={setSelectedInsightPeriod}
@@ -608,12 +675,16 @@ function mapAdminReport(report) {
     postCount: formatCount(report.targetPostCount),
     commentCount: formatCount(report.targetCommentCount),
     likeCount: formatCount(report.targetLikeCount),
+    targetReportCount: formatCount(report.targetReportCount),
+    targetWarningCount: formatCount(report.targetWarningCount),
+    targetSuspendCount: formatCount(report.targetSuspendCount),
     createdAt: report.createdAt,
     reviewedAtValue: report.reviewedAt,
     handledAtValue: report.handledAt,
     processResult,
     targetContent: report.targetContent || "-",
     commentContent: report.commentContent || "",
+    postTags: report.postTags || "",
     handledByMemberName: report.handledByMemberName || "",
     reporters: mapReporters(report),
     activities: Array.isArray(report.activities)
@@ -639,6 +710,54 @@ function mapAdminReport(report) {
 
 function formatCount(value) {
   return Number.isFinite(Number(value)) ? Number(value).toLocaleString("ko-KR") : "-";
+}
+
+// 관리자 기능 담당 작업(문건우): DB DATETIME 문자열을 브라우저 시간대 변환 없이 화면/그래프용 로컬 시각으로 해석합니다.
+function parseAdminLocalDateTime(value) {
+  if (!value) return new Date(Number.NaN);
+
+  if (value instanceof Date) {
+    return new Date(value.getTime());
+  }
+
+  if (Array.isArray(value)) {
+    const [year, month, day, hour = 0, minute = 0, second = 0] = value;
+    return new Date(year, Number(month) - 1, day, hour, minute, second);
+  }
+
+  if (typeof value === "number") {
+    return new Date(value);
+  }
+
+  const text = String(value).trim();
+  const match = text.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?/,
+  );
+
+  if (match) {
+    const [
+      ,
+      year,
+      month,
+      day,
+      hour = "0",
+      minute = "0",
+      second = "0",
+      millisecond = "0",
+    ] = match;
+
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute),
+      Number(second),
+      Number(millisecond.padEnd(3, "0")),
+    );
+  }
+
+  return new Date(text);
 }
 
 function mapReporters(report) {
@@ -670,7 +789,7 @@ function mapReporters(report) {
 function formatDate(value) {
   if (!value) return "-";
 
-  const date = new Date(value);
+  const date = parseAdminLocalDateTime(value);
   if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
 
   return date.toLocaleDateString("ko-KR", {
@@ -682,7 +801,7 @@ function formatDate(value) {
 
 function getReportSortTime(report) {
   const getTime = (value) => {
-    const time = new Date(value || 0).getTime();
+    const time = parseAdminLocalDateTime(value).getTime();
     return Number.isNaN(time) ? 0 : time;
   };
 
@@ -700,7 +819,7 @@ function getReportSortTime(report) {
 function formatDateTime(value) {
   if (!value) return "-";
 
-  const date = new Date(value);
+  const date = parseAdminLocalDateTime(value);
 
   if (Number.isNaN(date.getTime())) return String(value).replace("T", " ");
 
@@ -710,11 +829,13 @@ function formatDateTime(value) {
     day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   });
 }
 
 function ReportInsightSection({
   insights,
+  processRateCounts,
   histories,
   selectedPeriod,
   onSelectPeriod,
@@ -904,7 +1025,11 @@ function ReportInsightSection({
           title={"\uC2E0\uACE0 \uC720\uD615"}
           items={insights.typeBars}
         />
-        <ProcessRateChart done={insights.doneCount} open={insights.openCount} />
+        <MetricBarChart
+          title="신고 사유"
+          items={insights.reasonBars}
+        />
+        <ProcessRateChart done={processRateCounts.doneCount} open={processRateCounts.openCount} />
         <MetricBarChart
           title={"\uCC98\uB9AC \uACB0\uACFC"}
           items={insights.resultBars}
@@ -1143,6 +1268,12 @@ function buildReportInsights(reports, period, range) {
         value: reports.filter((report) => report.type === REPORT_LABELS.comment).length,
       },
     ],
+    reasonBars: reasonOptions.map((label) => ({
+      label,
+      value: reports.filter(
+        (report) => normalizeReportReason(report.reason) === label,
+      ).length,
+    })),
     resultBars: processResultTabs
       .filter((label) => label !== REPORT_LABELS.all)
       .map((label) => ({
@@ -1152,11 +1283,33 @@ function buildReportInsights(reports, period, range) {
   };
 }
 
+// 관리자 기능 담당 작업(문건우): 자유 입력된 신고 사유는 정규화 컬럼이 없어 관리자 통계에서 기타로 묶습니다.
+function normalizeReportReason(reason) {
+  const normalizedReason = String(reason || "").trim();
+
+  return reasonOptions.includes(normalizedReason)
+    ? normalizedReason
+    : REPORT_LABELS.etc;
+}
+
+function countReportsByReason(reports, tabs) {
+  return tabs.reduce((counts, tabLabel) => {
+    counts[tabLabel] =
+      tabLabel === REPORT_LABELS.all
+        ? reports.length
+        : reports.filter(
+            (report) => normalizeReportReason(report.reason) === tabLabel,
+          ).length;
+
+    return counts;
+  }, {});
+}
+
 function buildTimeline(reports, period, range) {
   const buckets = buildTimelineBuckets(period);
 
   reports.forEach((report) => {
-    const date = new Date(report.createdAt);
+    const date = parseAdminLocalDateTime(report.createdAt);
     if (Number.isNaN(date.getTime())) return;
 
     if (period === "day") {
@@ -1273,7 +1426,7 @@ function filterAndSortSanctionHistories(
 
 function filterReportsByRange(reports, range) {
   return reports.filter((report) => {
-    const createdAt = new Date(report.createdAt);
+    const createdAt = parseAdminLocalDateTime(report.createdAt);
     return (
       !Number.isNaN(createdAt.getTime()) &&
       createdAt >= range.start &&

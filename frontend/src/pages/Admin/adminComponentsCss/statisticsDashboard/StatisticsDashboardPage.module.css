@@ -203,7 +203,7 @@
 
 .previewBarRow {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 52px;
+  grid-template-columns: 92px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 10px;
 }

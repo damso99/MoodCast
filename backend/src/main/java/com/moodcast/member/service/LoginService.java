@@ -1,6 +1,7 @@
 package com.moodcast.member.service;
 
 import com.moodcast.common.exception.AuthException;
+import com.moodcast.common.exception.AccountSuspendedException;
 import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.dao.PasswordHistoryDao;
 import com.moodcast.member.dto.follow.FollowCheckResponse;
@@ -25,6 +26,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -33,6 +38,8 @@ import java.util.regex.Pattern;
 public class LoginService {
     private static final String WITHDRAW_PURPOSE = "WITHDRAW";
     private static final String EMAIL_TARGET_TYPE = "EMAIL";
+    // 관리자 기능 담당 작업(문건우): 정지 해제 예정일 안내 계산은 서비스 기준 시간인 Asia/Seoul로 맞춥니다.
+    private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
     private static final Pattern PASSWORD_PATTERN =
             Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[?!@#$%^&*])[A-Za-z\\d?!@#$%^&*]{8,20}$");
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -100,7 +107,7 @@ public class LoginService {
     // Internal authentication and member-account workflow.
     public void checkLoginAllowed(Member member) {
         if ("SUSPENDED".equals(member.getStatus())) {
-            throw new IllegalArgumentException("\uC81C\uC7AC\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4. \uAD00\uB9AC\uC790\uC758 \uC81C\uC7AC\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.");
+            throw buildAccountSuspendedException(member);
         }
 
         if ("WITHDRAW".equals(member.getStatus()) || member.getDeletedAt() != null) {
@@ -114,6 +121,34 @@ public class LoginService {
         if (!Integer.valueOf(1).equals(member.getPhoneVerified())) {
             throw new IllegalArgumentException("\uD734\uB300\uD3F0 \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
         }
+    }
+
+    /*
+     * 관리자 기능 담당 작업(문건우): 관리자 제재 상태인 회원의 로그인 차단 사유를
+     * 문자열 하나가 아니라 일시/영구 정지 정보로 내려주기 위한 최소 보완입니다.
+     */
+    private AccountSuspendedException buildAccountSuspendedException(Member member) {
+        LocalDateTime suspendedUntil = member.getSuspendedUntil();
+
+        if (suspendedUntil == null) {
+            return new AccountSuspendedException(
+                    "영구 정지된 계정입니다.",
+                    "PERMANENT",
+                    null,
+                    null
+            );
+        }
+
+        LocalDate today = LocalDate.now(KOREA_ZONE);
+        LocalDate releaseDate = suspendedUntil.toLocalDate();
+        long suspendDays = Math.max(0L, ChronoUnit.DAYS.between(today, releaseDate));
+
+        return new AccountSuspendedException(
+                "계정이 일시 정지되었습니다.",
+                "TEMPORARY",
+                suspendDays,
+                suspendedUntil.toString()
+        );
     }
     private String getLoginMemberEmail(String authorizationHeader) {
         Long memberId = getMemberIdFromHeader(authorizationHeader);

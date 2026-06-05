@@ -14,6 +14,7 @@ import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminRecentMember;
 import com.moodcast.admin.vo.AdminReport;
 import com.moodcast.admin.vo.AdminReportActivity;
+import com.moodcast.admin.vo.AdminReportProcessRateStat;
 import com.moodcast.admin.vo.AdminReportReporter;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
@@ -37,7 +38,7 @@ import java.time.LocalDateTime;
  *
  * 현재 단계:
  * - 다른 폴더의 mapper XML 파일을 수정하지 않기 위해 메서드는 아직 추가하지 않습니다.
- * - 나중에 슈퍼 관리자 목록 조회, 관리자 승급/강등, 공지사항 관리 등이 필요해지면
+ * - 나중에 관리자 목록 조회, 관리자 승급/강등, 공지사항 관리 등이 필요해지면
  *   이 인터페이스에 메서드를 추가하고 mapper XML을 연결하면 됩니다.
  * ========================================================================== */
 @Mapper // MyBatis가 이 인터페이스를 DB Mapper로 인식하게 합니다.
@@ -154,7 +155,7 @@ public interface AdminDao {
             @Param("keyword") String keyword
     );
 
-    /* ACTIVE 상태의 회원을 일반 회원 또는 슈퍼 관리자로 변경합니다. */
+    /* ACTIVE 상태의 회원을 일반 회원 또는 관리자로 변경합니다. */
     int updateMemberRoleForAdminPromotion(
             @Param("memberId") Long memberId,
             @Param("role") String role
@@ -185,6 +186,12 @@ public interface AdminDao {
             @Param("status") String status,
             @Param("targetType") String targetType,
             @Param("processResult") String processResult
+    );
+
+    /* 관리자 기능 담당 작업(문건우): 신고 처리율 통계는 목록 전체 로딩 없이 DB에서 집계합니다. */
+    AdminReportProcessRateStat selectAdminReportProcessRate(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
     );
 
     /* 신고 상세와 처리 후 갱신에 사용할 신고 단건 조회입니다. */
