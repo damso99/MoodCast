@@ -109,7 +109,9 @@
 
 .reportSelectGroup {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   flex: 0 0 auto;
   margin-left: auto;
@@ -578,12 +580,18 @@
 
 .barRow {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr) 28px;
+  grid-template-columns: minmax(86px, 150px) minmax(0, 1fr) 34px;
   align-items: center;
   gap: 10px;
   color: #475569;
   font-size: 0.78rem;
   font-weight: 900;
+}
+
+.barRow > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .barRow > div {

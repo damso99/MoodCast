@@ -214,9 +214,13 @@
         <result property="targetPostCount" column="target_post_count"/>
         <result property="targetCommentCount" column="target_comment_count"/>
         <result property="targetLikeCount" column="target_like_count"/>
+        <result property="targetReportCount" column="target_report_count"/>
+        <result property="targetWarningCount" column="target_warning_count"/>
+        <result property="targetSuspendCount" column="target_suspend_count"/>
         <result property="postId" column="post_id"/>
         <result property="commentId" column="comment_id"/>
         <result property="postTitle" column="post_title"/>
+        <result property="postTags" column="post_tags"/>
         <result property="targetContent" column="target_content"/>
         <result property="commentContent" column="comment_content"/>
         <result property="reason" column="reason"/>
@@ -230,6 +234,13 @@
         <result property="createdAt" column="created_at"/>
         <result property="sameTargetReportCount" column="same_target_report_count"/>
         <result property="sameTargetReporterCount" column="same_target_reporter_count"/>
+    </resultMap>
+
+    <!-- 관리자 기능 담당 작업(문건우): 신고 처리율 통계 결과 매핑입니다. -->
+    <resultMap id="adminReportProcessRateStatMap" type="com.moodcast.admin.vo.AdminReportProcessRateStat">
+        <result property="totalCount" column="total_count"/>
+        <result property="doneCount" column="done_count"/>
+        <result property="openCount" column="open_count"/>
     </resultMap>
 
     <!-- 신고 상세 패널의 최근 활동 결과 매핑입니다. -->
@@ -733,7 +744,7 @@
             0 as comment_count
         from members
         where status = 'ACTIVE'
-          and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
+          and role in ('USER', 'MEMBER', 'SUPER_ADMIN')
           and (
             #{keyword} = ''
             or
@@ -760,7 +771,7 @@
             updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         where member_id = #{memberId}
           and status = 'ACTIVE'
-          and role in ('USER', 'MEMBER', 'ADMIN', 'NORMAL_ADMIN', 'SUPER_ADMIN')
+          and role in ('USER', 'MEMBER', 'SUPER_ADMIN')
     </update>
 
     <!-- suspendMember 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
@@ -871,9 +882,42 @@
                     else comment_author.member_id
                 end
             ) as target_like_count,
+            (
+                select count(*)
+                from report target_report
+                left join post_tbl reported_post on reported_post.post_id = target_report.post_id
+                left join comment_tbl reported_comment on reported_comment.comment_id = target_report.comment_id
+                where coalesce(reported_post.member_id, reported_comment.member_id) = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                end
+            ) as target_report_count,
+            coalesce(
+                case
+                    when r.post_id is not null then post_author.warning_count
+                    else comment_author.warning_count
+                end,
+                0
+            ) as target_warning_count,
+            (
+                select count(*)
+                from admin_action_logs target_suspend_log
+                where target_suspend_log.target_type = 'USER'
+                  and target_suspend_log.action_type = 'SUSPEND'
+                  and target_suspend_log.target_id = case
+                    when r.post_id is not null then post_author.member_id
+                    else comment_author.member_id
+                  end
+            ) as target_suspend_count,
             r.post_id,
             r.comment_id,
             coalesce(post_target.title, comment_post.title) as post_title,
+            (
+                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                from post_hashtag ph
+                join hashtag h on h.hashtag_id = ph.hashtag_id
+                where ph.post_id = coalesce(post_target.post_id, comment_post.post_id)
+            ) as post_tags,
             case
                 when r.post_id is not null then post_target.content
                 else comment_target.content
@@ -946,6 +990,17 @@
             r.report_id desc
     </select>
 
+    <!-- 관리자 기능 담당 작업(문건우): 처리율 = 처리 완료 신고 수 / 전체 신고 수 기준으로 집계합니다. -->
+    <select id="selectAdminReportProcessRate" resultMap="adminReportProcessRateStatMap">
+        select
+            count(*) as total_count,
+            sum(case when r.report_status = 'DONE' then 1 else 0 end) as done_count,
+            sum(case when r.report_status = 'DONE' then 0 else 1 end) as open_count
+        from report r
+        where r.created_at &gt;= #{startDate}
+          and r.created_at &lt; date_add(#{endDate}, interval 1 day)
+    </select>
+
     <!-- selectAdminReportById 조회 쿼리입니다. 신고 상세와 처리 후 갱신에 사용합니다. -->
     <select id="selectAdminReportById" resultMap="adminReportMap">
         select *
@@ -1006,9 +1061,42 @@
                         else comment_author.member_id
                     end
                 ) as target_like_count,
+                (
+                    select count(*)
+                    from report target_report
+                    left join post_tbl reported_post on reported_post.post_id = target_report.post_id
+                    left join comment_tbl reported_comment on reported_comment.comment_id = target_report.comment_id
+                    where coalesce(reported_post.member_id, reported_comment.member_id) = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                    end
+                ) as target_report_count,
+                coalesce(
+                    case
+                        when r.post_id is not null then post_author.warning_count
+                        else comment_author.warning_count
+                    end,
+                    0
+                ) as target_warning_count,
+                (
+                    select count(*)
+                    from admin_action_logs target_suspend_log
+                    where target_suspend_log.target_type = 'USER'
+                      and target_suspend_log.action_type = 'SUSPEND'
+                      and target_suspend_log.target_id = case
+                        when r.post_id is not null then post_author.member_id
+                        else comment_author.member_id
+                      end
+                ) as target_suspend_count,
                 r.post_id,
                 r.comment_id,
                 coalesce(post_target.title, comment_post.title) as post_title,
+                (
+                    select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                    from post_hashtag ph
+                    join hashtag h on h.hashtag_id = ph.hashtag_id
+                    where ph.post_id = coalesce(post_target.post_id, comment_post.post_id)
+                ) as post_tags,
                 case
                     when r.post_id is not null then post_target.content
                     else comment_target.content

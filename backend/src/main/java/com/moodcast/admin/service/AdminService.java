@@ -18,6 +18,7 @@ import com.moodcast.admin.vo.AdminRecentActivity;
 import com.moodcast.admin.vo.AdminReport;
 import com.moodcast.admin.vo.AdminReportActivity;
 import com.moodcast.admin.vo.AdminReportProcessRequest;
+import com.moodcast.admin.vo.AdminReportProcessRateStat;
 import com.moodcast.admin.vo.AdminReportReporter;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
@@ -91,7 +92,7 @@ public class AdminService {
      *
      * 주의:
      * - ADMIN, NORMAL_ADMIN은 과거 호환 데이터로만 남을 수 있습니다.
-     * - 현재 정책은 슈퍼 관리자와 일반 회원만 사용하므로 관리자 API 접근은 SUPER_ADMIN만 허용합니다.
+     * - 현재 정책은 관리자와 일반 회원만 사용하므로 관리자 API 접근은 SUPER_ADMIN만 허용합니다.
      * ========================================================================== */
     private LoginMemberResponse validateAdmin(String authorizationHeader) {
         log.info("[ADMIN_API] validateAdmin start hasAuthorizationHeader={}", authorizationHeader != null && !authorizationHeader.isBlank());
@@ -112,20 +113,20 @@ public class AdminService {
     }
 
     /*
-     * 슈퍼 관리자 권한 확인
+     * 관리자 권한 확인
      * --------------------------------------------------------------------------
      * 관리자 추가와 관리자 권한 변경처럼 높은 권한이 필요한 작업에서만 사용합니다.
      *
      * 처리 흐름:
      * 1. validateAdmin()으로 로그인 여부와 관리자 권한 여부를 먼저 확인합니다.
      * 2. role이 SUPER_ADMIN인지 한 번 더 확인합니다.
-     * 3. 슈퍼 관리자가 아니라면 403 FORBIDDEN으로 요청을 막습니다.
+     * 3. 관리자가 아니라면 403 FORBIDDEN으로 요청을 막습니다.
      */
     private LoginMemberResponse validateSuperAdmin(String authorizationHeader) {
         LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
 
         if (!"SUPER_ADMIN".equals(loginMember.getRole())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "슈퍼 관리자 권한이 필요합니다.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다.");
         }
 
         return loginMember;
@@ -154,7 +155,7 @@ public class AdminService {
      * members 테이블의 회원 목록을 조회해서 사용자 관리 테이블에 전달합니다.
      *
      * 지금은 "전체" 탭에만 표시할 데이터이므로 별도 조건을 걸지 않습니다.
-     * 나중에 일반 회원, 정지 회원, 슈퍼 관리자 탭 조건을 백엔드로 옮길 때는
+     * 나중에 일반 회원, 정지 회원, 관리자 탭 조건을 백엔드로 옮길 때는
      * 이 메서드에 role/status 조건을 추가하거나 별도 메서드로 분리하면 됩니다.
      * ========================================================================== */
     public List<AdminMember> getMembers(String authorizationHeader) {
@@ -740,6 +741,42 @@ public class AdminService {
         log.info("[ADMIN_API] selectAdminReports success size={}", reports == null ? 0 : reports.size());
 
         return reports == null ? Collections.emptyList() : reports;
+    }
+
+    /*
+     * 관리자 기능 담당 작업(문건우): 신고 처리율은 처리 완료 신고 수 / 전체 신고 수 기준으로 DB에서 집계합니다.
+     * 처리 완료 상태는 현재 프로젝트의 실제 저장값인 DONE만 사용합니다.
+     */
+    public AdminReportProcessRateStat getAdminReportProcessRate(
+            String authorizationHeader,
+            String startDate,
+            String endDate
+    ) {
+        validateAdmin(authorizationHeader);
+
+        LocalDate start = parseAdminDate(startDate);
+        LocalDate end = parseAdminDate(endDate);
+
+        if (start == null || end == null) {
+            LocalDate today = LocalDate.now(KOREA_ZONE);
+            start = today;
+            end = today;
+        }
+
+        if (start.isAfter(end)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조회 시작일은 종료일보다 늦을 수 없습니다.");
+        }
+
+        AdminReportProcessRateStat stat = adminDao.selectAdminReportProcessRate(start, end);
+        if (stat == null) {
+            stat = new AdminReportProcessRateStat();
+        }
+
+        stat.setTotalCount(defaultLong(stat.getTotalCount()));
+        stat.setDoneCount(defaultLong(stat.getDoneCount()));
+        stat.setOpenCount(defaultLong(stat.getOpenCount()));
+
+        return stat;
     }
 
     /* ==========================================================================
@@ -1358,7 +1395,7 @@ public class AdminService {
      * - 변경 가능한 role은 USER, SUPER_ADMIN 두 가지입니다.
      * - 일반 관리자(NORMAL_ADMIN)는 새로 부여하지 않습니다.
      * - 기존 관리자 계정에 새 관리자 권한을 덮어씌우는 관리는 막습니다.
-     * - 단, 슈퍼 관리자가 관리자 권한을 일반 회원(USER)으로 내리는 강등은 허용합니다.
+     * - 단, 관리자가 관리자 권한을 일반 회원(USER)으로 내리는 강등은 허용합니다.
      * - SQL에서도 ACTIVE 상태와 변경 가능한 role 조건을 다시 확인합니다.
      * - 조건에 맞지 않으면 400 BAD_REQUEST로 실패 처리합니다.
      * ========================================================================== */

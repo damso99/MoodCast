@@ -3,6 +3,7 @@
 <mapper namespace="com.moodcast.member.dao.LoginDao">
 
     <select id="findMemberByEmail" resultType="member">
+        <!-- 관리자 기능 담당 작업(문건우): 로그인 제한 안내에 suspended_until 값을 사용합니다. -->
         select
             member_id,
             email,
@@ -15,6 +16,7 @@
             phone_verified,
             role,
             status,
+            suspended_until,
             last_login_at,
             created_at,
             updated_at,
@@ -41,6 +43,7 @@
     </select>
 
     <select id="findMemberById" resultType="member">
+        <!-- 관리자 기능 담당 작업(문건우): refresh/me 요청에서도 정지 안내 정보를 유지합니다. -->
         select
             member_id,
             email,
@@ -53,6 +56,7 @@
             phone_verified,
             role,
             status,
+            suspended_until,
             last_login_at,
             created_at,
             updated_at,

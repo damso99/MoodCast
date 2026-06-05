@@ -45,6 +45,8 @@
   font-size: 0.92rem;
   font-weight: 700;
   line-height: 1.6;
+  /* 관리자 기능 담당 작업(문건우): 정지 안내 문구의 줄바꿈을 로그인 제한 모달에 그대로 표시합니다. */
+  white-space: pre-line;
 }
 
 .actions,

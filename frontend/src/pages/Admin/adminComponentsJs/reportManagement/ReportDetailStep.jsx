@@ -1,5 +1,10 @@
 import { useState } from "react";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
+import {
+  extractImageUrls,
+  normalizeBackendUrl,
+  stripHtml,
+} from "../../../../shared/lib/postHelpers";
 import { DrawerHeader } from "./ReportDrawerHeader";
 import styles from "../../adminComponentsCss/reportManagement/ReportDetailStep.module.css";
 
@@ -9,6 +14,10 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
   const [isPostDetailModalOpen, setIsPostDetailModalOpen] = useState(false);
   const visibleActivities = (report.activities || []).slice(0, 5);
   const isCommentReport = report.type === "댓글";
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const postImageSrcs = getPostImageSrcs(report, BACKSERVER);
+  const targetText = stripHtml(report.targetContent || report.detail || "");
+  const commentText = stripHtml(report.commentContent || "");
 
   return (
     <>
@@ -60,7 +69,7 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
                 게시글 상세 보기
               </button>
               <span>댓글 내용</span>
-              <p>{report.commentContent || report.targetContent || "-"}</p>
+              <p>{commentText || "-"}</p>
             </div>
           ) : (
             <div className={styles.reportedContentBox}>
@@ -74,7 +83,10 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
                   게시글 상세 보기
                 </button>
               </div>
-              <p>{report.targetContent || report.detail}</p>
+              {postImageSrcs.length > 0 && (
+                <ReportImageGallery images={postImageSrcs} title={report.title} />
+              )}
+              <p>{targetText || "-"}</p>
             </div>
           )}
         </section>
@@ -105,15 +117,17 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
         <section className={styles.detailSection}>
           <h3>대상 사용자 정보</h3>
           <div className={styles.userInfoCard}>
-            <div>
+            <div className={styles.userInfoIdentity}>
               <strong>{report.targetName}</strong>
               <span>{report.targetHandle}</span>
+              <dl>
+                <div>
+                  <dt>가입일</dt>
+                  <dd>{report.joinedAt}</dd>
+                </div>
+              </dl>
             </div>
-            <dl>
-              <div>
-                <dt>가입일</dt>
-                <dd>{report.joinedAt}</dd>
-              </div>
+            <dl className={styles.userInfoStatsRow}>
               <div>
                 <dt>게시글</dt>
                 <dd>{report.postCount}</dd>
@@ -126,17 +140,19 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
                 <dt>좋아요</dt>
                 <dd>{report.likeCount}</dd>
               </div>
+            </dl>
+            <dl className={styles.userInfoStatsRow}>
               <div>
                 <dt>신고 횟수</dt>
-                <dd>연결 예정</dd>
+                <dd>{report.targetReportCount}</dd>
               </div>
               <div>
                 <dt>경고 횟수</dt>
-                <dd>연결 예정</dd>
+                <dd>{report.targetWarningCount}</dd>
               </div>
               <div>
                 <dt>정지 횟수</dt>
-                <dd>연결 예정</dd>
+                <dd>{report.targetSuspendCount}</dd>
               </div>
             </dl>
           </div>
@@ -240,6 +256,12 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
               <span>제목</span>
               <strong>{report.title}</strong>
             </div>
+            {report.postTags && (
+              <div>
+                <span>해시태그</span>
+                <strong>{report.postTags}</strong>
+              </div>
+            )}
             <div>
               <span>신고 대상</span>
               <strong>{report.targetName}</strong>
@@ -249,14 +271,20 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
               <span>{isCommentReport ? "댓글 내용" : "게시글 내용"}</span>
               <p>
                 {isCommentReport
-                  ? report.commentContent || "-"
-                  : report.targetContent || "-"}
+                  ? commentText || "-"
+                  : targetText || "-"}
               </p>
             </div>
+            {postImageSrcs.length > 0 && (
+              <div>
+                <span>게시글 이미지</span>
+                <ReportImageGallery images={postImageSrcs} title={report.title} />
+              </div>
+            )}
             {isCommentReport && (
               <div>
                 <span>원 게시글 내용</span>
-                <p>{report.targetContent || "-"}</p>
+                <p>{targetText || "-"}</p>
               </div>
             )}
             <div>
@@ -267,6 +295,34 @@ export function ReportDetailStep({ report, onClose, onProcess }) {
         </DetailListModal>
       )}
     </>
+  );
+}
+
+function getPostImageSrcs(report, backserver) {
+  const imageCandidates = [
+    ...extractImageUrls(report?.targetContent || ""),
+    ...extractImageUrls(report?.detail || ""),
+  ];
+
+  return Array.from(new Set(
+    imageCandidates
+      .filter(Boolean)
+      .map((src) => normalizeBackendUrl(src, backserver, "post-images")),
+  ));
+}
+
+function ReportImageGallery({ images, title }) {
+  return (
+    <div className={styles.reportImageGallery}>
+      {images.map((imageSrc, index) => (
+        <img
+          key={`${imageSrc}-${index}`}
+          src={imageSrc}
+          alt={`${title || "신고 게시글 이미지"} ${index + 1}`}
+          loading="lazy"
+        />
+      ))}
+    </div>
   );
 }
 

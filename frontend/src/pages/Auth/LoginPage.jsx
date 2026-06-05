@@ -12,7 +12,56 @@ import {
 } from "./socialAuth";
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
-const ADMIN_ROLES = ["ADMIN", "NORMAL_ADMIN", "SUPER_ADMIN"];
+const ADMIN_ROLES = ["SUPER_ADMIN"];
+
+/*
+ * 관리자 기능 담당 작업(문건우): 관리자 제재로 로그인 제한된 회원에게
+ * 일시/영구 정지 안내 문구를 정확히 보여주기 위한 표시 전용 유틸입니다.
+ */
+const formatSuspendedDate = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value).slice(0, 10).replaceAll("-", "/");
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}/${month}/${day}`;
+};
+
+const buildSuspendedLoginMessage = (data, fallbackMessage) => {
+  if (data?.suspendType === "TEMPORARY") {
+    const suspendDays =
+      data.suspendDays === null || data.suspendDays === undefined
+        ? "-"
+        : data.suspendDays;
+    const suspendedUntil = formatSuspendedDate(data.suspendedUntil);
+
+    return [
+      "계정이 일시 정지되었습니다.",
+      "",
+      `정지 기간: ${suspendDays}일`,
+      `해제 예정일: ${suspendedUntil || "-"}`,
+    ].join("\n");
+  }
+
+  if (data?.suspendType === "PERMANENT") {
+    return [
+      "영구 정지된 계정입니다.",
+      "",
+      "서비스 이용이 제한됩니다.",
+    ].join("\n");
+  }
+
+  return fallbackMessage;
+};
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -127,26 +176,29 @@ export const LoginPage = () => {
         });
 
         if (ADMIN_ROLES.includes(loginMember.role)) {
-          navigate("/admin/dashboard");
+          navigate("/admin/dashboard", { replace: true });
         } else {
-          navigate("/app/feed");
+          navigate("/app/feed", { replace: true });
         }
       })
       .catch((err) => {
+        const errorData = err?.response?.data;
         const loginErrorMessage = getApiMessage(
           err,
           "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.",
         );
 
         if (
+          errorData?.code === "ACCOUNT_SUSPENDED" ||
           loginErrorMessage.includes("\uC81C\uC7AC\uB41C \uACC4\uC815") ||
+          loginErrorMessage.includes("\uC815\uC9C0\uB41C \uACC4\uC815") ||
           loginErrorMessage.includes(
             "\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
           )
         ) {
           setSanctionModal({
             open: true,
-            message: loginErrorMessage,
+            message: buildSuspendedLoginMessage(errorData, loginErrorMessage),
           });
           return;
         }

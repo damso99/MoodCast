@@ -20,7 +20,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
 /* ==========================================================================
  * 사용자 관리 페이지
  * --------------------------------------------------------------------------
- * 일반 회원, 정지 회원, 슈퍼 관리자 계정 권한을 관리하는 화면입니다.
+ * 일반 회원, 정지 회원, 관리자 계정 권한을 관리하는 화면입니다.
  *
  * 담당 기능:
  * - 회원 상태별 필터 버튼
@@ -42,7 +42,7 @@ import styles from "../../adminComponentsCss/userManagement/UserManagementPage.m
  *
  * members 상태 설명:
  * - members 테이블에서 조회한 전체 회원 목록을 기억하는 배열입니다.
- * - "전체 / 일반 회원 / 정지 회원 / 슈퍼 관리자" 탭에 맞춰 화면에서 필터링해서 출력합니다.
+ * - "전체 / 일반 회원 / 정지 회원 / 관리자" 탭에 맞춰 화면에서 필터링해서 출력합니다.
  * - 정지 회원 탭은 status가 SUSPENDED인 회원만 보여줍니다.
  *
  * searchField / searchKeyword 상태 설명:
@@ -100,7 +100,7 @@ export function UserManagementPage() {
    */
   const handleAdminRoleManagementClick = () => {
     if (member?.role !== "SUPER_ADMIN") {
-      alert("관리자 권한 관리는 슈퍼 관리자만 접근할 수 있습니다.");
+      alert("관리자 권한 관리는 관리자만 접근할 수 있습니다.");
       return;
     }
 
@@ -232,7 +232,7 @@ export function UserManagementPage() {
       return member.role !== "SUPER_ADMIN";
     }
 
-    if (selectedUserType === "슈퍼 관리자") {
+    if (selectedUserType === "관리자") {
       return member.role === "SUPER_ADMIN";
     }
 
@@ -393,7 +393,7 @@ export function UserManagementPage() {
     }
 
     if (role === "SUPER_ADMIN") {
-      return "슈퍼 관리자";
+      return "관리자";
     }
 
     if (role === "ADMIN" || role === "NORMAL_ADMIN") {
@@ -425,7 +425,7 @@ export function UserManagementPage() {
       <section className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
           <SegmentedControl
-            labels={["전체", "일반 회원", "정지 회원", "슈퍼 관리자"]}
+            labels={["전체", "일반 회원", "정지 회원", "관리자"]}
             selectedLabel={selectedUserType}
             onSelect={setSelectedUserType}
           />
@@ -478,7 +478,7 @@ export function UserManagementPage() {
           accent="orange"
         />
         <MetricCard
-          label="슈퍼 관리자"
+          label="관리자"
           value={adminMemberCount.toLocaleString()}
           icon={<DashboardOutlinedIcon />}
           accent="pink"

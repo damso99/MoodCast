@@ -33,6 +33,12 @@
   color: #7c4dff;
 }
 
+.reportThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .reportThumb span {
   position: absolute;
   right: 9px;

@@ -1,15 +1,27 @@
 import { REPORT_LABELS, statusMeta } from "./reportConstants";
 import { getTypeIcon } from "./reportUtils";
+import {
+  extractImageUrls,
+  normalizeBackendUrl,
+  stripHtml,
+} from "../../../../shared/lib/postHelpers";
 import styles from "../../adminComponentsCss/reportManagement/ReportListItem.module.css";
 
 export function ReportListItem({ report, onOpen }) {
   const Icon = getTypeIcon(report.type);
   const isResolved = report.status === REPORT_LABELS.done;
+  const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+  const summaryText = stripHtml(report.detail || report.targetContent || "");
+  const firstImageSrc = getFirstReportImageSrc(report, BACKSERVER);
 
   return (
     <article className={styles.reportItem}>
       <div className={styles.reportThumb + " " + styles["type" + report.type]}>
-        <Icon />
+        {firstImageSrc ? (
+          <img src={firstImageSrc} alt={`${report.title} 썸네일`} loading="lazy" />
+        ) : (
+          <Icon />
+        )}
         <span>{report.type}</span>
       </div>
       <div className={styles.reportSummary}>
@@ -22,7 +34,7 @@ export function ReportListItem({ report, onOpen }) {
         <p>
           {"\uC2E0\uACE0 \uC0AC\uC720"} <strong>{report.reason}</strong>
         </p>
-        <p className={styles.ellipsis}>{report.detail}</p>
+        <p className={styles.ellipsis}>{summaryText || "-"}</p>
       </div>
       <div className={styles.reportMeta}>
         <span
@@ -48,4 +60,14 @@ export function ReportListItem({ report, onOpen }) {
       </div>
     </article>
   );
+}
+
+function getFirstReportImageSrc(report, backserver) {
+  const imageCandidates = [
+    ...extractImageUrls(report?.detail || ""),
+    ...extractImageUrls(report?.targetContent || ""),
+  ];
+
+  const firstImage = imageCandidates.find(Boolean);
+  return firstImage ? normalizeBackendUrl(firstImage, backserver, "post-images") : "";
 }

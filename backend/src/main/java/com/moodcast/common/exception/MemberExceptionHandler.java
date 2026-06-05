@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
+import java.util.LinkedHashMap;
 
 // SignupController와 LoginController에서 발생한 예외를 함께 처리한다.
 @RestControllerAdvice(assignableTypes = {
@@ -23,6 +24,23 @@ import java.util.Map;
 })
 public class MemberExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(MemberExceptionHandler.class);
+
+    /*
+     * 관리자 기능 담당 작업(문건우): 관리자 제재 회원이 로그인할 때 프론트에서
+     * 일시/영구 정지 안내를 정확히 표시할 수 있도록 정지 정보를 함께 응답합니다.
+     */
+    @ExceptionHandler(AccountSuspendedException.class)
+    public ResponseEntity<?> handleAccountSuspendedException(AccountSuspendedException e) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("code", "ACCOUNT_SUSPENDED");
+        response.put("message", e.getMessage());
+        response.put("suspendType", e.getSuspendType());
+        response.put("suspendDays", e.getSuspendDays());
+        response.put("suspendedUntil", e.getSuspendedUntil());
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<?> handleAuthException(AuthException e) {

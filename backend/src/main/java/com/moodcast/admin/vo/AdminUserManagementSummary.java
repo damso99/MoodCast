@@ -29,7 +29,7 @@ public class AdminUserManagementSummary {
 
     private Long normalMemberCount; // USER 또는 MEMBER 권한의 일반 회원 수입니다.
 
-    private Long adminMemberCount; // SUPER_ADMIN 권한의 슈퍼 관리자 수입니다.
+    private Long adminMemberCount; // SUPER_ADMIN 권한의 관리자 수입니다.
 
     private Long suspendedMemberCount; // status가 SUSPENDED인 정지 회원 수입니다.
 

@@ -12,6 +12,8 @@ const periodApiValue = {
   월: "month",
 };
 
+const DASHBOARD_POLLING_INTERVAL_MS = 10000;
+
 const emotionMeta = {
   1: { label: "행복", color: "#FFD700" },
   2: { label: "슬픔", color: "#4A90E2" },
@@ -49,35 +51,67 @@ export function DashboardEmotionActivityChart() {
       return;
     }
 
-    setIsLoading(true);
-    setHasError(false);
+    /*
+     * 관리자 기능 담당 작업(문건우): 감정별 활동 분포는 게시글 작성에 따라 값이 바뀌므로 10초마다 API를 다시 조회합니다.
+     * 기간 탭이나 날짜 범위가 바뀌면 기존 폴링을 정리하고, 새 조건으로 다시 10초 폴링을 시작합니다.
+     */
+    const fetchEmotionActivity = ({ showLoading = false } = {}) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setHasError(false);
 
-    axios
-      .get(`${BACKSERVER}/admin/api/dashboard/emotion-activity`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-        params: {
-          period: periodApiValue[activePeriod],
-          ...dateRange,
-        },
-      })
-      .then((res) => {
-        setEmotionItems(Array.isArray(res.data?.items) ? res.data.items : []);
-      })
-      .catch((error) => {
-        console.log(error);
-        setEmotionItems([]);
-        setHasError(true);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      axios
+        .get(`${BACKSERVER}/admin/api/dashboard/emotion-activity`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          params: {
+            period: periodApiValue[activePeriod],
+            ...dateRange,
+          },
+        })
+        .then((res) => {
+          setEmotionItems(Array.isArray(res.data?.items) ? res.data.items : []);
+        })
+        .catch((error) => {
+          console.log(error);
+          setEmotionItems([]);
+          setHasError(true);
+        })
+        .finally(() => {
+          if (showLoading) {
+            setIsLoading(false);
+          }
+        });
+    };
+
+    fetchEmotionActivity({ showLoading: true });
+
+    const pollingId = window.setInterval(
+      fetchEmotionActivity,
+      DASHBOARD_POLLING_INTERVAL_MS,
+    );
+
+    return () => {
+      window.clearInterval(pollingId);
+    };
   }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
   const maxActivityCount = Math.max(
     ...emotionItems.map((item) => Number(item.activityCount ?? 0)),
     1,
+  );
+  const emotionCountMap = emotionItems.reduce((countMap, item) => {
+    countMap[String(item.emotionId)] = Number(item.activityCount ?? 0);
+    return countMap;
+  }, {});
+  const displayEmotionItems = Object.entries(emotionMeta).map(
+    ([emotionId, meta]) => ({
+      emotionId,
+      activityCount: emotionCountMap[emotionId] ?? 0,
+      ...meta,
+    }),
   );
 
   return (
@@ -108,35 +142,27 @@ export function DashboardEmotionActivityChart() {
             description="감정별 활동 데이터를 불러오지 못했습니다."
           />
         </div>
-      ) : emotionItems.length === 0 ? (
-        <div className={styles.emptyChartState}>
-          <EmptyState
-            title="데이터 없음"
-            description="선택한 기간에 집계된 감정 활동이 없습니다."
-          />
-        </div>
       ) : (
         <div className={styles.barChart}>
-          {emotionItems.map((item) => {
-            const emotion = emotionMeta[item.emotionId] ?? {
-              label: `감정 ${item.emotionId}`,
-              color: "#7c4dff",
-            };
+          {displayEmotionItems.map((item) => {
             const activityCount = Number(item.activityCount ?? 0);
-            const widthPercent = Math.max(
-              4,
-              Math.round((activityCount / maxActivityCount) * 100),
-            );
+            const widthPercent =
+              activityCount === 0
+                ? 0
+                : Math.max(
+                    4,
+                    Math.round((activityCount / maxActivityCount) * 100),
+                  );
 
             return (
               <div className={styles.barRow} key={item.emotionId}>
-                <span className={styles.barLabel}>{emotion.label}</span>
+                <span className={styles.barLabel}>{item.label}</span>
                 <span className={styles.barTrack}>
                   <span
                     className={styles.barFill}
                     style={{
                       width: `${widthPercent}%`,
-                      backgroundColor: emotion.color,
+                      backgroundColor: item.color,
                     }}
                   />
                 </span>

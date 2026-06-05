@@ -6,6 +6,7 @@ import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/dashboard/DashboardRecentActivities.module.css";
 
 const ACTIVITY_PAGE_SIZE = 10;
+const DASHBOARD_POLLING_INTERVAL_MS = 10000;
 
 const activityLabelMap = {
   JOIN: "가입",
@@ -52,28 +53,50 @@ export function DashboardRecentActivities() {
       return;
     }
 
-    setIsLoading(true);
-    setHasError(false);
+    /*
+     * 관리자 기능 담당 작업(문건우): 최근 활동은 새 가입/정지/권한 변경처럼 자주 바뀔 수 있어 10초마다 재조회합니다.
+     * 첫 조회 때만 로딩 화면을 보여주고, 이후 자동 갱신 때는 기존 목록을 유지한 채 조용히 새 데이터로 교체합니다.
+     * 컴포넌트가 닫히면 clearInterval로 폴링을 멈춰 불필요한 API 요청을 막습니다.
+     */
+    const fetchRecentActivities = ({ showLoading = false } = {}) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setHasError(false);
 
-    axios
-      .get(`${BACKSERVER}/admin/api/dashboard/recent-activities`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      })
-      .then((res) => {
-        setRecentActivities(
-          Array.isArray(res.data?.activities) ? res.data.activities : [],
-        );
-      })
-      .catch((error) => {
-        console.log(error);
-        setRecentActivities([]);
-        setHasError(true);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      axios
+        .get(`${BACKSERVER}/admin/api/dashboard/recent-activities`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        })
+        .then((res) => {
+          setRecentActivities(
+            Array.isArray(res.data?.activities) ? res.data.activities : [],
+          );
+        })
+        .catch((error) => {
+          console.log(error);
+          setRecentActivities([]);
+          setHasError(true);
+        })
+        .finally(() => {
+          if (showLoading) {
+            setIsLoading(false);
+          }
+        });
+    };
+
+    fetchRecentActivities({ showLoading: true });
+
+    const pollingId = window.setInterval(
+      fetchRecentActivities,
+      DASHBOARD_POLLING_INTERVAL_MS,
+    );
+
+    return () => {
+      window.clearInterval(pollingId);
+    };
   }, [BACKSERVER, accessToken]);
 
   const totalModalPage = Math.max(

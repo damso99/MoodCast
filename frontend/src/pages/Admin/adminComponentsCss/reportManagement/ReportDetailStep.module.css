@@ -72,7 +72,6 @@
 
 /* 신고 개요와 대상 사용자 정보를 보여주는 카드 공통 스타일입니다. */
 .overviewCard,
-.userInfoCard,
 .targetMiniCard,
 .confirmTarget {
   display: grid;
@@ -84,8 +83,16 @@
   background: #fff;
 }
 
+.userInfoCard {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 14px;
+  background: #fff;
+}
+
 .overviewCard dl,
-.userInfoCard dl,
 .targetMiniCard dl,
 .confirmTarget dl {
   display: grid;
@@ -94,8 +101,33 @@
   margin: 0;
 }
 
-.userInfoCard dl {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.userInfoIdentity {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(86px, auto);
+  align-items: start;
+  gap: 0 12px;
+}
+
+.userInfoIdentity > strong,
+.userInfoIdentity > span {
+  min-width: 0;
+  grid-column: 1;
+}
+
+.userInfoIdentity dl,
+.userInfoStatsRow {
+  display: grid;
+  margin: 0;
+}
+
+.userInfoIdentity dl {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.userInfoStatsRow {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .overviewCard dt,
@@ -181,6 +213,21 @@
   color: #111827;
   font-size: 0.92rem;
   font-weight: 950;
+}
+
+.reportImageGallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.reportImageGallery img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 12px;
+  background: #f8f9ff;
 }
 
 .inlineDetailButton {

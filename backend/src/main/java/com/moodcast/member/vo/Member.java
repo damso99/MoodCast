@@ -27,6 +27,7 @@ public class Member {
 
     private String role;                // 회원 등급
     private String status;              // 정상, 정지, 탈퇴
+    private LocalDateTime suspendedUntil; // 관리자 기능 담당 작업(문건우): 정지 로그인 안내용 해제 예정일입니다. null이면 영구 정지입니다.
 
     private LocalDateTime lastLoginAt;     // 마지막 로그인
     private LocalDateTime createdAt;        // 가입일
