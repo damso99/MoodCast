@@ -26,7 +26,12 @@ export const SocialExtraSignupPage = () => {
   const [agreements, setAgreements] = useState({});
   const [signupCompleteModalOpen, setSignupCompleteModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
-  const providerLabel = pending?.provider === "GOOGLE" ? "Google" : "카카오";
+  const providerLabel =
+    pending?.provider === "GOOGLE"
+      ? "Google"
+      : pending?.provider === "NAVER"
+        ? "네이버"
+        : "카카오";
 
   const showToast = (type, message) => {
     const duration = getToastDuration(type);

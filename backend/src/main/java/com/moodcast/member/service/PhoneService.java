@@ -1,7 +1,6 @@
 package com.moodcast.member.service;
 
 import com.solapi.sdk.SolapiClient;
-import com.solapi.sdk.message.exception.SolapiEmptyResponseException;
 import com.solapi.sdk.message.exception.SolapiMessageNotReceivedException;
 import com.solapi.sdk.message.model.Message;
 import com.solapi.sdk.message.service.DefaultMessageService;
@@ -20,6 +19,12 @@ public class PhoneService {
     private String senderNumber;
 
     public void sendSignupAuthCode(String phone, String authCode) {
+        if (apiKey == null || apiKey.isBlank()
+                || apiSecret == null || apiSecret.isBlank()
+                || senderNumber == null || senderNumber.isBlank()) {
+            throw new IllegalStateException("휴대폰 인증은 현재 사용하지 않습니다. 이메일 인증을 이용해주세요.");
+        }
+
         DefaultMessageService messageService = SolapiClient.INSTANCE.createInstance(apiKey, apiSecret);
         Message message = new Message();
         message.setFrom(senderNumber);

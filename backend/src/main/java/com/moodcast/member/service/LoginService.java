@@ -25,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -584,9 +585,11 @@ public class LoginService {
         }
     // Internal authentication and member-account workflow.
         checkLoginAllowed(member);
-    // Internal authentication and member-account workflow.
-        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
-    // Internal authentication and member-account workflow.
+
+        // 여러 탭이 동시에 refresh해도 한쪽이 바로 튕기지 않도록 기존 토큰은 아주 짧게만 유지함
+        refreshTokenRedisService.expireRefreshTokenSoon(memberId, tokenId, Duration.ofSeconds(10));
+
+        // 새 로그인 세션 tokenId 생성
         String newTokenId = UUID.randomUUID().toString();
     // Internal authentication and member-account workflow.
         String newAccessToken = jwtService.createAccessToken(member);
@@ -613,4 +616,3 @@ public class LoginService {
         refreshTokenRedisService.deleteRefreshToken(refreshTokenInfo.getMemberId(), refreshTokenInfo.getTokenId());
     }
 }
-
