@@ -17,6 +17,7 @@ frontend/.env
 frontend/.env.*
 
 ## Frontend: React / Vite / Node.js
+node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
@@ -59,6 +60,10 @@ backend/.idea/
 *.temp
 *.swp
 *.swo
+.codex*.png
+dom-dump*.html
+create_excel.py
+
 ## Documentation & generated files
 docs/*.xlsx
 docs/*.py

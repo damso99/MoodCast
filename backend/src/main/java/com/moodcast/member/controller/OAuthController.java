@@ -306,6 +306,10 @@ public class OAuthController {
             @RequestBody SocialExtraSignupRequest request,
             HttpServletRequest httpRequest
     ) {
+        if (request == null || request.getPendingToken() == null || request.getPendingToken().trim().isEmpty()) {
+            throw new IllegalArgumentException("소셜 회원가입 정보가 없습니다. 로그인 화면에서 다시 시도해주세요.");
+        }
+
         String provider = oAuthService.getPendingProvider(request.getPendingToken());
         LoginResult loginResult = oAuthService.completeSocialSignup(request);
         ResponseCookie refreshCookie = jwtService.createRefreshCookie(loginResult.getRefreshToken());

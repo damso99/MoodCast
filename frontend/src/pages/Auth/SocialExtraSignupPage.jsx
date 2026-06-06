@@ -26,7 +26,12 @@ export const SocialExtraSignupPage = () => {
   const [agreements, setAgreements] = useState({});
   const [signupCompleteModalOpen, setSignupCompleteModalOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, type: "", message: "" });
-  const providerLabel = pending?.provider === "GOOGLE" ? "Google" : "카카오";
+  const providerLabel =
+    pending?.provider === "GOOGLE"
+      ? "Google"
+      : pending?.provider === "NAVER"
+        ? "네이버"
+        : "카카오";
 
   const showToast = (type, message) => {
     const duration = getToastDuration(type);
@@ -97,7 +102,13 @@ export const SocialExtraSignupPage = () => {
     }));
   };
 
-  const completeSocialSignup = () => {
+  const completeSocialSignup = (event) => {
+    event?.preventDefault();
+
+    if (signupSubmitting) {
+      return;
+    }
+
     if (!nameRegex.test(form.name.trim())) {
       showToast("error", "이름은 한글 2~10자로 입력해주세요.");
       return;
@@ -178,7 +189,7 @@ export const SocialExtraSignupPage = () => {
           <p>{pending?.providerEmail || `${providerLabel} 계정`}에 추가 정보를 연결합니다</p>
         </header>
 
-        <form className={styles.form}>
+        <form className={styles.form} onSubmit={completeSocialSignup}>
           <div className={styles.field}>
             <label htmlFor="socialName">
               이름 <b>*</b>
@@ -227,9 +238,8 @@ export const SocialExtraSignupPage = () => {
               취소
             </button>
             <button
-              type="button"
+              type="submit"
               className={styles.primaryButton}
-              onClick={completeSocialSignup}
               disabled={signupSubmitting}
             >
               {signupSubmitting ? "가입 중..." : "가입 완료"}

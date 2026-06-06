@@ -78,3 +78,10 @@
   background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
   box-shadow: 0 14px 26px rgba(124, 77, 255, 0.22);
 }
+
+.cancelButton:disabled,
+.confirmButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  box-shadow: none;
+}

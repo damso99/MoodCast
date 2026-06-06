@@ -67,7 +67,7 @@ export const SocialCallbackPage = () => {
     const data = error?.response?.data;
 
     if (data?.status === "EMAIL_CONFLICT" || error?.response?.status === 409) {
-      return `이미 일반 회원으로 가입된 이메일입니다. 일반 로그인 후 설정에서 ${providerLabel} 계정을 연결해주세요.`;
+      return `이미 MoodCast 계정으로 가입된 이메일입니다. 기존 계정으로 로그인한 뒤 설정에서 ${providerLabel} 계정을 연결해주세요.`;
     }
 
     return getApiMessage(error, error.message || `${providerLabel} 로그인 설정을 확인해주세요.`);

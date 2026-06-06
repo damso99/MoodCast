@@ -637,6 +637,10 @@ public class OAuthService {
             throw new IllegalArgumentException("Google 사용자 정보가 올바르지 않습니다.");
         }
 
+        if (Boolean.FALSE.equals(googleUser.get("verified_email"))) {
+            throw new IllegalArgumentException("Google 계정 이메일 인증이 완료되지 않아 가입할 수 없습니다.");
+        }
+
         SocialUserInfo socialUserInfo = new SocialUserInfo();
         socialUserInfo.setProvider(GOOGLE);
         socialUserInfo.setProviderUserId(id.toString());
@@ -698,6 +702,10 @@ public class OAuthService {
 
         if (id == null || kakaoAccount == null) {
             throw new IllegalArgumentException("카카오 사용자 정보가 올바르지 않습니다.");
+        }
+
+        if (Boolean.FALSE.equals(kakaoAccount.get("is_email_verified"))) {
+            throw new IllegalArgumentException("카카오 계정 이메일 인증이 완료되지 않아 가입할 수 없습니다.");
         }
 
         Map<String, Object> profile = kakaoAccount.get("profile") instanceof Map

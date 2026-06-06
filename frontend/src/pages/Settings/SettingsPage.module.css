@@ -99,6 +99,30 @@
   gap: 12px;
 }
 
+.passwordNotice {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(124, 77, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(124, 77, 255, 0.07);
+}
+
+.passwordNotice strong {
+  color: #181331;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.passwordNotice p {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .passwordForm label,
 .withdrawForm label {
   display: grid;

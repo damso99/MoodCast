@@ -388,8 +388,6 @@ export const SignupPage = () => {
           }
         })
         .catch((err) => {
-          console.log(err);
-
           setFieldMessage((prev) => ({
             ...prev,
             email:
@@ -481,8 +479,6 @@ export const SignupPage = () => {
           }
         })
         .catch((err) => {
-          console.log(err);
-
           setFieldMessage((prev) => ({
             ...prev,
             nickname:
@@ -537,7 +533,6 @@ export const SignupPage = () => {
         showToast("success", res.data?.message || "이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
-        console.log(err);
         setEmailAuth(0);
         showToast(
           "error",
@@ -571,13 +566,11 @@ export const SignupPage = () => {
         authCode: signup.emailCode,
       })
       .then((res) => {
-        console.log(res);
         setEmailAuth(3);
         setEmailExpireTime(0);
         showToast("success", res.data?.message || "이메일 인증이 완료되었습니다.");
       })
       .catch((err) => {
-        console.log(err);
         setEmailAuth(1);
         showToast(
           "error",
@@ -642,7 +635,6 @@ export const SignupPage = () => {
         setMessage("");
       })
       .catch((err) => {
-        console.log(err);
         showToast(
           "error",
           getApiMessage(err, "입력한 기본 정보를 다시 확인해주세요."),
@@ -753,7 +745,7 @@ export const SignupPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오 또는 Google 간편가입을 이용해주세요.`);
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오, Google, 네이버 간편가입을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {

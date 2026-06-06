@@ -25,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -78,7 +79,6 @@ public class LoginService {
         int number = SECURE_RANDOM.nextInt(900000) + 100000;
         return String.valueOf(number);
     }
-    // Internal authentication and member-account workflow.
     private String checkPasswordInput(String password) {
         if (password == null || password.trim().isEmpty()) {
             throw new IllegalArgumentException("\uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
@@ -86,7 +86,6 @@ public class LoginService {
 
         return password;
     }
-    // Internal authentication and member-account workflow.
     private void checkNewPassword(String newPassword, String newPasswordConfirm) {
         if (newPassword == null || newPassword.trim().isEmpty()) {
             throw new IllegalArgumentException("\uC0C8 \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
@@ -104,7 +103,6 @@ public class LoginService {
             throw new IllegalArgumentException("\uC0C8 \uBE44\uBC00\uBC88\uD638\uAC00 \uC77C\uCE58\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.");
         }
     }
-    // Internal authentication and member-account workflow.
     public void checkLoginAllowed(Member member) {
         if ("SUSPENDED".equals(member.getStatus())) {
             throw buildAccountSuspendedException(member);
@@ -118,9 +116,6 @@ public class LoginService {
             throw new IllegalArgumentException("\uC774\uBA54\uC77C \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
         }
 
-        if (!Integer.valueOf(1).equals(member.getPhoneVerified())) {
-            throw new IllegalArgumentException("\uD734\uB300\uD3F0 \uC778\uC99D\uC774 \uC644\uB8CC\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4.");
-        }
     }
 
     /*
@@ -204,7 +199,6 @@ public class LoginService {
                 member.getCreatedAt()
         );
     }
-    // Internal authentication and member-account workflow.
     private void failLogin(String email) {
         loginAttemptRedisService.recordFailure(email);
 
@@ -245,7 +239,6 @@ public class LoginService {
 
         return issueLoginTokens(member);
     }
-    // Internal authentication and member-account workflow.
     public LoginResult issueLoginTokens(Member member) {
         if (member == null || member.getMemberId() == null) {
             throw new IllegalArgumentException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
@@ -296,7 +289,6 @@ public class LoginService {
 
         return getLoginMember(accessToken);
     }
-    // Internal authentication and member-account workflow.
     @Transactional
     public void changePassword(String authorizationHeader, PasswordChangeRequest request) {
         Long memberId = getMemberIdFromHeader(authorizationHeader);
@@ -346,7 +338,37 @@ public class LoginService {
         passwordHistoryDao.insertPasswordHistory(memberId, currentPasswordHash);
         refreshTokenRedisService.deleteAllRefreshTokens(memberId);
     }
-    // Internal authentication and member-account workflow.
+
+    @Transactional
+    public void setupPassword(String authorizationHeader, PasswordChangeRequest request) {
+        Long memberId = getMemberIdFromHeader(authorizationHeader);
+        Member member = loginDao.findMemberById(memberId);
+
+        if (member == null) {
+            throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
+        }
+
+        checkLoginAllowed(member);
+
+        if (request == null) {
+            throw new IllegalArgumentException("\uBE44\uBC00\uBC88\uD638 \uC124\uC815 \uC815\uBCF4\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.");
+        }
+
+        checkNewPassword(request.getNewPassword(), request.getNewPasswordConfirm());
+
+        String currentPasswordHash = loginDao.findPasswordHashByMemberId(memberId);
+        if (currentPasswordHash != null && !currentPasswordHash.trim().isEmpty()) {
+            throw new IllegalArgumentException("\uC774\uBBF8 \uBE44\uBC00\uBC88\uD638\uAC00 \uC124\uC815\uB41C \uACC4\uC815\uC785\uB2C8\uB2E4. \uBE44\uBC00\uBC88\uD638 \uBCC0\uACBD\uC744 \uC774\uC6A9\uD574\uC8FC\uC138\uC694.");
+        }
+
+        String newPasswordHash = passwordEncoder.encode(request.getNewPassword());
+        int updateResult = loginDao.updatePasswordHash(memberId, newPasswordHash);
+        if (updateResult != 1) {
+            throw new IllegalStateException("\uBE44\uBC00\uBC88\uD638 \uC124\uC815\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
+        }
+
+        refreshTokenRedisService.deleteAllRefreshTokens(memberId);
+    }
     @Transactional
     public EmailAuthSendResult sendWithdrawEmailAuthCode(String authorizationHeader, String clientIp) {
         String email = getLoginMemberEmail(authorizationHeader);
@@ -377,7 +399,6 @@ public class LoginService {
         String email = getLoginMemberEmail(authorizationHeader);
         checkWithdrawAuthCode(email, authCode);
     }
-    // Internal authentication and member-account workflow.
     @Transactional
     public void withdraw(String authorizationHeader, WithdrawRequest request) {
         Long memberId = getMemberIdFromHeader(authorizationHeader);
@@ -502,13 +523,11 @@ public class LoginService {
         long followingCount = loginDao.countFollowing(targetMemberId);
         long postCount = loginDao.countPosts(targetMemberId);
         long savedCount = loginDao.countSavedPosts(targetMemberId);
-    // Internal authentication and member-account workflow.
         long likes = loginDao.countPostLikes(targetMemberId);
         long comments = loginDao.countPostComments(targetMemberId);
         long saves = loginDao.countPostSaves(targetMemberId);
         long totalReactions = likes + comments + saves;
         int emotionEmpathyRate = totalReactions == 0 ? 0 : (int) Math.round((double) likes * 100 / totalReactions);
-    // Internal authentication and member-account workflow.
         long weeklyReactions = loginDao.countWeeklyPostReactions(targetMemberId);
 
         return new FollowCheckResponse(true, following, followerCount, followingCount, postCount, savedCount, emotionEmpathyRate, weeklyReactions);
@@ -567,31 +586,26 @@ public class LoginService {
         }
         return token;
     }
-    // Internal authentication and member-account workflow.
     public LoginResult refreshAccessToken(String refreshToken) {
-    // Internal authentication and member-account workflow.
         RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
         Long memberId = refreshTokenInfo.getMemberId();
         String tokenId = refreshTokenInfo.getTokenId();
-    // Internal authentication and member-account workflow.
         if (!refreshTokenRedisService.matchesRefreshToken(memberId, tokenId, refreshToken)) {
             throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
-    // Internal authentication and member-account workflow.
         Member member = loginDao.findMemberById(memberId);
         if (member == null) {
             throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
-    // Internal authentication and member-account workflow.
         checkLoginAllowed(member);
-    // Internal authentication and member-account workflow.
-        refreshTokenRedisService.deleteRefreshToken(memberId, tokenId);
-    // Internal authentication and member-account workflow.
+
+        // 여러 탭이 동시에 refresh해도 한쪽이 바로 튕기지 않도록 기존 토큰은 아주 짧게만 유지함
+        refreshTokenRedisService.expireRefreshTokenSoon(memberId, tokenId, Duration.ofSeconds(10));
+
+        // 새 로그인 세션 tokenId 생성
         String newTokenId = UUID.randomUUID().toString();
-    // Internal authentication and member-account workflow.
         String newAccessToken = jwtService.createAccessToken(member);
         String newRefreshToken = jwtService.createRefreshToken(member, newTokenId);
-    // Internal authentication and member-account workflow.
         refreshTokenRedisService.saveRefreshToken(
                 member.getMemberId(),
                 newTokenId,
@@ -607,10 +621,8 @@ public class LoginService {
                 loginMemberResponse
         );
     }
-    // Internal authentication and member-account workflow.
     public void logout(String refreshToken) {
         RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
         refreshTokenRedisService.deleteRefreshToken(refreshTokenInfo.getMemberId(), refreshTokenInfo.getTokenId());
     }
 }
-

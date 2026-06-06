@@ -9,6 +9,8 @@ const AppConfirmModal = ({
   cancelText = "취소",
   confirmText = "확인",
   confirmOnly = false,
+  confirmDisabled = false,
+  cancelDisabled = false,
   onCancel,
   onConfirm,
 }) => {
@@ -57,11 +59,21 @@ const AppConfirmModal = ({
 
         <div className={confirmOnly ? styles.singleAction : styles.actions}>
           {!confirmOnly ? (
-            <button type="button" className={styles.cancelButton} onClick={onCancel}>
+            <button
+              type="button"
+              className={styles.cancelButton}
+              onClick={onCancel}
+              disabled={cancelDisabled}
+            >
               {cancelText}
             </button>
           ) : null}
-          <button type="button" className={styles.confirmButton} onClick={onConfirm}>
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={onConfirm}
+            disabled={confirmDisabled}
+          >
             {confirmText}
           </button>
         </div>

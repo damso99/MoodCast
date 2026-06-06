@@ -183,18 +183,13 @@ export const LoginPage = () => {
       })
       .catch((err) => {
         const errorData = err?.response?.data;
-        const loginErrorMessage = getApiMessage(
-          err,
-          "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uD655\uC778\uD574\uC8FC\uC138\uC694.",
-        );
+        const loginErrorMessage = getApiMessage(err, "로그인 정보를 확인해주세요.");
 
         if (
           errorData?.code === "ACCOUNT_SUSPENDED" ||
-          loginErrorMessage.includes("\uC81C\uC7AC\uB41C \uACC4\uC815") ||
-          loginErrorMessage.includes("\uC815\uC9C0\uB41C \uACC4\uC815") ||
-          loginErrorMessage.includes(
-            "\uB85C\uADF8\uC778\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4",
-          )
+          loginErrorMessage.includes("제재된 계정") ||
+          loginErrorMessage.includes("정지된 계정") ||
+          loginErrorMessage.includes("로그인할 수 없습니다")
         ) {
           setSanctionModal({
             open: true,
@@ -211,10 +206,7 @@ export const LoginPage = () => {
   };
 
   const showReadyMessage = (label) => {
-    showToast(
-      "info",
-      `${label}\uC740 \uC544\uC9C1 \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4. \uD604\uC7AC\uB294 \uCE74\uCE74\uC624 \uB610\uB294 Google \uB85C\uADF8\uC778\uC744 \uC774\uC6A9\uD574\uC8FC\uC138\uC694.`,
-    );
+    showToast("info", `${label}은 아직 준비 중입니다. 현재는 카카오, Google, 네이버 로그인을 이용해주세요.`);
   };
 
   const handleKakaoLogin = () => {
@@ -260,6 +252,7 @@ export const LoginPage = () => {
         handleLogin={handleLogin}
         handleKakaoLogin={handleKakaoLogin}
         handleGoogleLogin={handleGoogleLogin}
+        handleNaverLogin={handleNaverLogin}
         showReadyMessage={showReadyMessage}
         goRecovery={goRecovery}
         goSignup={goSignup}

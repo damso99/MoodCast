@@ -2,9 +2,9 @@ server:
   port: ${PORT:8080}
 
 solapi:
-  api-key: ${SOLAPI_API_KEY}
-  api-secret: ${SOLAPI_API_SECRET}
-  sender-number: ${SOLAPI_SENDER_NUMBER}
+  api-key: ${SOLAPI_API_KEY:}
+  api-secret: ${SOLAPI_API_SECRET:}
+  sender-number: ${SOLAPI_SENDER_NUMBER:}
 
 jwt:
   secret: ${JWT_SECRET:moodcast-local-jwt-secret-key-2026-change-this-value}
