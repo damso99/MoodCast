@@ -74,10 +74,11 @@ export function DashboardEmotionActivityChart() {
         .then((res) => {
           setEmotionItems(Array.isArray(res.data?.items) ? res.data.items : []);
         })
-        .catch((error) => {
-          console.log(error);
-          setEmotionItems([]);
-          setHasError(true);
+        .catch(() => {
+          if (showLoading) {
+            setEmotionItems([]);
+            setHasError(true);
+          }
         })
         .finally(() => {
           if (showLoading) {

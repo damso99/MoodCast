@@ -123,13 +123,7 @@ export function UserManagementActionLogs({
         setAllLogs(nextLogs);
         setCurrentLogPage(1);
       })
-      .catch((error) => {
-        console.error("[ADMIN_ALL_ACTION_LOGS_ERROR]", {
-          endpoint: `${backserver}/admin/api/members/action-logs`,
-          status: error.response?.status,
-          response: error.response?.data,
-          message: error.message,
-        });
+      .catch(() => {
         setAllLogs([]);
         setAllLogsError(true);
       })

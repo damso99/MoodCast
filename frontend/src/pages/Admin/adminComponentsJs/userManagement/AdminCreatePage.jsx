@@ -115,15 +115,7 @@ export function AdminCreatePage() {
 
         setMembers(nextMembers);
       })
-      .catch((error) => {
-        console.error("[ADMIN_ROLE_SEARCH_ERROR]", {
-          endpoint: `${BACKSERVER}/admin/api/members/admin-promotion/search`,
-          searchType,
-          keywordLength: trimmedKeyword.length,
-          status: error.response?.status,
-          response: error.response?.data,
-          message: error.message,
-        });
+      .catch(() => {
         setMembers([]);
         setSearchError("회원 검색 중 문제가 발생했습니다.");
       })
@@ -213,7 +205,6 @@ export function AdminCreatePage() {
         setSelectedRole("SUPER_ADMIN");
       })
       .catch((error) => {
-        console.log(error);
         setRoleResultPopup({
           type: "error",
           title: "처리 실패",

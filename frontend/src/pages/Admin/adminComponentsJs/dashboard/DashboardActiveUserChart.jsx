@@ -6,77 +6,173 @@ import { SegmentedControl } from "../common/SegmentedControl";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/dashboard/DashboardActiveUserChart.module.css";
 
-// 화면에서 선택한 기간 이름을 백엔드 API가 사용하는 값으로 바꿔주는 표입니다.
-// 예: "주"를 누르면 API에는 period=week 값이 전달됩니다.
 const periodApiValue = {
   일: "day",
   주: "week",
   월: "month",
 };
 
-const DASHBOARD_POLLING_INTERVAL_MS = 10000;
-
-// 기간별 차트 설명입니다.
-// 일/주/월 모두 00시~23시 축을 유지해서 어느 시간대에 사용자가 몰리는지 확인할 수 있게 합니다.
 const periodDescription = {
   일: "오늘 00시부터 23시까지 시간대별 활성 사용자 수입니다.",
-  주: "최근 7일 동안 같은 시간대별 활성 사용자 수를 평균낸 데이터입니다.",
-  월: "최근 4주 동안 같은 시간대별 주 평균 활성 사용자 수를 평균낸 데이터입니다.",
+  주: "선택한 주의 월요일부터 일요일까지 일별 활성 사용자 수입니다.",
+  월: "선택한 연도의 1월부터 12월까지 월별 활성 사용자 수입니다.",
 };
 
-// SVG 차트의 기준 크기입니다.
-// 실제 화면에서는 CSS로 반응형 크기가 적용되고, SVG 내부 좌표만 이 값을 기준으로 계산합니다.
-const CHART_WIDTH = 760;
-const CHART_HEIGHT = 260;
-const CHART_PADDING = {
-  top: 28,
-  right: 34,
-  bottom: 46,
-  left: 46,
+const DASHBOARD_POLLING_INTERVAL_MS = 10000;
+
+const CHART_WIDTH = 780;
+const CHART_HEIGHT = 320;
+const CHART_LEFT = 72;
+const CHART_RIGHT = 728;
+const CHART_TOP = 44;
+const CHART_BOTTOM = 260;
+const CHART_LABEL_Y = 302;
+const TOOLTIP_WIDTH = 170;
+const TOOLTIP_HEIGHT = 88;
+const CHART_HOURS = [0, 4, 8, 12, 16, 20, 24];
+const DAY_END_DISPLAY_HOUR = 24;
+const DAY_END_SOURCE_HOUR = 23;
+const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
+const MONTH_LABELS = Array.from({ length: 12 }, (_, index) => `${index + 1}월`);
+const WEEKDAY_TOOLTIP_LABELS = {
+  월: "월요일",
+  화: "화요일",
+  수: "수요일",
+  목: "목요일",
+  금: "금요일",
+  토: "토요일",
+  일: "일요일",
 };
 
 const formatAverageValue = (value) => {
   const numberValue = Number(value ?? 0);
 
   if (Number.isInteger(numberValue)) {
-    return numberValue.toLocaleString();
+    return numberValue.toLocaleString("ko-KR");
   }
 
-  return numberValue.toLocaleString(undefined, {
+  return numberValue.toLocaleString("ko-KR", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
 };
 
-const buildEvenAxisLabels = (points) => {
-  const visibleLabels = points.filter((point) => point.shouldShowAxisLabel);
-  const graphWidth = CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
-  const lastVisibleIndex = Math.max(visibleLabels.length - 1, 1);
+const formatPercentage = (value, total) => {
+  if (!total) {
+    return "0.0%";
+  }
 
-  return visibleLabels.map((point, index) => ({
-    ...point,
-    x: CHART_PADDING.left + (graphWidth / lastVisibleIndex) * index,
+  return `${((Number(value || 0) / total) * 100).toFixed(1)}%`;
+};
+
+const formatHourTooltipLabel = (hour) => {
+  return `${String(hour).padStart(2, "0")}:00`;
+};
+
+const normalizeTooltipLabel = (label) => {
+  const text = String(label ?? "").trim();
+  const hourMatch = text.match(/^(\d{1,2})(?:시|:00)?$/);
+
+  if (hourMatch) {
+    return formatHourTooltipLabel(Number(hourMatch[1]));
+  }
+
+  return text || "-";
+};
+
+const normalizePeriodTooltipLabel = (label, period) => {
+  if (period === "일") {
+    return normalizeTooltipLabel(label);
+  }
+
+  if (period === "주") {
+    return WEEKDAY_TOOLTIP_LABELS[label] ?? label ?? "-";
+  }
+
+  return label || "-";
+};
+
+const getHourFromLabel = (label) => {
+  const text = String(label ?? "").trim();
+  const hourMatch = text.match(/^(\d{1,2})(?:시|:00)?$/);
+
+  if (!hourMatch) {
+    return null;
+  }
+
+  return Number(hourMatch[1]);
+};
+
+const buildFourHourChartItems = (items) => {
+  const valueByHour = new Map();
+
+  items.forEach((item) => {
+    const hour = getHourFromLabel(item.label);
+
+    if (hour === null) {
+      return;
+    }
+
+    valueByHour.set(hour, Number(item.activeUserCount ?? 0));
+  });
+
+  return CHART_HOURS.map((hour) => ({
+    label: `${String(hour).padStart(2, "0")}시`,
+    /*
+     * 24시는 DB에 실제로 저장되는 시간이 아니라 하루의 끝을 나타내는 화면 표시값입니다.
+     * 따라서 라벨은 24시로 유지하되, 값은 해당일 마지막 시간대인 23:00~23:59:59 데이터를 사용합니다.
+     */
+    activeUserCount:
+      hour === DAY_END_DISPLAY_HOUR
+        ? valueByHour.get(DAY_END_SOURCE_HOUR) ?? valueByHour.get(20) ?? 0
+        : valueByHour.get(hour) ?? 0,
   }));
 };
 
-/* ==========================================================================
+const buildFixedLabelChartItems = (items, labels) => {
+  const valueByLabel = new Map();
+
+  items.forEach((item) => {
+    const label = String(item.label ?? "").trim();
+
+    if (!label) {
+      return;
+    }
+
+    valueByLabel.set(label, Number(item.activeUserCount ?? 0));
+  });
+
+  return labels.map((label) => ({
+    label,
+    activeUserCount: valueByLabel.get(label) ?? 0,
+  }));
+};
+
+const buildChartItems = (items, period) => {
+  if (period === "일") {
+    return buildFourHourChartItems(items);
+  }
+
+  if (period === "주") {
+    return buildFixedLabelChartItems(items, WEEKDAY_LABELS);
+  }
+
+  return buildFixedLabelChartItems(items, MONTH_LABELS);
+};
+
+/*
  * 시간별 활성 사용자 차트
- * --------------------------------------------------------------------------
- * 백엔드에서 기간별로 계산한 시간대별 활성 사용자 데이터를 선형 차트로 보여줍니다.
- *
- * 초보자 설명:
- * - activePeriod는 "일 / 주 / 월" 중 현재 선택된 버튼입니다.
- * - activeUserItems는 백엔드에서 받은 차트 데이터 배열입니다.
- * - useMemo는 차트 좌표 계산처럼 값이 바뀔 때만 다시 계산해도 되는 작업에 사용합니다.
- * - SVG의 polyline은 여러 좌표를 선으로 연결해서 그래프 선을 그리는 태그입니다.
- * ========================================================================== */
+ * 데이터 조회 방식은 기존 /admin/api/dashboard/active-users API를 그대로 사용합니다.
+ * 아래 로직은 화면 좌표, hover tooltip, 보라색 라인/면적 디자인만 담당합니다.
+ */
 export function DashboardActiveUserChart() {
-  const [activePeriod, setActivePeriod] = useState("일"); // 현재 선택한 조회 기간입니다.
-  const [activeUserItems, setActiveUserItems] = useState([]); // 백엔드에서 받은 시간대별 활성 사용자 데이터입니다.
-  const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" }); // 기간 지정 조회에 사용할 시작일/종료일입니다.
-  const [isLoading, setIsLoading] = useState(false); // API 호출 중인지 표시합니다.
-  const [hasError, setHasError] = useState(false); // API 호출 실패 여부를 표시합니다.
-  const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
+  const [activePeriod, setActivePeriod] = useState("일");
+  const [activeUserItems, setActiveUserItems] = useState([]);
+  const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" });
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const { accessToken } = useAuthStore();
 
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
@@ -87,15 +183,11 @@ export function DashboardActiveUserChart() {
       return;
     }
 
-    /*
-     * 관리자 기능 담당 작업(문건우): 시간별 활성 사용자는 로그인 감사 로그 기반 값이라 새 로그인이 생기면 바뀝니다.
-     * 10초마다 같은 조건으로 API를 재조회해 차트를 갱신하고, 기간 조건이 바뀌면 이전 폴링을 정리한 뒤 새 폴링을 시작합니다.
-     * 자동 갱신 때마다 로딩 화면을 띄우면 차트가 깜빡이므로 첫 조회 때만 로딩 상태를 표시합니다.
-     */
     const fetchActiveUsers = ({ showLoading = false } = {}) => {
       if (showLoading) {
         setIsLoading(true);
       }
+
       setHasError(false);
 
       axios
@@ -104,7 +196,7 @@ export function DashboardActiveUserChart() {
             Authorization: `Bearer ${accessToken}`,
           },
           params: {
-            period: periodApiValue[activePeriod], // 선택 기간을 백엔드용 값으로 변환합니다.
+            period: periodApiValue[activePeriod],
             ...dateRange,
           },
         })
@@ -113,10 +205,11 @@ export function DashboardActiveUserChart() {
             Array.isArray(res.data?.items) ? res.data.items : [],
           );
         })
-        .catch((error) => {
-          console.log(error);
-          setActiveUserItems([]);
-          setHasError(true);
+        .catch(() => {
+          if (showLoading) {
+            setActiveUserItems([]);
+            setHasError(true);
+          }
         })
         .finally(() => {
           if (showLoading) {
@@ -138,76 +231,117 @@ export function DashboardActiveUserChart() {
   }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
   const chartData = useMemo(() => {
-    const graphWidth =
-      CHART_WIDTH - CHART_PADDING.left - CHART_PADDING.right;
-    const graphHeight =
-      CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom;
-    const rawMaxActiveUserCount = Math.max(
+    const chartWidth = CHART_RIGHT - CHART_LEFT;
+    const chartHeight = CHART_BOTTOM - CHART_TOP;
+    const chartItems = buildChartItems(activeUserItems, activePeriod);
+    const values = chartItems.map((item) =>
+      Number(item.activeUserCount ?? 0),
+    );
+    const rawMaxValue = Math.max(
       ...activeUserItems.map((item) => Number(item.activeUserCount ?? 0)),
       0,
     );
-    const hasData = rawMaxActiveUserCount > 0;
-    const maxActiveUserCount = hasData
-      ? Math.max(Math.ceil(rawMaxActiveUserCount / 4) * 4, 4)
-      : 4;
+    const displayMaxValue = Math.max(...values, 0);
+    const hasData = displayMaxValue > 0;
+    const maxValue = hasData ? Math.max(Math.ceil(displayMaxValue / 5) * 5 + 5, 5) : 5;
     const ySteps = hasData
-      ? [
-          maxActiveUserCount,
-          Math.round(maxActiveUserCount * 0.75),
-          Math.round(maxActiveUserCount * 0.5),
-          Math.round(maxActiveUserCount * 0.25),
-          0,
-        ]
-      : [4, 3, 2, 1, 0];
-    const lastIndex = Math.max(activeUserItems.length - 1, 1);
+      ? [maxValue, maxValue * 0.8, maxValue * 0.6, maxValue * 0.4, maxValue * 0.2, 0]
+      : [5, 4, 3, 2, 1, 0];
+    const lastIndex = Math.max(chartItems.length - 1, 1);
+    const totalValue = values.reduce((sum, value) => sum + value, 0);
 
-    // 백엔드 데이터를 SVG 좌표로 변환합니다.
-    // x는 항목 순서, y는 값의 크기에 따라 계산합니다.
-    const points = activeUserItems.map((item, index) => {
-      const activeUserCount = Number(item.activeUserCount ?? 0);
-      const x = CHART_PADDING.left + (graphWidth / lastIndex) * index;
-      const y =
-        CHART_PADDING.top +
-        graphHeight -
-        (activeUserCount / maxActiveUserCount) * graphHeight;
-      const shouldShowAxisLabel =
-        activeUserItems.length <= 10 ||
-        index % 3 === 0 ||
-        index === activeUserItems.length - 1;
+    const points = chartItems.map((item, index) => {
+      const value = Number(item.activeUserCount ?? 0);
+      const x =
+        chartItems.length === 1
+          ? (CHART_LEFT + CHART_RIGHT) / 2
+          : CHART_LEFT + (index / lastIndex) * chartWidth;
+      const y = hasData
+        ? CHART_BOTTOM - (value / maxValue) * chartHeight
+        : CHART_BOTTOM;
 
       return {
+        index,
         label: item.label,
-        activeUserCount,
-        shouldShowAxisLabel,
+        tooltipLabel: normalizePeriodTooltipLabel(item.label, activePeriod),
+        value,
         x,
         y,
+        percentage: formatPercentage(value, totalValue),
       };
     });
 
     const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
     const areaPoints =
       points.length > 0
-        ? `${CHART_PADDING.left},${CHART_HEIGHT - CHART_PADDING.bottom} ${linePoints} ${
-            CHART_WIDTH - CHART_PADDING.right
-          },${CHART_HEIGHT - CHART_PADDING.bottom}`
+        ? `${CHART_LEFT},${CHART_BOTTOM} ${linePoints} ${CHART_RIGHT},${CHART_BOTTOM}`
         : "";
 
     return {
       points,
-      axisLabels: buildEvenAxisLabels(points),
       linePoints,
       areaPoints,
-      maxActiveUserCount,
-      displayMaxActiveUserCount: rawMaxActiveUserCount,
       hasData,
+      maxValue,
       ySteps,
-      peakPoint: points.reduce(
-        (peak, point) =>
-          point.activeUserCount > peak.activeUserCount ? point : peak,
-        points[0] || { activeUserCount: 0 },
-      ),
+      totalValue,
+      maxDisplayValue: rawMaxValue,
     };
-  }, [activeUserItems]);
+  }, [activePeriod, activeUserItems]);
+
+  const activePoint = hoveredPoint;
+  const getYByValue = (value) =>
+    chartData.hasData
+      ? CHART_BOTTOM - (Number(value || 0) / chartData.maxValue) * (CHART_BOTTOM - CHART_TOP)
+      : CHART_BOTTOM;
+  const tooltipX = activePoint
+    ? Math.min(Math.max(activePoint.x - TOOLTIP_WIDTH / 2, 8), CHART_WIDTH - TOOLTIP_WIDTH - 8)
+    : 0;
+  const tooltipY = activePoint
+    ? Math.max(activePoint.y - TOOLTIP_HEIGHT - 38, 8)
+    : 0;
+  const updateLineHover = (event) => {
+    if (chartData.points.length === 0) {
+      return;
+    }
+
+    const svgRect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
+    const viewBoxX = ((event.clientX - svgRect.left) / svgRect.width) * CHART_WIDTH;
+    const boundedX = Math.min(Math.max(viewBoxX, CHART_LEFT), CHART_RIGHT);
+    const pointCount = chartData.points.length;
+    const rawIndex =
+      ((boundedX - CHART_LEFT) / (CHART_RIGHT - CHART_LEFT)) * (pointCount - 1);
+    const beforeIndex = Math.max(0, Math.floor(rawIndex));
+    const afterIndex = Math.min(pointCount - 1, Math.ceil(rawIndex));
+    const beforePoint = chartData.points[beforeIndex];
+    const afterPoint = chartData.points[afterIndex];
+    const ratio = afterIndex === beforeIndex ? 0 : rawIndex - beforeIndex;
+    const interpolatedValue =
+      beforePoint.value + (afterPoint.value - beforePoint.value) * ratio;
+    const nearestIndex = Math.min(
+      pointCount - 1,
+      Math.max(0, Math.round(rawIndex)),
+    );
+    const nearestPoint = chartData.points[nearestIndex];
+    const tooltipLabel =
+      activePeriod === "일"
+        ? formatHourTooltipLabel(
+            Math.round(
+              CHART_HOURS[0] +
+                ((boundedX - CHART_LEFT) / (CHART_RIGHT - CHART_LEFT)) * 24,
+            ),
+          )
+        : nearestPoint.tooltipLabel;
+
+    setHoveredPoint({
+      label: tooltipLabel,
+      tooltipLabel,
+      value: interpolatedValue,
+      x: boundedX,
+      y: getYByValue(interpolatedValue),
+      percentage: formatPercentage(interpolatedValue, chartData.totalValue),
+    });
+  };
 
   return (
     <section className={`${styles.panel} ${styles.widePanel}`}>
@@ -251,112 +385,138 @@ export function DashboardActiveUserChart() {
             className={styles.activeUserChart}
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
             role="img"
-            aria-label={`${activePeriod} 단위 시간대별 활성 사용자 차트`}
+            aria-label={`${activePeriod} 단위 시간별 활성 사용자 차트`}
+            onMouseLeave={() => setHoveredPoint(null)}
           >
-            {/* 차트 값을 비교하기 쉽도록 옅은 가로 기준선을 그립니다. */}
+            <defs>
+              <linearGradient id="dashboardActiveUserGradient" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="#7c4dff" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#7c4dff" stopOpacity="0.02" />
+              </linearGradient>
+            </defs>
+
             {chartData.ySteps.map((step, gridIndex) => {
               const y =
-                CHART_PADDING.top +
-                ((CHART_HEIGHT - CHART_PADDING.top - CHART_PADDING.bottom) /
-                  (chartData.ySteps.length - 1)) *
+                CHART_TOP +
+                ((CHART_BOTTOM - CHART_TOP) / (chartData.ySteps.length - 1)) *
                   gridIndex;
 
               return (
                 <g key={`${step}-${gridIndex}`}>
                   <line
                     className={styles.activeUserGridLine}
-                    x1={CHART_PADDING.left}
-                    x2={CHART_WIDTH - CHART_PADDING.right}
+                    x1={CHART_LEFT}
+                    x2={CHART_RIGHT}
                     y1={y}
                     y2={y}
                   />
-                  <text className={styles.activeUserYAxisLabel} x="14" y={y + 5}>
-                    {formatAverageValue(step)}
+                  <text className={styles.activeUserYAxisLabel} x="22" y={y + 5}>
+                    {formatAverageValue(Math.round(step))}
                   </text>
                 </g>
               );
             })}
 
-            {/* 선 아래 영역을 옅게 채워서 변화 흐름을 더 잘 보이게 합니다. */}
-            <polygon
-              className={styles.activeUserArea}
-              points={chartData.areaPoints}
-            />
+            {chartData.areaPoints ? (
+              <polygon
+                className={styles.activeUserArea}
+                points={chartData.areaPoints}
+                fill="url(#dashboardActiveUserGradient)"
+              />
+            ) : null}
 
-            {/* 실제 시간대별 활성 사용자 흐름을 나타내는 선입니다. */}
             <polyline
               className={styles.activeUserLine}
               points={chartData.linePoints}
             />
 
-            {/* 각 지점의 점, 값, 하단 시간 라벨을 표시합니다. */}
-            {chartData.hasData &&
-              chartData.points.map((point) => (
-                <g className={styles.activeUserPointGroup} key={point.label}>
-                  <line
-                    className={styles.activeUserHoverLine}
-                    x1={point.x}
-                    x2={point.x}
-                    y1={CHART_PADDING.top}
-                    y2={CHART_HEIGHT - CHART_PADDING.bottom}
-                  />
-                  <circle
-                    className={
-                      point === chartData.peakPoint
-                        ? styles.activeUserPeakPoint
-                        : styles.activeUserPoint
-                    }
-                    cx={point.x}
-                    cy={point.y}
-                    r={point === chartData.peakPoint ? 5 : 4}
-                  />
-                  <rect
-                    className={styles.activeUserHitArea}
-                    x={point.x - 24}
-                    y={CHART_PADDING.top - 12}
-                    width="48"
-                    height={
-                      CHART_HEIGHT -
-                      CHART_PADDING.top -
-                      CHART_PADDING.bottom +
-                      24
-                    }
-                  />
-                  <g className={styles.activeUserTooltip}>
-                    <rect
-                      x={Math.min(Math.max(point.x - 34, 8), CHART_WIDTH - 76)}
-                      y={Math.max(point.y - 31, 10)}
-                      width="68"
-                      height="20"
-                      rx="10"
-                    />
-                    <text
-                      x={Math.min(Math.max(point.x, 42), CHART_WIDTH - 42)}
-                      y={Math.max(point.y - 17, 24)}
-                    >
-                      {formatAverageValue(point.activeUserCount)}명
-                    </text>
-                  </g>
-                </g>
-              ))}
+            {chartData.points.map((point) => (
+              <g
+                className={styles.activeUserPointGroup}
+                key={`${point.label}-${point.index}`}
+              >
+                <line
+                  className={styles.activeUserHoverLine}
+                  x1={point.x}
+                  x2={point.x}
+                  y1={CHART_TOP}
+                  y2={CHART_BOTTOM}
+                />
+                <circle
+                  className={styles.activeUserPoint}
+                  cx={point.x}
+                  cy={point.y}
+                  r="4"
+                />
+                <text className={styles.activeUserValueLabel} x={point.x} y={Math.max(point.y - 14, 18)}>
+                  {formatAverageValue(point.value)}
+                </text>
+                <rect
+                  className={styles.activeUserHitArea}
+                  x={point.x - 24}
+                  y={CHART_TOP - 12}
+                  width="48"
+                  height={CHART_BOTTOM - CHART_TOP + 24}
+                />
+              </g>
+            ))}
 
-            {chartData.axisLabels.map((point) => (
-              <g key={`label-${point.label}`}>
+            <rect
+              className={styles.activeUserMoveArea}
+              x={CHART_LEFT}
+              y={CHART_TOP - 14}
+              width={CHART_RIGHT - CHART_LEFT}
+              height={CHART_BOTTOM - CHART_TOP + 28}
+              onMouseMove={updateLineHover}
+            />
+
+            {activePoint ? (
+              <g className={styles.activeUserOverlay}>
+                <line
+                  className={styles.activeUserActiveHoverLine}
+                  x1={activePoint.x}
+                  x2={activePoint.x}
+                  y1={CHART_TOP}
+                  y2={CHART_BOTTOM}
+                />
+                <circle
+                  className={styles.activeUserActivePoint}
+                  cx={activePoint.x}
+                  cy={activePoint.y}
+                  r="6"
+                />
+                <g
+                  className={styles.activeUserTooltip}
+                  style={{ opacity: 1 }}
+                  transform={`translate(${tooltipX} ${tooltipY})`}
+                >
+                  <rect width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} rx="14" />
+                  <text x={TOOLTIP_WIDTH / 2} y="26">{activePoint.tooltipLabel}</text>
+                  <text className={styles.activeUserTooltipValue} x={TOOLTIP_WIDTH / 2} y="53">
+                    {formatAverageValue(activePoint.value)}명
+                  </text>
+                  <text className={styles.activeUserTooltipSubtext} x={TOOLTIP_WIDTH / 2} y="73">
+                    전체 대비 {activePoint.percentage}
+                  </text>
+                </g>
+              </g>
+            ) : null}
+
+            {chartData.points.map((point) => (
                 <text
                   className={styles.activeUserAxisLabel}
+                  key={`label-${point.label}-${point.index}`}
                   x={point.x}
-                  y={CHART_HEIGHT - 18}
-                  textAnchor="middle"
+                  y={CHART_LABEL_Y}
                 >
                   {point.label}
                 </text>
-              </g>
-            ))}
+              ))}
           </svg>
 
           <p className={styles.activeUserChartSummary}>
-            최고 시간대 활성 사용자{" "}
-            <strong>{formatAverageValue(chartData.displayMaxActiveUserCount)}</strong>
+            최고 구간 활성 사용자{" "}
+            <strong>{formatAverageValue(chartData.maxDisplayValue)}</strong>
             명
           </p>
         </div>
