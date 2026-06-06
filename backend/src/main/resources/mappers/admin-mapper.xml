@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
@@ -1276,93 +1276,51 @@
                     union all
                     select day_index + 1
                     from day_numbers
-                    where day_index &lt; datediff(#{endDate}, #{startDate})
+                    where day_index &lt; 6
                 ),
-                hour_numbers(hour_index) as (
-                    select 0
-                    union all
-                    select hour_index + 1
-                    from hour_numbers
-                    where hour_index &lt; 23
-                ),
-                day_hour_slots as (
+                day_slots as (
                     select
-                        date_add(#{startDate}, interval d.day_index day) as slot_date,
-                        h.hour_index
+                        day_index,
+                        date_add(#{startDate}, interval day_index day) as slot_date
                     from day_numbers d
-                    cross join hour_numbers h
-                ),
-                hourly_counts as (
-                    select
-                        s.slot_date,
-                        s.hour_index,
-                        count(distinct l.member_id) as hourly_active_count
-                    from day_hour_slots s
-                    left join login_audit_logs l
-                      on l.success = 1
-                     and l.member_id is not null
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(s.slot_date, interval s.hour_index hour)
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(s.slot_date, interval (s.hour_index + 1) hour)
-                    group by s.slot_date, s.hour_index
                 )
                 select
-                    concat(lpad(hour_index, 2, '0'), '시') as label,
-                    round(avg(hourly_active_count), 1) as active_user_count
-                from hourly_counts
-                group by hour_index
-                order by hour_index
+                    elt(s.day_index + 1, '월', '화', '수', '목', '금', '토', '일') as label,
+                    cast(count(distinct l.member_id) as decimal(10, 1)) as active_user_count
+                from day_slots s
+                left join login_audit_logs l
+                  on l.success = 1
+                 and l.member_id is not null
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= s.slot_date
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(s.slot_date, interval 1 day)
+                group by s.day_index
+                order by s.day_index
             </when>
             <when test="period == 'month'">
-                with recursive day_numbers(day_index) as (
-                    select 0
+                with recursive month_numbers(month_index) as (
+                    select 1
                     union all
-                    select day_index + 1
-                    from day_numbers
-                    where day_index &lt; datediff(#{endDate}, #{startDate})
+                    select month_index + 1
+                    from month_numbers
+                    where month_index &lt; 12
                 ),
-                hour_numbers(hour_index) as (
-                    select 0
-                    union all
-                    select hour_index + 1
-                    from hour_numbers
-                    where hour_index &lt; 23
-                ),
-                day_hour_slots as (
+                month_slots as (
                     select
-                        floor(d.day_index / 7) + 1 as week_index,
-                        date_add(#{startDate}, interval d.day_index day) as slot_date,
-                        h.hour_index
-                    from day_numbers d
-                    cross join hour_numbers h
-                ),
-                hourly_counts as (
-                    select
-                        s.week_index,
-                        s.slot_date,
-                        s.hour_index,
-                        count(distinct l.member_id) as hourly_active_count
-                    from day_hour_slots s
-                    left join login_audit_logs l
-                      on l.success = 1
-                     and l.member_id is not null
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= date_add(s.slot_date, interval s.hour_index hour)
-                     and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(s.slot_date, interval (s.hour_index + 1) hour)
-                    group by s.week_index, s.slot_date, s.hour_index
-                ),
-                weekly_hour_averages as (
-                    select
-                        week_index,
-                        hour_index,
-                        avg(hourly_active_count) as weekly_hour_average_count
-                    from hourly_counts
-                    group by week_index, hour_index
+                        month_index,
+                        str_to_date(concat(year(#{startDate}), '-', lpad(month_index, 2, '0'), '-01'), '%Y-%m-%d') as month_start
+                    from month_numbers
                 )
                 select
-                    concat(lpad(hour_index, 2, '0'), '시') as label,
-                    round(avg(weekly_hour_average_count), 1) as active_user_count
-                from weekly_hour_averages
-                group by hour_index
-                order by hour_index
+                    concat(s.month_index, '월') as label,
+                    cast(count(distinct l.member_id) as decimal(10, 1)) as active_user_count
+                from month_slots s
+                left join login_audit_logs l
+                  on l.success = 1
+                 and l.member_id is not null
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &gt;= s.month_start
+                 and CONVERT_TZ(l.created_at, '+00:00', '+09:00') &lt; date_add(s.month_start, interval 1 month)
+                group by s.month_index
+                order by s.month_index
             </when>
             <otherwise>
                 with recursive hour_numbers(hour_index) as (
@@ -1634,10 +1592,10 @@
                     union all
                     select day_index + 1
                     from day_numbers
-                    where day_index &lt; datediff(#{endDate}, #{startDate})
+                    where day_index &lt; 6
                 )
                 select
-                    date_format(date_add(#{startDate}, interval d.day_index day), '%m/%d') as label,
+                    elt(d.day_index + 1, '월', '화', '수', '목', '금', '토', '일') as label,
                     count(m.member_id) as value
                 from day_numbers d
                 left join members m
@@ -1647,29 +1605,28 @@
                 order by d.day_index
             </when>
             <when test="period == 'month'">
-                with recursive day_numbers(day_index) as (
-                    select 0
+                with recursive month_numbers(month_index) as (
+                    select 1
                     union all
-                    select day_index + 1
-                    from day_numbers
-                    where day_index &lt; datediff(#{endDate}, #{startDate})
+                    select month_index + 1
+                    from month_numbers
+                    where month_index &lt; 12
                 ),
-                week_numbers(week_index) as (
-                    select 0
-                    union all
-                    select week_index + 1
-                    from week_numbers
-                    where week_index &lt; floor(datediff(#{endDate}, #{startDate}) / 7)
+                month_slots as (
+                    select
+                        month_index,
+                        str_to_date(concat(year(#{startDate}), '-', lpad(month_index, 2, '0'), '-01'), '%Y-%m-%d') as month_start
+                    from month_numbers
                 )
                 select
-                    concat(week_index + 1, CHAR(51452, 52264 USING utf8mb4)) as label,
+                    concat(s.month_index, '월') as label,
                     count(m.member_id) as value
-                from week_numbers
+                from month_slots s
                 left join members m
-                  on m.created_at &gt;= date_add(#{startDate}, interval (week_index * 7) day)
-                 and m.created_at &lt; least(date_add(#{startDate}, interval ((week_index + 1) * 7) day), date_add(#{endDate}, interval 1 day))
-                group by week_index
-                order by week_index
+                  on m.created_at &gt;= s.month_start
+                 and m.created_at &lt; date_add(s.month_start, interval 1 month)
+                group by s.month_index
+                order by s.month_index
             </when>
             <otherwise>
                 with recursive hour_numbers(hour_index) as (

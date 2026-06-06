@@ -64,8 +64,7 @@ export function NoticeManagementPage() {
     try {
       const nextNotices = await fetchAdminNotices(accessToken, "all");
       setNotices(nextNotices);
-    } catch (error) {
-      console.error("[ADMIN_NOTICE_LIST_ERROR]", error);
+    } catch {
       setErrorMessage("공지사항 목록을 불러오지 못했습니다.");
     } finally {
       setIsLoading(false);
@@ -356,8 +355,7 @@ export function NoticeManagementPage() {
 
       resetForm();
       await loadNoticeList();
-    } catch (error) {
-      console.error("[ADMIN_NOTICE_SAVE_ERROR]", error);
+    } catch {
       setNoticeResultPopup({
         title: "처리 실패",
         message: "공지사항 저장 중 문제가 발생했습니다.",
@@ -403,8 +401,11 @@ export function NoticeManagementPage() {
       if (openedNotice?.id === noticeId) {
         setOpenedNotice(null);
       }
-    } catch (error) {
-      console.error("[ADMIN_NOTICE_DELETE_ERROR]", error);
+    } catch {
+      setNoticeResultPopup({
+        title: "처리 실패",
+        message: "공지사항 삭제 중 문제가 발생했습니다.",
+      });
     }
   };
 

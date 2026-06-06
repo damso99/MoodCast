@@ -38,7 +38,7 @@
 .activeUserChartBox {
   display: grid;
   gap: 10px;
-  padding: 20px;
+  padding: 16px 18px 14px;
   border: 1px solid rgba(124, 77, 255, 0.11);
   border-radius: 16px;
   background: #fff;
@@ -47,7 +47,8 @@
 .activeUserChart {
   display: block;
   width: 100%;
-  min-height: 260px;
+  min-height: 255px;
+  overflow: visible;
 }
 
 .activeUserChartDescription {
@@ -58,51 +59,49 @@
 }
 
 .activeUserGridLine {
-  stroke: rgba(148, 163, 184, 0.32);
+  stroke: rgba(148, 163, 184, 0.26);
   stroke-width: 1;
-  stroke-dasharray: 5 5;
+  stroke-dasharray: 5 7;
   vector-effect: non-scaling-stroke;
 }
 
 .activeUserArea {
-  fill: transparent;
+  pointer-events: none;
 }
 
 .activeUserLine {
   fill: none;
-  stroke: #3293ff;
-  stroke-width: 2;
+  stroke: #6f2cff;
+  stroke-width: 2.3;
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
 .activeUserPoint {
-  fill: #fff;
-  opacity: 0;
-  stroke: #3293ff;
-  stroke-width: 2;
+  fill: #6f2cff;
+  stroke: #6f2cff;
+  stroke-width: 1.8;
   vector-effect: non-scaling-stroke;
-}
-
-.activeUserPeakPoint {
-  fill: #3293ff;
-  stroke: #fff;
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 3px 6px rgba(111, 44, 255, 0.26));
 }
 
 .activeUserHoverLine {
   opacity: 0;
-  stroke: rgba(50, 147, 255, 0.45);
-  stroke-dasharray: 2 2;
-  stroke-width: 0.9;
+  stroke: rgba(111, 44, 255, 0.34);
+  stroke-dasharray: 4 4;
+  stroke-width: 1.1;
   vector-effect: non-scaling-stroke;
 }
 
 .activeUserHitArea {
   fill: transparent;
-  cursor: pointer;
+  cursor: default;
+}
+
+.activeUserMoveArea {
+  fill: transparent;
+  cursor: default;
 }
 
 .activeUserTooltip {
@@ -113,36 +112,66 @@
 
 .activeUserTooltip rect {
   fill: #111827;
+  filter: drop-shadow(0 12px 24px rgba(15, 23, 42, 0.2));
 }
 
 .activeUserTooltip text {
   fill: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+.activeUserTooltipValue {
+  font-size: 17px;
+}
+
+.activeUserTooltipSubtext {
+  fill: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+}
+
+.activeUserValueLabel {
+  fill: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+.activeUserOverlay {
+  pointer-events: none;
+}
+
+.activeUserActiveHoverLine {
+  stroke: rgba(111, 44, 255, 0.4);
+  stroke-dasharray: 4 4;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.activeUserActivePoint {
+  fill: #6f2cff;
+  stroke: #fff;
+  stroke-width: 3;
+  filter: drop-shadow(0 6px 12px rgba(111, 44, 255, 0.34));
+}
+
+.activeUserPointGroup:hover .activeUserHoverLine {
+  opacity: 1;
+}
+
+.activeUserAxisLabel {
+  fill: #334155;
   font-size: 12px;
   font-weight: 900;
   text-anchor: middle;
 }
 
-.activeUserPointGroup:hover .activeUserPoint,
-.activeUserPointGroup:hover .activeUserHoverLine,
-.activeUserPointGroup:hover .activeUserTooltip {
-  opacity: 1;
-}
-
-.activeUserPointGroup:hover .activeUserPeakPoint {
-  fill: #3293ff;
-}
-
-.activeUserAxisLabel {
-  fill: #6b7280;
-  font-size: 14px;
-  font-weight: 800;
-  text-anchor: middle;
-}
-
 .activeUserYAxisLabel {
-  fill: #6b7280;
-  font-size: 12px;
-  font-weight: 700;
+  fill: #334155;
+  font-size: 11px;
+  font-weight: 800;
   dominant-baseline: middle;
 }
 
@@ -155,5 +184,5 @@
 }
 
 .activeUserChartSummary strong {
-  color: #2f7efb;
+  color: #6f2cff;
 }

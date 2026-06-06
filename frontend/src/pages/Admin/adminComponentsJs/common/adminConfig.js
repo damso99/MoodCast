@@ -1,4 +1,4 @@
-﻿import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
+import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import GppMaybeOutlinedIcon from "@mui/icons-material/GppMaybeOutlined";

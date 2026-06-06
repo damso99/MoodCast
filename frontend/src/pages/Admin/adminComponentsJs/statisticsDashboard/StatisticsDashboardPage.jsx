@@ -22,10 +22,27 @@ import styles from "../../adminComponentsCss/statisticsDashboard/StatisticsDashb
 const chartWidth = 760;
 const chartHeight = 260;
 const chartPadding = {
-  top: 28,
-  right: 34,
-  bottom: 46,
-  left: 46,
+  top: 44,
+  right: 32,
+  bottom: 58,
+  left: 62,
+};
+
+const chartTooltipWidth = 150;
+const chartTooltipHeight = 78;
+const chartHours = [0, 4, 8, 12, 16, 20, 24];
+const dayEndDisplayHour = 24;
+const dayEndSourceHour = 23;
+const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
+const monthLabels = Array.from({ length: 12 }, (_, index) => `${index + 1}월`);
+const weekdayTooltipLabels = {
+  월: "월요일",
+  화: "화요일",
+  수: "수요일",
+  목: "목요일",
+  금: "금요일",
+  토: "토요일",
+  일: "일요일",
 };
 
 const periodOptions = [
@@ -70,6 +87,10 @@ function formatNumber(value) {
   return Number(value || 0).toLocaleString();
 }
 
+function formatChartValue(value) {
+  return formatNumber(Math.round(Number(value || 0)));
+}
+
 function readTrendValue(item) {
   return Number(
     item?.value ??
@@ -86,7 +107,157 @@ function getCurrentPeriodOption(selectedLabel) {
   return periodOptions.find((option) => option.label === selectedLabel) || periodOptions[0];
 }
 
-function buildLineChartPoints(items) {
+function formatPercentage(value, total) {
+  if (!total) {
+    return "0.0%";
+  }
+
+  return `${((Number(value || 0) / total) * 100).toFixed(1)}%`;
+}
+
+function formatHourTooltipLabel(hour) {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function getHourFromLabel(label) {
+  const text = String(label ?? "").trim();
+  const hourMatch = text.match(/^(\d{1,2})(?:시|:00)?$/);
+
+  if (!hourMatch) {
+    return null;
+  }
+
+  return Number(hourMatch[1]);
+}
+
+function buildFourHourTrendItems(items) {
+  const valueByHour = new Map();
+
+  items.forEach((item) => {
+    const hour = getHourFromLabel(item.label);
+
+    if (hour === null) {
+      return;
+    }
+
+    valueByHour.set(hour, readTrendValue(item));
+  });
+
+  return chartHours.map((hour) => ({
+    label: `${String(hour).padStart(2, "0")}시`,
+    /*
+     * 24시는 실제 저장 시각이 아니라 하루 끝을 보여주는 라벨입니다.
+     * 화면에는 24시로 표시하고, 값은 해당일 마지막 시각인 23:59:59가 포함되는 23시 데이터를 사용합니다.
+     */
+    value:
+      hour === dayEndDisplayHour
+        ? valueByHour.get(dayEndSourceHour) ?? valueByHour.get(20) ?? 0
+        : valueByHour.get(hour) ?? 0,
+  }));
+}
+
+function buildFixedLabelTrendItems(items, labels) {
+  const valueByLabel = new Map();
+
+  items.forEach((item) => {
+    const label = String(item.label ?? "").trim();
+
+    if (!label) {
+      return;
+    }
+
+    valueByLabel.set(label, readTrendValue(item));
+  });
+
+  return labels.map((label) => ({
+    label,
+    value: valueByLabel.get(label) ?? 0,
+  }));
+}
+
+function buildPeriodTrendItems(items, periodLabel) {
+  if (periodLabel === "주") {
+    return buildFixedLabelTrendItems(items, weekdayLabels);
+  }
+
+  if (periodLabel === "월") {
+    return buildFixedLabelTrendItems(items, monthLabels);
+  }
+
+  return buildFourHourTrendItems(items);
+}
+
+function formatPeriodTooltipLabel(label, periodLabel) {
+  if (periodLabel === "주") {
+    return weekdayTooltipLabels[label] ?? label ?? "-";
+  }
+
+  if (periodLabel === "월") {
+    return label || "-";
+  }
+
+  const hour = getHourFromLabel(label);
+
+  return hour === null ? label || "-" : formatHourTooltipLabel(hour);
+}
+
+function formatDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function buildPreviousYearRange(range) {
+  if (!range.startDate || !range.endDate) {
+    return null;
+  }
+
+  const currentStart = new Date(`${range.startDate}T00:00:00`);
+
+  if (Number.isNaN(currentStart.getTime())) {
+    return null;
+  }
+
+  const previousYear = currentStart.getFullYear() - 1;
+  const previousYearStart = new Date(previousYear, 0, 1);
+  const previousYearEnd = new Date(previousYear, 11, 31);
+
+  return {
+    startDate: formatDateInputValue(previousYearStart),
+    endDate: formatDateInputValue(previousYearEnd),
+  };
+}
+
+function calculateGrowthRate(currentValue, previousValue) {
+  const current = Number(currentValue || 0);
+  const previous = Number(previousValue || 0);
+
+  if (previous === 0) {
+    return current > 0 ? 100 : 0;
+  }
+
+  return Math.round(((current - previous) / previous) * 1000) / 10;
+}
+
+function formatGrowthRate(value) {
+  if (value === null || value === undefined) {
+    return "전년 데이터 없음";
+  }
+
+  if (value > 0) {
+    return `전년 대비 +${value}%`;
+  }
+
+  if (value < 0) {
+    return `전년 대비 ${value}%`;
+  }
+
+  return "전년 대비 0%";
+}
+
+function buildLineChartPoints(items, periodLabel) {
   /*
    * SVG 선 그래프 좌표 계산
    * ------------------------------------------------------------------------
@@ -97,31 +268,39 @@ function buildLineChartPoints(items) {
    */
   const graphWidth = chartWidth - chartPadding.left - chartPadding.right;
   const graphHeight = chartHeight - chartPadding.top - chartPadding.bottom;
-  const values = items.map((item) => Number(item.value || item.activeUserCount || 0));
+  const chartItems = buildPeriodTrendItems(items, periodLabel);
+  const values = chartItems.map((item) => Number(item.value || 0));
   const rawMaxValue = Math.max(...values, 0);
   const hasData = rawMaxValue > 0;
-  const maxValue = hasData ? Math.max(Math.ceil(rawMaxValue / 4) * 4, 4) : 4;
+  const maxValue = hasData ? Math.max(Math.ceil(rawMaxValue / 5) * 5 + 5, 5) : 5;
   const ySteps = hasData
     ? [
         maxValue,
-        Math.round(maxValue * 0.75),
-        Math.round(maxValue * 0.5),
-        Math.round(maxValue * 0.25),
+        maxValue * 0.8,
+        maxValue * 0.6,
+        maxValue * 0.4,
+        maxValue * 0.2,
         0,
       ]
-    : [4, 3, 2, 1, 0];
-  const lastIndex = Math.max(items.length - 1, 1);
+    : [5, 4, 3, 2, 1, 0];
+  const lastIndex = Math.max(chartItems.length - 1, 1);
+  const totalValue = values.reduce((sum, value) => sum + value, 0);
 
-  const points = items.map((item, index) => {
-    const value = Number(item.value || item.activeUserCount || 0);
+  const points = chartItems.map((item, index) => {
+    const value = Number(item.value || 0);
     const x = chartPadding.left + (graphWidth / lastIndex) * index;
-    const y = chartPadding.top + graphHeight - (value / maxValue) * graphHeight;
+    const y = hasData
+      ? chartPadding.top + graphHeight - (value / maxValue) * graphHeight
+      : chartPadding.top + graphHeight;
 
     return {
+      index,
       x,
       y,
       label: item.label,
+      tooltipLabel: formatPeriodTooltipLabel(item.label, periodLabel),
       value,
+      percentage: formatPercentage(value, totalValue),
     };
   });
 
@@ -129,29 +308,15 @@ function buildLineChartPoints(items) {
     hasData,
     maxValue,
     ySteps,
+    totalValue,
     points,
-    peakPoint: points.reduce(
-      (peak, point) => (point.value > peak.value ? point : peak),
-      points[0] || { value: 0 },
-    ),
   };
 }
 
-function PreviewLineChart({ items, color, emptyLabel }) {
-  const chart = buildLineChartPoints(items);
+function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = "일", unit = "" }) {
+  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const chart = buildLineChartPoints(items, periodLabel);
   const points = chart.points;
-  const visibleAxisPoints = points.filter(
-    (_, index) => points.length <= 8 || index % 3 === 0 || index === points.length - 1,
-  );
-  const evenAxisPoints = visibleAxisPoints.map((point, index) => {
-    const graphWidth = chartWidth - chartPadding.left - chartPadding.right;
-    const lastVisibleIndex = Math.max(visibleAxisPoints.length - 1, 1);
-
-    return {
-      ...point,
-      x: chartPadding.left + (graphWidth / lastVisibleIndex) * index,
-    };
-  });
   const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
   const areaPoints =
     points.length > 0
@@ -159,8 +324,70 @@ function PreviewLineChart({ items, color, emptyLabel }) {
           chartWidth - chartPadding.right
         },${chartHeight - chartPadding.bottom}`
       : "";
+  const activePoint = hoveredPoint;
+  const getYByValue = (value) => {
+    if (!chart.hasData) {
+      return chartHeight - chartPadding.bottom;
+    }
 
-  if (items.length === 0) {
+    const graphHeight = chartHeight - chartPadding.top - chartPadding.bottom;
+
+    return chartPadding.top + graphHeight - (Number(value || 0) / chart.maxValue) * graphHeight;
+  };
+  const tooltipX = activePoint
+    ? Math.min(
+        Math.max(activePoint.x - chartTooltipWidth / 2, 8),
+        chartWidth - chartTooltipWidth - 8,
+      )
+    : 0;
+  const tooltipY = activePoint
+    ? Math.max(activePoint.y - chartTooltipHeight - 34, 8)
+    : 0;
+  const updateLineHover = (event) => {
+    if (points.length === 0) {
+      return;
+    }
+
+    const svgRect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
+    const viewBoxX = ((event.clientX - svgRect.left) / svgRect.width) * chartWidth;
+    const boundedX = Math.min(
+      Math.max(viewBoxX, chartPadding.left),
+      chartWidth - chartPadding.right,
+    );
+    const rawIndex =
+      ((boundedX - chartPadding.left) /
+        (chartWidth - chartPadding.left - chartPadding.right)) *
+      (points.length - 1);
+    const beforeIndex = Math.max(0, Math.floor(rawIndex));
+    const afterIndex = Math.min(points.length - 1, Math.ceil(rawIndex));
+    const beforePoint = points[beforeIndex];
+    const afterPoint = points[afterIndex];
+    const ratio = afterIndex === beforeIndex ? 0 : rawIndex - beforeIndex;
+    const interpolatedValue =
+      beforePoint.value + (afterPoint.value - beforePoint.value) * ratio;
+    const nearestIndex = Math.min(points.length - 1, Math.max(0, Math.round(rawIndex)));
+    const nearestPoint = points[nearestIndex];
+    const tooltipLabel =
+      periodLabel === "일"
+        ? formatHourTooltipLabel(
+            Math.round(
+              ((boundedX - chartPadding.left) /
+                (chartWidth - chartPadding.left - chartPadding.right)) *
+                24,
+            ),
+          )
+        : nearestPoint.tooltipLabel;
+
+    setHoveredPoint({
+      tooltipLabel,
+      value: interpolatedValue,
+      x: boundedX,
+      y: getYByValue(interpolatedValue),
+      percentage: formatPercentage(interpolatedValue, chart.totalValue),
+    });
+  };
+
+  if (points.length === 0) {
     return <div className={styles.emptyChartState}>{emptyLabel}</div>;
   }
 
@@ -171,7 +398,14 @@ function PreviewLineChart({ items, color, emptyLabel }) {
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         role="img"
         aria-label="통계 선 그래프"
+        onMouseLeave={() => setHoveredPoint(null)}
       >
+        <defs>
+          <linearGradient id="statisticsLineChartGradient" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
         {chart.ySteps.map((step, gridIndex) => {
           const y =
             chartPadding.top +
@@ -189,26 +423,21 @@ function PreviewLineChart({ items, color, emptyLabel }) {
                 y2={y}
               />
               <text className={styles.chartYAxisLabel} x="14" y={y + 5}>
-                {formatNumber(step)}
+                {formatNumber(Math.round(step))}
               </text>
             </g>
           );
         })}
 
-        <polygon
-          className={styles.chartArea}
-          points={areaPoints}
-          style={{ fill: `${color}18` }}
-        />
+        <polygon className={styles.chartArea} points={areaPoints} fill="url(#statisticsLineChartGradient)" />
         <polyline
           className={styles.chartLine}
           points={linePoints}
-          style={{ stroke: color || "#3293ff" }}
+          style={{ stroke: color }}
         />
 
         {points.map((point, index) => (
             <g key={`${point.label}-${index}`}>
-              {chart.hasData && (
                 <g className={styles.chartPointGroup}>
                   <line
                     className={styles.chartHoverLine}
@@ -218,13 +447,18 @@ function PreviewLineChart({ items, color, emptyLabel }) {
                     y2={chartHeight - chartPadding.bottom}
                   />
                   <circle
-                    className={
-                      point === chart.peakPoint ? styles.peakPoint : styles.chartPoint
-                    }
+                    className={styles.chartPoint}
                     cx={point.x}
                     cy={point.y}
-                    r={point === chart.peakPoint ? 5 : 4}
+                    r="4"
                   />
+                  <text
+                    className={styles.chartValueLabel}
+                    x={point.x}
+                    y={Math.max(point.y - 14, 18)}
+                  >
+                    {formatChartValue(point.value)}
+                  </text>
                   <rect
                     className={styles.chartHitArea}
                     x={point.x - 24}
@@ -232,31 +466,58 @@ function PreviewLineChart({ items, color, emptyLabel }) {
                     width="48"
                     height={chartHeight - chartPadding.top - chartPadding.bottom + 24}
                   />
-                  <g className={styles.chartTooltip}>
-                    <rect
-                      x={Math.min(Math.max(point.x - 30, 8), chartWidth - 68)}
-                      y={Math.max(point.y - 31, 10)}
-                      width="60"
-                      height="20"
-                      rx="10"
-                    />
-                    <text
-                      x={Math.min(Math.max(point.x, 38), chartWidth - 38)}
-                      y={Math.max(point.y - 17, 24)}
-                    >
-                      {formatNumber(point.value)}
-                    </text>
-                  </g>
                 </g>
-              )}
             </g>
         ))}
-        {evenAxisPoints.map((point) => (
+
+        <rect
+          className={styles.chartMoveArea}
+          x={chartPadding.left}
+          y={chartPadding.top - 14}
+          width={chartWidth - chartPadding.left - chartPadding.right}
+          height={chartHeight - chartPadding.top - chartPadding.bottom + 28}
+          onMouseMove={updateLineHover}
+        />
+
+        {activePoint ? (
+          <g className={styles.chartOverlay}>
+            <line
+              className={styles.chartActiveHoverLine}
+              x1={activePoint.x}
+              x2={activePoint.x}
+              y1={chartPadding.top}
+              y2={chartHeight - chartPadding.bottom}
+            />
+            <circle
+              className={styles.chartActivePoint}
+              cx={activePoint.x}
+              cy={activePoint.y}
+              r="6"
+            />
+            <g
+              className={styles.chartTooltip}
+              style={{ opacity: 1 }}
+              transform={`translate(${tooltipX} ${tooltipY})`}
+            >
+              <rect width={chartTooltipWidth} height={chartTooltipHeight} rx="14" />
+              <text x={chartTooltipWidth / 2} y="24">{activePoint.tooltipLabel}</text>
+              <text className={styles.chartTooltipValue} x={chartTooltipWidth / 2} y="48">
+                {formatChartValue(activePoint.value)}
+                {unit}
+              </text>
+              <text className={styles.chartTooltipSubtext} x={chartTooltipWidth / 2} y="66">
+                전체 대비 {activePoint.percentage}
+              </text>
+            </g>
+          </g>
+        ) : null}
+
+        {points.map((point) => (
           <text
             className={styles.chartAxisLabel}
-            key={`label-${point.label}`}
+            key={`label-${point.label}-${point.index}`}
             x={point.x}
-            y={chartHeight - 8}
+            y={chartHeight - 16}
             textAnchor="middle"
           >
             {point.label}
@@ -267,7 +528,6 @@ function PreviewLineChart({ items, color, emptyLabel }) {
     </div>
   );
 }
-
 function PreviewBarChart({ items, maxRows }) {
   const displayItems = items
     .filter((item) => String(item.label || "").trim())
@@ -332,6 +592,11 @@ function ChartCard({ title, description, loading, children }) {
  * 2. 선택한 기간 값을 백엔드 통계 API에 전달합니다.
  * 3. API 응답을 카드, 선 그래프, 막대 그래프에 맞는 배열로 변환합니다.
  * 4. 데이터가 없거나 조회 중이어도 화면이 비어 보이지 않도록 안내 문구를 표시합니다.
+ *
+ * 관리자 기능 담당 작업(문건우) TODO:
+ * 현재 화면은 주요 지표를 조회하고 시각화하는 "통계 대시보드"입니다.
+ * PDF/Excel 다운로드, 서비스 리포트 생성, 상세 분석 리포트가 필요하면
+ * 별도 리포트 API와 파일 생성 방식을 정한 뒤 후순위 기능으로 추가합니다.
  * ========================================================================== */
 export function StatisticsDashboardPage() {
   const [periodLabel, setPeriodLabel] = useState("일"); // 화면에서 선택된 기간 라벨입니다. "일", "주", "월" 중 하나입니다.
@@ -341,6 +606,7 @@ export function StatisticsDashboardPage() {
   const [activeUserTrend, setActiveUserTrend] = useState([]); // 시간별 활성 사용자 선 그래프 데이터입니다.
   const [contentActivity, setContentActivity] = useState([]); // 게시글/댓글/공감 막대 그래프 데이터입니다.
   const [emotionActivity, setEmotionActivity] = useState([]); // 감정별 활동 막대 그래프 데이터입니다.
+  const [activeUserGrowthRate, setActiveUserGrowthRate] = useState(null); // 선택 연도 활성 사용자 전년 대비 성장률입니다.
   const [loading, setLoading] = useState(false); // 여러 통계 API를 불러오는 중인지 저장합니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
 
@@ -352,62 +618,124 @@ export function StatisticsDashboardPage() {
       return;
     }
 
-    setLoading(true);
+    let isMounted = true;
 
-    const requestConfig = {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      params: {
-        period: currentPeriod.value,
-        ...dateRange,
-      },
+    const fetchAllStatistics = ({ showLoading = false } = {}) => {
+      if (!isMounted) {
+        return;
+      }
+
+      if (showLoading) {
+        setLoading(true);
+      }
+
+      const requestConfig = {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        params: {
+          period: currentPeriod.value,
+          ...dateRange,
+        },
+      };
+      const previousYearRange = currentPeriod.value === "month"
+        ? buildPreviousYearRange(dateRange)
+        : null;
+      const previousYearSummaryRequest = previousYearRange
+        ? axios.get(`${BACKSERVER}/admin/api/statistics/summary`, {
+            headers: requestConfig.headers,
+            params: {
+              period: currentPeriod.value,
+              ...previousYearRange,
+            },
+          })
+        : Promise.resolve(null);
+
+      /*
+       * 통계 API 병렬 호출 및 10초 폴링
+       * ----------------------------------------------------------------------
+       * 초보자 설명:
+       * - Promise.all은 여러 API 요청을 동시에 실행하고, 모두 끝난 뒤 다음 then을 실행합니다.
+       * - 최초 조회만 로딩 화면을 표시하고, 10초 폴링은 기존 화면을 유지한 채 데이터만 갱신합니다.
+       * - 화면을 벗어나면 cleanup에서 interval을 정리해 불필요한 반복 요청을 멈춥니다.
+       */
+      Promise.all([
+        axios.get(`${BACKSERVER}/admin/api/statistics/summary`, requestConfig),
+        axios.get(`${BACKSERVER}/admin/api/statistics/subscribers`, requestConfig),
+        axios.get(`${BACKSERVER}/admin/api/dashboard/active-users`, requestConfig),
+        axios.get(`${BACKSERVER}/admin/api/statistics/content-activity`, requestConfig),
+        axios.get(`${BACKSERVER}/admin/api/dashboard/emotion-activity`, requestConfig),
+        previousYearSummaryRequest,
+      ])
+        .then(
+          ([
+            summaryResponse,
+            subscriberResponse,
+            activeUserResponse,
+            contentActivityResponse,
+            emotionActivityResponse,
+            previousYearSummaryResponse,
+          ]) => {
+            if (!isMounted) {
+              return;
+            }
+
+            const nextSummary = summaryResponse.data || emptySummary;
+
+            setSummary(nextSummary);
+            setSubscriberTrend(Array.isArray(subscriberResponse.data?.items) ? subscriberResponse.data.items : []);
+            setActiveUserTrend(Array.isArray(activeUserResponse.data?.items) ? activeUserResponse.data.items : []);
+            setContentActivity(
+              Array.isArray(contentActivityResponse.data?.items) ? contentActivityResponse.data.items : [],
+            );
+            setEmotionActivity(
+              Array.isArray(emotionActivityResponse.data?.items) ? emotionActivityResponse.data.items : [],
+            );
+            setActiveUserGrowthRate(
+              currentPeriod.value === "month" && previousYearSummaryResponse?.data
+                ? calculateGrowthRate(
+                    nextSummary.activeUserCount,
+                    previousYearSummaryResponse.data.activeUserCount,
+                  )
+                : null,
+            );
+          },
+        )
+        .catch(() => {
+          if (!isMounted) {
+            return;
+          }
+
+          if (showLoading) {
+            setSummary(emptySummary);
+            setSubscriberTrend([]);
+            setActiveUserTrend([]);
+            setContentActivity([]);
+            setEmotionActivity([]);
+            setActiveUserGrowthRate(null);
+          }
+        })
+        .finally(() => {
+          if (!isMounted) {
+            return;
+          }
+
+          if (showLoading) {
+            setLoading(false);
+          }
+        });
     };
 
-    /*
-     * 통계 API 병렬 호출
-     * ----------------------------------------------------------------------
-     * 초보자 설명:
-     * - Promise.all은 여러 API 요청을 동시에 실행하고, 모두 끝난 뒤 다음 then을 실행합니다.
-     * - 통계 화면은 서로 다른 차트가 같은 기간 데이터를 사용하므로 한 번에 같이 가져오는 편이 빠릅니다.
-     */
-    Promise.all([
-      axios.get(`${BACKSERVER}/admin/api/statistics/summary`, requestConfig),
-      axios.get(`${BACKSERVER}/admin/api/statistics/subscribers`, requestConfig),
-      axios.get(`${BACKSERVER}/admin/api/dashboard/active-users`, requestConfig),
-      axios.get(`${BACKSERVER}/admin/api/statistics/content-activity`, requestConfig),
-      axios.get(`${BACKSERVER}/admin/api/dashboard/emotion-activity`, requestConfig),
-    ])
-      .then(
-        ([
-          summaryResponse,
-          subscriberResponse,
-          activeUserResponse,
-          contentActivityResponse,
-          emotionActivityResponse,
-        ]) => {
-          setSummary(summaryResponse.data || emptySummary);
-          setSubscriberTrend(Array.isArray(subscriberResponse.data?.items) ? subscriberResponse.data.items : []);
-          setActiveUserTrend(Array.isArray(activeUserResponse.data?.items) ? activeUserResponse.data.items : []);
-          setContentActivity(
-            Array.isArray(contentActivityResponse.data?.items) ? contentActivityResponse.data.items : [],
-          );
-          setEmotionActivity(
-            Array.isArray(emotionActivityResponse.data?.items) ? emotionActivityResponse.data.items : [],
-          );
-        },
-      )
-      .catch((error) => {
-        console.log("[ADMIN_STATISTICS_DASHBOARD_ERROR]", error);
-        setSummary(emptySummary);
-        setSubscriberTrend([]);
-        setActiveUserTrend([]);
-        setContentActivity([]);
-        setEmotionActivity([]);
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    fetchAllStatistics({ showLoading: true });
+
+    const pollingId = window.setInterval(() => {
+      fetchAllStatistics({ showLoading: false });
+    }, 10000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(pollingId);
+    };
   }, [BACKSERVER, accessToken, currentPeriod.value, dateRange]);
 
   const metricCards = useMemo(
@@ -421,7 +749,10 @@ export function StatisticsDashboardPage() {
       {
         label: "활성 사용자",
         value: summary.activeUserCount,
-        helperText: "로그인 기록 기준",
+        helperText:
+          currentPeriod.value === "month"
+            ? formatGrowthRate(activeUserGrowthRate)
+            : "로그인 기록 기준",
         icon: <BarChartOutlinedIcon />,
         accent: "blue",
       },
@@ -432,15 +763,8 @@ export function StatisticsDashboardPage() {
         icon: <DashboardOutlinedIcon />,
         accent: "pink",
       },
-      {
-        label: "공감 수",
-        value: summary.empathyCount,
-        helperText: `${periodLabel} 단위 반응`,
-        icon: <AddOutlinedIcon />,
-        accent: "orange",
-      },
     ],
-    [periodLabel, summary],
+    [activeUserGrowthRate, currentPeriod.value, periodLabel, summary],
   );
 
   const contentBars = useMemo(() => {
@@ -487,7 +811,10 @@ export function StatisticsDashboardPage() {
         </div>
       </section>
 
-      <section className={styles.metricGrid}>
+      <section
+        className={styles.metricGrid}
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}
+      >
         {metricCards.map((card) => (
           <MetricCard
             key={card.label}
@@ -507,8 +834,10 @@ export function StatisticsDashboardPage() {
         >
           <PreviewLineChart
             items={subscriberTrend}
-            color="#3293ff"
+            color="#7c4dff"
             emptyLabel="가입자 추이 데이터가 없습니다."
+            periodLabel={periodLabel}
+            unit="명"
           />
         </ChartCard>
 
@@ -518,8 +847,10 @@ export function StatisticsDashboardPage() {
         >
           <PreviewLineChart
             items={activeUserTrend}
-            color="#3293ff"
+            color="#7c4dff"
             emptyLabel="활성 사용자 데이터가 없습니다."
+            periodLabel={periodLabel}
+            unit="명"
           />
         </ChartCard>
 
@@ -538,29 +869,6 @@ export function StatisticsDashboardPage() {
         </ChartCard>
       </section>
 
-      <section className={styles.compactSummaryGrid}>
-        <article>
-          <ArticleOutlinedIcon />
-          <div>
-            <span>게시글</span>
-            <strong>{loading ? "-" : formatNumber(summary.postCount)}</strong>
-          </div>
-        </article>
-        <article>
-          <ChatBubbleOutlineOutlinedIcon />
-          <div>
-            <span>댓글</span>
-            <strong>{loading ? "-" : formatNumber(summary.commentCount)}</strong>
-          </div>
-        </article>
-        <article>
-          <AddOutlinedIcon />
-          <div>
-            <span>공감</span>
-            <strong>{loading ? "-" : formatNumber(summary.empathyCount)}</strong>
-          </div>
-        </article>
-      </section>
     </AdminLayout>
   );
 }

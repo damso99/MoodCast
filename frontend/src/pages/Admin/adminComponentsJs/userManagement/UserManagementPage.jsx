@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
@@ -135,13 +135,7 @@ export function UserManagementPage() {
       .then((res) => {
         setManagementSummary(res.data || null);
       })
-      .catch((error) => {
-        console.error("[ADMIN_MANAGEMENT_SUMMARY_ERROR]", {
-          endpoint: `${BACKSERVER}/admin/api/members/management-summary`,
-          status: error.response?.status,
-          response: error.response?.data,
-          message: error.message,
-        });
+      .catch(() => {
         setManagementSummary(null);
         setManagementSummaryError(true);
       })
@@ -176,8 +170,7 @@ export function UserManagementPage() {
         setTotalMemberCount(typeof count === "number" ? count : 0);
         setTotalMemberCountError(false);
       })
-      .catch((error) => {
-        console.log(error);
+      .catch(() => {
         setTotalMemberCount(null);
         setTotalMemberCountError(true);
       });
@@ -217,8 +210,7 @@ export function UserManagementPage() {
 
         setMembers(nextMembers);
       })
-      .catch((error) => {
-        console.log(error);
+      .catch(() => {
         setMembers([]);
         setMembersError(true);
       })

@@ -96,7 +96,7 @@
 .previewLineChart {
   display: block;
   width: 100%;
-  height: 240px;
+  height: 260px;
 }
 
 .chartGridLine {
@@ -107,7 +107,7 @@
 }
 
 .chartArea {
-  fill: transparent !important;
+  pointer-events: none;
 }
 
 .chartLine {
@@ -119,23 +119,31 @@
 }
 
 .chartPoint {
-  fill: #fff;
-  opacity: 0;
-  stroke: #3293ff;
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
-
-.peakPoint {
-  fill: #3293ff;
+  fill: #7c4dff;
   stroke: #ffffff;
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
 
+.peakPoint {
+  fill: #7c4dff;
+  stroke: #ffffff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartValueLabel {
+  fill: #111827;
+  font-size: 11px;
+  font-weight: 950;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+}
+
 .chartHoverLine {
   opacity: 0;
-  stroke: rgba(50, 147, 255, 0.45);
+  stroke: rgba(124, 77, 255, 0.35);
   stroke-dasharray: 2 2;
   stroke-width: 0.9;
   vector-effect: non-scaling-stroke;
@@ -143,42 +151,77 @@
 
 .chartHitArea {
   fill: transparent;
-  cursor: pointer;
+  cursor: default;
+}
+
+.chartMoveArea {
+  fill: transparent;
+  cursor: default;
+}
+
+.chartOverlay {
+  pointer-events: none;
+}
+
+.chartActiveHoverLine {
+  stroke: rgba(124, 77, 255, 0.42);
+  stroke-dasharray: 4 4;
+  stroke-width: 1.1;
+  vector-effect: non-scaling-stroke;
+}
+
+.chartActivePoint {
+  fill: #7c4dff;
+  stroke: #ffffff;
+  stroke-width: 2;
+  filter: drop-shadow(0 4px 8px rgba(124, 77, 255, 0.28));
+  vector-effect: non-scaling-stroke;
 }
 
 .chartTooltip {
-  opacity: 0;
   pointer-events: none;
   transition: opacity 0.14s ease;
 }
 
 .chartTooltip rect {
   fill: #111827;
+  filter: drop-shadow(0 12px 22px rgba(17, 24, 39, 0.22));
 }
 
 .chartTooltip text {
   fill: #fff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   text-anchor: middle;
 }
 
+.chartTooltipValue {
+  font-size: 14px !important;
+  font-weight: 950 !important;
+}
+
+.chartTooltipSubtext {
+  fill: #e5e7eb !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+}
+
 .chartPointGroup:hover .chartPoint,
-.chartPointGroup:hover .chartHoverLine,
-.chartPointGroup:hover .chartTooltip {
+.chartPointGroup:hover .chartHoverLine {
   opacity: 1;
 }
 
 .chartAxisLabel {
-  fill: #6b7280;
-  font-size: 14px;
-  font-weight: 800;
+  fill: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  dominant-baseline: middle;
 }
 
 .chartYAxisLabel {
-  fill: #6b7280;
-  font-size: 12px;
-  font-weight: 700;
+  fill: #111827;
+  font-size: 11px;
+  font-weight: 850;
   dominant-baseline: middle;
 }
 
