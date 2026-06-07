@@ -46,7 +46,7 @@
             #{commentId, jdbcType=BIGINT},
             #{reason},
             'PENDING',
-            CURRENT_TIMESTAMP
+            CONVERT_TZ(NOW(6), '+00:00', '+09:00')
         )
     </insert>
 
