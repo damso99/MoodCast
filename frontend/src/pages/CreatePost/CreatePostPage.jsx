@@ -61,14 +61,6 @@ export function CreatePostPage() {
   useEffect(() => {
     const loadMentionCandidates = async () => {
       const currentMemberId = member?.memberId;
-      console.log("[게시물 작성 멘션] 상태", {
-        currentMemberId,
-        mentionOpen,
-        mentionKeyword,
-        hasToken: Boolean(
-          token || window.sessionStorage.getItem("moodcast-access-token"),
-        ),
-      });
       if (!currentMemberId || !mentionOpen) {
         setMentionCandidates([]);
         return;
@@ -244,9 +236,7 @@ export function CreatePostPage() {
         mentions,
       };
 
-      console.log("[게시물 작성] 요청 데이터", requestData);
-
-      const response = await axios.post(
+      await axios.post(
         `${BACKSERVER}/api/posts`,
         requestData,
         {
@@ -255,8 +245,6 @@ export function CreatePostPage() {
           },
         },
       );
-
-      console.log("[게시물 작성] 저장 성공:", response.data);
 
       setTitle("");
       setContent("");
