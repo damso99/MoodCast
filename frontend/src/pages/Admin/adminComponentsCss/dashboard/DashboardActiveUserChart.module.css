@@ -86,6 +86,18 @@
   filter: drop-shadow(0 3px 6px rgba(111, 44, 255, 0.26));
 }
 
+.activeUserBar {
+  fill: #7c4dff;
+  filter: drop-shadow(0 7px 12px rgba(111, 44, 255, 0.16));
+  transition:
+    opacity 0.14s ease,
+    transform 0.14s ease;
+}
+
+.activeUserPointGroup:hover .activeUserBar {
+  opacity: 0.82;
+}
+
 .activeUserHoverLine {
   opacity: 0;
   stroke: rgba(111, 44, 255, 0.34);
@@ -155,6 +167,11 @@
   stroke: #fff;
   stroke-width: 3;
   filter: drop-shadow(0 6px 12px rgba(111, 44, 255, 0.34));
+}
+
+.activeUserActiveBar {
+  fill: #4f1fff;
+  filter: drop-shadow(0 8px 16px rgba(111, 44, 255, 0.3));
 }
 
 .activeUserPointGroup:hover .activeUserHoverLine {

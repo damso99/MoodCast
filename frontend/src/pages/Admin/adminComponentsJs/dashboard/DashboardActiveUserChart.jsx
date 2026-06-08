@@ -29,9 +29,8 @@ const CHART_BOTTOM = 260;
 const CHART_LABEL_Y = 302;
 const TOOLTIP_WIDTH = 170;
 const TOOLTIP_HEIGHT = 88;
-const CHART_HOURS = [0, 4, 8, 12, 16, 20, 24];
-const DAY_END_DISPLAY_HOUR = 24;
-const DAY_END_SOURCE_HOUR = 23;
+const CHART_HOURS = Array.from({ length: 25 }, (_, hour) => hour);
+const VISIBLE_HOUR_LABELS = new Set([0, 4, 8, 12, 16, 20, 24]);
 const WEEKDAY_LABELS = ["월", "화", "수", "목", "금", "토", "일"];
 const MONTH_LABELS = Array.from({ length: 12 }, (_, index) => `${index + 1}월`);
 const WEEKDAY_TOOLTIP_LABELS = {
@@ -103,7 +102,7 @@ const getHourFromLabel = (label) => {
   return Number(hourMatch[1]);
 };
 
-const buildFourHourChartItems = (items) => {
+const buildHourlyChartItems = (items) => {
   const valueByHour = new Map();
 
   items.forEach((item) => {
@@ -118,14 +117,7 @@ const buildFourHourChartItems = (items) => {
 
   return CHART_HOURS.map((hour) => ({
     label: `${String(hour).padStart(2, "0")}시`,
-    /*
-     * 24시는 DB에 실제로 저장되는 시간이 아니라 하루의 끝을 나타내는 화면 표시값입니다.
-     * 따라서 라벨은 24시로 유지하되, 값은 해당일 마지막 시간대인 23:00~23:59:59 데이터를 사용합니다.
-     */
-    activeUserCount:
-      hour === DAY_END_DISPLAY_HOUR
-        ? valueByHour.get(DAY_END_SOURCE_HOUR) ?? valueByHour.get(20) ?? 0
-        : valueByHour.get(hour) ?? 0,
+    activeUserCount: hour === 24 ? 0 : valueByHour.get(hour) ?? 0,
   }));
 };
 
@@ -150,7 +142,7 @@ const buildFixedLabelChartItems = (items, labels) => {
 
 const buildChartItems = (items, period) => {
   if (period === "일") {
-    return buildFourHourChartItems(items);
+    return buildHourlyChartItems(items);
   }
 
   if (period === "주") {
@@ -247,18 +239,20 @@ export function DashboardActiveUserChart() {
     const ySteps = hasData
       ? [maxValue, maxValue * 0.8, maxValue * 0.6, maxValue * 0.4, maxValue * 0.2, 0]
       : [5, 4, 3, 2, 1, 0];
-    const lastIndex = Math.max(chartItems.length - 1, 1);
+    const slotWidth = chartItems.length ? chartWidth / chartItems.length : chartWidth;
+    const barWidth = Math.max(8, Math.min(28, slotWidth * 0.56));
     const totalValue = values.reduce((sum, value) => sum + value, 0);
 
-    const points = chartItems.map((item, index) => {
+    const bars = chartItems.map((item, index) => {
       const value = Number(item.activeUserCount ?? 0);
-      const x =
-        chartItems.length === 1
-          ? (CHART_LEFT + CHART_RIGHT) / 2
-          : CHART_LEFT + (index / lastIndex) * chartWidth;
+      const x = CHART_LEFT + slotWidth * index + slotWidth / 2;
       const y = hasData
         ? CHART_BOTTOM - (value / maxValue) * chartHeight
         : CHART_BOTTOM;
+      const height = CHART_BOTTOM - y;
+      const hour = getHourFromLabel(item.label);
+      const showAxisLabel =
+        activePeriod !== "일" || (hour !== null && VISIBLE_HOUR_LABELS.has(hour));
 
       return {
         index,
@@ -267,20 +261,18 @@ export function DashboardActiveUserChart() {
         value,
         x,
         y,
+        height,
+        barX: x - barWidth / 2,
+        barWidth,
+        hitX: CHART_LEFT + slotWidth * index,
+        hitWidth: slotWidth,
+        axisLabel: showAxisLabel ? item.label : "",
         percentage: formatPercentage(value, totalValue),
       };
     });
 
-    const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
-    const areaPoints =
-      points.length > 0
-        ? `${CHART_LEFT},${CHART_BOTTOM} ${linePoints} ${CHART_RIGHT},${CHART_BOTTOM}`
-        : "";
-
     return {
-      points,
-      linePoints,
-      areaPoints,
+      bars,
       hasData,
       maxValue,
       ySteps,
@@ -290,58 +282,12 @@ export function DashboardActiveUserChart() {
   }, [activePeriod, activeUserItems]);
 
   const activePoint = hoveredPoint;
-  const getYByValue = (value) =>
-    chartData.hasData
-      ? CHART_BOTTOM - (Number(value || 0) / chartData.maxValue) * (CHART_BOTTOM - CHART_TOP)
-      : CHART_BOTTOM;
   const tooltipX = activePoint
     ? Math.min(Math.max(activePoint.x - TOOLTIP_WIDTH / 2, 8), CHART_WIDTH - TOOLTIP_WIDTH - 8)
     : 0;
   const tooltipY = activePoint
     ? Math.max(activePoint.y - TOOLTIP_HEIGHT - 38, 8)
     : 0;
-  const updateLineHover = (event) => {
-    if (chartData.points.length === 0) {
-      return;
-    }
-
-    const svgRect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
-    const viewBoxX = ((event.clientX - svgRect.left) / svgRect.width) * CHART_WIDTH;
-    const boundedX = Math.min(Math.max(viewBoxX, CHART_LEFT), CHART_RIGHT);
-    const pointCount = chartData.points.length;
-    const rawIndex =
-      ((boundedX - CHART_LEFT) / (CHART_RIGHT - CHART_LEFT)) * (pointCount - 1);
-    const beforeIndex = Math.max(0, Math.floor(rawIndex));
-    const afterIndex = Math.min(pointCount - 1, Math.ceil(rawIndex));
-    const beforePoint = chartData.points[beforeIndex];
-    const afterPoint = chartData.points[afterIndex];
-    const ratio = afterIndex === beforeIndex ? 0 : rawIndex - beforeIndex;
-    const interpolatedValue =
-      beforePoint.value + (afterPoint.value - beforePoint.value) * ratio;
-    const nearestIndex = Math.min(
-      pointCount - 1,
-      Math.max(0, Math.round(rawIndex)),
-    );
-    const nearestPoint = chartData.points[nearestIndex];
-    const tooltipLabel =
-      activePeriod === "일"
-        ? formatHourTooltipLabel(
-            Math.round(
-              CHART_HOURS[0] +
-                ((boundedX - CHART_LEFT) / (CHART_RIGHT - CHART_LEFT)) * 24,
-            ),
-          )
-        : nearestPoint.tooltipLabel;
-
-    setHoveredPoint({
-      label: tooltipLabel,
-      tooltipLabel,
-      value: interpolatedValue,
-      x: boundedX,
-      y: getYByValue(interpolatedValue),
-      percentage: formatPercentage(interpolatedValue, chartData.totalValue),
-    });
-  };
 
   return (
     <section className={`${styles.panel} ${styles.widePanel}`}>
@@ -388,13 +334,6 @@ export function DashboardActiveUserChart() {
             aria-label={`${activePeriod} 단위 시간별 활성 사용자 차트`}
             onMouseLeave={() => setHoveredPoint(null)}
           >
-            <defs>
-              <linearGradient id="dashboardActiveUserGradient" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="#7c4dff" stopOpacity="0.28" />
-                <stop offset="100%" stopColor="#7c4dff" stopOpacity="0.02" />
-              </linearGradient>
-            </defs>
-
             {chartData.ySteps.map((step, gridIndex) => {
               const y =
                 CHART_TOP +
@@ -417,58 +356,34 @@ export function DashboardActiveUserChart() {
               );
             })}
 
-            {chartData.areaPoints ? (
-              <polygon
-                className={styles.activeUserArea}
-                points={chartData.areaPoints}
-                fill="url(#dashboardActiveUserGradient)"
-              />
-            ) : null}
-
-            <polyline
-              className={styles.activeUserLine}
-              points={chartData.linePoints}
-            />
-
-            {chartData.points.map((point) => (
+            {chartData.bars.map((point) => (
               <g
                 className={styles.activeUserPointGroup}
                 key={`${point.label}-${point.index}`}
+                onMouseEnter={() => setHoveredPoint(point)}
               >
-                <line
-                  className={styles.activeUserHoverLine}
-                  x1={point.x}
-                  x2={point.x}
-                  y1={CHART_TOP}
-                  y2={CHART_BOTTOM}
+                <rect
+                  className={styles.activeUserBar}
+                  x={point.barX}
+                  y={point.height > 0 ? point.y : CHART_BOTTOM - 2}
+                  width={point.barWidth}
+                  height={Math.max(point.height, 2)}
+                  rx="6"
                 />
-                <circle
-                  className={styles.activeUserPoint}
-                  cx={point.x}
-                  cy={point.y}
-                  r="4"
-                />
+                {point.value > 0 ? (
                 <text className={styles.activeUserValueLabel} x={point.x} y={Math.max(point.y - 14, 18)}>
                   {formatAverageValue(point.value)}
                 </text>
+                ) : null}
                 <rect
                   className={styles.activeUserHitArea}
-                  x={point.x - 24}
+                  x={point.hitX}
                   y={CHART_TOP - 12}
-                  width="48"
+                  width={point.hitWidth}
                   height={CHART_BOTTOM - CHART_TOP + 24}
                 />
               </g>
             ))}
-
-            <rect
-              className={styles.activeUserMoveArea}
-              x={CHART_LEFT}
-              y={CHART_TOP - 14}
-              width={CHART_RIGHT - CHART_LEFT}
-              height={CHART_BOTTOM - CHART_TOP + 28}
-              onMouseMove={updateLineHover}
-            />
 
             {activePoint ? (
               <g className={styles.activeUserOverlay}>
@@ -479,11 +394,13 @@ export function DashboardActiveUserChart() {
                   y1={CHART_TOP}
                   y2={CHART_BOTTOM}
                 />
-                <circle
-                  className={styles.activeUserActivePoint}
-                  cx={activePoint.x}
-                  cy={activePoint.y}
-                  r="6"
+                <rect
+                  className={styles.activeUserActiveBar}
+                  x={activePoint.barX}
+                  y={activePoint.height > 0 ? activePoint.y : CHART_BOTTOM - 2}
+                  width={activePoint.barWidth}
+                  height={Math.max(activePoint.height, 2)}
+                  rx="6"
                 />
                 <g
                   className={styles.activeUserTooltip}
@@ -502,14 +419,14 @@ export function DashboardActiveUserChart() {
               </g>
             ) : null}
 
-            {chartData.points.map((point) => (
+            {chartData.bars.map((point) => (
                 <text
                   className={styles.activeUserAxisLabel}
                   key={`label-${point.label}-${point.index}`}
                   x={point.x}
                   y={CHART_LABEL_Y}
                 >
-                  {point.label}
+                  {point.axisLabel}
                 </text>
               ))}
           </svg>

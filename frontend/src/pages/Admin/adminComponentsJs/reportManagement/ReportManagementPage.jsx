@@ -252,8 +252,9 @@ export function ReportManagementPage() {
         insightReports,
         selectedInsightPeriod,
         insightPeriodRange,
+        allReports,
       ),
-    [insightReports, selectedInsightPeriod, insightPeriodRange],
+    [insightReports, selectedInsightPeriod, insightPeriodRange, allReports],
   );
   const processRateCounts = processRateStat || {
     doneCount: reportInsights.doneCount,
@@ -407,19 +408,24 @@ export function ReportManagementPage() {
       );
       const updatedReport = mapAdminReport(response.data?.report);
 
-      setReports((prevReports) =>
-        prevReports.map((report) =>
+      setReports((prevReports) => {
+        const nextReports = prevReports.map((report) =>
           report.id === updatedReport.id ? updatedReport : report,
-        ),
-      );
+        );
+
+        if (selectedStatusTab === REPORT_LABELS.all) {
+          return nextReports;
+        }
+
+        return nextReports.filter(
+          (report) => report.status === selectedStatusTab,
+        );
+      });
       setAllReports((prevReports) =>
         prevReports.map((report) =>
           report.id === updatedReport.id ? updatedReport : report,
         ),
       );
-      setSelectedStatusTab(REPORT_LABELS.done);
-      setSelectedProcessResultTab(REPORT_LABELS.all);
-      setReports([updatedReport]);
       setCompletionMessage(
         response.data?.message ||
           "\uC2E0\uACE0 \uCC98\uB9AC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
@@ -993,14 +999,9 @@ function ReportInsightSection({
           </div>
         </div>
 
-        <MetricLineChart
+        <MetricTimeBarChart
           items={insights.timeline}
           period={selectedPeriod}
-          guideText={
-            selectedPeriod === "day"
-              ? "표시된 시간 외 구간을 마우스로 이동하면 해당 시간의 값을 선형 보간하여 보여줍니다."
-              : null
-          }
         />
         <MetricBarChart
           title={"\uC2E0\uACE0 \uC720\uD615"}
@@ -1094,7 +1095,7 @@ function ReportInsightPeriodControl({
   );
 }
 
-function MetricLineChart({
+function MetricTimeBarChart({
   items,
   period,
   title,
@@ -1118,34 +1119,35 @@ function MetricLineChart({
   const chartTop = 44;
   const chartBottom = 260;
   const chartLabelY = 302;
-  const chartHeight = chartBottom - chartTop;
   const chartWidth = chartRight - chartLeft;
+  const slotWidth = items.length ? chartWidth / items.length : chartWidth;
+  const barWidth = Math.max(8, Math.min(28, slotWidth * 0.56));
   const chartItems = items.map((item, index) => {
-    const x =
-      items.length === 1
-        ? (chartLeft + chartRight) / 2
-        : chartLeft + (index / (items.length - 1)) * (chartRight - chartLeft);
+    const x = chartLeft + slotWidth * index + slotWidth / 2;
     const y = hasData
       ? chartBottom - (item.value / max) * (chartBottom - chartTop)
       : chartBottom;
+    const height = Math.max(chartBottom - y, item.value ? 3 : 0);
 
     return {
       ...item,
       x,
       y,
+      barX: x - barWidth / 2,
+      barWidth,
+      height,
+      hitX: chartLeft + slotWidth * index,
+      hitWidth: slotWidth,
       displayLabel: formatTrendAxisLabel(item.label, period),
       tooltipLabel: formatTrendTooltipLabel(item.label, period),
       percentage: formatTrendPercentage(item.value, totalValue),
       isActual: true,
     };
   });
-  const points = chartItems.map((item) => `${item.x},${item.y}`).join(" ");
-  const areaPoints = chartItems.length
-    ? `${chartLeft},${chartBottom} ${points} ${chartRight},${chartBottom}`
-    : "";
   const activePoint = hoveredPoint;
-  const tooltipWidth = 170;
+  const tooltipWidth = 210;
   const tooltipHeight = 88;
+  const tooltipPadding = 16;
   const tooltipX = activePoint
     ? Math.min(Math.max(activePoint.x - tooltipWidth / 2, 8), 780 - tooltipWidth - 8)
     : 0;
@@ -1153,71 +1155,10 @@ function MetricLineChart({
     ? Math.max(activePoint.y - tooltipHeight - 38, 8)
     : 0;
 
-  const getYByValue = (value) =>
-    hasData ? chartBottom - (value / max) * chartHeight : chartBottom;
   const formatTooltipValue =
     tooltipValueFormatter || ((point) => `${point.value}${unit}`);
   const formatTooltipSubtext =
     tooltipSubtextFormatter || ((point) => `전체 대비 ${point.percentage}`);
-  const interpolateOptionalNumber = (beforeValue, afterValue, ratio) => {
-    if (beforeValue === undefined && afterValue === undefined) {
-      return undefined;
-    }
-
-    const safeBefore = Number(beforeValue || 0);
-    const safeAfter = Number(afterValue || 0);
-
-    return safeBefore + (safeAfter - safeBefore) * ratio;
-  };
-
-  const updateLineHover = (event) => {
-    if (chartItems.length === 0) {
-      return;
-    }
-
-    const svgRect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
-    const viewBoxX = ((event.clientX - svgRect.left) / svgRect.width) * 780;
-    const boundedX = Math.min(Math.max(viewBoxX, chartLeft), chartRight);
-    const rawIndex =
-      ((boundedX - chartLeft) / chartWidth) * (chartItems.length - 1);
-    const beforeIndex = Math.max(0, Math.floor(rawIndex));
-    const afterIndex = Math.min(chartItems.length - 1, Math.ceil(rawIndex));
-    const before = chartItems[beforeIndex];
-    const after = chartItems[afterIndex];
-    const ratio = afterIndex === beforeIndex ? 0 : rawIndex - beforeIndex;
-    const interpolatedValue =
-      Number(before.value || 0) +
-      (Number(after.value || 0) - Number(before.value || 0)) * ratio;
-    const nearestIndex = Math.min(
-      chartItems.length - 1,
-      Math.max(0, Math.round(rawIndex)),
-    );
-    const nearestPoint = chartItems[nearestIndex];
-    const tooltipLabel =
-      period === "day"
-        ? `${String(
-            Math.min(
-              24,
-              Math.max(0, Math.round(((boundedX - chartLeft) / chartWidth) * 24)),
-            ),
-          ).padStart(2, "0")}:00`
-        : nearestPoint.tooltipLabel;
-    const displayValue = Math.round(interpolatedValue);
-    const isActual = Math.abs(rawIndex - nearestIndex) < 0.08;
-
-    setHoveredPoint({
-      label: nearestPoint.label,
-      value: displayValue,
-      x: boundedX,
-      y: getYByValue(interpolatedValue),
-      displayLabel: nearestPoint.displayLabel,
-      tooltipLabel,
-      percentage: formatTrendPercentage(displayValue, totalValue),
-      doneCount: interpolateOptionalNumber(before.doneCount, after.doneCount, ratio),
-      totalCount: interpolateOptionalNumber(before.totalCount, after.totalCount, ratio),
-      isActual,
-    });
-  };
 
   return (
     <div className={`${styles.chartCard} ${styles.lineChartCard}`}>
@@ -1225,7 +1166,6 @@ function MetricLineChart({
         <div>
           <h3>
             {chartTitle}
-            <span aria-hidden="true" className={styles.chartInfoIcon}>i</span>
           </h3>
         </div>
       </div>
@@ -1235,12 +1175,6 @@ function MetricLineChart({
         preserveAspectRatio="xMidYMid meet"
         onMouseLeave={() => setHoveredPoint(null)}
       >
-        <defs>
-          <linearGradient id={`reportTrendGradient-${period}`} x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#7c4dff" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#7c4dff" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
         {ySteps.map((step, index) => {
           const y =
             chartTop +
@@ -1255,51 +1189,36 @@ function MetricLineChart({
             </g>
           );
         })}
-        {areaPoints ? (
-          <polygon
-            className={styles.chartArea}
-            points={areaPoints}
-            fill={`url(#reportTrendGradient-${period})`}
-          />
-        ) : null}
-        <polyline points={points} />
         {chartItems.map((item) => (
           <g
             className={styles.chartPointGroup}
             key={item.label}
-            onMouseEnter={() => {
-              if (period !== "day") {
-                setHoveredPoint(item);
-              }
-            }}
+            onMouseEnter={() => setHoveredPoint(item)}
           >
             <line className={styles.chartHoverLine} x1={item.x} x2={item.x} y1={chartTop} y2={chartBottom} />
-            <circle
-              className={styles.chartPoint}
-              cx={item.x}
-              cy={item.y}
-              r="4"
+            <rect
+              className={styles.chartBar}
+              x={item.barX}
+              y={chartBottom - item.height}
+              width={item.barWidth}
+              height={item.height}
+              rx="6"
+              ry="6"
             />
-            <text className={styles.chartValueLabel} x={item.x} y={Math.max(item.y - 14, 18)}>
-              {item.value}
-            </text>
+            {Number(item.value || 0) > 0 ? (
+              <text className={styles.chartValueLabel} x={item.x} y={Math.max(item.y - 14, 18)}>
+                {item.value}
+              </text>
+            ) : null}
             <rect
               className={styles.chartHitArea}
-              x={item.x - 24}
+              x={item.hitX}
               y={chartTop - 12}
-              width="48"
+              width={item.hitWidth}
               height={chartBottom - chartTop + 24}
             />
           </g>
         ))}
-        <rect
-          className={styles.chartMoveArea}
-          x={chartLeft}
-          y={chartTop - 14}
-          width={chartWidth}
-          height={chartHeight + 28}
-          onMouseMove={updateLineHover}
-        />
         {activePoint ? (
           <g className={styles.activeChartOverlay}>
             <line
@@ -1309,15 +1228,14 @@ function MetricLineChart({
               y1={chartTop}
               y2={chartBottom}
             />
-            <circle
-              className={
-                activePoint.isActual
-                  ? styles.activeChartPoint
-                  : styles.interpolatedChartPoint
-              }
-              cx={activePoint.x}
-              cy={activePoint.y}
-              r="6"
+            <rect
+              className={styles.activeChartBar}
+              x={activePoint.barX}
+              y={chartBottom - activePoint.height}
+              width={activePoint.barWidth}
+              height={activePoint.height}
+              rx="6"
+              ry="6"
             />
             <g
               className={styles.chartTooltip}
@@ -1325,11 +1243,11 @@ function MetricLineChart({
               transform={`translate(${tooltipX} ${tooltipY})`}
             >
               <rect width={tooltipWidth} height={tooltipHeight} rx="14" />
-              <text x={tooltipWidth / 2} y="26">{activePoint.tooltipLabel}</text>
-              <text className={styles.chartTooltipValue} x={tooltipWidth / 2} y="53">
+              <text x={tooltipPadding} y="26" style={{ textAnchor: "start" }}>{activePoint.tooltipLabel}</text>
+              <text className={styles.chartTooltipValue} x={tooltipPadding} y="52" style={{ textAnchor: "start" }}>
                 {formatTooltipValue(activePoint)}
               </text>
-              <text className={styles.chartTooltipSubtext} x={tooltipWidth / 2} y="73">
+              <text className={styles.chartTooltipSubtext} x={tooltipPadding} y="72" style={{ textAnchor: "start" }}>
                 {formatTooltipSubtext(activePoint)}
               </text>
             </g>
@@ -1406,32 +1324,27 @@ function ProcessRateChart({ done, open }) {
 function ProcessRateTrendChart({ items, period }) {
   const chartItems = items.map((item) => ({
     label: item.label,
-    value: item.rate,
+    value: item.doneCount,
+    rate: item.rate,
     totalCount: item.totalCount,
     doneCount: item.doneCount,
   }));
   const formatProcessRateTooltipValue = (point) =>
-    `처리율 ${Math.round(Number(point.value || 0))}%`;
+    `처리 완료 ${Math.round(Number(point.doneCount || 0))}건`;
   const formatProcessRateTooltipSubtext = (point) => {
-    const doneCount = Math.round(Number(point.doneCount || 0));
     const totalCount = Math.round(Number(point.totalCount || 0));
 
-    return `처리 완료 ${doneCount}건 / 전체 ${totalCount}건`;
+    return `처리 완료 시간 기준 / 전체 ${totalCount}건`;
   };
 
   return (
-    <MetricLineChart
+    <MetricTimeBarChart
       items={chartItems}
       period={period}
-      title="처리율 개선 추이"
-      unit="%"
+      title="처리 완료 건수 추이"
+      unit="건"
       tooltipValueFormatter={formatProcessRateTooltipValue}
       tooltipSubtextFormatter={formatProcessRateTooltipSubtext}
-      guideText={
-        period === "day"
-          ? "표시된 시간 외 구간을 마우스로 이동하면 해당 시간의 처리율을 선형 보간하여 보여줍니다."
-          : null
-      }
     />
   );
 }
@@ -1466,7 +1379,7 @@ function formatTrendPercentage(value, total) {
   return `${((Number(value || 0) / total) * 100).toFixed(1)}%`;
 }
 
-function buildReportInsights(reports, period, range) {
+function buildReportInsights(reports, period, range, allReports = reports) {
   const doneCount = reports.filter((report) => report.status === REPORT_LABELS.done).length;
   const openCount = reports.length - doneCount;
 
@@ -1474,7 +1387,7 @@ function buildReportInsights(reports, period, range) {
     doneCount,
     openCount,
     timeline: buildTimeline(reports, period, range),
-    processRateTrend: buildProcessRateTrend(reports, period, range),
+    processRateTrend: buildProcessRateTrend(allReports, period, range),
     typeBars: [
       {
         label: REPORT_LABELS.post,
@@ -1514,18 +1427,20 @@ function buildProcessRateTrend(reports, period, range) {
   );
 
   reports.forEach((report) => {
-    const date = parseAdminLocalDateTime(report.createdAt);
+    if (report.status !== REPORT_LABELS.done) {
+      return;
+    }
+
+    const date = parseAdminLocalDateTime(report.handledAtValue);
     if (Number.isNaN(date.getTime())) return;
+    if (date < range.start || date > range.end) return;
 
     const label = getTimelineLabel(date, period, range);
     if (!label || !countMap.has(label)) return;
 
     const bucket = countMap.get(label);
     bucket.totalCount += 1;
-
-    if (report.status === REPORT_LABELS.done) {
-      bucket.doneCount += 1;
-    }
+    bucket.doneCount += 1;
   });
 
   normalizeDayEndProcessRateBuckets(countMap);
@@ -1595,15 +1510,13 @@ function getTimelineLabel(date, period, range) {
 }
 
 function getDayTimelineBucketHour(date) {
-  const hour = date.getHours();
-
-  return Math.floor(hour / 4) * 4;
+  return date.getHours();
 }
 
 function buildTimelineBuckets(period) {
   if (period === "day") {
     return new Map(
-      [0, 4, 8, 12, 16, 20, 24].map((hour) => [
+      Array.from({ length: 25 }, (_, hour) => hour).map((hour) => [
         String(hour),
         0,
       ]),
@@ -1625,34 +1538,17 @@ function buildTimelineBuckets(period) {
 
 function normalizeDayEndTimelineBucket(buckets) {
   /*
-   * 24시는 실제 DB 저장 시각이 아니라 하루 종료 시점 표시용 라벨입니다.
-   * 일별 신고 유입 추이는 프론트에서 4시간 단위로 집계하므로,
-   * 24시 값은 23:59:59가 포함되는 마지막 20~23시 버킷 값으로 표시합니다.
+   * 24시는 X축 종료 표시용 슬롯입니다.
+   * 실제 23시 데이터와 중복되지 않도록 다른 시간대 값을 복사하지 않습니다.
    */
-  if (!buckets.has("24")) {
-    return buckets;
-  }
-
-  buckets.set("24", buckets.get("20") ?? 0);
-
   return buckets;
 }
 
 function normalizeDayEndProcessRateBuckets(countMap) {
   /*
-   * 처리율 추이도 일별 라인 차트이므로 24시 끝점이 빈 값으로 떨어지지 않게
-   * 23:59:59가 포함되는 마지막 20~23시 버킷을 화면 표시용 24시에 복사합니다.
+   * 처리율 추이도 24시를 종료 표시용 슬롯으로만 둡니다.
+   * 실제 처리 건수와 중복 집계되지 않도록 다른 버킷 값을 복사하지 않습니다.
    */
-  if (!countMap.has("24") || !countMap.has("20")) {
-    return countMap;
-  }
-
-  const lastBucket = countMap.get("20");
-  const dayEndBucket = countMap.get("24");
-
-  dayEndBucket.doneCount = lastBucket.doneCount;
-  dayEndBucket.totalCount = lastBucket.totalCount;
-
   return countMap;
 }
 
