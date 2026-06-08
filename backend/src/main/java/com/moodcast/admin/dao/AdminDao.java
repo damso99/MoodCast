@@ -259,6 +259,9 @@ public interface AdminDao {
     /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
     AdminProfile selectAdminProfile(@Param("memberId") Long memberId);
 
+    /* 관리자 계정의 프로필 이미지를 기본값으로 되돌립니다. */
+    int resetAdminProfileImagesToDefault();
+
     /* 로그인한 관리자 본인의 이름, 닉네임, 전화번호를 수정합니다. */
     int updateAdminProfile(
             @Param("memberId") Long memberId,

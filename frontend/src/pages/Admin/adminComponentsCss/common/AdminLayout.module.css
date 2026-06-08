@@ -12,7 +12,7 @@
   top: 22px;
   height: calc(100vh - 44px);
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr;
   gap: 22px;
   padding: 22px 14px;
   border: 1px solid rgba(124, 77, 255, 0.1);
@@ -38,15 +38,13 @@
   height: 42px !important;
 }
 
-.brand strong,
-.adminProfile strong {
+.brand strong {
   display: block;
   font-size: 0.92rem;
   line-height: 1.1;
 }
 
-.brand span,
-.adminProfile span {
+.brand span {
   color: #667085;
   font-size: 0.72rem;
 }
@@ -88,39 +86,12 @@
   font-size: 20px !important;
 }
 
-.adminProfile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px;
-  border-radius: 18px;
-  color: #111827;
-  text-decoration: none;
-  background: rgba(251, 251, 253, 0.92);
-  transition:
-    transform 0.16s ease,
-    background 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.adminProfile:hover {
-  background: rgba(124, 77, 255, 0.09);
-  box-shadow: 0 10px 24px rgba(124, 77, 255, 0.12);
-  transform: translateY(-1px);
-}
-
-.adminProfile:active {
-  transform: translateY(0) scale(0.98);
-}
-
-.adminProfile:focus-visible {
-  outline: 3px solid rgba(124, 77, 255, 0.28);
-  outline-offset: 2px;
-}
-
-.adminProfile svg {
-  color: #111827;
-  font-size: 32px;
+.headerProfileImage {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .main {

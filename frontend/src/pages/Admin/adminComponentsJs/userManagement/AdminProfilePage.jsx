@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "../common/AdminLayout";
@@ -14,22 +14,16 @@ import styles from "../../adminComponentsCss/userManagement/AdminProfilePage.mod
  * - 이름(실명)
  * - 닉네임
  * - 전화번호
- * - 프로필 이미지 파일 미리보기
  * - 현재 비밀번호 / 새 비밀번호 / 새 비밀번호 확인
  *
  * profileForm 상태 설명:
  * - DB에서 조회한 이름, 닉네임, 전화번호를 input value로 저장합니다.
  * - 사용자가 입력을 수정하면 이 상태 값이 같이 바뀝니다.
  *
- * profilePreview 상태 설명:
- * - 기존 DB에 프로필 이미지 URL이 있으면 그 값을 먼저 보여줍니다.
- * - 사용자가 새 이미지 파일을 선택하면 브라우저 임시 URL로 미리보기를 바꿉니다.
- *
- * 비밀번호 검증과 이미지 실제 업로드는 아직 추가하지 않습니다.
+ * 비밀번호 검증은 아직 추가하지 않습니다.
  * ========================================================================== */
 export function AdminProfilePage() {
   const navigate = useNavigate();
-  const [profilePreview, setProfilePreview] = useState("");
   const [profileForm, setProfileForm] = useState({
     name: "",
     nickname: "",
@@ -42,7 +36,6 @@ export function AdminProfilePage() {
   const [saving, setSaving] = useState(false);
   const [roleChanging, setRoleChanging] = useState(false);
   const [message, setMessage] = useState("");
-  const fileInputRef = useRef(null);
   const { accessToken, member, setAuthData } = useAuthStore();
 
   const BACKSERVER = (
@@ -81,7 +74,14 @@ export function AdminProfilePage() {
           nickname: profile.nickname || "",
           phone: profile.phone || "",
         }));
-        setProfilePreview(profile.profileImageUrl || "");
+        setAuthData(accessToken, {
+          ...(member || {}),
+          name: profile.name || member?.name,
+          nickname: profile.nickname || member?.nickname,
+          phone: profile.phone || member?.phone,
+          profileImageUrl: null,
+          profile_image_url: null,
+        });
       })
       .catch(() => {
         setMessage("관리자 정보를 불러오지 못했습니다.");
@@ -98,25 +98,6 @@ export function AdminProfilePage() {
       ...prev,
       [name]: value,
     }));
-  };
-
-  const handleProfileImageChange = (event) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      setProfilePreview("");
-      return;
-    }
-
-    setProfilePreview(URL.createObjectURL(file));
-  };
-
-  const handleProfileImageDelete = () => {
-    setProfilePreview("");
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
   const handleProfileCancel = () => {
@@ -140,9 +121,7 @@ export function AdminProfilePage() {
      * 비밀번호:
      * - input은 남겨두지만 아직 검증/저장 조건을 연결하지 않습니다.
      *
-     * 프로필 이미지:
-     * - 파일 선택 미리보기만 유지합니다.
-     * - 실제 업로드 API는 별도 multipart 작업이 필요하므로 아직 연결하지 않습니다.
+     * 관리자 페이지에서는 프로필 이미지 기능을 사용하지 않습니다.
      * ======================================================================== */
     axios
       .put(
@@ -167,6 +146,14 @@ export function AdminProfilePage() {
           nickname: profile.nickname || "",
           phone: profile.phone || "",
         }));
+        setAuthData(accessToken, {
+          ...(member || {}),
+          name: profile.name || member?.name,
+          nickname: profile.nickname || member?.nickname,
+          phone: profile.phone || member?.phone,
+          profileImageUrl: null,
+          profile_image_url: null,
+        });
         setMessage(res.data?.message || "관리자 정보가 수정되었습니다.");
       })
       .catch(() => {
@@ -231,31 +218,6 @@ export function AdminProfilePage() {
         </div>
 
         <div className={styles.profileEditLayout}>
-          <aside className={styles.profilePreviewArea}>
-            <div className={styles.profileImageCircle}>
-              {profilePreview ? (
-                <img src={profilePreview} alt="선택한 관리자 프로필 미리보기" />
-              ) : (
-                <span>Profile</span>
-              )}
-            </div>
-            <div className={styles.profileImageActions}>
-              <label className={styles.fileSelectButton}>
-                프로필 이미지 선택
-                <input
-                  ref={fileInputRef}
-                  className={styles.hiddenFileInput}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleProfileImageChange}
-                />
-              </label>
-              <button type="button" onClick={handleProfileImageDelete}>
-                프로필 이미지 삭제
-              </button>
-            </div>
-          </aside>
-
           <form className={styles.adminForm}>
             <label>
               이름(실명)

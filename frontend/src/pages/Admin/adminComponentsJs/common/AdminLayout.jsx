@@ -1,8 +1,8 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import axios from "axios";
-import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import { Logo } from "../../../../components/common/Logo";
+import { defaultAvatarSrc } from "../../../../shared/lib/defaultAvatar";
 import { useAuthStore } from "../../../../stores/useAuthStore";
 import { adminNavItems } from "./adminConfig";
 import styles from "../../adminComponentsCss/common/AdminLayout.module.css";
@@ -16,7 +16,6 @@ import styles from "../../adminComponentsCss/common/AdminLayout.module.css";
  * 1. 왼쪽 사이드바
  *    - MoodCast 로고
  *    - 관리자 메뉴
- *    - 관리자 프로필 영역
  *
  * 2. 오른쪽 본문 영역
  *    - 페이지 제목
@@ -32,13 +31,10 @@ import styles from "../../adminComponentsCss/common/AdminLayout.module.css";
  * ========================================================================== */
 export function AdminLayout({ children, title, description }) {
   const navigate = useNavigate(); // 로그아웃 후 로그인 페이지로 이동하기 위해 사용하는 함수입니다.
-  const { clearAuthData, member } = useAuthStore(); // 브라우저에 저장된 로그인 정보와 현재 로그인 회원 정보를 가져옵니다.
+  const { clearAuthData } = useAuthStore(); // 브라우저에 저장된 로그인 정보를 가져옵니다.
   const BACKSERVER = (
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
   ).replace(/\/$/, ""); // 프론트 .env의 백엔드 주소를 사용하되, 끝의 /는 제거해서 API 경로가 중복되지 않게 합니다.
-
-  const adminRoleLabel =
-    member?.role === "SUPER_ADMIN" ? "관리자" : "user"; // 사이드바에 표시할 권한 문구입니다.
 
   /* ==========================================================================
    * 관리자 로그아웃 처리
@@ -88,14 +84,6 @@ export function AdminLayout({ children, title, description }) {
             </NavLink>
           ))}
         </nav>
-
-        <NavLink className={styles.adminProfile} to="/admin/profile">
-          <AccountCircleOutlinedIcon />
-          <div>
-            <strong>{member?.name || "관리자"}</strong>
-            <span>admin · {adminRoleLabel}</span>
-          </div>
-        </NavLink>
       </aside>
 
       <main className={styles.main}>
@@ -110,7 +98,11 @@ export function AdminLayout({ children, title, description }) {
               to="/admin/profile"
               aria-label="관리자 프로필"
             >
-              <AccountCircleOutlinedIcon />
+              <img
+                className={styles.headerProfileImage}
+                src={defaultAvatarSrc}
+                alt=""
+              />
             </NavLink>
             <button type="button" onClick={logoutAdmin} aria-label="로그아웃">
               <LogoutOutlinedIcon />

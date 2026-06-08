@@ -194,9 +194,11 @@
   background: linear-gradient(145deg, #fff, #f4efff);
 }
 
-.memberAvatar svg {
-  width: 58px;
-  height: 58px;
+.memberAvatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
 }
 
 .memberSummaryText {
