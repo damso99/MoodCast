@@ -435,13 +435,7 @@ export function NoticeManagementPage() {
       <section className={styles.composePanel}>
         <div className={styles.composeHeader}>
           <div>
-            <p className={styles.eyebrow}>Notice editor</p>
             <h2>{isEditing ? "공지사항 수정" : "공지사항 작성"}</h2>
-            <span>
-              {isEditing
-                ? "수정 저장 시 대시보드 공지가 다시 노출됩니다."
-                : "새 공지를 작성하면 최신 공지 1건만 대시보드에 노출됩니다."}
-            </span>
           </div>
           <span className={styles.modeBadge}>
             {isEditing ? "수정 중" : "새 공지"}
