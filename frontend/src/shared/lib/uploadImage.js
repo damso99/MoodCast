@@ -8,6 +8,8 @@
  * @param {boolean} cropSquare
  * @returns {Promise<File>}
  */
+import apiClient from '../api/apiClient';
+
 function resizeImage(file, maxWidth, maxHeight, quality = 0.85, cropSquare = false) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -108,18 +110,25 @@ export async function uploadImage(file, token, backserver = DEFAULT_BACKSERVER, 
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${backserver}/upload`, {
-    method: 'POST',
-    mode: 'cors',
-    headers,
-    body: formData,
-  });
+  try {
+    const response = await apiClient.post(`${backserver}/upload`, formData, {
+      headers,
+    });
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `업로드 실패 (${response.status})`);
+    return response.data.url;
+  } catch (error) {
+    const status = error?.response?.status;
+    const responseData = error?.response?.data || {};
+    const uploadError = new Error(
+      responseData.error ||
+        responseData.message ||
+        error.message ||
+        `업로드 실패${status ? ` (${status})` : ''}`,
+    );
+
+    uploadError.status = status;
+    uploadError.isAuthError = status === 401 || status === 403;
+
+    throw uploadError;
   }
-
-  const data = await response.json();
-  return data.url;
 }

@@ -157,6 +157,9 @@ export function CreatePostPage() {
         const imageHtml = `<img src="${url}" alt="${file.name}" />`;
         setContent((prev) => `${prev}${prev ? "\n" : ""}${imageHtml}`);
       } catch (err) {
+        if (err?.isAuthError) {
+          return;
+        }
         alert(`이미지 업로드 실패: ${err.message}`);
       }
     }
