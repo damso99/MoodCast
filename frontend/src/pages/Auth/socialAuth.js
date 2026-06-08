@@ -1,9 +1,12 @@
 export const KAKAO_OAUTH_STATE_KEY = "moodcast-kakao-oauth-state";
 export const KAKAO_OAUTH_MODE_KEY = "moodcast-kakao-oauth-mode";
+export const KAKAO_OAUTH_REMEMBER_KEY = "moodcast-kakao-oauth-remember";
 export const GOOGLE_OAUTH_STATE_KEY = "moodcast-google-oauth-state";
 export const GOOGLE_OAUTH_MODE_KEY = "moodcast-google-oauth-mode";
+export const GOOGLE_OAUTH_REMEMBER_KEY = "moodcast-google-oauth-remember";
 export const NAVER_OAUTH_STATE_KEY = "moodcast-naver-oauth-state";
 export const NAVER_OAUTH_MODE_KEY = "moodcast-naver-oauth-mode";
+export const NAVER_OAUTH_REMEMBER_KEY = "moodcast-naver-oauth-remember";
 export const SOCIAL_SIGNUP_PENDING_KEY = "moodcast-social-signup-pending";
 export const OAUTH_MODE_LOGIN = "LOGIN";
 export const OAUTH_MODE_LINK = "LINK";
@@ -26,7 +29,13 @@ const createOAuthState = () => {
   return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
 };
 
-const startKakaoOAuth = (mode) => {
+const writeOAuthSession = (stateKey, modeKey, rememberKey, state, mode, remember) => {
+  window.sessionStorage.setItem(stateKey, state);
+  window.sessionStorage.setItem(modeKey, mode);
+  window.sessionStorage.setItem(rememberKey, remember ? "true" : "false");
+};
+
+const startKakaoOAuth = (mode, remember = false) => {
   const clientId = import.meta.env.VITE_KAKAO_CLIENT_ID;
 
   if (!clientId) {
@@ -34,8 +43,7 @@ const startKakaoOAuth = (mode) => {
   }
 
   const state = createOAuthState();
-  window.sessionStorage.setItem(KAKAO_OAUTH_STATE_KEY, state);
-  window.sessionStorage.setItem(KAKAO_OAUTH_MODE_KEY, mode);
+  writeOAuthSession(KAKAO_OAUTH_STATE_KEY, KAKAO_OAUTH_MODE_KEY, KAKAO_OAUTH_REMEMBER_KEY, state, mode, remember);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -47,7 +55,7 @@ const startKakaoOAuth = (mode) => {
   window.location.href = `https://kauth.kakao.com/oauth/authorize?${params.toString()}`;
 };
 
-const startGoogleOAuth = (mode) => {
+const startGoogleOAuth = (mode, remember = false) => {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   if (!clientId) {
@@ -55,8 +63,7 @@ const startGoogleOAuth = (mode) => {
   }
 
   const state = createOAuthState();
-  window.sessionStorage.setItem(GOOGLE_OAUTH_STATE_KEY, state);
-  window.sessionStorage.setItem(GOOGLE_OAUTH_MODE_KEY, mode);
+  writeOAuthSession(GOOGLE_OAUTH_STATE_KEY, GOOGLE_OAUTH_MODE_KEY, GOOGLE_OAUTH_REMEMBER_KEY, state, mode, remember);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -70,7 +77,7 @@ const startGoogleOAuth = (mode) => {
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
 
-const startNaverOAuth = (mode) => {
+const startNaverOAuth = (mode, remember = false) => {
   const clientId = import.meta.env.VITE_NAVER_CLIENT_ID;
 
   if (!clientId) {
@@ -78,8 +85,7 @@ const startNaverOAuth = (mode) => {
   }
 
   const state = createOAuthState();
-  window.sessionStorage.setItem(NAVER_OAUTH_STATE_KEY, state);
-  window.sessionStorage.setItem(NAVER_OAUTH_MODE_KEY, mode);
+  writeOAuthSession(NAVER_OAUTH_STATE_KEY, NAVER_OAUTH_MODE_KEY, NAVER_OAUTH_REMEMBER_KEY, state, mode, remember);
 
   const params = new URLSearchParams({
     response_type: "code",
@@ -91,24 +97,24 @@ const startNaverOAuth = (mode) => {
   window.location.href = `https://nid.naver.com/oauth2.0/authorize?${params.toString()}`;
 };
 
-export const startKakaoLogin = () => {
-  startKakaoOAuth(OAUTH_MODE_LOGIN);
+export const startKakaoLogin = (remember = false) => {
+  startKakaoOAuth(OAUTH_MODE_LOGIN, remember);
 };
 
 export const startKakaoLink = () => {
   startKakaoOAuth(OAUTH_MODE_LINK);
 };
 
-export const startGoogleLogin = () => {
-  startGoogleOAuth(OAUTH_MODE_LOGIN);
+export const startGoogleLogin = (remember = false) => {
+  startGoogleOAuth(OAUTH_MODE_LOGIN, remember);
 };
 
 export const startGoogleLink = () => {
   startGoogleOAuth(OAUTH_MODE_LINK);
 };
 
-export const startNaverLogin = () => {
-  startNaverOAuth(OAUTH_MODE_LOGIN);
+export const startNaverLogin = (remember = false) => {
+  startNaverOAuth(OAUTH_MODE_LOGIN, remember);
 };
 
 export const startNaverLink = () => {

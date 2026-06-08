@@ -95,22 +95,26 @@ public class OAuthService {
     // 카카오 code로 사용자 정보를 조회하고 기존 연결/신규/이메일 충돌을 분기함
     @Transactional
     public OAuthLoginResult loginWithKakao(KakaoLoginRequest request) {
-        return loginWithProvider(KAKAO, requestKakaoUserInfo(request));
+        return loginWithProvider(KAKAO, requestKakaoUserInfo(request), shouldRemember(request));
     }
 
     // 구글 code로 사용자 정보를 조회하고 기존 연결/신규/이메일 충돌을 분기함
     @Transactional
     public OAuthLoginResult loginWithGoogle(KakaoLoginRequest request) {
-        return loginWithProvider(GOOGLE, requestGoogleUserInfo(request));
+        return loginWithProvider(GOOGLE, requestGoogleUserInfo(request), shouldRemember(request));
     }
 
     // 네이버 code로 사용자 정보를 조회하고 기존 연결/신규/이메일 충돌을 분기함
     @Transactional
     public OAuthLoginResult loginWithNaver(KakaoLoginRequest request) {
-        return loginWithProvider(NAVER, requestNaverUserInfo(request));
+        return loginWithProvider(NAVER, requestNaverUserInfo(request), shouldRemember(request));
     }
 
-    private OAuthLoginResult loginWithProvider(String provider, SocialUserInfo socialUserInfo) {
+    private boolean shouldRemember(KakaoLoginRequest request) {
+        return request != null && Boolean.TRUE.equals(request.getRemember());
+    }
+
+    private OAuthLoginResult loginWithProvider(String provider, SocialUserInfo socialUserInfo, boolean remember) {
         OAuthAccount connectedAccount = oAuthDao.findByProviderAndProviderUserId(
                 provider,
                 socialUserInfo.getProviderUserId()
@@ -126,7 +130,7 @@ public class OAuthService {
             oAuthDao.updateLastLoginAt(provider, socialUserInfo.getProviderUserId());
             loginDao.updateLastLoginAt(member.getMemberId());
 
-            return OAuthLoginResult.loginSuccess(loginService.issueLoginTokens(member));
+            return OAuthLoginResult.loginSuccess(loginService.issueLoginTokens(member, remember));
         }
 
         Member existingMember = loginDao.findMemberByEmail(socialUserInfo.getEmail());
@@ -199,7 +203,7 @@ public class OAuthService {
         pendingSignupRedisService.delete(request.getPendingToken());
 
         Member savedMember = loginDao.findMemberById(member.getMemberId());
-        return loginService.issueLoginTokens(savedMember);
+        return loginService.issueLoginTokens(savedMember, Boolean.TRUE.equals(request.getRemember()));
     }
 
     // 현재 로그인 회원이 카카오 계정을 연결했는지 확인함

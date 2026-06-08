@@ -237,16 +237,21 @@ public class LoginService {
             throw new IllegalStateException("\uB85C\uADF8\uC778 \uCC98\uB9AC\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4.");
         }
 
-        return issueLoginTokens(member);
+        return issueLoginTokens(member, Boolean.TRUE.equals(request.getRemember()));
     }
+
     public LoginResult issueLoginTokens(Member member) {
+        return issueLoginTokens(member, true);
+    }
+
+    public LoginResult issueLoginTokens(Member member, boolean remember) {
         if (member == null || member.getMemberId() == null) {
             throw new IllegalArgumentException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
 
         String accessToken = jwtService.createAccessToken(member);
         String tokenId = UUID.randomUUID().toString();
-        String refreshToken = jwtService.createRefreshToken(member, tokenId);
+        String refreshToken = jwtService.createRefreshToken(member, tokenId, remember);
 
         refreshTokenRedisService.saveRefreshToken(
                 member.getMemberId(),
@@ -260,7 +265,8 @@ public class LoginService {
         return new LoginResult(
                 accessToken,
                 refreshToken,
-                loginMemberResponse
+                loginMemberResponse,
+                remember
         );
     }
 
@@ -590,6 +596,7 @@ public class LoginService {
         RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
         Long memberId = refreshTokenInfo.getMemberId();
         String tokenId = refreshTokenInfo.getTokenId();
+        boolean remember = refreshTokenInfo.isRemember();
         if (!refreshTokenRedisService.matchesRefreshToken(memberId, tokenId, refreshToken)) {
             throw new AuthException("\uB85C\uADF8\uC778\uC774 \uD544\uC694\uD569\uB2C8\uB2E4.");
         }
@@ -605,7 +612,7 @@ public class LoginService {
         // 새 로그인 세션 tokenId 생성
         String newTokenId = UUID.randomUUID().toString();
         String newAccessToken = jwtService.createAccessToken(member);
-        String newRefreshToken = jwtService.createRefreshToken(member, newTokenId);
+        String newRefreshToken = jwtService.createRefreshToken(member, newTokenId, remember);
         refreshTokenRedisService.saveRefreshToken(
                 member.getMemberId(),
                 newTokenId,
@@ -618,11 +625,19 @@ public class LoginService {
         return new LoginResult(
                 newAccessToken,
                 newRefreshToken,
-                loginMemberResponse
+                loginMemberResponse,
+                remember
         );
     }
+
     public void logout(String refreshToken) {
         RefreshTokenInfo refreshTokenInfo = jwtService.getRefreshTokenInfo(refreshToken);
         refreshTokenRedisService.deleteRefreshToken(refreshTokenInfo.getMemberId(), refreshTokenInfo.getTokenId());
+    }
+
+    public LoginMemberResponse logoutAllDevices(String authorizationHeader) {
+        LoginMemberResponse loginMember = getLoginMemberByHeader(authorizationHeader);
+        refreshTokenRedisService.deleteAllRefreshTokens(loginMember.getMemberId());
+        return loginMember;
     }
 }

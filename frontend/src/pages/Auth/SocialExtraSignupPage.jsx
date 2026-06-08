@@ -135,6 +135,7 @@ export const SocialExtraSignupPage = () => {
           pendingToken: pending.pendingToken,
           name: form.name.trim(),
           nickname: form.nickname.trim(),
+          remember: Boolean(pending.remember),
           agreements: termsList.map((term) => ({
             termsId: term.termsId,
             agreed: Boolean(agreements[term.termsId]),

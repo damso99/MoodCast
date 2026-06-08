@@ -35,6 +35,12 @@ public class JwtService {
     @Value("${jwt.refresh-cookie-name}")
     private String refreshCookieName;
 
+    @Value("${jwt.refresh-cookie-same-site:Lax}")
+    private String refreshCookieSameSite;
+
+    @Value("${jwt.refresh-cookie-secure:false}")
+    private boolean refreshCookieSecure;
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
@@ -58,6 +64,10 @@ public class JwtService {
     // memberId + tokenId
     // pc접속중 모바일로 접속했을때 토큰을 덮어쓰지 않게 하려고 수정함
     public String createRefreshToken(Member member, String tokenId) {
+        return createRefreshToken(member, tokenId, true);
+    }
+
+    public String createRefreshToken(Member member, String tokenId, boolean remember) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(refreshTokenExpireDays, ChronoUnit.DAYS);
 
@@ -66,6 +76,7 @@ public class JwtService {
                 .subject(String.valueOf(member.getMemberId()))
                 .claim("type", "REFRESH")
                 .claim("tokenId", tokenId)
+                .claim("remember", remember)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
@@ -109,25 +120,49 @@ public class JwtService {
     }
 
     public ResponseCookie createRefreshCookie(String refreshToken) {
-        return ResponseCookie
+        return createRefreshCookie(refreshToken, true);
+    }
+
+    public ResponseCookie createRefreshCookie(String refreshToken, boolean remember) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie
                 .from(refreshCookieName, refreshToken)
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
-                .path("/")
-                .maxAge(Duration.ofSeconds(getRefreshTokenMaxAgeSeconds()))
-                .build();
+                .secure(refreshCookieSecure)
+                .sameSite(normalizeSameSite(refreshCookieSameSite))
+                .path("/");
+
+        if (remember) {
+            builder.maxAge(Duration.ofSeconds(getRefreshTokenMaxAgeSeconds()));
+        }
+
+        return builder.build();
     }
 
     public ResponseCookie createDeleteRefreshCookie() {
         return ResponseCookie
                 .from(refreshCookieName, "")
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(refreshCookieSecure)
+                .sameSite(normalizeSameSite(refreshCookieSameSite))
                 .path("/")
                 .maxAge(0)
                 .build();
+    }
+
+    private String normalizeSameSite(String sameSite) {
+        if (sameSite == null || sameSite.trim().isEmpty()) {
+            return "Lax";
+        }
+
+        String value = sameSite.trim();
+        if ("none".equalsIgnoreCase(value)) {
+            return "None";
+        }
+        if ("strict".equalsIgnoreCase(value)) {
+            return "Strict";
+        }
+
+        return "Lax";
     }
 
     // refresh 토큰을 한 번만 파싱해서 공통 검증을 처리함
@@ -154,13 +189,14 @@ public class JwtService {
     public RefreshTokenInfo getRefreshTokenInfo(String refreshToken) {
         Claims claims = parseRefreshToken(refreshToken);
         String tokenId = claims.get("tokenId", String.class);
+        Boolean remember = claims.get("remember", Boolean.class);
 
         if (tokenId == null || tokenId.trim().isEmpty()) {
             throw new AuthException("로그인이 필요합니다.");
         }
 
         try {
-            return new RefreshTokenInfo(Long.parseLong(claims.getSubject()), tokenId);
+            return new RefreshTokenInfo(Long.parseLong(claims.getSubject()), tokenId, remember == null || remember);
         } catch (NumberFormatException e) {
             throw new AuthException("로그인이 필요합니다.");
         }

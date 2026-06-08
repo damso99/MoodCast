@@ -211,7 +211,7 @@ export const LoginPage = () => {
 
   const handleKakaoLogin = () => {
     try {
-      startKakaoLogin();
+      startKakaoLogin(member.remember);
     } catch (error) {
       showToast("error", error.message);
     }
@@ -219,7 +219,7 @@ export const LoginPage = () => {
 
   const handleGoogleLogin = () => {
     try {
-      startGoogleLogin();
+      startGoogleLogin(member.remember);
     } catch (error) {
       showToast("error", error.message);
     }
@@ -227,7 +227,7 @@ export const LoginPage = () => {
 
   const handleNaverLogin = () => {
     try {
-      startNaverLogin();
+      startNaverLogin(member.remember);
     } catch (error) {
       showToast("error", error.message);
     }

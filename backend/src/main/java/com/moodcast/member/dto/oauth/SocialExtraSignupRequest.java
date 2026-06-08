@@ -11,4 +11,5 @@ public class SocialExtraSignupRequest {
     private String name;
     private String nickname;
     private List<SignupTermsAgreementRequest> agreements;
+    private Boolean remember;
 }

@@ -7,4 +7,5 @@ public class KakaoLoginRequest {
     private String code;
     private String redirectUri;
     private String state;
+    private Boolean remember;
 }

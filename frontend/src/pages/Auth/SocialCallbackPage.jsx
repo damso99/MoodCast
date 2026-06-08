@@ -8,10 +8,13 @@ import {
   getKakaoRedirectUri,
   getNaverRedirectUri,
   GOOGLE_OAUTH_MODE_KEY,
+  GOOGLE_OAUTH_REMEMBER_KEY,
   GOOGLE_OAUTH_STATE_KEY,
   KAKAO_OAUTH_MODE_KEY,
+  KAKAO_OAUTH_REMEMBER_KEY,
   KAKAO_OAUTH_STATE_KEY,
   NAVER_OAUTH_MODE_KEY,
+  NAVER_OAUTH_REMEMBER_KEY,
   NAVER_OAUTH_STATE_KEY,
   OAUTH_MODE_LINK,
   SOCIAL_SIGNUP_PENDING_KEY,
@@ -37,24 +40,28 @@ export const SocialCallbackPage = () => {
       label: "카카오",
       stateKey: KAKAO_OAUTH_STATE_KEY,
       modeKey: KAKAO_OAUTH_MODE_KEY,
+      rememberKey: KAKAO_OAUTH_REMEMBER_KEY,
       redirectUri: getKakaoRedirectUri(),
     },
     google: {
       label: "Google",
       stateKey: GOOGLE_OAUTH_STATE_KEY,
       modeKey: GOOGLE_OAUTH_MODE_KEY,
+      rememberKey: GOOGLE_OAUTH_REMEMBER_KEY,
       redirectUri: getGoogleRedirectUri(),
     },
     naver: {
       label: "네이버",
       stateKey: NAVER_OAUTH_STATE_KEY,
       modeKey: NAVER_OAUTH_MODE_KEY,
+      rememberKey: NAVER_OAUTH_REMEMBER_KEY,
       redirectUri: getNaverRedirectUri(),
     },
   }[provider];
   const providerLabel = providerConfig.label;
   const stateKey = providerConfig.stateKey;
   const modeKey = providerConfig.modeKey;
+  const rememberKey = providerConfig.rememberKey;
   const redirectUri = providerConfig.redirectUri;
   const loginUrl = `${BACKSERVER}/oauth/${provider}/login`;
   const linkUrl = `${BACKSERVER}/oauth/${provider}/link`;
@@ -83,8 +90,10 @@ export const SocialCallbackPage = () => {
     const state = searchParams.get("state");
     const savedState = window.sessionStorage.getItem(stateKey);
     const oauthMode = window.sessionStorage.getItem(modeKey);
+    const remember = window.sessionStorage.getItem(rememberKey) === "true";
     window.sessionStorage.removeItem(stateKey);
     window.sessionStorage.removeItem(modeKey);
+    window.sessionStorage.removeItem(rememberKey);
 
     if (!code) {
       showToast("error", `${providerLabel} 인증 코드가 없습니다.`);
@@ -140,6 +149,7 @@ export const SocialCallbackPage = () => {
           code,
           redirectUri,
           state,
+          remember,
         },
         {
           withCredentials: true,
@@ -155,7 +165,7 @@ export const SocialCallbackPage = () => {
         if (res.data?.status === "NEED_EXTRA_SIGNUP") {
           window.sessionStorage.setItem(
             SOCIAL_SIGNUP_PENDING_KEY,
-            JSON.stringify(res.data),
+            JSON.stringify({ ...res.data, remember }),
           );
           navigate("/auth/social/signup", { replace: true });
           return;
@@ -167,7 +177,7 @@ export const SocialCallbackPage = () => {
         showToast("error", getSocialLoginErrorMessage(err));
         setTimeout(() => navigate("/auth/login", { replace: true }), 1600);
       });
-  }, [accessToken, linkUrl, loginUrl, modeKey, navigate, providerLabel, redirectUri, searchParams, setAuthData, stateKey]);
+  }, [accessToken, linkUrl, loginUrl, modeKey, navigate, providerLabel, redirectUri, rememberKey, searchParams, setAuthData, stateKey]);
 
   return (
     <main className={styles.page}>

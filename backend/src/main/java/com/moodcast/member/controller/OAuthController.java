@@ -90,7 +90,7 @@ public class OAuthController {
         }
 
         LoginResult loginResult = result.getLoginResult();
-        ResponseCookie refreshCookie = jwtService.createRefreshCookie(loginResult.getRefreshToken());
+        ResponseCookie refreshCookie = jwtService.createRefreshCookie(loginResult.getRefreshToken(), loginResult.isRemember());
 
         loginAuditService.record(
                 loginResult.getMember().getMemberId(),
@@ -312,7 +312,7 @@ public class OAuthController {
 
         String provider = oAuthService.getPendingProvider(request.getPendingToken());
         LoginResult loginResult = oAuthService.completeSocialSignup(request);
-        ResponseCookie refreshCookie = jwtService.createRefreshCookie(loginResult.getRefreshToken());
+        ResponseCookie refreshCookie = jwtService.createRefreshCookie(loginResult.getRefreshToken(), loginResult.isRemember());
 
         loginAuditService.record(
                 loginResult.getMember().getMemberId(),

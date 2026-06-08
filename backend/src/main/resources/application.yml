@@ -12,6 +12,8 @@ jwt:
   access-token-expire-minutes: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:30}
   refresh-token-expire-days: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:14}
   refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:moodcast_refresh_token}
+  refresh-cookie-same-site: ${JWT_REFRESH_COOKIE_SAME_SITE:Lax}
+  refresh-cookie-secure: ${JWT_REFRESH_COOKIE_SECURE:false}
 
 oauth:
   kakao:

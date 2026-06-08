@@ -163,7 +163,7 @@ public class LoginController {
                     getUserAgent(httpRequest)
             );
 
-            ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
+            ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken(), result.isRemember());
 
             LoginResponse response = new LoginResponse(
                     true,
@@ -531,6 +531,36 @@ public class LoginController {
                 );
     }
 
+    @PostMapping("logout/all")
+    public ResponseEntity<?> logoutAllDevices(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            HttpServletRequest request
+    ) {
+        LoginMemberResponse loginMember = loginService.logoutAllDevices(authorizationHeader);
+
+        loginAuditService.record(
+                loginMember.getMemberId(),
+                loginMember.getEmail(),
+                null,
+                "LOGOUT_ALL",
+                true,
+                null,
+                getClientIp(request),
+                getUserAgent(request)
+        );
+
+        ResponseCookie deleteCookie = jwtService.createDeleteRefreshCookie();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(
+                        Map.of(
+                                "success", true,
+                                "message", "\uBAA8\uB4E0 \uAE30\uAE30\uC5D0\uC11C \uB85C\uADF8\uC544\uC6C3\uB418\uC5C8\uC2B5\uB2C8\uB2E4."
+                        )
+                );
+    }
+
     @PostMapping("refresh")
     public ResponseEntity<?> refresh(HttpServletRequest request) {
         String refreshToken = null;
@@ -574,7 +604,7 @@ public class LoginController {
                 result.getAccessToken(),
                 result.getMember()
         );
-        ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken());
+        ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken(), result.isRemember());
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body(response);

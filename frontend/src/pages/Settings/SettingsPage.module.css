@@ -176,6 +176,47 @@
   line-height: 1.5;
 }
 
+.securityActionPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  padding: 14px;
+  border: 1px solid rgba(217, 45, 32, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.securityActionPanel div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.securityActionPanel strong {
+  overflow-wrap: anywhere;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 1000;
+}
+
+.securityActionPanel p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.card .securityActionPanel .outlineDangerButton {
+  min-width: 136px;
+  margin-top: 0;
+  background: rgba(217, 45, 32, 0.08);
+  color: #b42318;
+}
+
 .passwordForm label,
 .withdrawForm label {
   display: grid;
@@ -335,8 +376,13 @@
     min-height: auto;
   }
 
-  .inlineAction {
+  .inlineAction,
+  .securityActionPanel {
     grid-template-columns: 1fr;
+  }
+
+  .card .securityActionPanel .outlineDangerButton {
+    width: 100%;
   }
 
   .accountStatusPanel {

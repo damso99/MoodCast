@@ -57,6 +57,8 @@ export function SettingsPage() {
   });
   const [withdrawConfirmModalOpen, setWithdrawConfirmModalOpen] = useState(false);
   const [withdrawSuccessModalOpen, setWithdrawSuccessModalOpen] = useState(false);
+  const [logoutAllConfirmOpen, setLogoutAllConfirmOpen] = useState(false);
+  const [logoutAllSuccessOpen, setLogoutAllSuccessOpen] = useState(false);
   const [withdrawPanelOpen, setWithdrawPanelOpen] = useState(false);
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [withdrawForm, setWithdrawForm] = useState(initialWithdrawForm);
@@ -69,6 +71,7 @@ export function SettingsPage() {
   const [isWithdrawEmailSending, setIsWithdrawEmailSending] = useState(false);
   const [isWithdrawEmailVerifying, setIsWithdrawEmailVerifying] = useState(false);
   const [isSocialUnlinkLoading, setIsSocialUnlinkLoading] = useState(false);
+  const [isLogoutAllLoading, setIsLogoutAllLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, type: '', message: '' });
 
   const showToast = (type, message) => {
@@ -337,6 +340,61 @@ export function SettingsPage() {
     navigate('/auth/login', { replace: true });
   };
 
+  const requestLogoutAll = () => {
+    setLogoutAllConfirmOpen(true);
+  };
+
+  const confirmLogoutAll = async () => {
+    if (!accessToken) {
+      showToast('error', '로그인이 필요합니다.');
+      return;
+    }
+
+    try {
+      setIsLogoutAllLoading(true);
+      await axios.post(
+        `${BACKSERVER}/auth/logout/all`,
+        {},
+        {
+          headers: {
+            Authorization: 'Bearer ' + accessToken,
+          },
+          withCredentials: true,
+        },
+      );
+
+      clearAuthData();
+      setLogoutAllConfirmOpen(false);
+      setLogoutAllSuccessOpen(true);
+    } catch (error) {
+      showToast('error', getApiMessage(error, '모든 기기 로그아웃에 실패했습니다.'));
+    } finally {
+      setIsLogoutAllLoading(false);
+    }
+  };
+
+  const confirmLogoutAllSuccess = () => {
+    setLogoutAllSuccessOpen(false);
+    navigate('/auth/login', { replace: true });
+  };
+
+  const renderLogoutAllPanel = () => (
+    <div className={styles.securityActionPanel}>
+      <div>
+        <strong>모든 기기에서 로그아웃</strong>
+        <p>분실한 기기나 공용 PC에 남아있는 로그인 세션을 종료합니다.</p>
+      </div>
+      <button
+        type="button"
+        className={styles.outlineDangerButton}
+        onClick={requestLogoutAll}
+        disabled={isLogoutAllLoading}
+      >
+        {isLogoutAllLoading ? '처리 중' : '모든 기기 로그아웃'}
+      </button>
+    </div>
+  );
+
   const toggleWithdrawPanel = () => {
     if (withdrawPanelOpen) {
       setWithdrawForm(initialWithdrawForm);
@@ -537,6 +595,25 @@ export function SettingsPage() {
         confirmOnly
         confirmText="로그인하기"
         onConfirm={confirmPasswordSuccess}
+      />
+      <AuthConfirmModal
+        open={logoutAllConfirmOpen}
+        title="모든 기기에서 로그아웃할까요?"
+        description="현재 기기를 포함한 모든 로그인 세션이 종료됩니다. 다시 사용하려면 로그인해야 합니다."
+        cancelText="취소"
+        confirmText={isLogoutAllLoading ? '처리 중' : '로그아웃'}
+        cancelDisabled={isLogoutAllLoading}
+        confirmDisabled={isLogoutAllLoading}
+        onCancel={() => setLogoutAllConfirmOpen(false)}
+        onConfirm={confirmLogoutAll}
+      />
+      <AuthConfirmModal
+        open={logoutAllSuccessOpen}
+        title="모든 기기에서 로그아웃되었습니다."
+        description="보안을 위해 다시 로그인해주세요."
+        confirmOnly
+        confirmText="로그인하기"
+        onConfirm={confirmLogoutAllSuccess}
       />
       <AuthConfirmModal
         open={withdrawConfirmModalOpen}
@@ -769,6 +846,7 @@ export function SettingsPage() {
                 <button type="submit" disabled={isPasswordLoading}>
                   {isPasswordLoading ? '변경 중' : '비밀번호 변경'}
                 </button>
+                {renderLogoutAllPanel()}
               </form>
             ) : title === '보안' ? (
               <form className={styles.passwordForm} onSubmit={handlePasswordSetup}>
@@ -802,6 +880,7 @@ export function SettingsPage() {
                 <button type="submit" disabled={isPasswordLoading}>
                   {isPasswordLoading ? '설정 중' : '비밀번호 설정'}
                 </button>
+                {renderLogoutAllPanel()}
               </form>
             ) : null}
           </article>
