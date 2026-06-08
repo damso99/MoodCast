@@ -21,8 +21,16 @@ function getDisplayRoomTitle(activeRoom) {
   const roomTitle = String(activeRoom?.roomName || "").trim();
   const memberCount = Number(activeRoom?.memberCount || 0);
   const matchedTitle = roomTitle.match(/^(.*?)(?:\s외\s\d+명)$/);
+  const strippedTitle = roomTitle
+    .replace(/\s*님의?\s*채팅$/, "")
+    .replace(/\s*님과의\s*채팅$/, "")
+    .trim();
 
   if (!matchedTitle) {
+    if (memberCount > 2 && strippedTitle) {
+      return `${strippedTitle} 외 ${memberCount - 1}명`;
+    }
+
     return roomTitle || "그룹 채팅방";
   }
 
@@ -41,7 +49,7 @@ function getDisplayRoomTitle(activeRoom) {
 
 function getRoomSubtitleParts(activeRoom, connected) {
   const memberCount = Number(activeRoom?.memberCount || 0);
-  const countText = memberCount > 0 ? `참여 인원 ${memberCount}명` : "참여 인원 정보 없음";
+  const countText = memberCount === 2 ? "" : memberCount > 0 ? `참여 인원 ${memberCount}명` : "참여 인원 정보 없음";
   const connectionText = connected ? "실시간 연결됨" : "연결 대기";
   return { countText, connectionText };
 }
@@ -585,26 +593,28 @@ export function GroupChatRoomDetail({
         <div className={styles.roomTitle}>
           <strong>{displayRoomTitle}</strong>
           <span>
-            <button
-              type="button"
-              onClick={openMembersPanel}
-              aria-label="참여 인원 목록 열기"
-              aria-expanded={isMembersPanelOpen}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                color: "#667085",
-                font: "inherit",
-                cursor: "pointer",
-              }}
-            >
-              {roomSubtitle.countText}
-            </button>
-            <span> · {roomSubtitle.connectionText}</span>
+            {roomSubtitle.countText ? (
+              <button
+                type="button"
+                onClick={openMembersPanel}
+                aria-label="참여 인원 목록 열기"
+                aria-expanded={isMembersPanelOpen}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: 0,
+                  border: 0,
+                  background: "transparent",
+                  color: "#667085",
+                  font: "inherit",
+                  cursor: "pointer",
+                }}
+              >
+                {roomSubtitle.countText}
+              </button>
+            ) : null}
+            <span>{roomSubtitle.countText ? " · " : ""}{roomSubtitle.connectionText}</span>
           </span>
         </div>
         <div className={styles.headerActions}>

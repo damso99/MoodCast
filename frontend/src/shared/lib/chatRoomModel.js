@@ -1,4 +1,4 @@
-import { formatKoreanTime } from "./dateTime";
+﻿import { formatKoreanTime } from "./dateTime";
 import { parseChatContent } from "./chatContent";
 
 export const DIRECT_LEAVE_PREFIX = "__MOODCAST_DIRECT_LEAVE__::";
@@ -190,23 +190,21 @@ export function normalizeGroupThread(thread) {
 export function getGroupThreadDisplayName(thread) {
   const roomName = String(thread?.roomName || "").trim();
   const memberCount = Number(thread?.memberCount || 0);
-  const matchedTitle = roomName.match(/^(.*?)(?:\s외\s\d+명)$/);
+  const baseName = roomName
+    .replace(/\s*님의?\s*채팅$/, "")
+    .replace(/\s*님과의\s*채팅$/, "")
+    .replace(/\s외\s\d+명$/, "")
+    .trim();
 
-  if (!matchedTitle) {
-    return roomName || "그룹 채팅방";
-  }
-
-  const baseName = matchedTitle[1].trim();
-
-  if (!baseName) {
-    return roomName || "그룹 채팅방";
+  if (!roomName) {
+    return "그룹 채팅방";
   }
 
   if (memberCount <= 1) {
-    return baseName;
+    return baseName || roomName;
   }
 
-  return `${baseName} 외 ${memberCount - 1}명`;
+  return `${baseName || roomName} 외 ${memberCount - 1}명`;
 }
 
 export function getThreadSortValue(thread) {
@@ -243,3 +241,4 @@ export function getLatestConfirmedMessageId(messages) {
 
   return null;
 }
+

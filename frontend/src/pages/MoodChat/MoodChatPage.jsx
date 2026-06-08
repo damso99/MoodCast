@@ -1235,16 +1235,15 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             }
           >
             <div className={styles.threadContent}>
-              <strong>
-                {isGroupThread
-                  ? getGroupThreadDisplayName(thread)
-                  : thread.partnerNickname ||
-                    thread.partnerName ||
-                    `회원 ${thread.partnerMemberId}`}
-              </strong>
-              <span className={styles.threadTypeLabel}>
-                {isGroupThread ? `그룹 · ${thread.memberCount || 0}명` : "1:1"}
-              </span>
+              <div className={styles.threadTitleRow}>
+                <strong>
+                  {isGroupThread
+                    ? getGroupThreadDisplayName(thread)
+                    : thread.partnerNickname ||
+                      thread.partnerName ||
+                      `회원 ${thread.partnerMemberId}`}
+                </strong>
+              </div>
               <p className={styles.threadPreview}>
                 {formatChatPreview(thread.lastMessage) || "메시지가 없습니다."}
               </p>
