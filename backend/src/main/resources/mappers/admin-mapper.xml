@@ -80,7 +80,6 @@
         <result property="name" column="name"/>
         <result property="nickname" column="nickname"/>
         <result property="phone" column="phone"/>
-        <result property="profileImageUrl" column="profile_image_url"/>
     </resultMap>
 
     <!-- adminMemberDetailMap 결과 매핑입니다. DB 조회 결과 컬럼을 화면 응답 VO 필드에 연결합니다. -->
@@ -1685,12 +1684,20 @@
             member_id,
             name,
             nickname,
-            phone,
-            profile_image_url
+            phone
         from members
         where member_id = #{memberId}
         limit 1
     </select>
+
+    <!-- 관리자 계정의 프로필 이미지를 기본 이미지 상태로 되돌립니다. -->
+    <update id="resetAdminProfileImagesToDefault">
+        update members
+        set profile_image_url = null,
+            updated_at = CONVERT_TZ(NOW(6), '+00:00', '+09:00')
+        where upper(role) = 'SUPER_ADMIN'
+          and profile_image_url is not null
+    </update>
 
     <!-- updateAdminProfile 수정 쿼리입니다. 관리자 기능에서 상태나 정보를 변경할 때 사용합니다. -->
     <update id="updateAdminProfile">

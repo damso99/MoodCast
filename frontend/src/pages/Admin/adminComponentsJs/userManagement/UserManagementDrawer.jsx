@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PauseCircleOutlineOutlinedIcon from "@mui/icons-material/PauseCircleOutlineOutlined";
 import { useAuthStore } from "../../../../stores/useAuthStore";
+import { defaultAvatarSrc } from "../../../../shared/lib/defaultAvatar";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
 import styles from "../../adminComponentsCss/userManagement/UserManagementDrawer.module.css";
 
@@ -478,7 +478,7 @@ export function UserManagementDrawer({
 
         <section className={styles.memberSummary}>
           <div className={styles.memberAvatar}>
-            <AccountCircleOutlinedIcon />
+            <img src={defaultAvatarSrc} alt="" />
           </div>
           <div className={styles.memberSummaryText}>
             <div className={styles.memberNameLine}>

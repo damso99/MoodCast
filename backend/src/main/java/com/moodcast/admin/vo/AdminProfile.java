@@ -14,7 +14,6 @@ import lombok.NoArgsConstructor;
  * - name: 실명
  * - nickname: 닉네임
  * - phone: 전화번호
- * - profileImageUrl: 기존 프로필 이미지가 있을 경우 미리보기용으로 사용
  * ========================================================================== */
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,5 +23,4 @@ public class AdminProfile {
     private String name;
     private String nickname;
     private String phone;
-    private String profileImageUrl;
 }

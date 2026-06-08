@@ -1844,6 +1844,9 @@ public class AdminService {
      * ========================================================================== */
     public AdminProfile getAdminProfile(String authorizationHeader) {
         LoginMemberResponse loginMember = validateAdmin(authorizationHeader);
+
+        adminDao.resetAdminProfileImagesToDefault();
+
         AdminProfile adminProfile = adminDao.selectAdminProfile(loginMember.getMemberId());
 
         if (adminProfile == null) {
@@ -1857,6 +1860,7 @@ public class AdminService {
      * 관리자 개인 정보 수정
      * --------------------------------------------------------------------------
      * 로그인한 관리자 본인의 실명, 닉네임, 전화번호를 수정합니다.
+     * 관리자 페이지에서는 프로필 이미지 기능을 사용하지 않습니다.
      *
      * 주의:
      * - 다른 사람 정보를 수정하지 않도록 token에서 얻은 memberId만 사용합니다.
