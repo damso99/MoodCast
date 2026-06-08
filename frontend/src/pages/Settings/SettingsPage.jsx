@@ -16,6 +16,14 @@ const passwordRegex =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
 const passwordPolicyMessage =
   '비밀번호는 영문, 숫자, 특수문자(? ! @ # $ % ^ & *)를 포함한 8~20자입니다.';
+const AUTH_CODE_TTL = 180;
+const AUTH_CODE_COOLDOWN = 60;
+const normalizeAuthCode = (value) => value.replace(/\D/g, '').slice(0, 6);
+const formatAuthTime = (seconds) => {
+  const minute = Math.floor(seconds / 60);
+  const second = String(seconds % 60).padStart(2, '0');
+  return `${minute}:${second}`;
+};
 const initialPasswordForm = {
   currentPassword: '',
   newPassword: '',
@@ -53,6 +61,8 @@ export function SettingsPage() {
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [withdrawForm, setWithdrawForm] = useState(initialWithdrawForm);
   const [withdrawEmailCodeSent, setWithdrawEmailCodeSent] = useState(false);
+  const [withdrawEmailCooldown, setWithdrawEmailCooldown] = useState(0);
+  const [withdrawEmailExpireTime, setWithdrawEmailExpireTime] = useState(0);
   const [withdrawEmailVerified, setWithdrawEmailVerified] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
   const [isWithdrawLoading, setIsWithdrawLoading] = useState(false);
@@ -66,6 +76,24 @@ export function SettingsPage() {
     setToast({ show: true, type, message, duration });
     setTimeout(() => setToast({ show: false, type: '', message: '' }), duration);
   };
+
+  useEffect(() => {
+    if (withdrawEmailCooldown <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => setWithdrawEmailCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [withdrawEmailCooldown]);
+
+  useEffect(() => {
+    if (withdrawEmailExpireTime <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => setWithdrawEmailExpireTime((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [withdrawEmailExpireTime]);
 
   const loadSocialStatuses = async () => {
     if (!accessToken) {
@@ -107,7 +135,7 @@ export function SettingsPage() {
   const handleKakaoLink = () => {
     if (kakaoLinked) {
       if (!kakaoCanUnlink) {
-        showToast('error', '카카오 계정은 마지막 로그인 수단이라 바로 해제할 수 없습니다.');
+        showToast('error', '카카오 계정은 마지막 로그인 수단입니다. 보안에서 비밀번호를 설정하거나 다른 소셜을 연결한 뒤 해제해주세요.');
         return;
       }
 
@@ -130,7 +158,7 @@ export function SettingsPage() {
   const handleGoogleLink = () => {
     if (googleLinked) {
       if (!googleCanUnlink) {
-        showToast('error', 'Google 계정은 마지막 로그인 수단이라 바로 해제할 수 없습니다.');
+        showToast('error', 'Google 계정은 마지막 로그인 수단입니다. 보안에서 비밀번호를 설정하거나 다른 소셜을 연결한 뒤 해제해주세요.');
         return;
       }
 
@@ -153,7 +181,7 @@ export function SettingsPage() {
   const handleNaverLink = () => {
     if (naverLinked) {
       if (!naverCanUnlink) {
-        showToast('error', '네이버 계정은 마지막 로그인 수단이라 바로 해제할 수 없습니다.');
+        showToast('error', '네이버 계정은 마지막 로그인 수단입니다. 보안에서 비밀번호를 설정하거나 다른 소셜을 연결한 뒤 해제해주세요.');
         return;
       }
 
@@ -208,7 +236,7 @@ export function SettingsPage() {
     const { name, value } = event.target;
     setWithdrawForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'authCode' ? normalizeAuthCode(value) : value,
     }));
 
     if (name === 'authCode' && withdrawEmailVerified) {
@@ -313,6 +341,8 @@ export function SettingsPage() {
     if (withdrawPanelOpen) {
       setWithdrawForm(initialWithdrawForm);
       setWithdrawEmailCodeSent(false);
+      setWithdrawEmailCooldown(0);
+      setWithdrawEmailExpireTime(0);
       setWithdrawEmailVerified(false);
     }
 
@@ -320,6 +350,11 @@ export function SettingsPage() {
   };
 
   const sendWithdrawEmailCode = async () => {
+    if (withdrawEmailCooldown > 0) {
+      showToast('error', `${withdrawEmailCooldown}초 후 다시 요청할 수 있습니다.`);
+      return;
+    }
+
     try {
       setIsWithdrawEmailSending(true);
       const res = await axios.post(
@@ -333,7 +368,13 @@ export function SettingsPage() {
       );
 
       setWithdrawEmailCodeSent(true);
+      setWithdrawEmailCooldown(AUTH_CODE_COOLDOWN);
+      setWithdrawEmailExpireTime(AUTH_CODE_TTL);
       setWithdrawEmailVerified(false);
+      setWithdrawForm((prev) => ({
+        ...prev,
+        authCode: '',
+      }));
       showToast('success', res.data?.message || '탈퇴 확인 이메일 인증번호를 발송했습니다.');
     } catch (error) {
       showToast('error', getApiMessage(error, '탈퇴 확인 이메일 인증번호 발송에 실패했습니다.'));
@@ -343,8 +384,18 @@ export function SettingsPage() {
   };
 
   const verifyWithdrawEmailCode = async () => {
-    if (!withdrawForm.authCode.trim()) {
-      showToast('error', '이메일 인증번호를 입력해주세요.');
+    if (!withdrawEmailCodeSent) {
+      showToast('error', '먼저 이메일 인증번호를 발송해주세요.');
+      return;
+    }
+
+    if (withdrawEmailExpireTime <= 0) {
+      showToast('error', '인증번호가 만료되었습니다. 다시 요청해주세요.');
+      return;
+    }
+
+    if (normalizeAuthCode(withdrawForm.authCode).length !== 6) {
+      showToast('error', '이메일 인증번호 6자리를 입력해주세요.');
       return;
     }
 
@@ -353,7 +404,7 @@ export function SettingsPage() {
       const res = await axios.post(
         `${BACKSERVER}/auth/withdraw/email/verify`,
         {
-          authCode: withdrawForm.authCode.trim(),
+          authCode: normalizeAuthCode(withdrawForm.authCode),
         },
         {
           headers: {
@@ -363,6 +414,7 @@ export function SettingsPage() {
       );
 
       setWithdrawEmailVerified(true);
+      setWithdrawEmailExpireTime(0);
       showToast('success', res.data?.message || '탈퇴 이메일 인증이 완료되었습니다.');
     } catch (error) {
       showToast('error', getApiMessage(error, '이메일 인증번호를 확인해주세요.'));
@@ -409,6 +461,8 @@ export function SettingsPage() {
       setWithdrawForm(initialWithdrawForm);
       setWithdrawPanelOpen(false);
       setWithdrawEmailCodeSent(false);
+      setWithdrawEmailCooldown(0);
+      setWithdrawEmailExpireTime(0);
       setWithdrawEmailVerified(false);
       setWithdrawSuccessModalOpen(true);
     } catch (error) {
@@ -430,6 +484,10 @@ export function SettingsPage() {
 
     loadSocialStatuses();
   }, [BACKSERVER, accessToken]);
+
+  const linkedProviderCount = [kakaoLinked, googleLinked, naverLinked].filter(Boolean).length;
+  const loginMethodCount = linkedProviderCount + (passwordLoginEnabled ? 1 : 0);
+  const socialOnlyLastMethod = !passwordLoginEnabled && linkedProviderCount <= 1;
 
   const content = (
     <section className={styles.wrap}>
@@ -512,6 +570,15 @@ export function SettingsPage() {
                 <p className={styles.cardText}>
                   일반 계정에 소셜 로그인을 연결합니다. 현재 로그인한 이메일과 같은 소셜 계정만 연결할 수 있습니다.
                 </p>
+                <div className={styles.accountStatusPanel}>
+                  <span>로그인 수단 {loginMethodCount}개</span>
+                  <span>{passwordLoginEnabled ? '비밀번호 로그인 가능' : '소셜 전용 계정'}</span>
+                  <p>
+                    {socialOnlyLastMethod
+                      ? '마지막 소셜 계정은 바로 해제할 수 없습니다. 보안에서 비밀번호를 먼저 설정해주세요.'
+                      : '최소 하나 이상의 로그인 수단이 남아야 소셜 연결을 해제할 수 있습니다.'}
+                  </p>
+                </div>
                 <div className={styles.providerList}>
                   <div className={styles.providerRow}>
                     <div className={styles.providerMeta}>
@@ -593,12 +660,14 @@ export function SettingsPage() {
                           type="button"
                           className={styles.secondaryButton}
                           onClick={sendWithdrawEmailCode}
-                          disabled={isWithdrawEmailSending || withdrawEmailVerified}
+                          disabled={isWithdrawEmailSending || withdrawEmailCooldown > 0 || withdrawEmailVerified}
                         >
                           {isWithdrawEmailSending
                             ? '발송 중'
                             : withdrawEmailVerified
                               ? '인증완료'
+                              : withdrawEmailCooldown > 0
+                                ? `${withdrawEmailCooldown}초`
                               : withdrawEmailCodeSent
                                 ? '인증번호 재발송'
                                 : '인증번호 발송'}
@@ -613,17 +682,34 @@ export function SettingsPage() {
                             value={withdrawForm.authCode}
                             onChange={handleWithdrawInputChange}
                             placeholder="6자리 숫자"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={6}
+                            autoComplete="one-time-code"
                             readOnly={withdrawEmailVerified}
                           />
                           <button
                             type="button"
                             className={styles.secondaryButton}
                             onClick={verifyWithdrawEmailCode}
-                            disabled={!withdrawEmailCodeSent || isWithdrawEmailVerifying || withdrawEmailVerified}
+                            disabled={
+                              !withdrawEmailCodeSent ||
+                              withdrawEmailExpireTime <= 0 ||
+                              withdrawForm.authCode.length !== 6 ||
+                              isWithdrawEmailVerifying ||
+                              withdrawEmailVerified
+                            }
                           >
                             {withdrawEmailVerified ? '확인완료' : isWithdrawEmailVerifying ? '확인 중' : '인증 확인'}
                           </button>
                         </div>
+                        {withdrawEmailCodeSent && !withdrawEmailVerified ? (
+                          <p className={withdrawEmailExpireTime > 0 ? styles.timerText : styles.dangerText}>
+                            {withdrawEmailExpireTime > 0
+                              ? `남은 시간 ${formatAuthTime(withdrawEmailExpireTime)}`
+                              : '인증번호가 만료되었습니다. 다시 요청해주세요.'}
+                          </p>
+                        ) : null}
                       </label>
                       <label>
                         <span>확인 문구</span>

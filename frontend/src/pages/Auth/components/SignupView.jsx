@@ -54,6 +54,7 @@ export const SignupView = ({
     termsList.length > 0 &&
     !termsLoading &&
     !signupSubmitting;
+  const emailCodeReady = signup.emailCode.trim().length === 6;
   const emailExpireMinute = Math.floor(emailExpireTime / 60);
   const emailExpireSecond = String(emailExpireTime % 60).padStart(2, "0");
   const getMessageClass = (status) => {
@@ -238,7 +239,11 @@ export const SignupView = ({
                         name="emailCode"
                         value={signup.emailCode}
                         onChange={inputSignup}
-                        placeholder="인증번호 입력"
+                        placeholder="6자리 숫자"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={6}
+                        autoComplete="one-time-code"
                         readOnly={emailAuth === 3}
                       />
 
@@ -246,7 +251,7 @@ export const SignupView = ({
                         type="button"
                         className={styles.ghostButton}
                         onClick={checkEmailAuthCode}
-                        disabled={emailAuth === 3}
+                        disabled={emailAuth === 3 || emailExpireTime <= 0 || !emailCodeReady}
                       >
                         확인
                       </button>

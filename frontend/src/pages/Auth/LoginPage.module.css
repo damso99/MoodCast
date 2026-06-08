@@ -163,6 +163,23 @@
   overflow-wrap: anywhere;
 }
 
+.timerText,
+.messageDanger {
+  margin: -2px 0 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.timerText {
+  color: #7b3ff2;
+}
+
+.messageDanger {
+  color: #e14d61;
+}
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
