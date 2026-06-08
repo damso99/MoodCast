@@ -219,7 +219,6 @@ export function UserManagementDrawer({
         );
       })
       .catch((error) => {
-        console.log(error);
         setSanctionLogs([]);
         setSanctionLogsError("제재 이력을 불러오지 못했습니다.");
       })
@@ -244,7 +243,6 @@ export function UserManagementDrawer({
         setMemberDetail(res.data);
       })
       .catch((error) => {
-        console.log(error);
         setMemberDetail(null);
         setMemberDetailError("회원 상세 정보를 불러오지 못했습니다.");
       })
@@ -340,7 +338,6 @@ export function UserManagementDrawer({
         setSuspendModalType(null);
       })
       .catch((error) => {
-        console.log(error);
         setSuspendModalType(null);
         openActionResultPopup(
           "error",
@@ -393,7 +390,6 @@ export function UserManagementDrawer({
         fetchSanctionLogs(selectedManagedMember.memberId);
       })
       .catch((error) => {
-        console.log(error);
         openActionResultPopup(
           "error",
           "처리 실패",
@@ -440,7 +436,6 @@ export function UserManagementDrawer({
         navigate("/app/feed", { replace: true });
       })
       .catch((error) => {
-        console.log(error);
         openActionResultPopup("error", "처리 실패", "관리자 권한 변경에 실패했습니다.");
       })
       .finally(() => {

@@ -398,7 +398,6 @@ export function StatisticsDashboardPage() {
         },
       )
       .catch((error) => {
-        console.log("[ADMIN_STATISTICS_DASHBOARD_ERROR]", error);
         setSummary(emptySummary);
         setSubscriberTrend([]);
         setActiveUserTrend([]);

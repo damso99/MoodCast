@@ -84,7 +84,6 @@ export function AdminProfilePage() {
         setProfilePreview(profile.profileImageUrl || "");
       })
       .catch((error) => {
-        console.log(error);
         setMessage("관리자 정보를 불러오지 못했습니다.");
       })
       .finally(() => {
@@ -171,7 +170,6 @@ export function AdminProfilePage() {
         setMessage(res.data?.message || "관리자 정보가 수정되었습니다.");
       })
       .catch((error) => {
-        console.log(error);
         setMessage("관리자 정보 수정에 실패했습니다.");
       })
       .finally(() => {
@@ -215,7 +213,6 @@ export function AdminProfilePage() {
         navigate("/app/feed", { replace: true });
       })
       .catch((error) => {
-        console.log(error);
         setMessage("관리자 권한 변경에 실패했습니다.");
       })
       .finally(() => {

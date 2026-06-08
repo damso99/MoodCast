@@ -114,7 +114,6 @@ export function DashboardActiveUserChart() {
           );
         })
         .catch((error) => {
-          console.log(error);
           setActiveUserItems([]);
           setHasError(true);
         })

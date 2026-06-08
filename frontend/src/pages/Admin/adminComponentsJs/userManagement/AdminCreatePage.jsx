@@ -213,7 +213,6 @@ export function AdminCreatePage() {
         setSelectedRole("SUPER_ADMIN");
       })
       .catch((error) => {
-        console.log(error);
         setRoleResultPopup({
           type: "error",
           title: "처리 실패",

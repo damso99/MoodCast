@@ -75,7 +75,6 @@ export function DashboardEmotionActivityChart() {
           setEmotionItems(Array.isArray(res.data?.items) ? res.data.items : []);
         })
         .catch((error) => {
-          console.log(error);
           setEmotionItems([]);
           setHasError(true);
         })

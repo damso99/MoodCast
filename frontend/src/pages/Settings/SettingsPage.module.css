@@ -1,10 +1,12 @@
 .wrap {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .hero,
 .card {
+  min-width: 0;
   padding: 22px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.28);
@@ -14,16 +16,19 @@
 
 .hero strong,
 .card h2 {
+  overflow-wrap: anywhere;
   color: #111827;
 }
 
 .hero p {
   margin: 8px 0 0;
+  overflow-wrap: anywhere;
   color: #667085;
 }
 
 .cardText {
   margin: 8px 0 0;
+  overflow-wrap: anywhere;
   color: #667085;
   font-size: 14px;
   line-height: 1.5;
@@ -43,6 +48,8 @@
   background: rgba(124, 77, 255, 0.09);
   color: #7c4dff;
   font-weight: 800;
+  line-height: 1.25;
+  white-space: normal;
 }
 
 .card button:disabled {
@@ -70,15 +77,18 @@
 .providerMeta {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
 .providerMeta strong {
+  overflow-wrap: anywhere;
   color: #111827;
   font-size: 14px;
   font-weight: 1000;
 }
 
 .providerMeta span {
+  overflow-wrap: anywhere;
   color: #667085;
   font-size: 12px;
   font-weight: 800;
@@ -117,6 +127,7 @@
 
 .passwordNotice p {
   margin: 0;
+  overflow-wrap: anywhere;
   color: #667085;
   font-size: 13px;
   font-weight: 700;
@@ -157,6 +168,7 @@
 
 .helperText {
   margin: -2px 0 0;
+  overflow-wrap: anywhere;
   color: #7b8191;
   font-size: 12px;
   font-weight: 700;
@@ -204,6 +216,7 @@
 
 .dangerHeader p {
   margin: 0;
+  overflow-wrap: anywhere;
   color: #7b8191;
   font-size: 13px;
   font-weight: 700;
@@ -228,6 +241,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
+  min-width: 0;
 }
 
 .card .secondaryButton {
@@ -242,9 +256,13 @@
 }
 
 @media (max-width: 640px) {
+  .wrap {
+    gap: 14px;
+  }
+
   .hero,
   .card {
-    padding: 18px;
+    padding: 16px;
     border-radius: 20px;
   }
 
@@ -260,6 +278,10 @@
 
   .inlineAction {
     grid-template-columns: 1fr;
+  }
+
+  .emailVerifyBox .secondaryButton {
+    width: 100%;
   }
 
   .providerRow {

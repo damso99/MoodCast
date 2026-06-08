@@ -58,12 +58,6 @@ export const AccountRecoveryPage = () => {
     }, duration);
   };
 
-  const logDevAuthCode = (label, authCode) => {
-    if (authCode) {
-      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
-    }
-  };
-
   const changeMode = (nextMode) => {
     setMode(nextMode);
     setSearchParams({ mode: nextMode });
@@ -113,7 +107,6 @@ export const AccountRecoveryPage = () => {
         email: findEmailForm.email,
       })
       .then((res) => {
-        logDevAuthCode("아이디 찾기 이메일", res.data?.authCode);
         showToast("success", res.data.message || "가입 이메일로 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
@@ -167,7 +160,6 @@ export const AccountRecoveryPage = () => {
         email: passwordForm.email,
       })
       .then((res) => {
-        logDevAuthCode("비밀번호 재설정 이메일", res.data?.authCode);
         showToast("success", res.data.message || "비밀번호 재설정 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {

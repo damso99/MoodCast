@@ -76,7 +76,6 @@ export function DashboardRecentActivities() {
           );
         })
         .catch((error) => {
-          console.log(error);
           setRecentActivities([]);
           setHasError(true);
         })
@@ -162,7 +161,6 @@ export function DashboardRecentActivities() {
         );
       })
       .catch((error) => {
-        console.log(error);
         setAllActivities([]);
       })
       .finally(() => {

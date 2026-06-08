@@ -177,7 +177,6 @@ export function UserManagementPage() {
         setTotalMemberCountError(false);
       })
       .catch((error) => {
-        console.log(error);
         setTotalMemberCount(null);
         setTotalMemberCountError(true);
       });
@@ -218,7 +217,6 @@ export function UserManagementPage() {
         setMembers(nextMembers);
       })
       .catch((error) => {
-        console.log(error);
         setMembers([]);
         setMembersError(true);
       })

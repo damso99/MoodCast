@@ -88,12 +88,6 @@ export const SignupPage = () => {
     }, duration);
   };
 
-  const logDevAuthCode = (label, authCode) => {
-    if (authCode) {
-      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
-    }
-  };
-
   // 이메일
   useEffect(() => {
     if (emailCooldown <= 0) {
@@ -526,7 +520,6 @@ export const SignupPage = () => {
         email: email,
       })
       .then((res) => {
-        logDevAuthCode("회원가입 이메일", res.data?.authCode);
         setEmailAuth(1);
         setEmailCooldown(60);
         setEmailExpireTime(180);
