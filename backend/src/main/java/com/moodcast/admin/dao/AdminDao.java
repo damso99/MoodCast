@@ -30,74 +30,73 @@ import java.time.LocalDateTime;
 /* ==========================================================================
  * 관리자 페이지 공통 DAO
  * --------------------------------------------------------------------------
- * DB와 직접 연결되는 MyBatis Mapper 인터페이스입니다.
+ * 관리자 기능에서 사용하는 MyBatis Mapper 인터페이스입니다.
  *
- * DAO 역할:
- * - service에서 필요한 DB 조회/수정 요청을 실제 SQL과 연결합니다.
- * - 회원 정보는 기존 member 패키지의 members 테이블 구조를 참고해서 사용할 예정입니다.
+ * 역할:
+ * - 서비스에서 필요한 조회, 수정, 삭제 요청을 mapper XML의 SQL과 연결합니다.
+ * - 회원, 콘텐츠, 신고, 대시보드, 통계, 공지사항 관리 데이터를 조회합니다.
  *
- * 현재 단계:
- * - 다른 폴더의 mapper XML 파일을 수정하지 않기 위해 메서드는 아직 추가하지 않습니다.
- * - 나중에 관리자 목록 조회, 관리자 승급/강등, 공지사항 관리 등이 필요해지면
- *   이 인터페이스에 메서드를 추가하고 mapper XML을 연결하면 됩니다.
+ * 주의:
+ * - 이 파일은 SQL을 직접 작성하지 않고 메서드 선언만 관리합니다.
+ * - 실제 쿼리는 admin-mapper.xml과 연결됩니다.
  * ========================================================================== */
-@Mapper // MyBatis가 이 인터페이스를 DB Mapper로 인식하게 합니다.
+@Mapper // MyBatis가 이 인터페이스를 DB Mapper로 인식하도록 합니다.
 public interface AdminDao {
 
-    /* members 테이블에 있는 전체 회원 수를 조회합니다. */
+    /* 전체 회원 수를 조회합니다. */
     Long selectTotalMemberCount();
 
-    /* members 테이블에 있는 전체 회원 목록을 조회합니다. */
+    /* 전체 회원 목록을 조회합니다. */
     List<AdminMember> selectMembers();
 
     /* 콘텐츠 관리 페이지에서 사용할 게시글 목록을 조회합니다. */
     List<AdminContentPost> selectAdminContentPosts();
 
-    /* 콘텐츠 관리 댓글 탭에서 사용할 댓글 목록을 조회합니다. */
+    /* 콘텐츠 관리 페이지에서 사용할 댓글 목록을 조회합니다. */
     List<AdminContentComment> selectAdminContentComments();
 
-    /* 댓글 상태 변경 후 화면 카드 한 건을 갱신하기 위해 최신 댓글 정보를 조회합니다. */
+    /* 댓글 상태 변경 후 화면 갱신에 필요한 최신 댓글 정보를 조회합니다. */
     AdminContentComment selectAdminContentCommentById(@Param("commentId") Long commentId);
 
-    /* 콘텐츠 관리 해시태그 탭에서 사용할 해시태그 목록을 조회합니다. */
+    /* 콘텐츠 관리 페이지에서 사용할 해시태그 목록을 조회합니다. */
     List<AdminContentHashtag> selectAdminContentHashtags();
 
-    /* 해시태그 상태 변경 후 화면 카드 한 건을 갱신하기 위해 최신 해시태그 정보를 조회합니다. */
+    /* 해시태그 상태 변경 후 화면 갱신에 필요한 최신 해시태그 정보를 조회합니다. */
     AdminContentHashtag selectAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 
     /*
-     * 관리자 콘텐츠 관리에서 게시글 작업 후 최신 상태를 다시 조회합니다.
-     * 프론트에서는 이 결과로 카드 한 장만 갱신할 수 있습니다.
+     * 게시글 작업 후 최신 상태를 다시 조회합니다.
+     * 프론트에서는 이 결과로 카드 한 건만 갱신할 수 있습니다.
      */
     AdminContentPost selectAdminContentPostById(@Param("postId") Long postId);
 
     /*
      * 게시글 숨김 처리입니다.
-     * post_tbl.visibility를 PRIVATE로 바꿔 일반 피드에서 공개 상태가 아니게 만듭니다.
+     * post_tbl.visibility를 PRIVATE로 변경합니다.
      */
     int hideAdminContentPost(@Param("postId") Long postId);
 
     /*
-     * 숨김 게시글 복구 처리입니다.
+     * 숨김 처리된 게시글을 복구합니다.
      * post_tbl.visibility를 PUBLIC으로 되돌립니다.
      */
     int restoreHiddenAdminContentPost(@Param("postId") Long postId);
 
     /*
      * 게시글 삭제 처리입니다.
-     * 프로젝트 정책에 맞춰 처음 삭제는 post_tbl.deleted_yn을 Y로 바꾸는 soft delete입니다.
+     * 프로젝트 정책에 맞춰 post_tbl.deleted_yn을 Y로 바꾸는 soft delete입니다.
      */
     int softDeleteAdminContentPost(@Param("postId") Long postId);
 
     /*
-     * 삭제 탭에서 사용하는 게시글 복구 처리입니다.
-     * post_tbl.deleted_yn을 N으로 되돌리고, 공개 상태도 PUBLIC으로 맞춥니다.
+     * 삭제 처리된 게시글을 복구합니다.
+     * deleted_yn을 N으로 되돌리고 공개 상태를 PUBLIC으로 맞춥니다.
      */
     int restoreDeletedAdminContentPost(@Param("postId") Long postId);
 
     /*
-     * 삭제 탭에서 사용하는 완전 삭제 전 연결 데이터 정리입니다.
-     * FK 제약 때문에 게시글 본문을 지우기 전에 댓글, 좋아요, 저장, 해시태그 연결을 먼저 정리합니다.
+     * 완전 삭제 전에 연결 데이터를 정리합니다.
+     * FK 제약 때문에 게시글 본문 삭제 전에 댓글, 좋아요, 저장, 해시태그 연결을 먼저 제거합니다.
      */
     int deleteAdminPostComments(@Param("postId") Long postId);
 
@@ -108,12 +107,12 @@ public interface AdminDao {
     int deleteAdminPostHashtags(@Param("postId") Long postId);
 
     /*
-     * 삭제 탭에서 사용하는 게시글 완전 삭제입니다.
+     * 게시글을 완전 삭제합니다.
      * 로그 테이블은 append-only 정책이므로 삭제하지 않습니다.
      */
     int hardDeleteAdminContentPost(@Param("postId") Long postId);
 
-    /* 댓글 삭제는 comment_tbl.deleted_yn을 Y로 바꾸는 soft delete입니다. */
+    /* 댓글을 삭제 상태로 변경합니다. */
     int softDeleteAdminContentComment(@Param("commentId") Long commentId);
 
     /* 삭제된 댓글을 다시 표시 상태로 복구합니다. */
@@ -125,54 +124,54 @@ public interface AdminDao {
     /* hashtag 테이블에서 해시태그를 완전 삭제합니다. */
     int hardDeleteAdminContentHashtag(@Param("hashtagId") Long hashtagId);
 
-    /* 해시태그 상태는 admin_action_logs로 관리하므로 존재 여부만 확인합니다. */
+    /* 해시태그가 존재하는지 확인합니다. */
     int countAdminContentHashtagById(@Param("hashtagId") Long hashtagId);
 
-    /* 사용자 관리 하단의 전체/일반/관리자/정지 회원 수를 한 번에 조회합니다. */
+    /* 사용자 관리 상단 요약 수치를 조회합니다. */
     AdminUserManagementSummary selectUserManagementSummaryCounts();
 
-    /* 사용자 관리 하단 카드에 표시할 가장 최근 가입 회원 1명을 조회합니다. */
+    /* 사용자 관리 카드에 표시할 최근 가입 회원 1명을 조회합니다. */
     AdminRecentMember selectLatestJoinedMember();
 
-    /* 사용자 관리 하단 카드에 표시할 가장 최근 제재 회원 1명을 조회합니다. */
+    /* 사용자 관리 카드에 표시할 최근 제재 회원 1명을 조회합니다. */
     AdminRecentMember selectLatestSanctionedMember();
 
-    /* 사용자 관리 하단에 표시할 최근 권한 변경/제재 로그를 조회합니다. */
+    /* 사용자 관리에 표시할 최근 권한 변경/제재 로그를 조회합니다. */
     List<AdminActionLogView> selectRecentAdminActionLogs();
 
-    /* 전체 로그 보기 팝업에서 사용할 권한 변경/제재 로그 전체 목록을 조회합니다. */
+    /* 전체 로그 보기 팝업에서 사용할 관리자 작업 로그 전체 목록을 조회합니다. */
     List<AdminActionLogView> selectAllAdminActionLogs();
 
-    /* 사용자 관리 우측 패널에서 선택 회원의 정지/해제 이력을 조회합니다. */
+    /* 선택 회원의 제재/해제 이력을 조회합니다. */
     List<AdminActionLogView> selectMemberSanctionLogs(@Param("memberId") Long memberId);
 
-    /* 회원 정보 전체 보기에서 사용할 단건 상세 정보를 조회합니다. */
+    /* 회원 상세 정보를 조회합니다. */
     AdminMemberDetail selectMemberDetail(@Param("memberId") Long memberId);
 
-    /* 관리자 권한 관리 페이지에서 이메일 또는 실명으로 회원을 검색합니다. */
+    /* 관리자 권한 관리에서 이메일 또는 이름으로 회원을 검색합니다. */
     List<AdminMember> searchMembersForAdminPromotion(
             @Param("searchType") String searchType,
             @Param("keyword") String keyword
     );
 
-    /* ACTIVE 상태의 회원을 일반 회원 또는 관리자로 변경합니다. */
+    /* ACTIVE 상태 회원의 역할을 일반 회원 또는 관리자로 변경합니다. */
     int updateMemberRoleForAdminPromotion(
             @Param("memberId") Long memberId,
             @Param("role") String role
     );
 
-    /* 선택한 회원을 정지 상태로 변경합니다. suspendedUntil이 null이면 영구 정지입니다. */
+    /* 선택 회원을 정지 상태로 변경합니다. suspendedUntil이 null이면 영구 정지입니다. */
     int suspendMember(
             @Param("memberId") Long memberId,
             @Param("suspendedUntil") LocalDateTime suspendedUntil
     );
 
-    /* 정지된 회원을 다시 ACTIVE 상태로 변경합니다. */
+    /* 회원에게 경고 횟수를 추가합니다. */
     int addWarningToMember(@Param("memberId") Long memberId);
 
     int restoreSuspendedMember(@Param("memberId") Long memberId);
 
-    /* 관리자 작업 로그에 회원 정지 이력을 추가합니다. */
+    /* 관리자 작업 로그를 추가합니다. */
     int insertAdminActionLog(
             @Param("adminId") Long adminId,
             @Param("actionType") String actionType,
@@ -194,7 +193,7 @@ public interface AdminDao {
             @Param("endDate") LocalDate endDate
     );
 
-    /* 신고 상세와 처리 후 갱신에 사용할 신고 단건 조회입니다. */
+    /* 신고 상세와 처리 후 갱신에 사용하는 신고 단건 조회입니다. */
     AdminReport selectAdminReportById(@Param("reportId") Long reportId);
 
     /* 신고 상세 패널에 표시할 대상 회원의 최근 활동을 조회합니다. */
@@ -213,30 +212,30 @@ public interface AdminDao {
             @Param("handledMemo") String handledMemo
     );
 
-    /* 관리자 대시보드 상단 카드에 표시할 요약 숫자를 조회합니다. */
+    /* 관리자 대시보드 상단 카드에 표시할 요약 수치를 조회합니다. */
     AdminDashboardSummary selectDashboardSummary();
 
-    /* 관리자 대시보드의 감정별 게시글 활동 수를 일/주/월 단위로 조회합니다. */
+    /* 관리자 대시보드의 감정별 활동 분포를 조회합니다. */
     List<AdminEmotionActivity> selectDashboardEmotionActivity(
             @Param("period") String period,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
 
-    /* 관리자 대시보드의 시간별 활성 사용자 수를 일/주/월 단위로 조회합니다. */
+    /* 관리자 대시보드의 기간별 활성 사용자 통계를 조회합니다. */
     List<AdminActiveUserStat> selectDashboardActiveUsers(
             @Param("period") String period,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );
 
-    /* 관리자 대시보드의 최근 활동을 최신 10개만 조회합니다. */
+    /* 관리자 대시보드의 최근 활동 10건을 조회합니다. */
     List<AdminRecentActivity> selectRecentDashboardActivities();
 
-    /* 관리자 대시보드의 전체 활동 보기 팝업에서 사용할 모든 활동 로그를 조회합니다. */
+    /* 전체 활동 보기 팝업에서 사용할 모든 활동 로그를 조회합니다. */
     List<AdminRecentActivity> selectAllDashboardActivities();
 
-    /* 통계 대시보드 상단 카드와 하단 요약에 사용할 기간별 요약 숫자를 조회합니다. */
+    /* 통계 대시보드 상단 카드와 요약에 사용할 기간별 수치를 조회합니다. */
     AdminStatisticsSummary selectStatisticsSummary(
             @Param("period") String period,
             @Param("startDate") LocalDate startDate,
@@ -260,7 +259,7 @@ public interface AdminDao {
     /* 로그인한 관리자 본인의 개인 정보를 조회합니다. */
     AdminProfile selectAdminProfile(@Param("memberId") Long memberId);
 
-    /* 로그인한 관리자 본인의 실명, 닉네임, 전화번호를 수정합니다. */
+    /* 로그인한 관리자 본인의 이름, 닉네임, 전화번호를 수정합니다. */
     int updateAdminProfile(
             @Param("memberId") Long memberId,
             @Param("name") String name,

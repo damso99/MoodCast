@@ -28,14 +28,11 @@ export function FollowingPage() {
     
     // useAuthStore에서 가져온 token이 있으면 사용, 없으면 세션 스토리지 직접 조회
     const effectiveToken = token || window.sessionStorage.getItem('moodcast-access-token');
-    
-    console.log('DEBUG: Fetching following list for', targetId, 'Token exists:', !!effectiveToken);
 
     const config = effectiveToken ? { headers: { Authorization: `Bearer ${effectiveToken}` } } : {};
     
     axios.get(`${BACKSERVER}/auth/follow/following/${targetId}`, config)
       .then(res => {
-        console.log('DEBUG: Received following data:', res.data);
         setItems(res.data);
       })
       .catch(err => console.error('팔로잉 목록 조회 실패:', err))
@@ -69,7 +66,6 @@ export function FollowingPage() {
       headers: { Authorization: `Bearer ${effectiveToken}` }
     })
     .then((res) => {
-      console.log('DEBUG: Toggle result for', id, ':', res.data);
       const newStatus = res.data.following;
       setItems(prev => prev.map(item => 
         item.memberId === id ? { ...item, isFollowing: newStatus, following: newStatus } : item

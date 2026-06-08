@@ -56,9 +56,7 @@ export function AdminLayout({ children, title, description }) {
   const logoutAdmin = () => {
     axios
       .post(`${BACKSERVER}/auth/logout`, {}, { withCredentials: true }) // 쿠키를 포함해서 백엔드 로그아웃 API를 호출합니다.
-      .catch((err) => {
-        console.log(err); // 개발 중 확인용 로그입니다. 로그아웃 자체는 finally에서 계속 진행합니다.
-      })
+      .catch(() => undefined)
       .finally(() => {
         clearAuthData(); // sessionStorage에 저장된 로그인 토큰과 회원 정보를 삭제합니다.
         navigate("/auth/login"); // 로그아웃 후 로그인 페이지로 이동합니다.

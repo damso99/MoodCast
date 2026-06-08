@@ -11,6 +11,7 @@ const nicknameRegex = /^[가-힣A-Za-z0-9]{2,12}$/;
 const passwordRegex =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
 const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+const normalizeAuthCode = (value) => value.replace(/\D/g, "").slice(0, 6);
 
 export const SignupPage = () => {
   const navigate = useNavigate();
@@ -88,12 +89,6 @@ export const SignupPage = () => {
     }, duration);
   };
 
-  const logDevAuthCode = (label, authCode) => {
-    if (authCode) {
-      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
-    }
-  };
-
   // 이메일
   useEffect(() => {
     if (emailCooldown <= 0) {
@@ -139,11 +134,13 @@ export const SignupPage = () => {
 
   const inputSignup = (e) => {
     const name = e.target.name;
-    const value = e.target.value;
+    const value =
+      name === "emailCode" ? normalizeAuthCode(e.target.value) : e.target.value;
 
     setSignup({
       ...signup,
       [name]: value,
+      ...(name === "email" ? { emailCode: "" } : {}),
     });
 
     if (name === "name") {
@@ -526,7 +523,10 @@ export const SignupPage = () => {
         email: email,
       })
       .then((res) => {
-        logDevAuthCode("회원가입 이메일", res.data?.authCode);
+        setSignup((prev) => ({
+          ...prev,
+          emailCode: "",
+        }));
         setEmailAuth(1);
         setEmailCooldown(60);
         setEmailExpireTime(180);
@@ -555,15 +555,15 @@ export const SignupPage = () => {
       return;
     }
 
-    if (!signup.emailCode.trim()) {
-      showToast("error", "이메일 인증번호를 입력해주세요.");
+    if (normalizeAuthCode(signup.emailCode).length !== 6) {
+      showToast("error", "이메일 인증번호 6자리를 입력해주세요.");
       return;
     }
 
     axios
       .post(`${BACKSERVER}/signup/auth/email/verify`, {
         email: signup.email,
-        authCode: signup.emailCode,
+        authCode: normalizeAuthCode(signup.emailCode),
       })
       .then((res) => {
         setEmailAuth(3);

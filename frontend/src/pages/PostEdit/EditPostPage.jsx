@@ -301,9 +301,7 @@ export function EditPostPage() {
         mentions,
       };
 
-      console.log("[게시물 수정] 요청 데이터:", requestData);
-
-      const response = await axios.put(
+      await axios.put(
         `${BACKSERVER}/api/posts/${postId}`,
         requestData,
         {
@@ -313,7 +311,6 @@ export function EditPostPage() {
         },
       );
 
-      console.log("[게시물 수정] 저장 성공:", response.data);
       alert("게시물이 수정되었습니다.");
       navigate("/app");
     } catch (error) {

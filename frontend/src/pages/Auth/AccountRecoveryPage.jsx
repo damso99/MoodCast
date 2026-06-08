@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import AuthToast from "./components/AuthToast";
@@ -10,6 +10,14 @@ const passwordRegex =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
 const passwordPolicyMessage =
   "비밀번호는 영문, 숫자, 특수문자(? ! @ # $ % ^ & *)를 포함한 8~20자입니다.";
+const AUTH_CODE_TTL = 180;
+const AUTH_CODE_COOLDOWN = 60;
+const normalizeAuthCode = (value) => value.replace(/\D/g, "").slice(0, 6);
+const formatAuthTime = (seconds) => {
+  const minute = Math.floor(seconds / 60);
+  const second = String(seconds % 60).padStart(2, "0");
+  return `${minute}:${second}`;
+};
 
 export const AccountRecoveryPage = () => {
   const navigate = useNavigate();
@@ -20,6 +28,12 @@ export const AccountRecoveryPage = () => {
   const [mode, setMode] = useState(initialMode);
   const [isLoading, setIsLoading] = useState(false);
   const [foundAccount, setFoundAccount] = useState(null);
+  const [findEmailCodeSent, setFindEmailCodeSent] = useState(false);
+  const [findEmailCooldown, setFindEmailCooldown] = useState(0);
+  const [findEmailExpireTime, setFindEmailExpireTime] = useState(0);
+  const [passwordCodeSent, setPasswordCodeSent] = useState(false);
+  const [passwordCooldown, setPasswordCooldown] = useState(0);
+  const [passwordExpireTime, setPasswordExpireTime] = useState(0);
   const [passwordCodeVerified, setPasswordCodeVerified] = useState(false);
   const [resetSuccessModalOpen, setResetSuccessModalOpen] = useState(false);
   const [toast, setToast] = useState({
@@ -58,11 +72,41 @@ export const AccountRecoveryPage = () => {
     }, duration);
   };
 
-  const logDevAuthCode = (label, authCode) => {
-    if (authCode) {
-      console.log(`[MoodCast 개발용 인증번호] ${label}: ${authCode}`);
+  useEffect(() => {
+    if (findEmailCooldown <= 0) {
+      return;
     }
-  };
+
+    const timer = setTimeout(() => setFindEmailCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [findEmailCooldown]);
+
+  useEffect(() => {
+    if (findEmailExpireTime <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => setFindEmailExpireTime((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [findEmailExpireTime]);
+
+  useEffect(() => {
+    if (passwordCooldown <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => setPasswordCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [passwordCooldown]);
+
+  useEffect(() => {
+    if (passwordExpireTime <= 0) {
+      return;
+    }
+
+    const timer = setTimeout(() => setPasswordExpireTime((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [passwordExpireTime]);
 
   const changeMode = (nextMode) => {
     setMode(nextMode);
@@ -72,19 +116,33 @@ export const AccountRecoveryPage = () => {
   };
 
   const inputFindEmail = (e) => {
+    const { name } = e.target;
+    const value = name === "authCode" ? normalizeAuthCode(e.target.value) : e.target.value;
+    const identityChanged = ["name", "email"].includes(name);
+
     setFindEmailForm({
       ...findEmailForm,
-      [e.target.name]: e.target.value,
+      [name]: value,
+      ...(identityChanged ? { authCode: "" } : {}),
     });
     setFoundAccount(null);
+
+    if (identityChanged) {
+      setFindEmailCodeSent(false);
+      setFindEmailCooldown(0);
+      setFindEmailExpireTime(0);
+    }
   };
 
   const inputPassword = (e) => {
-    const shouldResetVerification = ["email", "authCode"].includes(e.target.name);
-    const nextValue = e.target.value;
+    const { name } = e.target;
+    const shouldResetVerification = ["email", "authCode"].includes(name);
+    const nextValue = name === "authCode" ? normalizeAuthCode(e.target.value) : e.target.value;
+    const emailChanged = name === "email";
     const nextPasswordForm = {
       ...passwordForm,
-      [e.target.name]: nextValue,
+      [name]: nextValue,
+      ...(emailChanged ? { authCode: "" } : {}),
     };
 
     setPasswordForm(nextPasswordForm);
@@ -92,9 +150,20 @@ export const AccountRecoveryPage = () => {
     if (shouldResetVerification && passwordCodeVerified) {
       setPasswordCodeVerified(false);
     }
+
+    if (emailChanged) {
+      setPasswordCodeSent(false);
+      setPasswordCooldown(0);
+      setPasswordExpireTime(0);
+    }
   };
 
   const sendFindEmailCode = () => {
+    if (findEmailCooldown > 0) {
+      showToast("error", `${findEmailCooldown}초 후 다시 요청할 수 있습니다.`);
+      return;
+    }
+
     if (!findEmailForm.name.trim()) {
       showToast("error", "이름을 입력해주세요.");
       return;
@@ -113,7 +182,13 @@ export const AccountRecoveryPage = () => {
         email: findEmailForm.email,
       })
       .then((res) => {
-        logDevAuthCode("아이디 찾기 이메일", res.data?.authCode);
+        setFindEmailForm((prev) => ({
+          ...prev,
+          authCode: "",
+        }));
+        setFindEmailCodeSent(true);
+        setFindEmailCooldown(AUTH_CODE_COOLDOWN);
+        setFindEmailExpireTime(AUTH_CODE_TTL);
         showToast("success", res.data.message || "가입 이메일로 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
@@ -127,16 +202,31 @@ export const AccountRecoveryPage = () => {
   const verifyFindEmail = (e) => {
     e.preventDefault();
 
-    if (!findEmailForm.authCode.trim()) {
-      showToast("error", "인증번호를 입력해주세요.");
+    if (!findEmailCodeSent) {
+      showToast("error", "먼저 인증번호를 발송해주세요.");
+      return;
+    }
+
+    if (findEmailExpireTime <= 0) {
+      showToast("error", "인증번호가 만료되었습니다. 다시 요청해주세요.");
+      return;
+    }
+
+    if (normalizeAuthCode(findEmailForm.authCode).length !== 6) {
+      showToast("error", "인증번호 6자리를 입력해주세요.");
       return;
     }
 
     setIsLoading(true);
 
     axios
-      .post(`${BACKSERVER}/auth/recovery/email/verify`, findEmailForm)
+      .post(`${BACKSERVER}/auth/recovery/email/verify`, {
+        ...findEmailForm,
+        authCode: normalizeAuthCode(findEmailForm.authCode),
+      })
       .then((res) => {
+        setFindEmailExpireTime(0);
+        setFindEmailCodeSent(false);
         setFoundAccount({
           email: res.data.email || "",
           kakaoLinked: Boolean(res.data.kakaoLinked),
@@ -154,6 +244,11 @@ export const AccountRecoveryPage = () => {
   };
 
   const sendPasswordCode = () => {
+    if (passwordCooldown > 0) {
+      showToast("error", `${passwordCooldown}초 후 다시 요청할 수 있습니다.`);
+      return;
+    }
+
     if (!passwordForm.email.trim()) {
       showToast("error", "이메일을 입력해주세요.");
       return;
@@ -167,7 +262,13 @@ export const AccountRecoveryPage = () => {
         email: passwordForm.email,
       })
       .then((res) => {
-        logDevAuthCode("비밀번호 재설정 이메일", res.data?.authCode);
+        setPasswordForm((prev) => ({
+          ...prev,
+          authCode: "",
+        }));
+        setPasswordCodeSent(true);
+        setPasswordCooldown(AUTH_CODE_COOLDOWN);
+        setPasswordExpireTime(AUTH_CODE_TTL);
         showToast("success", res.data.message || "비밀번호 재설정 이메일 인증번호를 발송했습니다. 3분 안에 입력해주세요.");
       })
       .catch((err) => {
@@ -179,8 +280,18 @@ export const AccountRecoveryPage = () => {
   };
 
   const verifyPasswordCode = () => {
-    if (!passwordForm.authCode.trim()) {
-      showToast("error", "인증번호를 입력해주세요.");
+    if (!passwordCodeSent) {
+      showToast("error", "먼저 인증번호를 발송해주세요.");
+      return;
+    }
+
+    if (passwordExpireTime <= 0) {
+      showToast("error", "인증번호가 만료되었습니다. 다시 요청해주세요.");
+      return;
+    }
+
+    if (normalizeAuthCode(passwordForm.authCode).length !== 6) {
+      showToast("error", "인증번호 6자리를 입력해주세요.");
       return;
     }
 
@@ -189,9 +300,10 @@ export const AccountRecoveryPage = () => {
     axios
       .post(`${BACKSERVER}/auth/recovery/password/verify`, {
         email: passwordForm.email,
-        authCode: passwordForm.authCode,
+        authCode: normalizeAuthCode(passwordForm.authCode),
       })
       .then((res) => {
+        setPasswordExpireTime(0);
         setPasswordCodeVerified(true);
         showToast("success", res.data.message || "이메일 인증이 완료되었습니다.");
       })
@@ -214,7 +326,7 @@ export const AccountRecoveryPage = () => {
 
     const resetPayload = {
       email: passwordForm.email.trim().toLowerCase(),
-      authCode: passwordForm.authCode.trim(),
+      authCode: normalizeAuthCode(passwordForm.authCode),
       newPassword: passwordForm.newPassword.trim(),
       newPasswordConfirm: passwordForm.newPasswordConfirm.trim(),
     };
@@ -313,8 +425,19 @@ export const AccountRecoveryPage = () => {
                   placeholder="가입 이메일 주소"
                 />
               </div>
-              <button type="button" className={styles.secondary} onClick={sendFindEmailCode} disabled={isLoading}>
-                인증번호 발송
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={sendFindEmailCode}
+                disabled={isLoading || findEmailCooldown > 0}
+              >
+                {isLoading
+                  ? "발송 중"
+                  : findEmailCooldown > 0
+                    ? `${findEmailCooldown}초`
+                    : findEmailCodeSent
+                      ? "인증번호 재발송"
+                      : "인증번호 발송"}
               </button>
             </div>
 
@@ -329,9 +452,29 @@ export const AccountRecoveryPage = () => {
                   value={findEmailForm.authCode}
                   onChange={inputFindEmail}
                   placeholder="6자리"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  autoComplete="one-time-code"
                 />
+                {findEmailCodeSent ? (
+                  <p className={findEmailExpireTime > 0 ? styles.timerText : styles.messageDanger}>
+                    {findEmailExpireTime > 0
+                      ? `남은 시간 ${formatAuthTime(findEmailExpireTime)}`
+                      : "인증번호가 만료되었습니다. 다시 요청해주세요."}
+                  </p>
+                ) : null}
               </div>
-              <button type="submit" className={styles.secondary} disabled={isLoading}>
+              <button
+                type="submit"
+                className={styles.secondary}
+                disabled={
+                  isLoading ||
+                  !findEmailCodeSent ||
+                  findEmailExpireTime <= 0 ||
+                  findEmailForm.authCode.length !== 6
+                }
+              >
                 인증 확인
               </button>
             </div>
@@ -363,8 +506,21 @@ export const AccountRecoveryPage = () => {
               />
             </div>
 
-            <button type="button" className={styles.secondary} onClick={sendPasswordCode} disabled={isLoading || passwordCodeVerified}>
-              {passwordCodeVerified ? "이메일 인증완료" : "이메일 인증번호 발송"}
+            <button
+              type="button"
+              className={styles.secondary}
+              onClick={sendPasswordCode}
+              disabled={isLoading || passwordCooldown > 0 || passwordCodeVerified}
+            >
+              {passwordCodeVerified
+                ? "이메일 인증완료"
+                : isLoading
+                  ? "발송 중"
+                  : passwordCooldown > 0
+                    ? `${passwordCooldown}초`
+                    : passwordCodeSent
+                      ? "이메일 인증번호 재발송"
+                      : "이메일 인증번호 발송"}
             </button>
 
             <div className={styles.codeRow}>
@@ -378,10 +534,32 @@ export const AccountRecoveryPage = () => {
                   value={passwordForm.authCode}
                   onChange={inputPassword}
                   placeholder="6자리"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  autoComplete="one-time-code"
                   readOnly={passwordCodeVerified}
                 />
+                {passwordCodeSent && !passwordCodeVerified ? (
+                  <p className={passwordExpireTime > 0 ? styles.timerText : styles.messageDanger}>
+                    {passwordExpireTime > 0
+                      ? `남은 시간 ${formatAuthTime(passwordExpireTime)}`
+                      : "인증번호가 만료되었습니다. 다시 요청해주세요."}
+                  </p>
+                ) : null}
               </div>
-              <button type="button" className={styles.secondary} onClick={verifyPasswordCode} disabled={isLoading || passwordCodeVerified}>
+              <button
+                type="button"
+                className={styles.secondary}
+                onClick={verifyPasswordCode}
+                disabled={
+                  isLoading ||
+                  passwordCodeVerified ||
+                  !passwordCodeSent ||
+                  passwordExpireTime <= 0 ||
+                  passwordForm.authCode.length !== 6
+                }
+              >
                 {passwordCodeVerified ? "확인완료" : "인증 확인"}
               </button>
             </div>

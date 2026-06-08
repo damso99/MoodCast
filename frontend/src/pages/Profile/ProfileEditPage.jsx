@@ -105,8 +105,6 @@ export function ProfileEditPage() {
       ...(profileImageUrl && { profileImageUrl }), // 업로드된 경우에만 포함
     };
 
-    console.log('프로필 저장 요청', { requestBody, accessToken });
-
     setLoading(true);
     setErrorMessage('');
 
