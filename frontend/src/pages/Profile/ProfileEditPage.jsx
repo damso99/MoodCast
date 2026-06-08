@@ -72,6 +72,9 @@ export function ProfileEditPage() {
       });
       setProfileImageUrl(url);
     } catch (err) {
+      if (err?.isAuthError) {
+        return;
+      }
       setErrorMessage(`프로필 사진 업로드 실패: ${err.message}`);
       setPhotoPreview(null);
     } finally {

@@ -163,7 +163,9 @@
   color: #344054;
   background: transparent;
   cursor: pointer;
-  transition: background 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
 }
 
 .drawerCloseButton:hover {
@@ -427,7 +429,9 @@
   border-radius: 12px;
   font-weight: 900;
   cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .temporarySanctionButton {
@@ -494,7 +498,10 @@
   font-weight: 900;
   background: #ef4444;
   cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .selfRoleChangeButton:hover:not(:disabled) {
@@ -579,7 +586,10 @@
   font-weight: 900;
   background: rgba(124, 77, 255, 0.08);
   cursor: pointer;
-  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .fullInfoButton:hover:not(:disabled) {
@@ -888,7 +898,9 @@
   font-size: 0.88rem;
   font-weight: 900;
   cursor: pointer;
-  transition: transform 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .suspendCancelButton {
@@ -917,28 +929,33 @@
 
 @media (max-width: 720px) {
   .memberDrawer {
-      padding: 22px 18px;
-    }
-  
+    padding: 22px 18px;
+  }
+
   .sanctionGrid {
-      grid-template-columns: 1fr;
-    }
-  
+    grid-template-columns: 1fr;
+  }
+
   .memberInfoList div {
-      grid-template-columns: 1fr;
-      gap: 5px;
-    }
-  
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
   .memberInfoList dd {
-      text-align: left;
-    }
-  
+    text-align: left;
+  }
+
   .fullInfoPanel div {
-      grid-template-columns: 1fr;
-      gap: 4px;
-    }
-  
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
   .fullInfoPanel strong {
-      text-align: left;
-    }
+    text-align: left;
+  }
+}
+
+/* Recharts 툴팁 떨림 현상(flickering) 방지 */
+:global(.recharts-tooltip-wrapper) {
+  pointer-events: none;
 }

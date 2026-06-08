@@ -206,6 +206,9 @@ export function EditPostPage() {
           return nextContent;
         });
       } catch (err) {
+        if (err?.isAuthError) {
+          return;
+        }
         alert(`이미지 업로드 실패: ${err.message}`);
       }
     }

@@ -111,7 +111,7 @@ const buildHourlyChartItems = (items) => {
 
   return CHART_HOURS.map((hour) => ({
     label: `${String(hour).padStart(2, "0")}시`,
-    activeUserCount: hour === 24 ? 0 : valueByHour.get(hour) ?? 0,
+    activeUserCount: hour === 24 ? 0 : (valueByHour.get(hour) ?? 0),
   }));
 };
 
@@ -220,20 +220,29 @@ export function DashboardActiveUserChart() {
     const chartWidth = CHART_RIGHT - CHART_LEFT;
     const chartHeight = CHART_BOTTOM - CHART_TOP;
     const chartItems = buildChartItems(activeUserItems, activePeriod);
-    const values = chartItems.map((item) =>
-      Number(item.activeUserCount ?? 0),
-    );
+    const values = chartItems.map((item) => Number(item.activeUserCount ?? 0));
     const rawMaxValue = Math.max(
       ...activeUserItems.map((item) => Number(item.activeUserCount ?? 0)),
       0,
     );
     const displayMaxValue = Math.max(...values, 0);
     const hasData = displayMaxValue > 0;
-    const maxValue = hasData ? Math.max(Math.ceil(displayMaxValue / 5) * 5 + 5, 5) : 5;
+    const maxValue = hasData
+      ? Math.max(Math.ceil(displayMaxValue / 5) * 5 + 5, 5)
+      : 5;
     const ySteps = hasData
-      ? [maxValue, maxValue * 0.8, maxValue * 0.6, maxValue * 0.4, maxValue * 0.2, 0]
+      ? [
+          maxValue,
+          maxValue * 0.8,
+          maxValue * 0.6,
+          maxValue * 0.4,
+          maxValue * 0.2,
+          0,
+        ]
       : [5, 4, 3, 2, 1, 0];
-    const slotWidth = chartItems.length ? chartWidth / chartItems.length : chartWidth;
+    const slotWidth = chartItems.length
+      ? chartWidth / chartItems.length
+      : chartWidth;
     const barWidth = Math.max(8, Math.min(28, slotWidth * 0.56));
     const totalValue = values.reduce((sum, value) => sum + value, 0);
 
@@ -246,7 +255,8 @@ export function DashboardActiveUserChart() {
       const height = CHART_BOTTOM - y;
       const hour = getHourFromLabel(item.label);
       const showAxisLabel =
-        activePeriod !== "일" || (hour !== null && VISIBLE_HOUR_LABELS.has(hour));
+        activePeriod !== "일" ||
+        (hour !== null && VISIBLE_HOUR_LABELS.has(hour));
 
       return {
         index,
@@ -277,7 +287,10 @@ export function DashboardActiveUserChart() {
 
   const activePoint = hoveredPoint;
   const tooltipX = activePoint
-    ? Math.min(Math.max(activePoint.x - TOOLTIP_WIDTH / 2, 8), CHART_WIDTH - TOOLTIP_WIDTH - 8)
+    ? Math.min(
+        Math.max(activePoint.x - TOOLTIP_WIDTH / 2, 8),
+        CHART_WIDTH - TOOLTIP_WIDTH - 8,
+      )
     : 0;
   const tooltipY = activePoint
     ? Math.max(activePoint.y - TOOLTIP_HEIGHT - 38, 8)
@@ -339,7 +352,11 @@ export function DashboardActiveUserChart() {
                     y1={y}
                     y2={y}
                   />
-                  <text className={styles.activeUserYAxisLabel} x="22" y={y + 5}>
+                  <text
+                    className={styles.activeUserYAxisLabel}
+                    x="22"
+                    y={y + 5}
+                  >
                     {formatAverageValue(Math.round(step))}
                   </text>
                 </g>
@@ -361,9 +378,13 @@ export function DashboardActiveUserChart() {
                   rx="6"
                 />
                 {point.value > 0 ? (
-                <text className={styles.activeUserValueLabel} x={point.x} y={Math.max(point.y - 14, 18)}>
-                  {formatAverageValue(point.value)}
-                </text>
+                  <text
+                    className={styles.activeUserValueLabel}
+                    x={point.x}
+                    y={Math.max(point.y - 14, 18)}
+                  >
+                    {formatAverageValue(point.value)}
+                  </text>
                 ) : null}
                 <rect
                   className={styles.activeUserHitArea}
@@ -394,15 +415,25 @@ export function DashboardActiveUserChart() {
                 />
                 <g
                   className={styles.activeUserTooltip}
-                  style={{ opacity: 1 }}
+                  style={{ opacity: 1, pointerEvents: "none" }}
                   transform={`translate(${tooltipX} ${tooltipY})`}
                 >
                   <rect width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} rx="14" />
-                  <text x={TOOLTIP_WIDTH / 2} y="26">{activePoint.tooltipLabel}</text>
-                  <text className={styles.activeUserTooltipValue} x={TOOLTIP_WIDTH / 2} y="53">
+                  <text x={TOOLTIP_WIDTH / 2} y="26">
+                    {activePoint.tooltipLabel}
+                  </text>
+                  <text
+                    className={styles.activeUserTooltipValue}
+                    x={TOOLTIP_WIDTH / 2}
+                    y="53"
+                  >
                     {formatAverageValue(activePoint.value)}명
                   </text>
-                  <text className={styles.activeUserTooltipSubtext} x={TOOLTIP_WIDTH / 2} y="73">
+                  <text
+                    className={styles.activeUserTooltipSubtext}
+                    x={TOOLTIP_WIDTH / 2}
+                    y="73"
+                  >
                     전체 대비 {activePoint.percentage}
                   </text>
                 </g>
@@ -410,21 +441,22 @@ export function DashboardActiveUserChart() {
             ) : null}
 
             {chartData.bars.map((point) => (
-                <text
-                  className={styles.activeUserAxisLabel}
-                  key={`label-${point.label}-${point.index}`}
-                  x={point.x}
-                  y={CHART_LABEL_Y}
-                >
-                  {point.axisLabel}
-                </text>
-              ))}
+              <text
+                className={styles.activeUserAxisLabel}
+                key={`label-${point.label}-${point.index}`}
+                x={point.x}
+                y={CHART_LABEL_Y}
+              >
+                {point.axisLabel}
+              </text>
+            ))}
           </svg>
 
           <p className={styles.activeUserChartSummary}>
-            최고 구간 활성 사용자{" "}
-            <strong>{formatAverageValue(chartData.maxDisplayValue)}</strong>
-            명
+            총 활성 사용자{" "}
+            <strong>{chartData.totalValue.toLocaleString()}명</strong>
+            &nbsp;·&nbsp; 최대 동시 접속{" "}
+            <strong>{chartData.maxDisplayValue.toLocaleString()}명</strong>
           </p>
         </div>
       )}
