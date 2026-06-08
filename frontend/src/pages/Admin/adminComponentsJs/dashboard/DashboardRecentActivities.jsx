@@ -75,9 +75,11 @@ export function DashboardRecentActivities() {
             Array.isArray(res.data?.activities) ? res.data.activities : [],
           );
         })
-        .catch((error) => {
-          setRecentActivities([]);
-          setHasError(true);
+        .catch(() => {
+          if (showLoading) {
+            setRecentActivities([]);
+            setHasError(true);
+          }
         })
         .finally(() => {
           if (showLoading) {
@@ -160,7 +162,7 @@ export function DashboardRecentActivities() {
           Array.isArray(res.data?.activities) ? res.data.activities : [],
         );
       })
-      .catch((error) => {
+      .catch(() => {
         setAllActivities([]);
       })
       .finally(() => {

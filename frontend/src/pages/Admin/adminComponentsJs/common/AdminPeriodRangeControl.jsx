@@ -15,14 +15,6 @@ function getToday() {
   return new Date();
 }
 
-function getMonthStartDate(year, month) {
-  return new Date(year, month - 1, 1);
-}
-
-function getMonthEndDate(year, month) {
-  return new Date(year, month, 0);
-}
-
 function getWeekStartDate(value) {
   const date = value ? new Date(`${value}T00:00:00`) : getToday();
   const day = date.getDay();
@@ -33,7 +25,7 @@ function getWeekStartDate(value) {
   return date;
 }
 
-function buildRange(period, year, month, selectedDate, selectedWeekStartDate) {
+function buildRange(period, year, selectedDate, selectedWeekStartDate) {
   if (period === "week") {
     const start = getWeekStartDate(selectedWeekStartDate);
     const end = new Date(start);
@@ -47,8 +39,13 @@ function buildRange(period, year, month, selectedDate, selectedWeekStartDate) {
   }
 
   if (period === "month") {
-    const start = getMonthStartDate(year, month);
-    const end = getMonthEndDate(year, month);
+    /*
+     * 월 탭 정책은 신고 및 제재 관리의 신고 통계와 동일하게 맞춥니다.
+     * 특정 월 하나를 조회하지 않고, 선택한 연도의 1월 1일부터 12월 31일까지를 조회합니다.
+     * 이렇게 해야 월별 차트가 1월~12월 전체 흐름을 같은 기준으로 보여줍니다.
+     */
+    const start = new Date(year, 0, 1);
+    const end = new Date(year, 11, 31);
 
     return {
       startDate: formatDateInputValue(start),
@@ -65,13 +62,11 @@ function buildRange(period, year, month, selectedDate, selectedWeekStartDate) {
 function getInitialState() {
   const today = getToday();
   const year = Math.max(SERVICE_START_YEAR, today.getFullYear());
-  const month = today.getMonth() + 1;
   const selectedDate = formatDateInputValue(today);
   const selectedWeekStartDate = formatDateInputValue(getWeekStartDate(selectedDate));
 
   return {
     year,
-    month,
     selectedDate,
     selectedWeekStartDate,
   };
@@ -93,7 +88,6 @@ export function AdminPeriodRangeControl({ period, onRangeChange }) {
     const range = buildRange(
       period,
       nextState.year,
-      nextState.month,
       nextState.selectedDate,
       nextState.selectedWeekStartDate,
     );
@@ -193,26 +187,6 @@ export function AdminPeriodRangeControl({ period, onRangeChange }) {
               })
             }
           />
-        </label>
-      ) : null}
-
-      {period === "month" ? (
-        <label>
-          <span>월</span>
-          <select
-            value={rangeState.month}
-            onChange={(event) =>
-              updateRangeState({ month: Number(event.target.value) })
-            }
-          >
-            {Array.from({ length: 12 }, (_, index) => index + 1).map(
-              (month) => (
-                <option key={month} value={month}>
-                  {month}월
-                </option>
-              ),
-            )}
-          </select>
         </label>
       ) : null}
 

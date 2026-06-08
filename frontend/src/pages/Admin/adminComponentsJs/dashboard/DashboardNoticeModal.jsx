@@ -36,8 +36,7 @@ export function DashboardNoticeModal() {
         setIsOpen(!dismissed);
         setSkipNotice(false);
       })
-      .catch((error) => {
-        console.error("[ADMIN_NOTICE_LATEST_ERROR]", error);
+      .catch(() => {
         setLatestNotice(null);
         setIsOpen(false);
       });

@@ -1,4 +1,4 @@
-﻿import axios from "axios";
+import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "../common/AdminLayout";
 import { SearchBar } from "../common/SearchBar";
@@ -252,8 +252,9 @@ export function ReportManagementPage() {
         insightReports,
         selectedInsightPeriod,
         insightPeriodRange,
+        allReports,
       ),
-    [insightReports, selectedInsightPeriod, insightPeriodRange],
+    [insightReports, selectedInsightPeriod, insightPeriodRange, allReports],
   );
   const processRateCounts = processRateStat || {
     doneCount: reportInsights.doneCount,
@@ -290,12 +291,7 @@ export function ReportManagementPage() {
       });
 
       setReports((response.data?.reports || []).map(mapAdminReport));
-    } catch (error) {
-      console.error("[ADMIN_REPORT_LIST_ERROR]", {
-        status: error.response?.status,
-        response: error.response?.data,
-        message: error.message,
-      });
+    } catch {
       setReports([]);
     }
   }
@@ -312,12 +308,7 @@ export function ReportManagementPage() {
       });
 
       setAllReports((response.data?.reports || []).map(mapAdminReport));
-    } catch (error) {
-      console.error("[ADMIN_REPORT_INSIGHT_ERROR]", {
-        status: error.response?.status,
-        response: error.response?.data,
-        message: error.message,
-      });
+    } catch {
       setAllReports([]);
     }
   }
@@ -340,12 +331,7 @@ export function ReportManagementPage() {
         doneCount: Number(response.data?.doneCount || 0),
         openCount: Number(response.data?.openCount || 0),
       });
-    } catch (error) {
-      console.error("[ADMIN_REPORT_PROCESS_RATE_ERROR]", {
-        status: error.response?.status,
-        response: error.response?.data,
-        message: error.message,
-      });
+    } catch {
       setProcessRateStat(null);
     }
   }
@@ -374,13 +360,7 @@ export function ReportManagementPage() {
         ),
       );
       setSelectedReport(nextReport);
-    } catch (error) {
-      console.error("[ADMIN_REPORT_DETAIL_ERROR]", {
-        reportId: report.id,
-        status: error.response?.status,
-        response: error.response?.data,
-        message: error.message,
-      });
+    } catch {
       setSelectedReport(report);
     }
 
@@ -428,31 +408,30 @@ export function ReportManagementPage() {
       );
       const updatedReport = mapAdminReport(response.data?.report);
 
-      setReports((prevReports) =>
-        prevReports.map((report) =>
+      setReports((prevReports) => {
+        const nextReports = prevReports.map((report) =>
           report.id === updatedReport.id ? updatedReport : report,
-        ),
-      );
+        );
+
+        if (selectedStatusTab === REPORT_LABELS.all) {
+          return nextReports;
+        }
+
+        return nextReports.filter(
+          (report) => report.status === selectedStatusTab,
+        );
+      });
       setAllReports((prevReports) =>
         prevReports.map((report) =>
           report.id === updatedReport.id ? updatedReport : report,
         ),
       );
-      setSelectedStatusTab(REPORT_LABELS.done);
-      setSelectedProcessResultTab(REPORT_LABELS.all);
-      setReports([updatedReport]);
       setCompletionMessage(
         response.data?.message ||
           "\uC2E0\uACE0 \uCC98\uB9AC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
       );
       closePanel();
     } catch (error) {
-      console.error("[ADMIN_REPORT_PROCESS_ERROR]", {
-        reportId: selectedReport.id,
-        status: error.response?.status,
-        response: error.response?.data,
-        message: error.message,
-      });
       setCompletionMessage(
         error.response?.data?.message ||
           "\uC2E0\uACE0 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
@@ -1020,7 +999,10 @@ function ReportInsightSection({
           </div>
         </div>
 
-        <MetricLineChart items={insights.timeline} period={selectedPeriod} />
+        <MetricTimeBarChart
+          items={insights.timeline}
+          period={selectedPeriod}
+        />
         <MetricBarChart
           title={"\uC2E0\uACE0 \uC720\uD615"}
           items={insights.typeBars}
@@ -1030,6 +1012,7 @@ function ReportInsightSection({
           items={insights.reasonBars}
         />
         <ProcessRateChart done={processRateCounts.doneCount} open={processRateCounts.openCount} />
+        <ProcessRateTrendChart items={insights.processRateTrend} period={selectedPeriod} />
         <MetricBarChart
           title={"\uCC98\uB9AC \uACB0\uACFC"}
           items={insights.resultBars}
@@ -1112,49 +1095,86 @@ function ReportInsightPeriodControl({
   );
 }
 
-function MetricLineChart({ items, period }) {
+function MetricTimeBarChart({
+  items,
+  period,
+  title,
+  unit = "건",
+  guideText,
+  tooltipValueFormatter,
+  tooltipSubtextFormatter,
+}) {
+  const [hoveredPoint, setHoveredPoint] = useState(null);
   const maxValue = Math.max(...items.map((item) => item.value), 0);
   const hasData = maxValue > 0;
-  const max = hasData ? Math.max(Math.ceil(maxValue / 4) * 4, 4) : 4;
+  const max = hasData ? Math.max(Math.ceil(maxValue / 5) * 5 + 5, 5) : 5;
+  const totalValue = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
   const ySteps = hasData
-    ? [max, Math.round(max * 0.75), Math.round(max * 0.5), Math.round(max * 0.25), 0]
-    : [4, 3, 2, 1, 0];
+    ? [max, max * 0.8, max * 0.6, max * 0.4, max * 0.2, 0]
+    : [5, 4, 3, 2, 1, 0];
   const chartText = LINE_CHART_TEXT[period] || LINE_CHART_TEXT.day;
+  const chartTitle = title || chartText.title;
   const chartLeft = 72;
   const chartRight = 728;
-  const chartTop = 60;
-  const chartBottom = 300;
-  const chartLabelY = 344;
+  const chartTop = 44;
+  const chartBottom = 260;
+  const chartLabelY = 302;
+  const chartWidth = chartRight - chartLeft;
+  const slotWidth = items.length ? chartWidth / items.length : chartWidth;
+  const barWidth = Math.max(8, Math.min(28, slotWidth * 0.56));
   const chartItems = items.map((item, index) => {
-    const x =
-      items.length === 1
-        ? (chartLeft + chartRight) / 2
-        : chartLeft + (index / (items.length - 1)) * (chartRight - chartLeft);
+    const x = chartLeft + slotWidth * index + slotWidth / 2;
     const y = hasData
       ? chartBottom - (item.value / max) * (chartBottom - chartTop)
       : chartBottom;
+    const height = Math.max(chartBottom - y, item.value ? 3 : 0);
 
     return {
       ...item,
       x,
       y,
+      barX: x - barWidth / 2,
+      barWidth,
+      height,
+      hitX: chartLeft + slotWidth * index,
+      hitWidth: slotWidth,
+      displayLabel: formatTrendAxisLabel(item.label, period),
+      tooltipLabel: formatTrendTooltipLabel(item.label, period),
+      percentage: formatTrendPercentage(item.value, totalValue),
+      isActual: true,
     };
   });
-  const points = chartItems.map((item) => `${item.x},${item.y}`).join(" ");
-  const peakItem = chartItems.reduce(
-    (peak, item) => (item.value > peak.value ? item : peak),
-    chartItems[0] || { value: 0, x: 8, y: 84 },
-  );
+  const activePoint = hoveredPoint;
+  const tooltipWidth = 210;
+  const tooltipHeight = 88;
+  const tooltipPadding = 16;
+  const tooltipX = activePoint
+    ? Math.min(Math.max(activePoint.x - tooltipWidth / 2, 8), 780 - tooltipWidth - 8)
+    : 0;
+  const tooltipY = activePoint
+    ? Math.max(activePoint.y - tooltipHeight - 38, 8)
+    : 0;
+
+  const formatTooltipValue =
+    tooltipValueFormatter || ((point) => `${point.value}${unit}`);
+  const formatTooltipSubtext =
+    tooltipSubtextFormatter || ((point) => `전체 대비 ${point.percentage}`);
 
   return (
     <div className={`${styles.chartCard} ${styles.lineChartCard}`}>
       <div className={styles.lineChartHeader}>
         <div>
-          <h3>{chartText.title}</h3>
-          <p>{chartText.description}</p>
+          <h3>
+            {chartTitle}
+          </h3>
         </div>
       </div>
-      <svg className={styles.lineChart} viewBox="0 0 780 360" preserveAspectRatio="xMidYMid meet">
+      <svg
+        className={styles.lineChart}
+        viewBox="0 0 780 320"
+        preserveAspectRatio="xMidYMid meet"
+        onMouseLeave={() => setHoveredPoint(null)}
+      >
         {ySteps.map((step, index) => {
           const y =
             chartTop +
@@ -1164,62 +1184,113 @@ function MetricLineChart({ items, period }) {
             <g key={`${step}-${index}`}>
               <line className={styles.chartGridLine} x1={chartLeft} x2={chartRight} y1={y} y2={y} />
               <text className={styles.chartYAxisLabel} x="22" y={y + 5}>
-                {step}
+                {Math.round(step)}
               </text>
             </g>
           );
         })}
-        <polyline points={points} />
-        {hasData && chartItems.map((item) => (
-          <g className={styles.chartPointGroup} key={item.label}>
+        {chartItems.map((item) => (
+          <g
+            className={styles.chartPointGroup}
+            key={item.label}
+            onMouseEnter={() => setHoveredPoint(item)}
+          >
             <line className={styles.chartHoverLine} x1={item.x} x2={item.x} y1={chartTop} y2={chartBottom} />
-            <circle
-              className={item === peakItem ? styles.peakPoint : styles.chartPoint}
-              cx={item.x}
-              cy={item.y}
-              r={item === peakItem ? 5 : 4}
+            <rect
+              className={styles.chartBar}
+              x={item.barX}
+              y={chartBottom - item.height}
+              width={item.barWidth}
+              height={item.height}
+              rx="6"
+              ry="6"
             />
+            {Number(item.value || 0) > 0 ? (
+              <text className={styles.chartValueLabel} x={item.x} y={Math.max(item.y - 14, 18)}>
+                {item.value}
+              </text>
+            ) : null}
             <rect
               className={styles.chartHitArea}
-              x={item.x - 24}
+              x={item.hitX}
               y={chartTop - 12}
-              width="48"
+              width={item.hitWidth}
               height={chartBottom - chartTop + 24}
             />
-            <g className={styles.chartTooltip}>
-              <rect x={Math.min(Math.max(item.x - 30, 8), 712)} y={Math.max(item.y - 31, 10)} width="60" height="20" rx="10" />
-              <text x={Math.min(Math.max(item.x, 38), 742)} y={Math.max(item.y - 17, 24)}>
-                {item.value}건
+          </g>
+        ))}
+        {activePoint ? (
+          <g className={styles.activeChartOverlay}>
+            <line
+              className={styles.activeChartHoverLine}
+              x1={activePoint.x}
+              x2={activePoint.x}
+              y1={chartTop}
+              y2={chartBottom}
+            />
+            <rect
+              className={styles.activeChartBar}
+              x={activePoint.barX}
+              y={chartBottom - activePoint.height}
+              width={activePoint.barWidth}
+              height={activePoint.height}
+              rx="6"
+              ry="6"
+            />
+            <g
+              className={styles.chartTooltip}
+              style={{ opacity: 1 }}
+              transform={`translate(${tooltipX} ${tooltipY})`}
+            >
+              <rect width={tooltipWidth} height={tooltipHeight} rx="14" />
+              <text x={tooltipPadding} y="26" style={{ textAnchor: "start" }}>{activePoint.tooltipLabel}</text>
+              <text className={styles.chartTooltipValue} x={tooltipPadding} y="52" style={{ textAnchor: "start" }}>
+                {formatTooltipValue(activePoint)}
+              </text>
+              <text className={styles.chartTooltipSubtext} x={tooltipPadding} y="72" style={{ textAnchor: "start" }}>
+                {formatTooltipSubtext(activePoint)}
               </text>
             </g>
           </g>
-        ))}
+        ) : null}
         {chartItems.map((item) => (
           <text className={styles.chartXAxisLabel} key={`label-${item.label}`} x={item.x} y={chartLabelY}>
-            {item.label}
+            {item.displayLabel}
           </text>
         ))}
       </svg>
+      {guideText ? (
+        <p className={styles.chartGuideText}>
+          {guideText}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 function MetricBarChart({ title, items }) {
   const max = Math.max(...items.map((item) => item.value), 1);
+  const total = items.reduce((sum, item) => sum + Number(item.value || 0), 0);
 
   return (
     <div className={styles.chartCard}>
       <h3>{title}</h3>
       <div className={styles.barList}>
-        {items.map((item) => (
-          <div className={styles.barRow} key={item.label}>
-            <span>{item.label}</span>
-            <div>
-              <i style={{ width: `${Math.max((item.value / max) * 100, item.value ? 8 : 0)}%` }} />
+        {items.map((item) => {
+          const percent = total ? ((Number(item.value || 0) / total) * 100).toFixed(1) : "0.0";
+
+          return (
+            <div className={styles.barRow} key={item.label}>
+              <span>{item.label}</span>
+              <div>
+                <i style={{ width: `${Math.max((item.value / max) * 100, item.value ? 8 : 0)}%` }} />
+              </div>
+              <strong>
+                {item.value} ({percent}%)
+              </strong>
             </div>
-            <strong>{item.value}</strong>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1250,7 +1321,65 @@ function ProcessRateChart({ done, open }) {
   );
 }
 
-function buildReportInsights(reports, period, range) {
+function ProcessRateTrendChart({ items, period }) {
+  const chartItems = items.map((item) => ({
+    label: item.label,
+    value: item.doneCount,
+    rate: item.rate,
+    totalCount: item.totalCount,
+    doneCount: item.doneCount,
+  }));
+  const formatProcessRateTooltipValue = (point) =>
+    `처리 완료 ${Math.round(Number(point.doneCount || 0))}건`;
+  const formatProcessRateTooltipSubtext = (point) => {
+    const totalCount = Math.round(Number(point.totalCount || 0));
+
+    return `처리 완료 시간 기준 / 전체 ${totalCount}건`;
+  };
+
+  return (
+    <MetricTimeBarChart
+      items={chartItems}
+      period={period}
+      title="처리 완료 건수 추이"
+      unit="건"
+      tooltipValueFormatter={formatProcessRateTooltipValue}
+      tooltipSubtextFormatter={formatProcessRateTooltipSubtext}
+    />
+  );
+}
+
+function formatTrendAxisLabel(label, period) {
+  if (period === "day") {
+    const hour = Number(label);
+
+    return hour % 4 === 0 ? `${String(hour).padStart(2, "0")}시` : "";
+  }
+
+  return label;
+}
+
+function formatTrendTooltipLabel(label, period) {
+  if (period === "day") {
+    return `${String(label).padStart(2, "0")}:00`;
+  }
+
+  if (period === "week") {
+    return `${label}요일`;
+  }
+
+  return label;
+}
+
+function formatTrendPercentage(value, total) {
+  if (!total) {
+    return "0.0%";
+  }
+
+  return `${((Number(value || 0) / total) * 100).toFixed(1)}%`;
+}
+
+function buildReportInsights(reports, period, range, allReports = reports) {
   const doneCount = reports.filter((report) => report.status === REPORT_LABELS.done).length;
   const openCount = reports.length - doneCount;
 
@@ -1258,6 +1387,7 @@ function buildReportInsights(reports, period, range) {
     doneCount,
     openCount,
     timeline: buildTimeline(reports, period, range),
+    processRateTrend: buildProcessRateTrend(allReports, period, range),
     typeBars: [
       {
         label: REPORT_LABELS.post,
@@ -1281,6 +1411,46 @@ function buildReportInsights(reports, period, range) {
         value: reports.filter((report) => report.sanctionResult?.actionLabel === label).length,
       })),
   };
+}
+
+function buildProcessRateTrend(reports, period, range) {
+  const buckets = buildTimelineBuckets(period);
+  const countMap = new Map(
+    [...buckets.keys()].map((label) => [
+      label,
+      {
+        label,
+        doneCount: 0,
+        totalCount: 0,
+      },
+    ]),
+  );
+
+  reports.forEach((report) => {
+    if (report.status !== REPORT_LABELS.done) {
+      return;
+    }
+
+    const date = parseAdminLocalDateTime(report.handledAtValue);
+    if (Number.isNaN(date.getTime())) return;
+    if (date < range.start || date > range.end) return;
+
+    const label = getTimelineLabel(date, period, range);
+    if (!label || !countMap.has(label)) return;
+
+    const bucket = countMap.get(label);
+    bucket.totalCount += 1;
+    bucket.doneCount += 1;
+  });
+
+  normalizeDayEndProcessRateBuckets(countMap);
+
+  return [...countMap.values()].map((item) => ({
+    ...item,
+    rate: item.totalCount
+      ? Math.round((item.doneCount / item.totalCount) * 100)
+      : 0,
+  }));
 }
 
 // 관리자 기능 담당 작업(문건우): 자유 입력된 신고 사유는 정규화 컬럼이 없어 관리자 통계에서 기타로 묶습니다.
@@ -1312,36 +1482,41 @@ function buildTimeline(reports, period, range) {
     const date = parseAdminLocalDateTime(report.createdAt);
     if (Number.isNaN(date.getTime())) return;
 
-    if (period === "day") {
-      const hour = date.getHours() === 23 ? 23 : Math.floor(date.getHours() / 3) * 3;
-      const label = String(hour);
+    const label = getTimelineLabel(date, period, range);
+    if (label) {
       buckets.set(label, (buckets.get(label) || 0) + 1);
-      return;
     }
-
-    if (period === "week") {
-      const dayIndex = Math.floor(
-        (startOfDay(date) - startOfDay(range.start)) / 86400000,
-      );
-      const label = ["\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0"][dayIndex];
-
-      if (label) {
-        buckets.set(label, (buckets.get(label) || 0) + 1);
-      }
-      return;
-    }
-
-    const label = `${date.getMonth() + 1}\uC6D4`;
-    buckets.set(label, (buckets.get(label) || 0) + 1);
   });
 
+  normalizeDayEndTimelineBucket(buckets);
+
   return [...buckets.entries()].map(([label, value]) => ({ label, value }));
+}
+
+function getTimelineLabel(date, period, range) {
+  if (period === "day") {
+    return String(getDayTimelineBucketHour(date));
+  }
+
+  if (period === "week") {
+    const dayIndex = Math.floor(
+      (startOfDay(date) - startOfDay(range.start)) / 86400000,
+    );
+
+    return ["\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0", "\uC77C"][dayIndex] || "";
+  }
+
+  return `${date.getMonth() + 1}\uC6D4`;
+}
+
+function getDayTimelineBucketHour(date) {
+  return date.getHours();
 }
 
 function buildTimelineBuckets(period) {
   if (period === "day") {
     return new Map(
-      [0, 3, 6, 9, 12, 15, 18, 21, 23].map((hour) => [
+      Array.from({ length: 25 }, (_, hour) => hour).map((hour) => [
         String(hour),
         0,
       ]),
@@ -1350,7 +1525,7 @@ function buildTimelineBuckets(period) {
 
   if (period === "week") {
     return new Map(
-      ["\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0"].map(
+      ["\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0", "\uC77C"].map(
         (label) => [label, 0],
       ),
     );
@@ -1359,6 +1534,22 @@ function buildTimelineBuckets(period) {
   return new Map(
     Array.from({ length: 12 }, (_, index) => [`${index + 1}\uC6D4`, 0]),
   );
+}
+
+function normalizeDayEndTimelineBucket(buckets) {
+  /*
+   * 24시는 X축 종료 표시용 슬롯입니다.
+   * 실제 23시 데이터와 중복되지 않도록 다른 시간대 값을 복사하지 않습니다.
+   */
+  return buckets;
+}
+
+function normalizeDayEndProcessRateBuckets(countMap) {
+  /*
+   * 처리율 추이도 24시를 종료 표시용 슬롯으로만 둡니다.
+   * 실제 처리 건수와 중복 집계되지 않도록 다른 버킷 값을 복사하지 않습니다.
+   */
+  return countMap;
 }
 
 function filterReportsByType(reports, selectedTypeTab) {
@@ -1450,8 +1641,9 @@ function buildInsightPeriodRange(period, filter) {
     const selectedDate = parseDateInputValue(filter.selectedWeekDate);
     const start = startOfDay(selectedDate);
     const end = new Date(start);
+    const mondayOffset = (start.getDay() + 6) % 7;
 
-    start.setDate(start.getDate() - start.getDay());
+    start.setDate(start.getDate() - mondayOffset);
     end.setTime(start.getTime());
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);

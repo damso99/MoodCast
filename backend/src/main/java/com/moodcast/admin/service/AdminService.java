@@ -1650,8 +1650,8 @@ public class AdminService {
                 start = today.minusDays(6);
                 end = today;
             } else if ("month".equals(period)) {
-                start = today.withDayOfMonth(1);
-                end = today.withDayOfMonth(today.lengthOfMonth());
+                start = LocalDate.of(today.getYear(), 1, 1);
+                end = LocalDate.of(today.getYear(), 12, 31);
             } else {
                 start = today;
                 end = today;

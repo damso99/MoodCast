@@ -83,7 +83,7 @@ export function AdminProfilePage() {
         }));
         setProfilePreview(profile.profileImageUrl || "");
       })
-      .catch((error) => {
+      .catch(() => {
         setMessage("관리자 정보를 불러오지 못했습니다.");
       })
       .finally(() => {
@@ -169,7 +169,7 @@ export function AdminProfilePage() {
         }));
         setMessage(res.data?.message || "관리자 정보가 수정되었습니다.");
       })
-      .catch((error) => {
+      .catch(() => {
         setMessage("관리자 정보 수정에 실패했습니다.");
       })
       .finally(() => {
@@ -212,7 +212,7 @@ export function AdminProfilePage() {
         setAuthData(accessToken, { ...member, role: "USER" });
         navigate("/app/feed", { replace: true });
       })
-      .catch((error) => {
+      .catch(() => {
         setMessage("관리자 권한 변경에 실패했습니다.");
       })
       .finally(() => {

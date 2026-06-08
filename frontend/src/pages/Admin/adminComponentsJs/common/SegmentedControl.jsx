@@ -1,4 +1,4 @@
-﻿import styles from "../../adminComponentsCss/common/SegmentedControl.module.css";
+import styles from "../../adminComponentsCss/common/SegmentedControl.module.css";
 
 /* ==========================================================================
  * SegmentedControl 컴포넌트
