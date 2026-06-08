@@ -11,7 +11,7 @@ import AuthConfirmModal from '../Auth/components/AuthConfirmModal';
 import { getApiMessage, getToastDuration } from '../Auth/authFeedback';
 import styles from './SettingsPage.module.css';
 
-const sections = ['계정', '알림', '보안'];
+const sections = ['계정', '보안'];
 const passwordRegex =
   /^(?=.*[A-Za-z])(?=.*\d)(?=.*[?!@#$%^&*])[A-Za-z\d?!@#$%^&*]{8,20}$/;
 const passwordPolicyMessage =
@@ -559,7 +559,7 @@ export function SettingsPage() {
       />
       <div className={styles.hero}>
         <strong>설정</strong>
-        <p>계정, 알림, 보안 관련 옵션을 한곳에서 관리할 수 있습니다.</p>
+        <p>소셜 로그인, 비밀번호, 계정 탈퇴를 관리합니다.</p>
       </div>
       <div className={styles.grid}>
         {sections.map((title) => (
@@ -571,8 +571,10 @@ export function SettingsPage() {
                   일반 계정에 소셜 로그인을 연결합니다. 현재 로그인한 이메일과 같은 소셜 계정만 연결할 수 있습니다.
                 </p>
                 <div className={styles.accountStatusPanel}>
-                  <span>로그인 수단 {loginMethodCount}개</span>
-                  <span>{passwordLoginEnabled ? '비밀번호 로그인 가능' : '소셜 전용 계정'}</span>
+                  <div className={styles.statusBadges}>
+                    <span>로그인 수단 {loginMethodCount}개</span>
+                    <span>{passwordLoginEnabled ? '비밀번호 로그인 가능' : '소셜 전용 계정'}</span>
+                  </div>
                   <p>
                     {socialOnlyLastMethod
                       ? '마지막 소셜 계정은 바로 해제할 수 없습니다. 보안에서 비밀번호를 먼저 설정해주세요.'
@@ -801,9 +803,7 @@ export function SettingsPage() {
                   {isPasswordLoading ? '설정 중' : '비밀번호 설정'}
                 </button>
               </form>
-            ) : (
-              <button type="button">세부 설정</button>
-            )}
+            ) : null}
           </article>
         ))}
       </div>
