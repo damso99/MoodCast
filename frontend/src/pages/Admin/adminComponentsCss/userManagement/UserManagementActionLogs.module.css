@@ -79,14 +79,36 @@
 .logModalPanel {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: min(760px, 100%);
   max-height: min(720px, calc(100vh - 48px));
-  overflow: auto;
+  overflow: hidden;
   padding: 18px;
   border: 1px solid rgba(124, 77, 255, 0.12);
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 28px 72px rgba(15, 23, 42, 0.24);
+}
+
+.logModalBody {
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.logModalBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.logModalBody::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.32);
+}
+
+.logModalBody::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(124, 77, 255, 0.08);
 }
 
 .panel {
