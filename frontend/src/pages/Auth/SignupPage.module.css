@@ -11,6 +11,7 @@
 
 .authCard {
   width: min(500px, 100%);
+  min-width: 0;
   padding: 26px 36px 24px;
   border: 1px solid rgba(124, 77, 255, 0.12);
   border-radius: 26px;
@@ -227,7 +228,7 @@
   border-radius: 12px;
   font-weight: 900;
   line-height: 1;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .ghostButton {
@@ -350,6 +351,7 @@
 .switchText {
   margin: 0;
   text-align: center;
+  overflow-wrap: anywhere;
   color: #9aa0af;
   font-size: 0.76rem;
   font-weight: 700;
@@ -481,6 +483,7 @@
   color: #3d3658;
   font-size: 0.84rem;
   font-weight: 900;
+  overflow-wrap: anywhere;
 }
 
 .termAll {
@@ -594,6 +597,7 @@
   font-size: 0.72rem;
   font-style: normal;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .validText {
@@ -740,6 +744,7 @@
   }
 
   .authCard {
+    width: 100%;
     padding: 22px 16px;
     border-radius: 18px;
   }
@@ -763,6 +768,7 @@
   .primaryButton,
   .outlineButton {
     min-height: 48px;
+    line-height: 1.25;
   }
 
   .stepItem:not(:last-child)::after {
@@ -805,6 +811,7 @@
     justify-self: start;
     min-height: 34px;
     padding: 0 4px;
+    white-space: normal;
   }
 
   .fieldPair {
@@ -834,6 +841,14 @@
     overflow: visible;
     text-overflow: unset;
     white-space: normal;
+  }
+
+  .successNotice span,
+  .socialNotice span {
+    overflow: visible;
+    text-overflow: unset;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
 

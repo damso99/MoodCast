@@ -507,12 +507,11 @@ export function FeedCard({
     try {
       setDeleteModalOpen(false);
 
-      const response = await axios.delete(`${BACKSERVER}/posts/${postId}`, {
+      await axios.delete(`${BACKSERVER}/posts/${postId}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
-      console.log("✅ 게시물 삭제 성공:", response.data);
 
       window.location.reload();
     } catch (err) {

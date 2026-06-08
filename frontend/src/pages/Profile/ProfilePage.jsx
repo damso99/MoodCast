@@ -420,30 +420,6 @@ export function ProfilePage() {
   );
   const profileAvatarSrc = profileImageUrl || defaultAvatarSrc;
 
-  useEffect(() => {
-    console.debug("[ProfilePage] image resolution", {
-      targetId,
-      isOwnProfile,
-      backserver: BACKSERVER,
-      rawUserProfileImage:
-        user?.profileImageUrl || user?.profile_image_url || null,
-      rawCurrentMemberProfileImage:
-        currentMember?.profileImageUrl ||
-        currentMember?.profile_image_url ||
-        null,
-      resolvedProfileAvatarSrc: profileAvatarSrc,
-    });
-  }, [
-    BACKSERVER,
-    currentMember?.profileImageUrl,
-    currentMember?.profile_image_url,
-    isOwnProfile,
-    profileAvatarSrc,
-    targetId,
-    user?.profileImageUrl,
-    user?.profile_image_url,
-  ]);
-
   if (loading) {
     const loader = (
       <div style={{ padding: "20px", textAlign: "center" }}>
