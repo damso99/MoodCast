@@ -880,13 +880,6 @@ export function ProfilePage() {
                     currentAngle += angle;
                     const isHovered = hoveredEmotion === stat.emotionId;
 
-                    // 호버 시 조각을 바깥쪽으로 이동 (Explode effect)
-                    const offsetDistance = isHovered ? 10 : 0;
-                    const midAngle =
-                      (currentAngle - angle / 2) * (Math.PI / 180);
-                    const offsetX = offsetDistance * Math.cos(midAngle);
-                    const offsetY = offsetDistance * Math.sin(midAngle);
-
                     const slice =
                       angle >= 359.999 ? (
                         <circle
@@ -915,7 +908,6 @@ export function ProfilePage() {
                         onMouseEnter={() => setHoveredEmotion(stat.emotionId)}
                         onMouseLeave={() => setHoveredEmotion(null)}
                         style={{ cursor: "pointer" }}
-                        transform={`translate(${offsetX}, ${offsetY})`}
                       >
                         {slice}
                       </g>
