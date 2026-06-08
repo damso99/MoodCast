@@ -75,10 +75,16 @@
 .panelTitleRow,
 .statsHeader {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+}
+
+.panelTitleRow > div,
+.statsHeader > div:first-child {
+  min-width: 0;
+  text-align: left;
 }
 
 .panelTitleRow h2,
@@ -167,7 +173,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
   gap: 18px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .historyPanel {
@@ -292,6 +298,11 @@
   margin: 0;
 }
 
+.historyItem dl > div {
+  min-width: 0;
+  text-align: left;
+}
+
 .historyItem dt {
   margin-bottom: 3px;
   color: #94a3b8;
@@ -305,6 +316,7 @@
   font-size: 0.82rem;
   font-weight: 800;
   word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .historyPagination {
@@ -357,15 +369,17 @@
 
 .statsPanel {
   display: grid;
+  align-content: start;
   gap: 14px;
 }
 
 .statsControlBar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   gap: 10px;
+  margin-left: auto;
 }
 
 .periodTabs {
@@ -532,6 +546,16 @@
   filter: drop-shadow(0 3px 6px rgba(111, 44, 255, 0.26));
 }
 
+.chartBar {
+  fill: #7c4dff;
+  filter: drop-shadow(0 7px 12px rgba(111, 44, 255, 0.16));
+  transition: opacity 0.14s ease;
+}
+
+.chartPointGroup:hover .chartBar {
+  opacity: 0.82;
+}
+
 .peakPoint {
   fill: #6d28ff;
   stroke: #fff;
@@ -563,19 +587,6 @@
   font-weight: 900;
   pointer-events: none;
   text-anchor: middle;
-}
-
-.chartInfoIcon {
-  display: inline-grid;
-  width: 14px;
-  height: 14px;
-  place-items: center;
-  border: 1px solid #94a3b8;
-  border-radius: 50%;
-  color: #64748b;
-  font-size: 9px;
-  font-weight: 900;
-  line-height: 1;
 }
 
 .chartTooltip {
@@ -621,6 +632,11 @@
   stroke: #fff;
   stroke-width: 3;
   filter: drop-shadow(0 6px 12px rgba(111, 44, 255, 0.34));
+}
+
+.activeChartBar {
+  fill: #4f1fff;
+  filter: drop-shadow(0 8px 16px rgba(111, 44, 255, 0.3));
 }
 
 .interpolatedChartPoint {

@@ -30,9 +30,8 @@ const chartPadding = {
 
 const chartTooltipWidth = 150;
 const chartTooltipHeight = 78;
-const chartHours = [0, 4, 8, 12, 16, 20, 24];
-const dayEndDisplayHour = 24;
-const dayEndSourceHour = 23;
+const chartHours = Array.from({ length: 25 }, (_, hour) => hour);
+const visibleHourLabels = new Set([0, 4, 8, 12, 16, 20, 24]);
 const weekdayLabels = ["월", "화", "수", "목", "금", "토", "일"];
 const monthLabels = Array.from({ length: 12 }, (_, index) => `${index + 1}월`);
 const weekdayTooltipLabels = {
@@ -96,6 +95,7 @@ function readTrendValue(item) {
     item?.value ??
       item?.count ??
       item?.activityCount ??
+      item?.activeUserCount ??
       item?.postCount ??
       item?.commentCount ??
       item?.empathyCount ??
@@ -130,7 +130,7 @@ function getHourFromLabel(label) {
   return Number(hourMatch[1]);
 }
 
-function buildFourHourTrendItems(items) {
+function buildHourlyTrendItems(items) {
   const valueByHour = new Map();
 
   items.forEach((item) => {
@@ -145,14 +145,7 @@ function buildFourHourTrendItems(items) {
 
   return chartHours.map((hour) => ({
     label: `${String(hour).padStart(2, "0")}시`,
-    /*
-     * 24시는 실제 저장 시각이 아니라 하루 끝을 보여주는 라벨입니다.
-     * 화면에는 24시로 표시하고, 값은 해당일 마지막 시각인 23:59:59가 포함되는 23시 데이터를 사용합니다.
-     */
-    value:
-      hour === dayEndDisplayHour
-        ? valueByHour.get(dayEndSourceHour) ?? valueByHour.get(20) ?? 0
-        : valueByHour.get(hour) ?? 0,
+    value: hour === 24 ? 0 : valueByHour.get(hour) ?? 0,
   }));
 }
 
@@ -184,7 +177,7 @@ function buildPeriodTrendItems(items, periodLabel) {
     return buildFixedLabelTrendItems(items, monthLabels);
   }
 
-  return buildFourHourTrendItems(items);
+  return buildHourlyTrendItems(items);
 }
 
 function formatPeriodTooltipLabel(label, periodLabel) {
@@ -257,15 +250,7 @@ function formatGrowthRate(value) {
   return "전년 대비 0%";
 }
 
-function buildLineChartPoints(items, periodLabel) {
-  /*
-   * SVG 선 그래프 좌표 계산
-   * ------------------------------------------------------------------------
-   * 초보자 설명:
-   * - SVG는 왼쪽 위가 x=0, y=0입니다.
-   * - 값이 클수록 그래프에서는 위로 올라가야 하므로 y 좌표를 반대로 계산합니다.
-   * - items 배열의 value를 기준으로 각 점의 x/y 좌표를 만들어 <polyline>에 전달합니다.
-   */
+function buildBarChartItems(items, periodLabel) {
   const graphWidth = chartWidth - chartPadding.left - chartPadding.right;
   const graphHeight = chartHeight - chartPadding.top - chartPadding.bottom;
   const chartItems = buildPeriodTrendItems(items, periodLabel);
@@ -283,21 +268,32 @@ function buildLineChartPoints(items, periodLabel) {
         0,
       ]
     : [5, 4, 3, 2, 1, 0];
-  const lastIndex = Math.max(chartItems.length - 1, 1);
+  const slotWidth = chartItems.length ? graphWidth / chartItems.length : graphWidth;
+  const barWidth = Math.max(8, Math.min(26, slotWidth * 0.56));
   const totalValue = values.reduce((sum, value) => sum + value, 0);
 
-  const points = chartItems.map((item, index) => {
+  const bars = chartItems.map((item, index) => {
     const value = Number(item.value || 0);
-    const x = chartPadding.left + (graphWidth / lastIndex) * index;
+    const x = chartPadding.left + slotWidth * index + slotWidth / 2;
     const y = hasData
       ? chartPadding.top + graphHeight - (value / maxValue) * graphHeight
       : chartPadding.top + graphHeight;
+    const height = chartHeight - chartPadding.bottom - y;
+    const hour = getHourFromLabel(item.label);
+    const showAxisLabel =
+      periodLabel !== "일" || (hour !== null && visibleHourLabels.has(hour));
 
     return {
       index,
       x,
       y,
+      height,
+      barX: x - barWidth / 2,
+      barWidth,
+      hitX: chartPadding.left + slotWidth * index,
+      hitWidth: slotWidth,
       label: item.label,
+      axisLabel: showAxisLabel ? item.label : "",
       tooltipLabel: formatPeriodTooltipLabel(item.label, periodLabel),
       value,
       percentage: formatPercentage(value, totalValue),
@@ -309,31 +305,15 @@ function buildLineChartPoints(items, periodLabel) {
     maxValue,
     ySteps,
     totalValue,
-    points,
+    bars,
   };
 }
 
-function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = "일", unit = "" }) {
+function PreviewTimeBarChart({ items, color = "#7c4dff", emptyLabel, periodLabel = "일", unit = "" }) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  const chart = buildLineChartPoints(items, periodLabel);
-  const points = chart.points;
-  const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
-  const areaPoints =
-    points.length > 0
-      ? `${chartPadding.left},${chartHeight - chartPadding.bottom} ${linePoints} ${
-          chartWidth - chartPadding.right
-        },${chartHeight - chartPadding.bottom}`
-      : "";
+  const chart = buildBarChartItems(items, periodLabel);
+  const bars = chart.bars;
   const activePoint = hoveredPoint;
-  const getYByValue = (value) => {
-    if (!chart.hasData) {
-      return chartHeight - chartPadding.bottom;
-    }
-
-    const graphHeight = chartHeight - chartPadding.top - chartPadding.bottom;
-
-    return chartPadding.top + graphHeight - (Number(value || 0) / chart.maxValue) * graphHeight;
-  };
   const tooltipX = activePoint
     ? Math.min(
         Math.max(activePoint.x - chartTooltipWidth / 2, 8),
@@ -343,51 +323,8 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
   const tooltipY = activePoint
     ? Math.max(activePoint.y - chartTooltipHeight - 34, 8)
     : 0;
-  const updateLineHover = (event) => {
-    if (points.length === 0) {
-      return;
-    }
 
-    const svgRect = event.currentTarget.ownerSVGElement.getBoundingClientRect();
-    const viewBoxX = ((event.clientX - svgRect.left) / svgRect.width) * chartWidth;
-    const boundedX = Math.min(
-      Math.max(viewBoxX, chartPadding.left),
-      chartWidth - chartPadding.right,
-    );
-    const rawIndex =
-      ((boundedX - chartPadding.left) /
-        (chartWidth - chartPadding.left - chartPadding.right)) *
-      (points.length - 1);
-    const beforeIndex = Math.max(0, Math.floor(rawIndex));
-    const afterIndex = Math.min(points.length - 1, Math.ceil(rawIndex));
-    const beforePoint = points[beforeIndex];
-    const afterPoint = points[afterIndex];
-    const ratio = afterIndex === beforeIndex ? 0 : rawIndex - beforeIndex;
-    const interpolatedValue =
-      beforePoint.value + (afterPoint.value - beforePoint.value) * ratio;
-    const nearestIndex = Math.min(points.length - 1, Math.max(0, Math.round(rawIndex)));
-    const nearestPoint = points[nearestIndex];
-    const tooltipLabel =
-      periodLabel === "일"
-        ? formatHourTooltipLabel(
-            Math.round(
-              ((boundedX - chartPadding.left) /
-                (chartWidth - chartPadding.left - chartPadding.right)) *
-                24,
-            ),
-          )
-        : nearestPoint.tooltipLabel;
-
-    setHoveredPoint({
-      tooltipLabel,
-      value: interpolatedValue,
-      x: boundedX,
-      y: getYByValue(interpolatedValue),
-      percentage: formatPercentage(interpolatedValue, chart.totalValue),
-    });
-  };
-
-  if (points.length === 0) {
+  if (bars.length === 0) {
     return <div className={styles.emptyChartState}>{emptyLabel}</div>;
   }
 
@@ -397,15 +334,9 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
         className={styles.previewLineChart}
         viewBox={`0 0 ${chartWidth} ${chartHeight}`}
         role="img"
-        aria-label="통계 선 그래프"
+        aria-label="통계 막대 그래프"
         onMouseLeave={() => setHoveredPoint(null)}
       >
-        <defs>
-          <linearGradient id="statisticsLineChartGradient" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.28" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
         {chart.ySteps.map((step, gridIndex) => {
           const y =
             chartPadding.top +
@@ -429,29 +360,19 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
           );
         })}
 
-        <polygon className={styles.chartArea} points={areaPoints} fill="url(#statisticsLineChartGradient)" />
-        <polyline
-          className={styles.chartLine}
-          points={linePoints}
-          style={{ stroke: color }}
-        />
-
-        {points.map((point, index) => (
+        {bars.map((point, index) => (
             <g key={`${point.label}-${index}`}>
-                <g className={styles.chartPointGroup}>
-                  <line
-                    className={styles.chartHoverLine}
-                    x1={point.x}
-                    x2={point.x}
-                    y1={chartPadding.top}
-                    y2={chartHeight - chartPadding.bottom}
+                <g className={styles.chartPointGroup} onMouseEnter={() => setHoveredPoint(point)}>
+                  <rect
+                    className={styles.chartBar}
+                    x={point.barX}
+                    y={point.height > 0 ? point.y : chartHeight - chartPadding.bottom - 2}
+                    width={point.barWidth}
+                    height={Math.max(point.height, 2)}
+                    rx="6"
+                    style={{ fill: color }}
                   />
-                  <circle
-                    className={styles.chartPoint}
-                    cx={point.x}
-                    cy={point.y}
-                    r="4"
-                  />
+                  {point.value > 0 ? (
                   <text
                     className={styles.chartValueLabel}
                     x={point.x}
@@ -459,25 +380,17 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
                   >
                     {formatChartValue(point.value)}
                   </text>
+                  ) : null}
                   <rect
                     className={styles.chartHitArea}
-                    x={point.x - 24}
+                    x={point.hitX}
                     y={chartPadding.top - 12}
-                    width="48"
+                    width={point.hitWidth}
                     height={chartHeight - chartPadding.top - chartPadding.bottom + 24}
                   />
                 </g>
             </g>
         ))}
-
-        <rect
-          className={styles.chartMoveArea}
-          x={chartPadding.left}
-          y={chartPadding.top - 14}
-          width={chartWidth - chartPadding.left - chartPadding.right}
-          height={chartHeight - chartPadding.top - chartPadding.bottom + 28}
-          onMouseMove={updateLineHover}
-        />
 
         {activePoint ? (
           <g className={styles.chartOverlay}>
@@ -488,11 +401,13 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
               y1={chartPadding.top}
               y2={chartHeight - chartPadding.bottom}
             />
-            <circle
-              className={styles.chartActivePoint}
-              cx={activePoint.x}
-              cy={activePoint.y}
-              r="6"
+            <rect
+              className={styles.chartActiveBar}
+              x={activePoint.barX}
+              y={activePoint.height > 0 ? activePoint.y : chartHeight - chartPadding.bottom - 2}
+              width={activePoint.barWidth}
+              height={Math.max(activePoint.height, 2)}
+              rx="6"
             />
             <g
               className={styles.chartTooltip}
@@ -512,7 +427,7 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
           </g>
         ) : null}
 
-        {points.map((point) => (
+        {bars.map((point) => (
           <text
             className={styles.chartAxisLabel}
             key={`label-${point.label}-${point.index}`}
@@ -520,7 +435,7 @@ function PreviewLineChart({ items, color = "#7c4dff", emptyLabel, periodLabel = 
             y={chartHeight - 16}
             textAnchor="middle"
           >
-            {point.label}
+            {point.axisLabel}
           </text>
         ))}
       </svg>
@@ -602,8 +517,8 @@ export function StatisticsDashboardPage() {
   const [periodLabel, setPeriodLabel] = useState("일"); // 화면에서 선택된 기간 라벨입니다. "일", "주", "월" 중 하나입니다.
   const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" }); // 선택한 일/주/월 기간의 시작일과 종료일입니다.
   const [summary, setSummary] = useState(emptySummary); // 상단 카드와 하단 요약에 표시할 숫자 데이터입니다.
-  const [subscriberTrend, setSubscriberTrend] = useState([]); // 가입자 추이 선 그래프 데이터입니다.
-  const [activeUserTrend, setActiveUserTrend] = useState([]); // 시간별 활성 사용자 선 그래프 데이터입니다.
+  const [subscriberTrend, setSubscriberTrend] = useState([]); // 가입자 추이 막대 그래프 데이터입니다.
+  const [activeUserTrend, setActiveUserTrend] = useState([]); // 시간별 활성 사용자 막대 그래프 데이터입니다.
   const [contentActivity, setContentActivity] = useState([]); // 게시글/댓글/공감 막대 그래프 데이터입니다.
   const [emotionActivity, setEmotionActivity] = useState([]); // 감정별 활동 막대 그래프 데이터입니다.
   const [activeUserGrowthRate, setActiveUserGrowthRate] = useState(null); // 선택 연도 활성 사용자 전년 대비 성장률입니다.
@@ -832,7 +747,7 @@ export function StatisticsDashboardPage() {
           title={`가입자 추이 (${periodLabel})`}
           loading={loading}
         >
-          <PreviewLineChart
+          <PreviewTimeBarChart
             items={subscriberTrend}
             color="#7c4dff"
             emptyLabel="가입자 추이 데이터가 없습니다."
@@ -845,7 +760,7 @@ export function StatisticsDashboardPage() {
           title={`시간별 활성 사용자 (${periodLabel})`}
           loading={loading}
         >
-          <PreviewLineChart
+          <PreviewTimeBarChart
             items={activeUserTrend}
             color="#7c4dff"
             emptyLabel="활성 사용자 데이터가 없습니다."
