@@ -36,14 +36,6 @@
     #fff;
 }
 
-.eyebrow {
-  margin: 0 0 6px;
-  color: #7c4dff;
-  font-size: 0.74rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
 .composeHeader h2,
 .panelHead h2 {
   margin: 0;

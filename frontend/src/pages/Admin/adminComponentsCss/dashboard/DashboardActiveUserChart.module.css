@@ -51,13 +51,6 @@
   overflow: visible;
 }
 
-.activeUserChartDescription {
-  margin: 0;
-  color: #667085;
-  font-size: 0.84rem;
-  font-weight: 800;
-}
-
 .activeUserGridLine {
   stroke: rgba(148, 163, 184, 0.26);
   stroke-width: 1;
@@ -190,16 +183,4 @@
   font-size: 11px;
   font-weight: 800;
   dominant-baseline: middle;
-}
-
-.activeUserChartSummary {
-  margin: 0;
-  color: #475467;
-  font-size: 0.84rem;
-  font-weight: 800;
-  text-align: right;
-}
-
-.activeUserChartSummary strong {
-  color: #6f2cff;
 }

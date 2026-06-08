@@ -12,12 +12,6 @@ const periodApiValue = {
   월: "month",
 };
 
-const periodDescription = {
-  일: "오늘 00시부터 23시까지 시간대별 활성 사용자 수입니다.",
-  주: "선택한 주의 월요일부터 일요일까지 일별 활성 사용자 수입니다.",
-  월: "선택한 연도의 1월부터 12월까지 월별 활성 사용자 수입니다.",
-};
-
 const DASHBOARD_POLLING_INTERVAL_MS = 10000;
 
 const CHART_WIDTH = 780;
@@ -336,10 +330,6 @@ export function DashboardActiveUserChart() {
         />
       ) : (
         <div className={styles.activeUserChartBox}>
-          <p className={styles.activeUserChartDescription}>
-            {periodDescription[activePeriod]}
-          </p>
-
           <svg
             className={styles.activeUserChart}
             viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
@@ -461,13 +451,6 @@ export function DashboardActiveUserChart() {
               </text>
             ))}
           </svg>
-
-          <p className={styles.activeUserChartSummary}>
-            총 활성 사용자{" "}
-            <strong>{chartData.totalValue.toLocaleString()}명</strong>
-            &nbsp;·&nbsp; 최대 동시 접속{" "}
-            <strong>{chartData.maxDisplayValue.toLocaleString()}명</strong>
-          </p>
         </div>
       )}
     </section>
