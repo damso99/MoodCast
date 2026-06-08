@@ -1240,6 +1240,34 @@
     display: none;
   }
 
+  .threadItem {
+    min-height: 108px;
+    padding: 18px 16px 20px;
+    align-items: flex-start;
+  }
+
+  .threadContent {
+    gap: 8px;
+  }
+
+  .threadContent strong {
+    line-height: 1.2;
+  }
+
+  .threadTypeLabel {
+    line-height: 1.3;
+  }
+
+  .threadPreview {
+    line-height: 1.5;
+  }
+
+  .threadMeta {
+    align-self: stretch;
+    justify-content: space-between;
+    padding-top: 2px;
+  }
+
   .messages {
     flex: 1 1 auto;
     justify-content: flex-start;
