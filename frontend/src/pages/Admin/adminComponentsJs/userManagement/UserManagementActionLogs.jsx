@@ -239,72 +239,74 @@ export function UserManagementActionLogs({
               </button>
             </div>
 
-            {allLogsLoading ? (
-              <EmptyState
-                title="전체 로그 조회 중"
-                description="승급, 강등, 정지, 해제 전체 이력을 불러오고 있습니다."
-              />
-            ) : allLogsError ? (
-              <EmptyState
-                title="전체 로그 조회 실패"
-                description="백엔드 응답을 확인해주세요."
-              />
-            ) : allLogs.length === 0 ? (
-              <EmptyState
-                title="전체 로그 없음"
-                description="아직 기록된 권한 변경 또는 제재 이력이 없습니다."
-              />
-            ) : (
-              <>
-                {renderLogItems(paginatedLogInfo.paginatedLogs)}
+            <div className={styles.logModalBody}>
+              {allLogsLoading ? (
+                <EmptyState
+                  title="전체 로그 조회 중"
+                  description="승급, 강등, 정지, 해제 전체 이력을 불러오고 있습니다."
+                />
+              ) : allLogsError ? (
+                <EmptyState
+                  title="전체 로그 조회 실패"
+                  description="백엔드 응답을 확인해주세요."
+                />
+              ) : allLogs.length === 0 ? (
+                <EmptyState
+                  title="전체 로그 없음"
+                  description="아직 기록된 권한 변경 또는 제재 이력이 없습니다."
+                />
+              ) : (
+                renderLogItems(paginatedLogInfo.paginatedLogs)
+              )}
+            </div>
 
-                <nav
-                  className={styles.pagination}
-                  aria-label="전체 권한 변경 로그 페이지 이동"
-                >
-                  <div className={styles.paginationButtons}>
+            {!allLogsLoading && !allLogsError && allLogs.length > 0 && (
+              <nav
+                className={styles.pagination}
+                aria-label="전체 권한 변경 로그 페이지 이동"
+              >
+                <div className={styles.paginationButtons}>
+                  <button
+                    type="button"
+                    disabled={currentLogPage === 1}
+                    onClick={() =>
+                      setCurrentLogPage((page) => Math.max(1, page - 1))
+                    }
+                  >
+                    이전
+                  </button>
+
+                  {paginatedLogInfo.pageNumbers.map((pageNumber) => (
                     <button
+                      key={pageNumber}
                       type="button"
-                      disabled={currentLogPage === 1}
-                      onClick={() =>
-                        setCurrentLogPage((page) => Math.max(1, page - 1))
+                      className={
+                        pageNumber === currentLogPage ? styles.activePage : ""
                       }
+                      aria-current={
+                        pageNumber === currentLogPage ? "page" : undefined
+                      }
+                      onClick={() => setCurrentLogPage(pageNumber)}
                     >
-                      이전
+                      {pageNumber}
                     </button>
+                  ))}
 
-                    {paginatedLogInfo.pageNumbers.map((pageNumber) => (
-                      <button
-                        key={pageNumber}
-                        type="button"
-                        className={
-                          pageNumber === currentLogPage ? styles.activePage : ""
-                        }
-                        aria-current={
-                          pageNumber === currentLogPage ? "page" : undefined
-                        }
-                        onClick={() => setCurrentLogPage(pageNumber)}
-                      >
-                        {pageNumber}
-                      </button>
-                    ))}
-
-                    <button
-                      type="button"
-                      disabled={
-                        currentLogPage === paginatedLogInfo.totalPageCount
-                      }
-                      onClick={() =>
-                        setCurrentLogPage((page) =>
-                          Math.min(paginatedLogInfo.totalPageCount, page + 1),
-                        )
-                      }
-                    >
-                      다음
-                    </button>
-                  </div>
-                </nav>
-              </>
+                  <button
+                    type="button"
+                    disabled={
+                      currentLogPage === paginatedLogInfo.totalPageCount
+                    }
+                    onClick={() =>
+                      setCurrentLogPage((page) =>
+                        Math.min(paginatedLogInfo.totalPageCount, page + 1),
+                      )
+                    }
+                  >
+                    다음
+                  </button>
+                </div>
+              </nav>
             )}
           </section>
         </div>
