@@ -404,7 +404,7 @@ export function DashboardActiveUserChart() {
                 />
                 <g
                   className={styles.activeUserTooltip}
-                  style={{ opacity: 1 }}
+                  style={{ opacity: 1, pointerEvents: "none" }}
                   transform={`translate(${tooltipX} ${tooltipY})`}
                 >
                   <rect width={TOOLTIP_WIDTH} height={TOOLTIP_HEIGHT} rx="14" />
@@ -431,13 +431,4 @@ export function DashboardActiveUserChart() {
               ))}
           </svg>
 
-          <p className={styles.activeUserChartSummary}>
-            최고 구간 활성 사용자{" "}
-            <strong>{formatAverageValue(chartData.maxDisplayValue)}</strong>
-            명
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
+          <p
