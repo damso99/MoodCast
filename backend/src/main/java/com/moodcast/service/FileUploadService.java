@@ -1,6 +1,5 @@
 package com.moodcast.service;
 
-import com.moodcast.service.dto.FileUploadResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
