@@ -383,28 +383,59 @@
 }
 
 .periodTabs {
+  max-width: 100%;
   display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
-  padding: 5px;
-  border-radius: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px;
+  border-radius: 12px;
   background: #f3f0ff;
+  scrollbar-width: thin;
 }
 
 .periodTabs button {
+  flex: 0 0 auto;
   min-width: 38px;
-  min-height: 34px;
+  min-height: 32px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 10px;
-  color: #64748b;
-  font-weight: 900;
+  border-radius: 9px;
+  color: #667085;
+  font-weight: 800;
+  white-space: nowrap;
   background: transparent;
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .periodTabs .activePeriod {
   color: #fff;
-  background: linear-gradient(135deg, #7c4dff, #633df2);
-  box-shadow: 0 10px 22px rgba(124, 77, 255, 0.22);
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.22);
+}
+
+.periodTabs button:hover {
+  color: #633df2;
+  background: rgba(124, 77, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.periodTabs .activePeriod:hover {
+  color: #fff;
+  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.3);
+}
+
+.periodTabs button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.periodTabs button:focus-visible {
+  outline: 3px solid rgba(124, 77, 255, 0.28);
+  outline-offset: 2px;
 }
 
 .periodFilterControl {

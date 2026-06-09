@@ -1,4 +1,5 @@
 import styles from "../../adminComponentsCss/contentManagement/ContentPostGrid.module.css";
+import { defaultAvatarSrc } from "../../../../shared/lib/defaultAvatar";
 
 function extractPostTags(post) {
   if (typeof post?.tags !== "string") return [];
@@ -28,6 +29,7 @@ export function ContentPostGrid({
   getPostStatus,
   getStatusClassName,
   getAuthorName,
+  getAuthorProfileImageSrc,
   getEmotionMeta,
   getPostImageInfo,
   stripHtml,
@@ -151,7 +153,15 @@ export function ContentPostGrid({
 
         <div className={styles.feedBody}>
           <div className={styles.authorRow}>
-            <div className={styles.avatar}>{getAuthorName(post)[0]}</div>
+            <div className={styles.avatar}>
+              <img
+                src={getAuthorProfileImageSrc(post)}
+                alt=""
+                onError={(event) => {
+                  event.currentTarget.src = defaultAvatarSrc;
+                }}
+              />
+            </div>
             <div>
               <strong>{getAuthorName(post)}</strong>
               <span>{post.createdAt || "작성일 없음"}</span>

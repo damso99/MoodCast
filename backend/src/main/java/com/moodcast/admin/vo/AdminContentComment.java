@@ -39,5 +39,7 @@ public class AdminContentComment {
 
     private String authorNickname; // members.nickname: 댓글 작성자 닉네임입니다.
 
+    private String authorProfileImageUrl; // members.profile_image_url: 댓글 작성자 프로필 이미지 URL입니다.
+
     private Long parentId; // comment_tbl.parent_id: 답글이면 부모 댓글 번호가 들어갑니다.
 }

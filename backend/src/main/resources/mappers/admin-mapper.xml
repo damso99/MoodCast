@@ -20,6 +20,7 @@
         <result property="name" column="name"/>
         <result property="nickname" column="nickname"/>
         <result property="email" column="email"/>
+        <result property="profileImageUrl" column="profile_image_url"/>
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <result property="role" column="role"/>
@@ -44,6 +45,7 @@
         <result property="memberId" column="member_id"/>
         <result property="authorName" column="author_name"/>
         <result property="authorNickname" column="author_nickname"/>
+        <result property="authorProfileImageUrl" column="author_profile_image_url"/>
         <result property="commentCount" column="comment_count"/>
         <result property="hashtagCount" column="hashtag_count"/>
         <result property="tags" column="tags"/>
@@ -60,6 +62,7 @@
         <result property="memberId" column="member_id"/>
         <result property="authorName" column="author_name"/>
         <result property="authorNickname" column="author_nickname"/>
+        <result property="authorProfileImageUrl" column="author_profile_image_url"/>
         <result property="parentId" column="parent_id"/>
         <result property="moderationStatus" column="moderation_status"/>
     </resultMap>
@@ -273,6 +276,7 @@
             name,
             nickname,
             email,
+            profile_image_url,
             upper(status) as status,
             created_at,
             role,
@@ -300,6 +304,7 @@
             p.member_id,
             m.name as author_name,
             m.nickname as author_nickname,
+            m.profile_image_url as author_profile_image_url,
             coalesce((
                 select count(*)
                 from comment_tbl c
@@ -335,6 +340,7 @@
             c.member_id,
             m.name as author_name,
             m.nickname as author_nickname,
+            m.profile_image_url as author_profile_image_url,
             c.parent_id,
             case
                 when c.deleted_yn = 'Y' then 'DELETED'

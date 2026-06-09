@@ -88,11 +88,11 @@ public class AdminService {
      * 처리 순서:
      * 1. Authorization 헤더의 accessToken으로 현재 로그인 회원을 조회합니다.
      * 2. 회원 role이 SUPER_ADMIN인지 확인합니다.
-     * 3. 일반 회원 또는 기존 일반 관리자 권한이면 403 FORBIDDEN으로 막습니다.
+     * 3. SUPER_ADMIN이 아니면 403 FORBIDDEN으로 막습니다.
      *
      * 주의:
-     * - ADMIN, NORMAL_ADMIN은 과거 호환 데이터로만 남을 수 있습니다.
-     * - 현재 정책은 관리자와 일반 회원만 사용하므로 관리자 API 접근은 SUPER_ADMIN만 허용합니다.
+     * - 현재 정책은 SUPER_ADMIN만 관리자 권한으로 사용합니다.
+     * - 그 외 role 값은 관리자 API 접근 권한이 없는 일반 회원 권한으로 봅니다.
      * ========================================================================== */
     private LoginMemberResponse validateAdmin(String authorizationHeader) {
         log.info("[ADMIN_API] validateAdmin start hasAuthorizationHeader={}", authorizationHeader != null && !authorizationHeader.isBlank());
@@ -1393,8 +1393,7 @@ public class AdminService {
      *
      * 처리 규칙:
      * - 변경 가능한 role은 USER, SUPER_ADMIN 두 가지입니다.
-     * - 일반 관리자(NORMAL_ADMIN)는 새로 부여하지 않습니다.
-     * - 기존 관리자 계정에 새 관리자 권한을 덮어씌우는 관리는 막습니다.
+     * - 기존 관리자 계정에 같은 관리자 권한을 다시 덮어씌우는 관리는 막습니다.
      * - 단, 관리자가 관리자 권한을 일반 회원(USER)으로 내리는 강등은 허용합니다.
      * - SQL에서도 ACTIVE 상태와 변경 가능한 role 조건을 다시 확인합니다.
      * - 조건에 맞지 않으면 400 BAD_REQUEST로 실패 처리합니다.
@@ -1423,8 +1422,8 @@ public class AdminService {
          * 관리자 권한 변경 정책:
          * - USER/MEMBER 같은 일반 회원을 SUPER_ADMIN으로 승급하는 것은 허용합니다.
          * - SUPER_ADMIN 계정을 USER로 강등하는 것은 허용합니다.
-         * - SUPER_ADMIN 계정을 다른 관리자 등급으로 다시 조정하는 것은 관리 사고 위험이 있어 막습니다.
-         * - ADMIN/NORMAL_ADMIN은 더 이상 관리자 권한으로 쓰지 않으므로 일반 회원처럼 처리합니다.
+         * - SUPER_ADMIN 계정에 다시 SUPER_ADMIN 권한을 덮어씌우는 것은 관리 사고 위험이 있어 막습니다.
+         * - SUPER_ADMIN이 아닌 role 값은 관리자 권한으로 인정하지 않습니다.
          */
         if (isAdminRole(targetMember.getRole()) && !"USER".equals(normalizedRole)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "관리자 계정은 일반 회원으로 강등만 할 수 있습니다.");
@@ -1816,7 +1815,9 @@ public class AdminService {
         }
 
         String title = normalizeRequiredText(request.getTitle(), "공지사항 제목을 입력해주세요.");
-        String content = normalizeRequiredText(request.getContent(), "공지사항 내용을 입력해주세요.");
+        String content = normalizeNoticeContent(
+                normalizeRequiredText(request.getContent(), "공지사항 내용을 입력해주세요.")
+        );
         String noticeType = normalizeNoticeType(request.getNoticeType());
 
         return new NoticeInput(title, content, noticeType);
@@ -1832,6 +1833,18 @@ public class AdminService {
         }
 
         return "NORMAL";
+    }
+
+    private String normalizeNoticeContent(String content) {
+        return content
+                .replaceAll("(?is)<\\s*(script|style|iframe|object|embed)[^>]*>.*?<\\s*/\\s*\\1\\s*>", "")
+                .replaceAll("(?is)<\\s*(script|style|iframe|object|embed)[^>]*/\\s*>", "")
+                .replaceAll("(?i)\\s+on[a-z]+\\s*=\\s*\"[^\"]*\"", "")
+                .replaceAll("(?i)\\s+on[a-z]+\\s*=\\s*'[^']*'", "")
+                .replaceAll("(?i)\\s+on[a-z]+\\s*=\\s*[^\\s>]+", "")
+                .replaceAll("(?i)(href\\s*=\\s*\")\\s*javascript:[^\"]*(\")", "$1#$2")
+                .replaceAll("(?i)(href\\s*=\\s*')\\s*javascript:[^']*(')", "$1#$2")
+                .trim();
     }
 
     private record NoticeInput(String title, String content, String noticeType) {

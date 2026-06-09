@@ -70,6 +70,118 @@ const hasCenterWrapper = (content = "") => {
   return content.includes('data-notice-align="center"');
 };
 
+const allowedNoticeTags = new Set([
+  "A",
+  "B",
+  "BR",
+  "DIV",
+  "LI",
+  "OL",
+  "P",
+  "SPAN",
+  "STRONG",
+  "U",
+  "UL",
+]);
+
+const isSafeNoticeUrl = (value = "") => {
+  const trimmedValue = String(value).trim();
+
+  if (!trimmedValue) return false;
+
+  try {
+    const parsedUrl = new URL(trimmedValue, window.location.origin);
+    return ["http:", "https:", "mailto:", "tel:"].includes(parsedUrl.protocol);
+  } catch {
+    return false;
+  }
+};
+
+const sanitizeStyleValue = (styleValue = "") => {
+  const safeDeclarations = String(styleValue)
+    .split(";")
+    .map((declaration) => declaration.trim())
+    .filter(Boolean)
+    .filter((declaration) => {
+      const [rawName, ...rawValueParts] = declaration.split(":");
+      const name = rawName?.trim().toLowerCase();
+      const value = rawValueParts.join(":").trim().toLowerCase();
+
+      if (!name || !value) return false;
+      if (value.includes("javascript:") || value.includes("expression(")) {
+        return false;
+      }
+
+      return [
+        "font-weight",
+        "text-align",
+        "text-decoration",
+        "text-decoration-line",
+      ].includes(name);
+    });
+
+  return safeDeclarations.join("; ");
+};
+
+export const sanitizeNoticeHtml = (content = "") => {
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return String(content || "");
+  }
+
+  const parser = new DOMParser();
+  const documentNode = parser.parseFromString(String(content || ""), "text/html");
+  const elements = Array.from(documentNode.body.querySelectorAll("*"));
+
+  elements.forEach((element) => {
+    if (!allowedNoticeTags.has(element.tagName)) {
+      element.replaceWith(...Array.from(element.childNodes));
+      return;
+    }
+
+    Array.from(element.attributes).forEach((attribute) => {
+      const attributeName = attribute.name.toLowerCase();
+      const attributeValue = attribute.value;
+
+      if (attributeName.startsWith("on")) {
+        element.removeAttribute(attribute.name);
+        return;
+      }
+
+      if (element.tagName === "A" && attributeName === "href") {
+        if (isSafeNoticeUrl(attributeValue)) {
+          element.setAttribute("target", "_blank");
+          element.setAttribute("rel", "noopener noreferrer");
+        } else {
+          element.removeAttribute(attribute.name);
+        }
+        return;
+      }
+
+      if (attributeName === "style") {
+        const safeStyle = sanitizeStyleValue(attributeValue);
+        if (safeStyle) {
+          element.setAttribute("style", safeStyle);
+        } else {
+          element.removeAttribute(attribute.name);
+        }
+        return;
+      }
+
+      if (attributeName === "data-notice-align") {
+        return;
+      }
+
+      if (["target", "rel"].includes(attributeName) && element.tagName === "A") {
+        return;
+      }
+
+      element.removeAttribute(attribute.name);
+    });
+  });
+
+  return documentNode.body.innerHTML;
+};
+
 export const stripNoticeAlignWrapper = (content = "") => {
   return content
     .replace(/^<div data-notice-align="center" style="text-align: center;">/i, "")
@@ -77,7 +189,7 @@ export const stripNoticeAlignWrapper = (content = "") => {
 };
 
 export const buildNoticeContent = (content, alignCenter) => {
-  const normalizedContent = stripNoticeAlignWrapper(content);
+  const normalizedContent = sanitizeNoticeHtml(stripNoticeAlignWrapper(content));
 
   if (!alignCenter) {
     return normalizedContent;
@@ -111,7 +223,7 @@ export const normalizeNotice = (notice) => {
     title: notice.title ?? "",
     category: categoryByType[notice.noticeType] ?? NOTICE_CATEGORY.GENERAL,
     noticeType: notice.noticeType ?? NOTICE_TYPE.NORMAL,
-    content: notice.content ?? "",
+    content: sanitizeNoticeHtml(notice.content ?? ""),
     alignCenter: hasCenterWrapper(notice.content),
     status: isDeleted ? NOTICE_STATUS.DELETE : NOTICE_STATUS.ACTIVE,
     isExpired,

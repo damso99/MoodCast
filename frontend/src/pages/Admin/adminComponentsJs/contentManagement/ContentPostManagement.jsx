@@ -7,6 +7,7 @@ import MoodBadIcon from "@mui/icons-material/MoodBad";
 import CelebrationIcon from "@mui/icons-material/Celebration";
 import SentimentNeutralIcon from "@mui/icons-material/SentimentNeutral";
 import { useAuthStore } from "../../../../stores/useAuthStore";
+import { defaultAvatarSrc } from "../../../../shared/lib/defaultAvatar";
 import { extractImageUrls } from "../../../../shared/lib/postHelpers";
 import { ContentBulkActions } from "./ContentBulkActions";
 import { ContentCommentGrid } from "./ContentCommentGrid";
@@ -189,6 +190,19 @@ export function ContentPostManagement() {
     if (/^https?:\/\//i.test(rawImageUrl)) return { imageSrc: rawImageUrl, hasImage: true };
     if (rawImageUrl.startsWith("/")) return { imageSrc: `${BACKSERVER}${rawImageUrl}`, hasImage: true };
     return { imageSrc: `${BACKSERVER}/uploads/${rawImageUrl}`, hasImage: true };
+  };
+
+  const getAuthorProfileImageSrc = (item) => {
+    const rawProfileImageUrl =
+      item?.authorProfileImageUrl ||
+      item?.profileImageUrl ||
+      item?.profile_image_url ||
+      "";
+
+    if (!rawProfileImageUrl) return defaultAvatarSrc;
+    if (/^(https?:)?\/\//i.test(rawProfileImageUrl)) return rawProfileImageUrl;
+    if (rawProfileImageUrl.startsWith("/")) return `${BACKSERVER}${rawProfileImageUrl}`;
+    return `${BACKSERVER}/uploads/${rawProfileImageUrl}`;
   };
 
   const filteredPosts = posts.filter((post) => {
@@ -527,6 +541,7 @@ export function ContentPostManagement() {
                 getPostStatus={getPostStatus}
                 getStatusClassName={getStatusClassName}
                 getAuthorName={getAuthorName}
+                getAuthorProfileImageSrc={getAuthorProfileImageSrc}
                 getEmotionMeta={getEmotionMeta}
                 getPostImageInfo={getPostImageInfo}
                 stripHtml={stripHtml}
@@ -554,6 +569,7 @@ export function ContentPostManagement() {
                 commentsLoading={commentsLoading}
                 commentsError={commentsError}
                 paginatedComments={paginatedComments}
+                getAuthorProfileImageSrc={getAuthorProfileImageSrc}
                 actionLoadingCommentId={actionLoadingCommentId}
                 onCommentAction={handleCommentAction}
                 filteredCommentCount={filteredComments.length}

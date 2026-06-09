@@ -40,6 +40,8 @@ public class AdminContentPost {
 
     private String authorNickname; // members.nickname: 작성자 닉네임입니다.
 
+    private String authorProfileImageUrl; // members.profile_image_url: 작성자 프로필 이미지 URL입니다.
+
     private Long commentCount; // comment_tbl 기준 삭제되지 않은 댓글 수입니다.
 
     private Long hashtagCount; // post_hashtag 기준 연결된 해시태그 수입니다.

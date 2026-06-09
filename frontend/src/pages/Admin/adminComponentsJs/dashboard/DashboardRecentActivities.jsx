@@ -100,6 +100,23 @@ export function DashboardRecentActivities() {
     };
   }, [BACKSERVER, accessToken]);
 
+  useEffect(() => {
+    if (!isModalOpen) {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isModalOpen]);
+
   const totalModalPage = Math.max(
     1,
     Math.ceil(allActivities.length / ACTIVITY_PAGE_SIZE),

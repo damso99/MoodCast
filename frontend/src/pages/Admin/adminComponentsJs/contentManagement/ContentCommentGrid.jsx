@@ -1,4 +1,5 @@
 import styles from "../../adminComponentsCss/contentManagement/ContentCommentGrid.module.css";
+import { defaultAvatarSrc } from "../../../../shared/lib/defaultAvatar";
 
 /**
  * 콘텐츠 관리 > 댓글 탭 목록 컴포넌트입니다.
@@ -8,6 +9,7 @@ export function ContentCommentGrid({
   commentsLoading,
   commentsError,
   paginatedComments,
+  getAuthorProfileImageSrc,
   actionLoadingCommentId,
   onCommentAction,
   filteredCommentCount,
@@ -64,11 +66,23 @@ export function ContentCommentGrid({
                   {comment.content || "댓글 내용 없음"}
                 </p>
 
-                <dl className={styles.simpleMetaList}>
+                <div className={styles.commentAuthorRow}>
+                  <span className={styles.commentAvatar}>
+                    <img
+                      src={getAuthorProfileImageSrc(comment)}
+                      alt=""
+                      onError={(event) => {
+                        event.currentTarget.src = defaultAvatarSrc;
+                      }}
+                    />
+                  </span>
                   <div>
-                    <dt>작성자</dt>
-                    <dd>{getAuthorName(comment)}</dd>
+                    <span>작성자</span>
+                    <strong>{getAuthorName(comment)}</strong>
                   </div>
+                </div>
+
+                <dl className={styles.simpleMetaList}>
                   <div>
                     <dt>게시글</dt>
                     <dd>{comment.postTitle || "제목 없음"}</dd>

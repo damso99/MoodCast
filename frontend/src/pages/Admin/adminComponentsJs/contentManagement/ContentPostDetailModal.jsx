@@ -50,9 +50,16 @@ export function ContentPostDetailModal({
     };
 
     window.addEventListener("keydown", handleEscapeKey);
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
 
     return () => {
       window.removeEventListener("keydown", handleEscapeKey);
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [onClose]);
 

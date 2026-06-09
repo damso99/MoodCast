@@ -140,6 +140,14 @@
   color: #633df2;
   font-weight: 900;
   background: rgba(124, 77, 255, 0.12);
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .authorRow strong {

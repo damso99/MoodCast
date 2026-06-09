@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { EmptyState } from "../common/EmptyState";
 import { formatKoreanDate } from "../../../../shared/lib/dateTime";
@@ -34,6 +34,23 @@ export function UserManagementActionLogs({
   const [allLogsLoading, setAllLogsLoading] = useState(false); // 전체 로그 조회 중인지 표시합니다.
   const [allLogsError, setAllLogsError] = useState(false); // 전체 로그 조회 실패 여부입니다.
   const [currentLogPage, setCurrentLogPage] = useState(1); // 전체 로그 팝업의 현재 페이지 번호입니다.
+
+  useEffect(() => {
+    if (!isAllLogOpen) {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isAllLogOpen]);
 
   /* ------------------------------------------------------------------------
    * 로그 작업명 변환 함수

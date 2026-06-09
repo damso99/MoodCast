@@ -31,6 +31,7 @@ public class AdminMember {
     private String name;
     private String nickname;
     private String email;
+    private String profileImageUrl;
     private String status;
     private LocalDateTime createdAt;
     private String role;

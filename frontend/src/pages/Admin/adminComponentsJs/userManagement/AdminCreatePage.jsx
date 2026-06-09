@@ -61,10 +61,6 @@ export function AdminCreatePage() {
       return "관리자";
     }
 
-    if (role === "ADMIN" || role === "NORMAL_ADMIN") {
-      return "일반 회원";
-    }
-
     if (role === "USER" || role === "MEMBER") {
       return "일반 회원";
     }
@@ -129,6 +125,23 @@ export function AdminCreatePage() {
     // 최초 진입 시 전체 회원을 한 번만 조회하기 위한 effect입니다.
     // searchType 변경마다 자동 조회하면 사용자가 입력 중인 검색 흐름과 충돌할 수 있어 의존성은 로그인 정보와 서버 주소만 둡니다.
   }, [BACKSERVER, accessToken]);
+
+  useEffect(() => {
+    if (!roleResultPopup) {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [roleResultPopup]);
 
   const resetSelection = () => {
     setSelectedMemberId(null); // 선택된 회원을 비웁니다.

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { statusMeta } from "./reportConstants";
@@ -5,6 +6,19 @@ import styles from "../../adminComponentsCss/reportManagement/ReportResultModal.
 
 export function ReportResultModal({ report, onClose }) {
   const result = report.sanctionResult;
+
+  useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, []);
 
   return (
     <div

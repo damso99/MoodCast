@@ -56,6 +56,18 @@ export function UserManagementDrawer({
     import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
   ).replace(/\/$/, "");
 
+  const getManagedMemberProfileImageSrc = (managedMember) => {
+    const rawProfileImageUrl =
+      managedMember?.profileImageUrl ||
+      managedMember?.profile_image_url ||
+      "";
+
+    if (!rawProfileImageUrl) return defaultAvatarSrc;
+    if (/^(https?:)?\/\//i.test(rawProfileImageUrl)) return rawProfileImageUrl;
+    if (rawProfileImageUrl.startsWith("/")) return `${BACKSERVER}${rawProfileImageUrl}`;
+    return `${BACKSERVER}/uploads/${rawProfileImageUrl}`;
+  };
+
   useEffect(() => {
     if (!selectedManagedMember) {
       return undefined;
@@ -170,7 +182,6 @@ export function UserManagementDrawer({
 
   const getRoleLabel = (role) => {
     if (role === "USER" || role === "MEMBER") return "일반 회원";
-    if (role === "ADMIN" || role === "NORMAL_ADMIN") return "일반 회원";
     if (role === "SUPER_ADMIN") return "관리자";
     return role || "-";
   };
@@ -478,7 +489,13 @@ export function UserManagementDrawer({
 
         <section className={styles.memberSummary}>
           <div className={styles.memberAvatar}>
-            <img src={defaultAvatarSrc} alt="" />
+            <img
+              src={getManagedMemberProfileImageSrc(selectedManagedMember)}
+              alt=""
+              onError={(event) => {
+                event.currentTarget.src = defaultAvatarSrc;
+              }}
+            />
           </div>
           <div className={styles.memberSummaryText}>
             <div className={styles.memberNameLine}>

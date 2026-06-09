@@ -94,7 +94,7 @@ export function UserManagementPage() {
    * --------------------------------------------------------------------------
    * 초보자 설명:
    * - NavLink를 그대로 쓰면 클릭하는 순간 바로 /admin/users/new로 이동합니다.
-   * - 일반 관리자는 이 페이지에 들어가면 안 되므로, 먼저 로그인한 관리자의 role을 확인합니다.
+   * - SUPER_ADMIN이 아니면 이 페이지에 들어가면 안 되므로, 먼저 로그인한 관리자의 role을 확인합니다.
    * - SUPER_ADMIN이면 이동하고, 아니면 alert만 보여준 뒤 이동하지 않습니다.
    * - URL 직접 입력은 AdminPages.jsx의 라우트 보호에서 한 번 더 막습니다.
    */
@@ -380,15 +380,11 @@ export function UserManagementPage() {
   };
 
   const getRoleLabel = (role) => {
-    if (role === "USER") {
-      return "일반 회원";
-    }
-
     if (role === "SUPER_ADMIN") {
       return "관리자";
     }
 
-    if (role === "ADMIN" || role === "NORMAL_ADMIN") {
+    if (role === "USER" || role === "MEMBER") {
       return "일반 회원";
     }
 

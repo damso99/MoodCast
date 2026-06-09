@@ -11,6 +11,7 @@ import {
   NOTICE_CATEGORY,
   NOTICE_STATUS,
   NOTICE_WRITABLE_CATEGORIES,
+  sanitizeNoticeHtml,
   softDeleteAdminNotice,
   stripNoticeAlignWrapper,
   toNoticePayload,
@@ -78,6 +79,23 @@ export function NoticeManagementPage() {
   useEffect(() => {
     setShowAllNotices(false);
   }, [selectedCategory]);
+
+  useEffect(() => {
+    if (!openedNotice && !noticeResultPopup) {
+      return undefined;
+    }
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [openedNotice, noticeResultPopup]);
 
   const filteredNotices = useMemo(() => {
     if (selectedCategory === "삭제 공지") {
@@ -159,7 +177,7 @@ export function NoticeManagementPage() {
 
     setNoticeForm((prevForm) => ({
       ...prevForm,
-      content: editorRef.current.innerHTML,
+      content: sanitizeNoticeHtml(editorRef.current.innerHTML),
     }));
   };
 
@@ -257,10 +275,19 @@ export function NoticeManagementPage() {
       return;
     }
 
+    const trimmedLink = link.trim();
+    if (!/^(https?:\/\/|mailto:|tel:)/i.test(trimmedLink)) {
+      setNoticeResultPopup({
+        title: "처리 실패",
+        message: "링크는 http, https, mailto, tel 주소만 사용할 수 있습니다.",
+      });
+      return;
+    }
+
     setEditorMarks((prevMarks) => ({ ...prevMarks, link: true }));
-    setEditorLink(link);
+    setEditorLink(trimmedLink);
     restoreEditorSelection();
-    document.execCommand("createLink", false, link);
+    document.execCommand("createLink", false, trimmedLink);
     updateEditorContent();
     saveEditorSelection();
   };
@@ -271,6 +298,22 @@ export function NoticeManagementPage() {
   };
 
   const handleEditorInput = () => {
+    updateEditorContent();
+    saveEditorSelection();
+  };
+
+  const handleEditorPaste = (event) => {
+    event.preventDefault();
+
+    const clipboardData = event.clipboardData;
+    const htmlContent = clipboardData?.getData("text/html");
+    const textContent = clipboardData?.getData("text/plain") || "";
+    const safeContent = htmlContent
+      ? sanitizeNoticeHtml(htmlContent)
+      : textContent.replace(/\r?\n/g, "<br>");
+
+    restoreEditorSelection();
+    document.execCommand("insertHTML", false, safeContent);
     updateEditorContent();
     saveEditorSelection();
   };
@@ -498,6 +541,7 @@ export function NoticeManagementPage() {
                 data-placeholder="공지사항 내용을 입력하세요"
                 suppressContentEditableWarning
                 onInput={handleEditorInput}
+                onPaste={handleEditorPaste}
                 onFocus={handleEditorSelectionChange}
                 onKeyUp={handleEditorSelectionChange}
                 onKeyDown={handleEditorKeyDown}
