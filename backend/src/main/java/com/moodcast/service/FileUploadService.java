@@ -1,5 +1,6 @@
 package com.moodcast.service;
 
+import com.moodcast.service.dto.FileUploadResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -122,8 +123,9 @@ public class FileUploadService {
             // 실제 파일 데이터를 S3로 전송함
             s3Client.putObject(request, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
-                String s3Url = buildPublicS3Url(key);
-                String viewUrl = buildViewUrl(baseUrl, key);
+            String s3Url = buildPublicS3Url(key);
+            String viewUrl = buildViewUrl(baseUrl, key);
+            
             return FileUploadResponse.builder()
                     .url(s3Url)
                     .s3Url(s3Url)
