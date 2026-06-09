@@ -13,7 +13,7 @@
             p.title as title,
             p.content as content,
             p.emotion_id as emotionId,
-            group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ') as tags,
+            group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ') as tags,
             coalesce((select count(*) from user_post_like upl where upl.post_id = p.post_id), 0) as likes,
             coalesce((
                 select count(*)
