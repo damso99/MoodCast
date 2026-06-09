@@ -9,6 +9,11 @@ import styles from "./EditPostPage.module.css";
 import { uploadImage } from "../../shared/lib/uploadImage";
 import { fetchMentionCandidates } from "../../shared/api/followApi";
 import {
+  buildPostContent,
+  extractImageUrls,
+  stripHtml,
+} from "../../shared/lib/postHelpers";
+import {
   getActiveMentionStateFromText,
   insertMentionIntoText,
   reconcileMentionsAfterTextChange,
@@ -41,6 +46,7 @@ export function EditPostPage() {
   const [tagList, setTagList] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [selectedEmotion, setSelectedEmotion] = useState(null);
+  // 수정 화면도 본문 글과 첨부 이미지를 분리해서 보여주기 위한 상태임
   const [attachedImages, setAttachedImages] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -153,9 +159,11 @@ export function EditPostPage() {
         const post = response.data;
 
         setTitle(post.title || "");
-        setContent(post.content || "");
+        // 서버에 저장된 HTML에서 글자만 뽑아 textarea에 넣는 처리임
+        setContent(stripHtml(post.content || ""));
         setMentions(post.mentions || []);
-        setAttachedImages(getImageUrlsFromHtml(post.content || ""));
+        // 저장된 img 태그의 src만 따로 뽑아 첨부 이미지 목록으로 보여줌
+        setAttachedImages(extractImageUrls(post.content || ""));
 
         // 태그 파싱 (공백으로 구분된 문자열을 배열로 변환
         if (post.tags) {
@@ -199,12 +207,8 @@ export function EditPostPage() {
           cropSquare: false,
           folderType: "post-images",
         });
-        const imageHtml = `<img src="${url}" alt="${file.name}" />`;
-        setContent((prev) => {
-          const nextContent = `${prev}${prev ? "\n" : ""}${imageHtml}`;
-          setAttachedImages(getImageUrlsFromHtml(nextContent));
-          return nextContent;
-        });
+        // 새로 올린 이미지도 본문 textarea에는 넣지 않고 목록으로만 관리함
+        setAttachedImages((prev) => [...prev, url]);
       } catch (err) {
         if (err?.isAuthError) {
           return;
@@ -242,20 +246,6 @@ export function EditPostPage() {
     }
   };
 
-  const getImageUrlsFromHtml = (html) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html || "", "text/html");
-    return Array.from(doc.querySelectorAll("img"))
-      .map((img) => img.getAttribute("src"))
-      .filter(Boolean);
-  };
-
-  const updateEditorContent = (html) => {
-    setContent(html);
-    setAttachedImages(getImageUrlsFromHtml(html));
-    setMentions(reconcileMentionsAfterTextChange(content, html, mentions));
-  };
-
   const getFileNameFromUrl = (url) => {
     if (!url) return "이미지";
     const cleaned = url.split("?")[0].split("/").pop() || "이미지";
@@ -267,12 +257,10 @@ export function EditPostPage() {
   };
 
   const handleImageRemove = (indexToRemove) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(content, "text/html");
-    const images = Array.from(doc.querySelectorAll("img"));
-    if (!images[indexToRemove]) return;
-    images[indexToRemove].remove();
-    updateEditorContent(doc.body.innerHTML);
+    // 첨부 이미지 삭제는 목록에서 제거한 뒤 저장 시 최종 반영됨
+    setAttachedImages((prev) =>
+      prev.filter((_, index) => index !== indexToRemove),
+    );
   };
 
   // 게시물 수정 완료 버튼을 눌렀을 때 백엔드에 수정 요청을 보냅니다.
@@ -285,7 +273,8 @@ export function EditPostPage() {
       return;
     }
 
-    const editorContent = content;
+    // 수정 저장 직전에만 글과 이미지 태그를 다시 합쳐 HTML 본문을 만듦
+    const editorContent = buildPostContent(content, attachedImages);
 
     if (!title.trim() && !editorContent.trim()) {
       alert("제목 또는 본문을 입력해주세요.");
@@ -304,15 +293,11 @@ export function EditPostPage() {
         mentions,
       };
 
-      await axios.put(
-        `${BACKSERVER}/api/posts/${postId}`,
-        requestData,
-        {
-          headers: {
-            Authorization: `Bearer ${effectiveToken}`,
-          },
+      await axios.put(`${BACKSERVER}/api/posts/${postId}`, requestData, {
+        headers: {
+          Authorization: `Bearer ${effectiveToken}`,
         },
-      );
+      });
 
       alert("게시물이 수정되었습니다.");
       navigate("/app");

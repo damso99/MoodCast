@@ -9,6 +9,7 @@ import styles from "./CreatePostPage.module.css";
 import { uploadImage } from "../../shared/lib/uploadImage";
 import { fetchMentionCandidates } from "../../shared/api/followApi";
 import { defaultAvatarSrc } from "../../shared/lib/defaultAvatar";
+import { buildPostContent } from "../../shared/lib/postHelpers";
 import {
   getActiveMentionStateFromText,
   insertMentionIntoText,
@@ -37,6 +38,8 @@ export function CreatePostPage() {
   const tagInputRef = useRef(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  // textarea에는 글만 보여주고, 첨부 이미지는 따로 관리하기 위한 상태임
+  const [attachedImages, setAttachedImages] = useState([]);
   const [tagList, setTagList] = useState([]); // 배열로 관리
   const [tagInput, setTagInput] = useState(""); // 현재 입력 중인 값
   const [selectedEmotion, setSelectedEmotion] = useState(null); // 선택한 감정
@@ -154,8 +157,8 @@ export function CreatePostPage() {
           cropSquare: false,
           folderType: "post-images",
         });
-        const imageHtml = `<img src="${url}" alt="${file.name}" />`;
-        setContent((prev) => `${prev}${prev ? "\n" : ""}${imageHtml}`);
+        // 업로드한 이미지는 본문 문자열에 넣지 않고 미리보기 목록에만 추가함
+        setAttachedImages((prev) => [...prev, url]);
       } catch (err) {
         if (err?.isAuthError) {
           return;
@@ -203,6 +206,13 @@ export function CreatePostPage() {
     setTagList(tagList.filter((_, index) => index !== indexToRemove));
   };
 
+  const handleImageRemove = (indexToRemove) => {
+    // 사용자가 지운 이미지는 첨부 목록에서만 제거하면 됨
+    setAttachedImages((prev) =>
+      prev.filter((_, index) => index !== indexToRemove),
+    );
+  };
+
   // 게시물 작성 완료 버튼을 눌렀을 때 서버로 저장 요청을 보냅니다.
   const handleSubmit = async () => {
     const effectiveToken =
@@ -213,7 +223,8 @@ export function CreatePostPage() {
       return;
     }
 
-    const editorContent = content;
+    // 저장 직전에만 글 + 이미지 HTML을 합쳐서 서버로 보냄
+    const editorContent = buildPostContent(content, attachedImages);
 
     if (!title.trim() && !editorContent.trim()) {
       alert("제목 또는 본문을 입력해 주세요.");
@@ -239,18 +250,15 @@ export function CreatePostPage() {
         mentions,
       };
 
-      await axios.post(
-        `${BACKSERVER}/api/posts`,
-        requestData,
-        {
-          headers: {
-            Authorization: `Bearer ${effectiveToken}`,
-          },
+      await axios.post(`${BACKSERVER}/api/posts`, requestData, {
+        headers: {
+          Authorization: `Bearer ${effectiveToken}`,
         },
-      );
+      });
 
       setTitle("");
       setContent("");
+      setAttachedImages([]);
       setTagList([]);
       setTagInput("");
       setSelectedEmotion(null); // 감정 초기화      setMentionKeyword('');
@@ -411,6 +419,33 @@ export function CreatePostPage() {
               본문에 들어갈 사진을 선택하세요
             </span>
           </div>
+
+          {attachedImages.length > 0 && (
+            <div className={styles.imageList}>
+              <strong>첨부된 사진</strong>
+              <div className={styles.imageGrid}>
+                {attachedImages.map((src, index) => (
+                  <div key={`${src}-${index}`} className={styles.imageItem}>
+                    <div className={styles.imageThumbWrap}>
+                      <img
+                        src={src}
+                        alt={`첨부 이미지 ${index + 1}`}
+                        className={styles.imageThumb}
+                      />
+                      <button
+                        type="button"
+                        className={styles.imageRemoveButton}
+                        onClick={() => handleImageRemove(index)}
+                        aria-label={`첨부 이미지 ${index + 1} 삭제`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className={styles.field}>

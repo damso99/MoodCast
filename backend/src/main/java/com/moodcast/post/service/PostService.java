@@ -566,14 +566,18 @@ public class PostService {
             throw new IllegalStateException("게시물 수정에 실패했습니다.");
         }
 
-        Set<String> existingTags = new java.util.HashSet<>(parseHashtags(currentPost.getTags()));
-        Set<String> newTags = new java.util.HashSet<>(parseHashtags(request.getTags()));
+        // 기존 태그는 포함 여부 비교만 하면 되므로 Set으로 관리함
+        Set<String> existingTagSet = new java.util.HashSet<>(parseHashtags(currentPost.getTags()));
+        // 새 태그는 "입력 순서"가 중요하므로 List를 유지함
+        List<String> newTags = parseHashtags(request.getTags());
+        // 포함 여부 계산용으로만 Set을 추가로 만듦
+        Set<String> newTagSet = new java.util.HashSet<>(newTags);
 
-        Set<String> tagsToRemove = new java.util.HashSet<>(existingTags);
-        tagsToRemove.removeAll(newTags);
+        Set<String> tagsToRemove = new java.util.HashSet<>(existingTagSet);
+        tagsToRemove.removeAll(newTagSet);
 
-        Set<String> tagsToAdd = new java.util.HashSet<>(newTags);
-        tagsToAdd.removeAll(existingTags);
+        Set<String> tagsToAdd = new java.util.HashSet<>(newTagSet);
+        tagsToAdd.removeAll(existingTagSet);
 
         for (String tagText : tagsToRemove) {
             Long hashtagId = postDao.findHashtagIdByText(tagText);
@@ -582,7 +586,9 @@ public class PostService {
             }
         }
 
+        // 기존 연결을 지우고 새 입력 기준으로 다시 연결함
         postDao.deletePostHashtagsByPostId(postId);
+        // newTags(List)를 순회해야 사용자가 입력한 순서가 DB에 그대로 저장됨
         for (String hashtagText : newTags) {
             Long hashtagId = postDao.findHashtagIdByText(hashtagText);
             if (hashtagId == null) {

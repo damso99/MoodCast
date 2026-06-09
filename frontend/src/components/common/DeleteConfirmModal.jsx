@@ -1,26 +1,32 @@
-import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import styles from './DeleteConfirmModal.module.css';
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
+import styles from "./DeleteConfirmModal.module.css";
 
-export function DeleteConfirmModal({ open, title, description, onCancel, onConfirm }) {
+export function DeleteConfirmModal({
+  open,
+  title,
+  description,
+  onCancel,
+  onConfirm,
+}) {
   useEffect(() => {
     if (!open) return undefined;
 
     const { body, documentElement } = document;
     const prevBody = body.style.overflow;
     const prevHtml = documentElement.style.overflow;
-    body.style.overflow = 'hidden';
-    documentElement.style.overflow = 'hidden';
+    body.style.overflow = "hidden";
+    documentElement.style.overflow = "hidden";
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onCancel();
+      if (event.key === "Escape") onCancel();
     };
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       body.style.overflow = prevBody;
       documentElement.style.overflow = prevHtml;
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open, onCancel]);
 
@@ -28,7 +34,12 @@ export function DeleteConfirmModal({ open, title, description, onCancel, onConfi
 
   return createPortal(
     <div className={styles.overlay} onClick={onCancel} role="presentation">
-      <section className={styles.modal} role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+      <section
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        onClick={(event) => event.stopPropagation()}
+      >
         <header className={styles.header}>
           <div>
             <strong>{title}</strong>
@@ -37,10 +48,18 @@ export function DeleteConfirmModal({ open, title, description, onCancel, onConfi
         </header>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.cancelButton} onClick={onCancel}>
+          <button
+            type="button"
+            className={styles.cancelButton}
+            onClick={onCancel}
+          >
             취소
           </button>
-          <button type="button" className={styles.confirmButton} onClick={onConfirm}>
+          <button
+            type="button"
+            className={styles.confirmButton}
+            onClick={onConfirm}
+          >
             삭제하기
           </button>
         </div>

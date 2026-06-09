@@ -13,7 +13,8 @@
             p.title as title,
             p.content as content,
             p.emotion_id as emotionId,
-            group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ') as tags,
+                <!-- 검색 결과의 태그도 입력 순서로 보여주기 위해 post_hashtag_id 기준으로 합침 -->
+            group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ') as tags,
             coalesce((select count(*) from user_post_like upl where upl.post_id = p.post_id), 0) as likes,
             coalesce((
                 select count(*)

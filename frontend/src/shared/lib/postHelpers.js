@@ -8,64 +8,88 @@
  * @param {string} html - HTML 문자열
  * @returns {string} 순수 텍스트
  */
-export const BACKSERVER = import.meta.env.VITE_BACKSERVER || 'http://localhost:8080';
-export const PUBLIC_S3_BASE_URL = import.meta.env.VITE_PUBLIC_S3_BASE_URL || '';
+export const BACKSERVER =
+  import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
+export const PUBLIC_S3_BASE_URL = import.meta.env.VITE_PUBLIC_S3_BASE_URL || "";
 
 function buildPublicS3Url(key, publicS3BaseUrl = PUBLIC_S3_BASE_URL) {
-  const normalizedBase = publicS3BaseUrl.replace(/\/+$/, '');
-  const normalizedKey = key.replace(/^\/+/, '');
+  const normalizedBase = publicS3BaseUrl.replace(/\/+$/, "");
+  const normalizedKey = key.replace(/^\/+/, "");
   return normalizedBase ? `${normalizedBase}/${normalizedKey}` : null;
 }
 
 function buildLegacyViewUrl(filename, folderType, backserver) {
-  const normalizedBase = backserver.replace(/\/+$/, '');
+  const normalizedBase = backserver.replace(/\/+$/, "");
   return `${normalizedBase}/upload/view?key=${encodeURIComponent(`${folderType}/${filename}`)}`;
 }
 
-export function normalizeBackendUrl(url, backserver = BACKSERVER, legacyFolderType = null) {
+export function normalizeBackendUrl(
+  url,
+  backserver = BACKSERVER,
+  legacyFolderType = null,
+) {
   if (!url) return url;
-  if (typeof url !== 'string') return url;
-  if (url.startsWith('data:')) {
+  if (typeof url !== "string") return url;
+  if (url.startsWith("data:")) {
     return url;
   }
 
   if (legacyFolderType) {
     const relativeLegacyMatch = url.match(/^\/?uploads\/([^/?#]+)$/i);
     if (relativeLegacyMatch) {
-      return buildPublicS3Url(`${legacyFolderType}/${relativeLegacyMatch[1]}`) || buildLegacyViewUrl(relativeLegacyMatch[1], legacyFolderType, backserver);
+      return (
+        buildPublicS3Url(`${legacyFolderType}/${relativeLegacyMatch[1]}`) ||
+        buildLegacyViewUrl(relativeLegacyMatch[1], legacyFolderType, backserver)
+      );
     }
 
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
       try {
         const parsed = new URL(url);
-        const absoluteLegacyMatch = parsed.pathname.match(/^\/uploads\/([^/]+)$/i);
+        const absoluteLegacyMatch =
+          parsed.pathname.match(/^\/uploads\/([^/]+)$/i);
         if (absoluteLegacyMatch) {
-          return buildPublicS3Url(`${legacyFolderType}/${absoluteLegacyMatch[1]}`) || buildLegacyViewUrl(absoluteLegacyMatch[1], legacyFolderType, backserver);
+          return (
+            buildPublicS3Url(`${legacyFolderType}/${absoluteLegacyMatch[1]}`) ||
+            buildLegacyViewUrl(
+              absoluteLegacyMatch[1],
+              legacyFolderType,
+              backserver,
+            )
+          );
         }
-      } catch (error) {
-      }
+      } catch (error) {}
     }
   }
 
-  const viewMatch = url.match(/(?:https?:\/\/[^/?#]+)?\/upload\/view\?key=([^&#"'\s]+)/i);
+  const viewMatch = url.match(
+    /(?:https?:\/\/[^/?#]+)?\/upload\/view\?key=([^&#"'\s]+)/i,
+  );
   if (viewMatch) {
     const decodedKey = decodeURIComponent(viewMatch[1]);
-    return buildPublicS3Url(decodedKey) || `${backserver.replace(/\/+$/, '')}/upload/view?key=${encodeURIComponent(decodedKey)}`;
+    return (
+      buildPublicS3Url(decodedKey) ||
+      `${backserver.replace(/\/+$/, "")}/upload/view?key=${encodeURIComponent(decodedKey)}`
+    );
   }
 
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
     return url;
   }
 
-  const normalizedBase = backserver.replace(/\/+$/, '');
-  const normalizedPath = url.replace(/^\/?/, '');
+  const normalizedBase = backserver.replace(/\/+$/, "");
+  const normalizedPath = url.replace(/^\/?/, "");
   return `${normalizedBase}/${normalizedPath}`;
 }
 
 export function stripHtml(html) {
-  if (!html) return '';
-  const text = html.replace(/<img[^>]*>/gi, ' ').replace(/<[^>]+>/g, ' ').trim();
-  const textarea = document.createElement('textarea');
+  if (!html) return "";
+  // textarea에 넣을 때는 img 태그와 일반 HTML 태그를 모두 걷어내야 함
+  const text = html
+    .replace(/<img[^>]*>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .trim();
+  const textarea = document.createElement("textarea");
   textarea.innerHTML = text;
   return textarea.value;
 }
@@ -79,9 +103,9 @@ export function extractImageUrl(html) {
   if (!html) return null;
   try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const img = doc.querySelector('img');
-    return img?.getAttribute('src') ?? null;
+    const doc = parser.parseFromString(html, "text/html");
+    const img = doc.querySelector("img");
+    return img?.getAttribute("src") ?? null;
   } catch (error) {
     const match = html.match(/<img[^>]+src=["']?([^"' >]+)["']?/i);
     return match ? match[1] : null;
@@ -97,14 +121,31 @@ export function extractImageUrls(html) {
   if (!html) return [];
   try {
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    return Array.from(doc.querySelectorAll('img'))
-      .map((img) => img.getAttribute('src'))
+    const doc = parser.parseFromString(html, "text/html");
+    // 저장된 본문 안의 img 태그 src만 뽑아 첨부 이미지 목록으로 돌려줌
+    return Array.from(doc.querySelectorAll("img"))
+      .map((img) => img.getAttribute("src"))
       .filter(Boolean);
   } catch (error) {
     const matches = html.matchAll(/<img[^>]+src=["']?([^"' >]+)["']?/gi);
     return Array.from(matches, (match) => match[1]).filter(Boolean);
   }
+}
+
+export function buildPostContent(text, imageUrls = []) {
+  // 사용자가 입력한 글은 textarea 기준으로 먼저 정리함
+  const normalizedText = String(text ?? "").trim();
+  // 첨부 이미지 목록은 저장할 때만 img HTML 문자열로 바꿔 붙임
+  const imageHtml = (imageUrls ?? [])
+    .filter(Boolean)
+    .map((src) => `<img src="${src}" alt="첨부 이미지" />`)
+    .join("\n");
+
+  if (normalizedText && imageHtml) {
+    return `${normalizedText}\n${imageHtml}`;
+  }
+
+  return normalizedText || imageHtml;
 }
 
 /**
@@ -113,7 +154,7 @@ export function extractImageUrls(html) {
  * @returns {string} 포맷된 시간 문자열
  */
 export function formatRelativeTime(dateString) {
-  if (!dateString) return '방금';
+  if (!dateString) return "방금";
 
   const date = new Date(dateString);
   const now = new Date();
@@ -123,18 +164,18 @@ export function formatRelativeTime(dateString) {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return '방금';
+  if (diffMins < 1) return "방금";
   if (diffMins < 60) return `${diffMins}분 전`;
   if (diffHours < 24) return `${diffHours}시간 전`;
   if (diffDays < 7) return `${diffDays}일 전`;
 
-  return new Intl.DateTimeFormat('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Asia/Seoul'
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Seoul",
   }).format(date);
 }
 
@@ -145,55 +186,86 @@ export function formatRelativeTime(dateString) {
  * @returns {object} 표준화된 게시물 데이터
  */
 export function resolveProfileImageUrl(item) {
-  const url = item?.profileImageUrl ?? item?.profile_image_url ?? item?.avatarUrl ?? item?.avatar_url ?? item?.profileImage ?? item?.imageUrl ?? item?.image ?? item?.photoUrl ?? item?.photo ?? item?.pictureUrl ?? item?.picture ?? item?.image_url ?? item?.photo_url ?? null;
-  return normalizeBackendUrl(url, BACKSERVER, 'user-images');
+  const url =
+    item?.profileImageUrl ??
+    item?.profile_image_url ??
+    item?.avatarUrl ??
+    item?.avatar_url ??
+    item?.profileImage ??
+    item?.imageUrl ??
+    item?.image ??
+    item?.photoUrl ??
+    item?.photo ??
+    item?.pictureUrl ??
+    item?.picture ??
+    item?.image_url ??
+    item?.photo_url ??
+    null;
+  return normalizeBackendUrl(url, BACKSERVER, "user-images");
 }
 
 export function normalizePostData(item) {
-  const authorName = item.author || item.authorName || item.authorNickname || item.nickname || '익명';
-  const rawContent = item.content ?? item.body ?? item.text ?? '';
-  const memberId = item.memberId ?? item.member_id ?? item.authorId ?? item.author_id ?? item.userId ?? item.user_id;
-  
-  const imageSrc = normalizeBackendUrl(item.imageSrc ?? extractImageUrl(rawContent), BACKSERVER, 'post-images');
-  const imageSrcs = Array.from(new Set([
+  const authorName =
+    item.author ||
+    item.authorName ||
+    item.authorNickname ||
+    item.nickname ||
+    "익명";
+  const rawContent = item.content ?? item.body ?? item.text ?? "";
+  const memberId =
+    item.memberId ??
+    item.member_id ??
+    item.authorId ??
+    item.author_id ??
+    item.userId ??
+    item.user_id;
+
+  const imageSrc = normalizeBackendUrl(
+    item.imageSrc ?? extractImageUrl(rawContent),
+    BACKSERVER,
+    "post-images",
+  );
+  const imageSrcs = Array.from(
+    new Set([
       ...(item.imageSrc ? [item.imageSrc] : []),
       ...(item.imageSrcs ?? []),
       ...extractImageUrls(rawContent),
-    ]))
-    .map((src) => normalizeBackendUrl(src, BACKSERVER, 'post-images'))
+    ]),
+  )
+    .map((src) => normalizeBackendUrl(src, BACKSERVER, "post-images"))
     .filter(Boolean);
 
   return {
     // 기본 ID 필드
     id: item.postId,
     postId: item.postId,
-    
+
     // 작성자 정보
     memberId,
     author: authorName,
-    avatar: authorName ? authorName.charAt(0).toUpperCase() : '?',
+    avatar: authorName ? authorName.charAt(0).toUpperCase() : "?",
     profileLink: memberId ? `/app/user/${memberId}` : null,
     profileImageUrl: resolveProfileImageUrl(item),
-    
+
     // 게시물 내용
     title: item.title,
     content: rawContent,
     text: stripHtml(rawContent),
-    tags: item.tags ?? '',
+    tags: item.tags ?? "",
     mentions: item.mentions ?? [],
-    
+
     // 이미지 정보
     imageSrc,
     imageSrcs,
     imageAlt: item.imageAlt ?? authorName,
-    
+
     // 시간 정보
     time: formatRelativeTime(item.createdAt),
     createdAt: item.createdAt,
-    
+
     // 감정 정보
     emotionId: item.emotionId,
-    
+
     // 상호작용 정보
     comments: item.comments ?? item.commentsCount ?? item.commentCount ?? 0,
     commentsList: item.commentsList ?? [],
@@ -202,7 +274,7 @@ export function normalizePostData(item) {
     vibes: item.vibes ?? item.vibesCount ?? 0,
     saved: item.savedByMe,
     savedByMe: item.savedByMe,
-    
+
     // 기타
     attachments: item.attachments ?? [],
     previewComment: null,
