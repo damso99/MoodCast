@@ -566,14 +566,15 @@ public class PostService {
             throw new IllegalStateException("게시물 수정에 실패했습니다.");
         }
 
-        Set<String> existingTags = new java.util.HashSet<>(parseHashtags(currentPost.getTags()));
-        Set<String> newTags = new java.util.HashSet<>(parseHashtags(request.getTags()));
+        Set<String> existingTagSet = new java.util.HashSet<>(parseHashtags(currentPost.getTags()));
+        List<String> newTags = parseHashtags(request.getTags());
+        Set<String> newTagSet = new java.util.HashSet<>(newTags);
 
-        Set<String> tagsToRemove = new java.util.HashSet<>(existingTags);
-        tagsToRemove.removeAll(newTags);
+        Set<String> tagsToRemove = new java.util.HashSet<>(existingTagSet);
+        tagsToRemove.removeAll(newTagSet);
 
-        Set<String> tagsToAdd = new java.util.HashSet<>(newTags);
-        tagsToAdd.removeAll(existingTags);
+        Set<String> tagsToAdd = new java.util.HashSet<>(newTagSet);
+        tagsToAdd.removeAll(existingTagSet);
 
         for (String tagText : tagsToRemove) {
             Long hashtagId = postDao.findHashtagIdByText(tagText);

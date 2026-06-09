@@ -154,7 +154,7 @@
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
-                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph
                          join hashtag h on ph.hashtag_id = h.hashtag_id
                 where ph.post_id = p.post_id
@@ -225,7 +225,7 @@
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
-                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
                 where ph.post_id = p.post_id
             ), '') as tags,
@@ -271,7 +271,7 @@
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
-                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
                 where ph.post_id = p.post_id
             ), '') as tags,
@@ -337,7 +337,7 @@
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce(m.profile_image_url, '') as profileImageUrl,
             coalesce((
-                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
                 where ph.post_id = p.post_id
             ), '') as tags,
@@ -642,7 +642,7 @@
             p.emotion_id as emotionId,
             date_format(p.created_at, '%Y-%m-%d %H:%i') as createdAt,
             coalesce((
-                select group_concat(concat('#', h.hashtag) order by h.hashtag separator ' ')
+                select group_concat(concat('#', h.hashtag) order by ph.post_hashtag_id separator ' ')
                 from post_hashtag ph join hashtag h on ph.hashtag_id = h.hashtag_id
                 where ph.post_id = p.post_id
             ), '') as tags,
