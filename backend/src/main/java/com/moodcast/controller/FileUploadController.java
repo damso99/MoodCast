@@ -21,6 +21,7 @@ package com.moodcast.controller;
  */
 
 import com.moodcast.service.FileUploadService;
+import com.moodcast.service.FileUploadResponse;
 import com.moodcast.member.service.LoginService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -80,7 +81,7 @@ public class FileUploadController {
      * @return           { url, filename, key } 형태의 JSON
      */
     @PostMapping
-    public ResponseEntity<Map<String, String>> upload(
+    public ResponseEntity<FileUploadResponse> upload(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "post-images") String folderType,
@@ -97,7 +98,7 @@ public class FileUploadController {
      * 최대 5개까지만 허용합니다.
      */
     @PostMapping("/batch")
-    public ResponseEntity<List<Map<String, String>>> uploadBatch(
+    public ResponseEntity<List<FileUploadResponse>> uploadBatch(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
             @RequestParam("files") List<MultipartFile> files,
             @RequestParam(defaultValue = "chat-images") String folderType,

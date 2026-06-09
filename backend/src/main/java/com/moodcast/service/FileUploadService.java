@@ -75,17 +75,17 @@ public class FileUploadService {
 
     // 프론트에서 받은 이미지 파일을 S3에 저장하는 기본 엔드포인트임.
     // 여기서는 게시물 이미지(post-images)를 기본값으로 사용함.
-    public Map<String, String> uploadImage(MultipartFile file) {
+    public FileUploadResponse uploadImage(MultipartFile file) {
         return uploadImage(file, POST_IMAGE_FOLDER, resolveBaseUrl("http://localhost:8080"));
     }
 
     // 저장할 폴더를 선택할 수 있는 업로드 메서드임.
     // user-images는 프로필, post-images는 게시물 이미지 용도로 나눠서 저장함.
-    public Map<String, String> uploadImage(MultipartFile file, String folderType) {
+    public FileUploadResponse uploadImage(MultipartFile file, String folderType) {
         return uploadImage(file, folderType, resolveBaseUrl("http://localhost:8080"));
     }
 
-    public Map<String, String> uploadImage(MultipartFile file, String folderType, String baseUrl) {
+    public FileUploadResponse uploadImage(MultipartFile file, String folderType, String baseUrl) {
         // 업로드 요청에 파일이 없으면 예외 처리함.
         // 부트캠프에서 이 검증 로직은 꼭 이해해야 함.
         if (file == null || file.isEmpty()) {
@@ -136,7 +136,7 @@ public class FileUploadService {
         }
     }
 
-    public List<Map<String, String>> uploadImages(List<MultipartFile> files, String folderType, String baseUrl) {
+    public List<FileUploadResponse> uploadImages(List<MultipartFile> files, String folderType, String baseUrl) {
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("파일이 비어있습니다.");
         }
@@ -145,7 +145,7 @@ public class FileUploadService {
             throw new IllegalArgumentException("이미지는 최대 5개까지 업로드할 수 있습니다.");
         }
 
-        List<Map<String, String>> uploadedFiles = new ArrayList<>();
+        List<FileUploadResponse> uploadedFiles = new ArrayList<>();
         for (MultipartFile file : files) {
             uploadedFiles.add(uploadImage(file, folderType, baseUrl));
         }
