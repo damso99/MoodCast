@@ -304,15 +304,11 @@ export function EditPostPage() {
         mentions,
       };
 
-      await axios.put(
-        `${BACKSERVER}/api/posts/${postId}`,
-        requestData,
-        {
-          headers: {
-            Authorization: `Bearer ${effectiveToken}`,
-          },
+      await axios.put(`${BACKSERVER}/api/posts/${postId}`, requestData, {
+        headers: {
+          Authorization: `Bearer ${effectiveToken}`,
         },
-      );
+      });
 
       alert("게시물이 수정되었습니다.");
       navigate("/app");
