@@ -203,12 +203,6 @@ public class GroupChatService {
             throw new IllegalArgumentException("참여 중인 채팅방이 아닙니다.");
         }
 
-        int activeMemberCount = groupChatMapper.countActiveChatRoomMembers(roomId);
-        if (activeMemberCount <= 2) {
-            groupChatMapper.hideChatRoomMember(roomId, memberId);
-            return null;
-        }
-
         if (roomMember.getIsActive() != null && roomMember.getIsActive() == 0) {
             return null;
         }
