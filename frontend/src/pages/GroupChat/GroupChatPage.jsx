@@ -382,14 +382,17 @@ function GroupChatBody({ desktop, onRoomOpenChange }) {
       return;
     }
 
+    const roomId = activeRoom.roomId;
+
+    setRooms((previousRooms) =>
+      previousRooms.filter((room) => Number(room.roomId) !== Number(roomId)),
+    );
+    setActiveRoom(null);
+    setMessages([]);
+    setMobileRoomOpen(false);
+
     try {
-      await leaveGroupChatRoom(activeRoom.roomId, currentMemberId);
-      setRooms((previousRooms) =>
-        previousRooms.filter((room) => Number(room.roomId) !== Number(activeRoom.roomId)),
-      );
-      setActiveRoom(null);
-      setMessages([]);
-      setMobileRoomOpen(false);
+      await leaveGroupChatRoom(roomId, currentMemberId);
       await refreshRooms();
     } catch (requestError) {
       console.error("Group room leave failed", requestError);

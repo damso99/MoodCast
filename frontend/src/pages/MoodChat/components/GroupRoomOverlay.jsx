@@ -288,12 +288,14 @@ export function GroupRoomOverlay({
       return;
     }
 
+    onClose?.();
+
     try {
       await leaveGroupChatRoom(room.roomId, currentMemberId);
-      onRoomUpdated?.();
-      onClose?.();
     } catch (error) {
       console.error("Group room leave failed", error);
+    } finally {
+      onRoomUpdated?.();
     }
   };
 
