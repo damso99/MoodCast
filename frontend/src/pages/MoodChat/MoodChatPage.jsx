@@ -523,7 +523,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       isActiveThreadMessage &&
       normalizedMessage.receiverId === currentMemberId
     ) {
-      markMessagesAsRead(incomingPartnerId).then(loadThreads);
+      markMessagesAsRead(incomingPartnerId);
       return;
     }
 
@@ -624,26 +624,58 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     }
   };
 
+  const isActiveDirectThread = (thread, partnerId = null) => {
+    if (!thread || thread.roomType === "group") {
+      return false;
+    }
+
+    const currentPartnerId = partnerId ?? activeThread?.partnerMemberId;
+    return (
+      currentPartnerId &&
+      Number(thread.partnerMemberId) === Number(currentPartnerId)
+    );
+  };
+
+  const clearUnreadCountForThread = (partnerId) => {
+    if (!partnerId) {
+      return;
+    }
+
+    setThreads((previousThreads) =>
+      previousThreads.map((thread) =>
+        isActiveDirectThread(thread, partnerId)
+          ? { ...thread, unreadCount: 0 }
+          : thread,
+      ),
+    );
+
+    setActiveThread((previousThread) => {
+      if (!previousThread) {
+        return previousThread;
+      }
+
+      return isActiveDirectThread(previousThread, partnerId)
+        ? { ...previousThread, unreadCount: 0 }
+        : previousThread;
+    });
+  };
+
   const markMessagesAsRead = async (partnerId) => {
     if (!currentMemberId || !partnerId) {
       return;
     }
 
     try {
+      const payload = {
+        memberId: currentMemberId,
+        partnerId,
+      };
+
       await axios.post(`${API_BASE}/chat/read`, null, {
-        params: {
-          memberId: currentMemberId,
-          partnerId,
-        },
+        params: payload,
       });
 
-      setThreads((previousThreads) =>
-        previousThreads.map((thread) =>
-          Number(thread.partnerMemberId) === Number(partnerId)
-            ? { ...thread, unreadCount: 0 }
-            : thread,
-        ),
-      );
+      clearUnreadCountForThread(partnerId);
       notifyChatUnreadChanged();
     } catch (requestError) {
       console.error("메시지 읽음 처리 실패", requestError);
@@ -694,11 +726,12 @@ function ChatBody({ desktop, onRoomOpenChange }) {
             const isActiveGroup =
               activeGroupRoom?.roomId &&
               Number(activeGroupRoom.roomId) === Number(nextThread.roomId);
+            const isActiveDirect = isActiveDirectThread(nextThread);
 
             return {
               ...previousThread,
               ...nextThread,
-              unreadCount: isActiveGroup ? 0 : nextThread.unreadCount,
+              unreadCount: isActiveGroup || isActiveDirect ? 0 : nextThread.unreadCount,
             };
           })
           .filter((thread) => nextByKey.has(thread.threadKey));
@@ -710,8 +743,9 @@ function ChatBody({ desktop, onRoomOpenChange }) {
         const normalizedThreads = [...mergedThreads, ...appendedThreads].map((thread) => {
           const isActiveGroup =
             activeGroupRoom?.roomId && Number(activeGroupRoom.roomId) === Number(thread.roomId);
+          const isActiveDirect = isActiveDirectThread(thread);
 
-          return isActiveGroup ? { ...thread, unreadCount: 0 } : thread;
+          return isActiveGroup || isActiveDirect ? { ...thread, unreadCount: 0 } : thread;
         });
 
         if (previousThreads.length === 0) {
@@ -982,7 +1016,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
 
   const openThread = (thread, options = {}) => {
     setActiveGroupRoom(null);
-    setActiveThread(thread);
+    setActiveThread({ ...thread, unreadCount: 0 });
     setIsRoomOpen(true);
     setMessage("");
     clearSelectedImages();
@@ -1068,6 +1102,7 @@ function ChatBody({ desktop, onRoomOpenChange }) {
       return;
     }
 
+    const partnerMemberId = activeThread.partnerMemberId;
     const confirmMessage = isDirectRoomClosed
       ? "상대가 나간 채팅방을 삭제하시겠습니까?\n복구할 수 없습니다."
       : "채팅방에서 나가시겠습니까?\n상대방에게는 나감 안내가 표시됩니다.";
@@ -1077,17 +1112,26 @@ function ChatBody({ desktop, onRoomOpenChange }) {
     }
 
     try {
+      setThreads((previousThreads) =>
+        previousThreads.filter(
+          (thread) => Number(thread.partnerMemberId) !== Number(partnerMemberId),
+        ),
+      );
+      resetDirectRoomState();
+      clearDirectRoomSearchParams();
+
       await axios.delete(`${API_BASE}/chat/leave`, {
         params: {
           memberId: currentMemberId,
-          partnerId: activeThread.partnerMemberId,
+          partnerId: partnerMemberId,
         },
       });
 
       await loadThreads();
-      handleCloseDirectRoom();
+      notifyChatUnreadChanged();
     } catch (requestError) {
       console.error("채팅방 나가기 실패", requestError);
+      await loadThreads();
       setError("채팅방을 나가지 못했습니다.");
     }
   };

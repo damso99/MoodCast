@@ -70,7 +70,8 @@
     <update id="leaveChatRoomMember">
         UPDATE chat_room_member
         SET left_at = CURRENT_TIMESTAMP(6),
-            is_active = 0
+            is_active = 0,
+            deleted_yn = 'Y'
         WHERE room_id = #{roomId}
           AND member_id = #{memberId}
           AND deleted_yn = 'N'
@@ -171,7 +172,6 @@
         FROM chat_room r
         JOIN chat_room_member rm
           ON rm.room_id = r.room_id
-         AND rm.deleted_yn = 'N'
         LEFT JOIN (
             SELECT
                 room_id,

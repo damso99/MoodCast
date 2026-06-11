@@ -101,6 +101,16 @@ public class ChatService {
             return legacyMessages;
         }
 
+        ChatRoomMemberVo roomMember =
+                groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(room.getRoomId(), memberId);
+        if (roomMember == null
+                || roomMember.getLeftAt() != null
+                || roomMember.getIsActive() == null
+                || roomMember.getIsActive() == 0
+                || "Y".equalsIgnoreCase(roomMember.getDeletedYn())) {
+            return List.of();
+        }
+
         List<ChatVo> roomMessages = groupChatService.getMessagesByRoomId(room.getRoomId(), memberId).stream()
                 .map(message -> toChatVo(message, partnerId))
                 .toList();
@@ -115,6 +125,16 @@ public class ChatService {
         int legacyUpdatedCount = chatDao.updateMessagesRead(memberId, partnerId);
         ChatRoomVo room = groupChatService.findRoomByMemberIds(List.of(memberId, partnerId), ROOM_TYPE_DIRECT);
         if (room == null || room.getRoomId() == null) {
+            return legacyUpdatedCount;
+        }
+
+        ChatRoomMemberVo roomMember =
+                groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(room.getRoomId(), memberId);
+        if (roomMember == null
+                || roomMember.getLeftAt() != null
+                || roomMember.getIsActive() == null
+                || roomMember.getIsActive() == 0
+                || "Y".equalsIgnoreCase(roomMember.getDeletedYn())) {
             return legacyUpdatedCount;
         }
 
@@ -172,13 +192,23 @@ public class ChatService {
         }
 
         Member leavingMember = loginDao.findMemberById(memberId);
+        ChatRoomMemberVo currentRoomMember =
+                groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(room.getRoomId(), memberId);
         ChatRoomMemberVo partnerRoomMember =
                 groupChatMapper.selectChatRoomMemberByRoomIdAndMemberId(room.getRoomId(), partnerId);
         boolean partnerAlreadyLeft =
                 partnerRoomMember != null
                         && (partnerRoomMember.getHiddenAt() != null || partnerRoomMember.getLeftAt() != null);
 
+        chatDao.hideDirectChatMessagesAsSender(memberId, partnerId);
+        chatDao.hideDirectChatMessagesAsReceiver(memberId, partnerId);
         groupChatMapper.hideChatRoomMember(room.getRoomId(), memberId);
+
+        if (currentRoomMember != null
+                && currentRoomMember.getLeftAt() == null
+                && (currentRoomMember.getIsActive() == null || currentRoomMember.getIsActive() != 0)) {
+            groupChatMapper.leaveChatRoomMember(room.getRoomId(), memberId);
+        }
 
         String displayName = leavingMember != null ? resolveDisplayName(leavingMember) : "Member " + memberId;
         String now = nowText();

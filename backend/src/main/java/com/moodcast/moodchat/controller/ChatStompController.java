@@ -3,6 +3,7 @@ package com.moodcast.moodchat.controller;
 import com.moodcast.member.dao.LoginDao;
 import com.moodcast.member.vo.Member;
 import com.moodcast.moodchat.dto.ChatMessageDto;
+import com.moodcast.moodchat.dto.ChatReadRequestDto;
 import com.moodcast.moodchat.dto.ChatSendRequestDto;
 import com.moodcast.moodchat.service.ChatService;
 import com.moodcast.moodchat.vo.ChatVo;
@@ -48,6 +49,26 @@ public class ChatStompController {
 
         ChatMessageDto notificationMessage = buildChatMessage(savedChat, sender, "CHAT_NOTIFICATION");
         messagingTemplate.convertAndSend("/sub/notifications/" + receiverId, notificationMessage);
+    }
+
+    @MessageMapping("/chat/read")
+    public void markAsRead(@Payload ChatReadRequestDto request) {
+        if (request == null || request.getMemberId() == null || request.getPartnerId() == null) {
+            return;
+        }
+
+        int updatedCount = chatService.markMessagesAsRead(request.getMemberId(), request.getPartnerId());
+        if (updatedCount <= 0) {
+            return;
+        }
+
+        ChatMessageDto readReceipt = new ChatMessageDto();
+        readReceipt.setSenderId(request.getPartnerId().intValue());
+        readReceipt.setReceiverId(request.getMemberId().intValue());
+        readReceipt.setIsRead(1);
+        readReceipt.setEventType("READ_RECEIPT");
+
+        messagingTemplate.convertAndSend("/sub/chat/" + request.getPartnerId(), readReceipt);
     }
 
     private ChatMessageDto buildChatMessage(ChatVo savedChat, Member sender, String eventType) {

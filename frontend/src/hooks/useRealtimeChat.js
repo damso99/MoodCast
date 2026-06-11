@@ -68,8 +68,22 @@ export function useRealtimeChat(memberId, onMessage) {
     return true;
   };
 
+  const sendReadEvent = (payload) => {
+    if (!clientRef.current || !clientRef.current.connected) {
+      return false;
+    }
+
+    clientRef.current.publish({
+      destination: '/app/chat/read',
+      body: JSON.stringify(payload),
+    });
+
+    return true;
+  };
+
   return {
     connected,
     sendMessage,
+    sendReadEvent,
   };
 }
