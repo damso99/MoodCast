@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "../common/AdminLayout";
 import { SearchBar } from "../common/SearchBar";
@@ -75,9 +75,9 @@ const TYPE_TO_LABEL = {
 };
 
 const SORT_LABELS = {
-  latest: "\uCD5C\uC2E0\uC21C",
-  count: "\uC2E0\uACE0 \uC218 \uB9CE\uC740 \uC21C",
-  old: "\uC624\uB798\uB41C \uC21C",
+  latest: "최신순",
+  count: "신고 수 많은 순",
+  old: "오래된 순",
 };
 
 const HISTORY_SORT_LABELS = {
@@ -86,30 +86,32 @@ const HISTORY_SORT_LABELS = {
 };
 
 const TOP_TAB_LABELS = {
-  list: "\uC2E0\uACE0 \uBAA9\uB85D",
-  insight: "\uD1B5\uACC4 \uBC0F \uC81C\uC7AC \uC774\uB825",
+  list: "신고 목록",
+  insight: "통계 및 제재 이력",
 };
 
 const PERIOD_LABELS = {
-  day: "\uC77C",
-  week: "\uC8FC",
-  month: "\uC6D4",
+  day: "일",
+  week: "주",
+  month: "월",
 };
 
 const SERVICE_START_YEAR = 2026;
+const REPORTS_PER_PAGE = 10;
+const PAGE_BUTTON_COUNT = 10;
 
 const LINE_CHART_TEXT = {
   day: {
-    title: "\uC77C\uBCC4 \uC2E0\uACE0 \uC720\uC785 \uCD94\uC774",
-    description: "\uC120\uD0DD\uD55C \uB0A0\uC9DC\uC5D0 \uC811\uC218\uB41C \uC2E0\uACE0 \uAC74\uC218",
+    title: "일별 신고 유입 추이",
+    description: "선택한 날짜에 접수된 신고 건수",
   },
   week: {
-    title: "\uC8FC\uBCC4 \uC2E0\uACE0 \uC720\uC785 \uCD94\uC774",
-    description: "\uC120\uD0DD\uD55C \uC8FC\uC5D0 \uC811\uC218\uB41C \uC2E0\uACE0 \uAC74\uC218",
+    title: "주별 신고 유입 추이",
+    description: "선택한 주에 접수된 신고 건수",
   },
   month: {
-    title: "\uC6D4\uBCC4 \uC2E0\uACE0 \uC720\uC785 \uCD94\uC774",
-    description: "\uC120\uD0DD\uD55C \uC5F0\uB3C4\uC5D0 \uC811\uC218\uB41C \uC2E0\uACE0 \uAC74\uC218",
+    title: "월별 신고 유입 추이",
+    description: "선택한 연도에 접수된 신고 건수",
   },
 };
 
@@ -135,6 +137,7 @@ export function ReportManagementPage() {
   const [selectedReasonFilter, setSelectedReasonFilter] = useState(REPORT_LABELS.all);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [sortType, setSortType] = useState(SORT_LABELS.latest);
+  const [currentReportPage, setCurrentReportPage] = useState(1);
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedResultReport, setSelectedResultReport] = useState(null);
   const [panelStep, setPanelStep] = useState("detail");
@@ -198,6 +201,45 @@ export function ReportManagementPage() {
       return getReportSortTime(b) - getReportSortTime(a);
     });
   }, [reports, selectedReasonFilter, searchKeyword, sortType]);
+
+  const totalReportPageCount = Math.max(
+    1,
+    Math.ceil(filteredReports.length / REPORTS_PER_PAGE),
+  );
+  const reportPageStartIndex = (currentReportPage - 1) * REPORTS_PER_PAGE;
+  const paginatedReports = filteredReports.slice(
+    reportPageStartIndex,
+    reportPageStartIndex + REPORTS_PER_PAGE,
+  );
+  const reportPageGroupStart =
+    Math.floor((currentReportPage - 1) / PAGE_BUTTON_COUNT) *
+      PAGE_BUTTON_COUNT +
+    1;
+  const reportPageGroupEnd = Math.min(
+    reportPageGroupStart + PAGE_BUTTON_COUNT - 1,
+    totalReportPageCount,
+  );
+  const reportPageNumbers = Array.from(
+    { length: reportPageGroupEnd - reportPageGroupStart + 1 },
+    (_, index) => reportPageGroupStart + index,
+  );
+
+  useEffect(() => {
+    setCurrentReportPage(1);
+  }, [
+    selectedStatusTab,
+    selectedTypeTab,
+    selectedProcessResultTab,
+    selectedReasonFilter,
+    searchKeyword,
+    sortType,
+  ]);
+
+  useEffect(() => {
+    if (currentReportPage > totalReportPageCount) {
+      setCurrentReportPage(totalReportPageCount);
+    }
+  }, [currentReportPage, totalReportPageCount]);
 
   const selectedActionMeta = sanctionOptions.find(
     (option) => option.id === selectedAction,
@@ -428,13 +470,13 @@ export function ReportManagementPage() {
       );
       setCompletionMessage(
         response.data?.message ||
-          "\uC2E0\uACE0 \uCC98\uB9AC\uAC00 \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+          "신고 처리가 완료되었습니다.",
       );
       closePanel();
     } catch (error) {
       setCompletionMessage(
         error.response?.data?.message ||
-          "\uC2E0\uACE0 \uCC98\uB9AC \uC911 \uC624\uB958\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4.",
+          "신고 처리 중 오류가 발생했습니다.",
       );
     }
   }
@@ -453,7 +495,7 @@ export function ReportManagementPage() {
 
       <section
         className={styles.topTabs}
-        aria-label="\uC2E0\uACE0 \uAD00\uB9AC \uC0C1\uC704 \uD0ED"
+        aria-label="신고 관리 상위 탭"
       >
         {[
           TOP_TAB_LABELS.list,
@@ -480,6 +522,7 @@ export function ReportManagementPage() {
               onSelect={setSelectedStatusTab}
             />
             <SearchBar
+              className={styles.reportSearchBar}
               placeholder="신고 대상 또는 신고 사유 검색"
               value={searchKeyword}
               onChange={(event) => setSearchKeyword(event.target.value)}
@@ -490,12 +533,12 @@ export function ReportManagementPage() {
             <div className={styles.panelTitleRow}>
               <div>
                 <h2>
-                  {"\uC804\uCCB4 \uC2E0\uACE0 \uBAA9\uB85D"} (
+                  {"전체 신고 목록"} (
                   {filteredReports.length})
                 </h2>
                 <p>
                   {
-                    "\uAC8C\uC2DC\uAE00, \uB313\uAE00 \uC2E0\uACE0\uB97C \uD55C \uD654\uBA74\uC5D0\uC11C \uD655\uC778\uD569\uB2C8\uB2E4."
+                    "게시글, 댓글 신고를 한 화면에서 확인합니다."
                   }
                 </p>
               </div>
@@ -535,7 +578,7 @@ export function ReportManagementPage() {
                   </select>
                 )}
                 <select
-                  aria-label="\uC2E0\uACE0 \uBAA9\uB85D \uC815\uB82C"
+                  aria-label="신고 목록 정렬"
                   value={sortType}
                   onChange={(event) => setSortType(event.target.value)}
                 >
@@ -546,7 +589,54 @@ export function ReportManagementPage() {
               </div>
             </div>
 
-            <ReportList reports={filteredReports} onOpenReport={openDetailPanel} />
+            <ReportList reports={paginatedReports} onOpenReport={openDetailPanel} />
+
+            {filteredReports.length > REPORTS_PER_PAGE && (
+              <nav
+                className={styles.reportPagination}
+                aria-label="신고 목록 페이지 이동"
+              >
+                <div className={styles.reportPaginationButtons}>
+                  <button
+                    type="button"
+                    disabled={currentReportPage === 1}
+                    onClick={() =>
+                      setCurrentReportPage((page) => Math.max(1, page - 1))
+                    }
+                  >
+                    이전
+                  </button>
+                  {reportPageNumbers.map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      className={
+                        pageNumber === currentReportPage
+                          ? styles.activeReportPage
+                          : ""
+                      }
+                      aria-current={
+                        pageNumber === currentReportPage ? "page" : undefined
+                      }
+                      onClick={() => setCurrentReportPage(pageNumber)}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={currentReportPage === totalReportPageCount}
+                    onClick={() =>
+                      setCurrentReportPage((page) =>
+                        Math.min(totalReportPageCount, page + 1),
+                      )
+                    }
+                  >
+                    다음
+                  </button>
+                </div>
+              </nav>
+            )}
           </section>
         </>
       ) : (
@@ -621,12 +711,12 @@ function mapAdminReport(report) {
   const title =
     report.postTitle ||
     (type === REPORT_LABELS.comment
-      ? `${REPORT_LABELS.comment} \uC2E0\uACE0 #${report.commentId}`
-      : `${REPORT_LABELS.post} \uC2E0\uACE0 #${report.postId}`);
+      ? `${REPORT_LABELS.comment} 신고 #${report.commentId}`
+      : `${REPORT_LABELS.post} 신고 #${report.postId}`);
   const targetName =
     report.targetMemberName ||
     report.targetMemberNickname ||
-    "\uC54C \uC218 \uC5C6\uC74C";
+    "알 수 없음";
   const targetHandle = report.targetMemberEmail
     ? `@${report.targetMemberEmail}`
     : "-";
@@ -669,7 +759,7 @@ function mapAdminReport(report) {
     activities: Array.isArray(report.activities)
       ? report.activities.map((activity, index) => ({
           id: `${activity.type || "activity"}-${activity.time || index}-${index}`,
-          type: activity.type || "\uD65C\uB3D9",
+          type: activity.type || "활동",
           text: activity.text || "-",
           time: activity.time || "-",
         }))
@@ -681,7 +771,7 @@ function mapAdminReport(report) {
           detail: report.handledMemo || "-",
           handledAt: formatDateTime(report.handledAt),
           adminName:
-            report.handledByMemberName || "\uAD00\uB9AC\uC790",
+            report.handledByMemberName || "관리자",
         }
       : null,
   };
@@ -933,7 +1023,7 @@ function ReportInsightSection({
         {filteredHistories.length > historiesPerPage && (
           <nav
             className={styles.historyPagination}
-            aria-label="\uC81C\uC7AC \uC774\uB825 \uD398\uC774\uC9C0 \uC774\uB3D9"
+            aria-label="제재 이력 페이지 이동"
           >
             <button
               type="button"
@@ -942,7 +1032,7 @@ function ReportInsightSection({
                 setHistoryPage((prevPage) => Math.max(prevPage - 1, 1))
               }
             >
-              {"\uC774\uC804"}
+              {"이전"}
             </button>
             {historyPageNumbers.map((pageNumber) => (
               <button
@@ -965,7 +1055,7 @@ function ReportInsightSection({
                 )
               }
             >
-              {"\uB2E4\uC74C"}
+              {"다음"}
             </button>
           </nav>
         )}
@@ -974,8 +1064,8 @@ function ReportInsightSection({
       <article className={styles.statsPanel}>
         <div className={styles.statsHeader}>
           <div>
-            <h2>{"\uC2E0\uACE0 \uD1B5\uACC4"}</h2>
-            <p>{"\uC2E0\uACE0 \uC720\uD615, \uCC98\uB9AC\uC728, \uCC98\uB9AC \uACB0\uACFC\uB97C \uD655\uC778\uD569\uB2C8\uB2E4."}</p>
+            <h2>{"신고 통계"}</h2>
+            <p>{"신고 유형, 처리율, 처리 결과를 확인합니다."}</p>
           </div>
           <div className={styles.statsControlBar}>
             <div className={styles.periodTabs}>
@@ -1004,7 +1094,7 @@ function ReportInsightSection({
           period={selectedPeriod}
         />
         <MetricBarChart
-          title={"\uC2E0\uACE0 \uC720\uD615"}
+          title={"신고 유형"}
           items={insights.typeBars}
         />
         <MetricBarChart
@@ -1014,7 +1104,7 @@ function ReportInsightSection({
         <ProcessRateChart done={processRateCounts.doneCount} open={processRateCounts.openCount} />
         <ProcessRateTrendChart items={insights.processRateTrend} period={selectedPeriod} />
         <MetricBarChart
-          title={"\uCC98\uB9AC \uACB0\uACFC"}
+          title={"처리 결과"}
           items={insights.resultBars}
         />
       </article>
@@ -1038,7 +1128,7 @@ function ReportInsightPeriodControl({
     <div className={styles.periodFilterControl}>
       {period === "day" ? (
         <label className={styles.periodField}>
-          <span>{"\uB0A0\uC9DC"}</span>
+          <span>{"날짜"}</span>
           <input
             type="date"
             min={`${SERVICE_START_YEAR}-01-01`}
@@ -1053,7 +1143,7 @@ function ReportInsightPeriodControl({
 
       {period === "week" ? (
         <label className={styles.periodField}>
-          <span>{"\uAE30\uC900\uC77C"}</span>
+          <span>{"기준일"}</span>
           <input
             type="date"
             min={`${SERVICE_START_YEAR}-01-01`}
@@ -1068,7 +1158,7 @@ function ReportInsightPeriodControl({
 
       {period === "month" ? (
         <label className={styles.periodField}>
-          <span>{"\uC5F0\uB3C4"}</span>
+          <span>{"연도"}</span>
           <select
             value={periodFilter.selectedYear}
             onChange={(event) =>
@@ -1077,7 +1167,7 @@ function ReportInsightPeriodControl({
           >
             {years.map((year) => (
               <option key={year} value={year}>
-                {year}{"\uB144"}
+                {year}{"년"}
               </option>
             ))}
           </select>
@@ -1089,7 +1179,7 @@ function ReportInsightPeriodControl({
         type="button"
         onClick={onResetPeriodFilter}
       >
-        {"\uCD08\uAE30\uD654"}
+        {"초기화"}
       </button>
     </div>
   );
@@ -1302,7 +1392,7 @@ function ProcessRateChart({ done, open }) {
 
   return (
     <div className={styles.chartCard}>
-      <h3>{"\uCC98\uB9AC\uC728"}</h3>
+      <h3>{"처리율"}</h3>
       <div className={styles.donutWrap}>
         <div
           className={styles.donut}
@@ -1313,8 +1403,8 @@ function ProcessRateChart({ done, open }) {
           <strong>{doneRate}%</strong>
         </div>
         <div className={styles.rateLegend}>
-          <span>{"\uCC98\uB9AC \uC644\uB8CC"} {done}</span>
-          <span>{"\uBBF8\uCC98\uB9AC"} {open}</span>
+          <span>{"처리 완료"} {done}</span>
+          <span>{"미처리"} {open}</span>
         </div>
       </div>
     </div>
@@ -1503,10 +1593,10 @@ function getTimelineLabel(date, period, range) {
       (startOfDay(date) - startOfDay(range.start)) / 86400000,
     );
 
-    return ["\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0", "\uC77C"][dayIndex] || "";
+    return ["월", "화", "수", "목", "금", "토", "일"][dayIndex] || "";
   }
 
-  return `${date.getMonth() + 1}\uC6D4`;
+  return `${date.getMonth() + 1}월`;
 }
 
 function getDayTimelineBucketHour(date) {
@@ -1525,14 +1615,14 @@ function buildTimelineBuckets(period) {
 
   if (period === "week") {
     return new Map(
-      ["\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0", "\uC77C"].map(
+      ["월", "화", "수", "목", "금", "토", "일"].map(
         (label) => [label, 0],
       ),
     );
   }
 
   return new Map(
-    Array.from({ length: 12 }, (_, index) => [`${index + 1}\uC6D4`, 0]),
+    Array.from({ length: 12 }, (_, index) => [`${index + 1}월`, 0]),
   );
 }
 

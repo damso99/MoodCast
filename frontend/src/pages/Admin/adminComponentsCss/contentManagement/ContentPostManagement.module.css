@@ -37,7 +37,17 @@
 }
 
 @media (max-width: 1080px) {
+  .contentShell {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 760px) {
+  .contentShell {
+    gap: 12px;
+  }
+
   .contentMain {
-    overflow-x: auto;
+    gap: 12px;
   }
 }

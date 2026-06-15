@@ -14,6 +14,24 @@ const periodApiValue = {
 
 const DASHBOARD_POLLING_INTERVAL_MS = 10000;
 
+function isDateRangeReadyForPeriod(period, range) {
+  const { startDate, endDate } = range;
+
+  if (!startDate || !endDate) {
+    return true;
+  }
+
+  if (period === "day") {
+    return startDate === endDate;
+  }
+
+  return startDate <= endDate;
+}
+
+function isCanceledRequest(error) {
+  return axios.isCancel?.(error) || error?.code === "ERR_CANCELED";
+}
+
 const emotionMeta = {
   1: { label: "행복", color: "#FFD700" },
   2: { label: "슬픔", color: "#4A90E2" },
@@ -51,11 +69,32 @@ export function DashboardEmotionActivityChart() {
       return;
     }
 
+    let isCurrentRequestGroup = true;
+    const controllers = new Set();
+
     /*
-     * 관리자 기능 담당 작업(문건우): 감정별 활동 분포는 게시글 작성에 따라 값이 바뀌므로 10초마다 API를 다시 조회합니다.
-     * 기간 탭이나 날짜 범위가 바뀌면 기존 폴링을 정리하고, 새 조건으로 다시 10초 폴링을 시작합니다.
+     * 감정별 활동 분포 조회 및 폴링
+     * ----------------------------------------------------------------------
+     * 기간 탭을 바꾸면 activePeriod가 먼저 바뀌고, AdminPeriodRangeControl이 새 탭에 맞는 dateRange를
+     * 이어서 전달합니다. 이 짧은 사이에 period=day + 월/주 범위 같은 잘못된 조합으로 요청하면
+     * 백엔드의 일 단위 검증에 걸려 실패 상태가 화면을 덮어쓸 수 있습니다.
+     *
+     * 그래서 현재 period와 dateRange가 맞지 않으면 요청을 건너뛰고,
+     * 탭 전환 전 요청은 AbortController와 isCurrentRequestGroup으로 무효화합니다.
      */
     const fetchEmotionActivity = ({ showLoading = false } = {}) => {
+      const selectedPeriod = periodApiValue[activePeriod];
+
+      if (!isDateRangeReadyForPeriod(selectedPeriod, dateRange)) {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const controller = new AbortController();
+      controllers.add(controller);
+
       if (showLoading) {
         setIsLoading(true);
       }
@@ -67,21 +106,32 @@ export function DashboardEmotionActivityChart() {
             Authorization: `Bearer ${accessToken}`,
           },
           params: {
-            period: periodApiValue[activePeriod],
+            period: selectedPeriod,
             ...dateRange,
           },
+          signal: controller.signal,
         })
         .then((res) => {
+          if (!isCurrentRequestGroup) {
+            return;
+          }
+
           setEmotionItems(Array.isArray(res.data?.items) ? res.data.items : []);
         })
-        .catch(() => {
+        .catch((error) => {
+          if (!isCurrentRequestGroup || isCanceledRequest(error)) {
+            return;
+          }
+
           if (showLoading) {
             setEmotionItems([]);
             setHasError(true);
           }
         })
         .finally(() => {
-          if (showLoading) {
+          controllers.delete(controller);
+
+          if (showLoading && isCurrentRequestGroup) {
             setIsLoading(false);
           }
         });
@@ -95,7 +145,9 @@ export function DashboardEmotionActivityChart() {
     );
 
     return () => {
+      isCurrentRequestGroup = false;
       window.clearInterval(pollingId);
+      controllers.forEach((controller) => controller.abort());
     };
   }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
@@ -114,6 +166,13 @@ export function DashboardEmotionActivityChart() {
       ...meta,
     }),
   );
+  /*
+   * 탭 변경마다 isLoading이 true가 되지만, 기존 데이터가 있는 상태에서 로딩 EmptyState로
+   * 차트 DOM을 교체하면 화면이 순간적으로 깜빡입니다.
+   * 그래서 첫 조회처럼 표시할 데이터가 없을 때만 로딩 안내를 보여주고,
+   * 이후 재조회 중에는 기존 차트를 유지합니다.
+   */
+  const shouldShowInitialLoading = isLoading && emotionItems.length === 0;
 
   return (
     <section className={`${styles.panel} ${styles.widePanel}`}>
@@ -132,7 +191,7 @@ export function DashboardEmotionActivityChart() {
         </div>
       </div>
 
-      {isLoading ? (
+      {shouldShowInitialLoading ? (
         <div className={styles.emptyChartState}>
           <EmptyState title="조회 중" description="감정별 활동을 불러오고 있습니다." />
         </div>

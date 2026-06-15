@@ -1,6 +1,7 @@
 .searchBar {
   min-width: 280px;
   min-height: 42px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -9,6 +10,10 @@
   border-radius: 13px;
   color: #667085;
   background: #fff;
+}
+
+.searchBar svg {
+  flex: 0 0 auto;
 }
 
 .searchBar input {

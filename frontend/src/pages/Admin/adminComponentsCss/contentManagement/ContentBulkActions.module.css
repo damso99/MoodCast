@@ -3,6 +3,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
   padding: 12px 14px;
   border: 1px solid rgba(124, 77, 255, 0.1);
   border-radius: 12px;
@@ -30,6 +31,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .bulkActions span {
@@ -82,5 +84,9 @@
   .bulkActions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .bulkActions button {
+    width: 100%;
   }
 }

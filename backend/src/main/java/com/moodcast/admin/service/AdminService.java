@@ -1,5 +1,7 @@
 package com.moodcast.admin.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moodcast.admin.dao.AdminDao;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminActionLogView;
@@ -20,6 +22,7 @@ import com.moodcast.admin.vo.AdminReportActivity;
 import com.moodcast.admin.vo.AdminReportProcessRequest;
 import com.moodcast.admin.vo.AdminReportProcessRateStat;
 import com.moodcast.admin.vo.AdminReportReporter;
+import com.moodcast.admin.vo.AdminStatisticsDashboardResponse;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
@@ -31,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -67,6 +72,7 @@ public class AdminService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminService.class);
     private static final ZoneId KOREA_ZONE = ZoneId.of("Asia/Seoul");
+    private static final Duration STATISTICS_DASHBOARD_CACHE_TTL = Duration.ofSeconds(30);
 
     @Autowired // 나중에 DB 조회가 필요할 때 사용할 DAO를 연결합니다.
     private AdminDao adminDao;
@@ -79,6 +85,12 @@ public class AdminService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     /* ==========================================================================
      * 관리자 권한 확인
@@ -1553,6 +1565,43 @@ public class AdminService {
     }
 
     /*
+     * 통계 대시보드 통합 조회
+     * --------------------------------------------------------------------------
+     * 기존 프론트가 10초마다 호출하던 5개 통계 API를 하나의 응답으로 묶습니다.
+     * 같은 기간 조건의 반복 요청은 Redis TTL 캐시를 우선 사용해 DB 집계 반복을 줄입니다.
+     */
+    public AdminStatisticsDashboardResponse getStatisticsDashboard(
+            String authorizationHeader,
+            String period,
+            String startDate,
+            String endDate
+    ) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedPeriod = normalizeDashboardPeriod(period);
+        AdminDateRange dateRange = resolveAdminDateRange(normalizedPeriod, startDate, endDate);
+        String cacheKey = buildStatisticsDashboardCacheKey(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
+
+        AdminStatisticsDashboardResponse cachedResponse = readStatisticsDashboardCache(cacheKey);
+        if (cachedResponse != null) {
+            return cachedResponse;
+        }
+
+        AdminStatisticsDashboardResponse response = buildStatisticsDashboardResponse(
+                normalizedPeriod,
+                dateRange.startDate(),
+                dateRange.endDate()
+        );
+        writeStatisticsDashboardCache(cacheKey, response);
+
+        return response;
+    }
+
+    /*
      * 통계 대시보드 기간별 요약 조회
      * --------------------------------------------------------------------------
      * 프론트에서 선택한 일/주/월 값을 백엔드에서 한 번 더 검증한 뒤 DB에 전달합니다.
@@ -1623,6 +1672,101 @@ public class AdminService {
         );
 
         return activities == null ? Collections.emptyList() : activities;
+    }
+
+    private AdminStatisticsDashboardResponse buildStatisticsDashboardResponse(
+            String normalizedPeriod,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        /*
+         * 통합 API 응답 생성 지점입니다.
+         * ------------------------------------------------------------------
+         * 프론트가 예전처럼 통계 API 5개를 각각 호출하지 않도록,
+         * 서버 내부에서 기존 DAO 집계 쿼리들을 한 번에 실행한 뒤
+         * AdminStatisticsDashboardResponse 하나로 묶어 반환합니다.
+         *
+         * 이 구조를 사용하면 프론트의 반복 폴링 요청은 1회로 줄고,
+         * Redis 캐시가 적용된 경우 같은 기간 조건의 반복 요청은 DB까지 가지 않습니다.
+         */
+        AdminStatisticsSummary summary = adminDao.selectStatisticsSummary(
+                normalizedPeriod,
+                startDate,
+                endDate
+        );
+        List<AdminStatisticsTrend> subscriberTrend = adminDao.selectStatisticsSubscriberTrend(
+                normalizedPeriod,
+                startDate,
+                endDate
+        );
+        List<AdminActiveUserStat> activeUserTrend = adminDao.selectDashboardActiveUsers(
+                normalizedPeriod,
+                startDate,
+                endDate
+        );
+        List<AdminStatisticsTrend> contentActivity = adminDao.selectStatisticsContentActivity(
+                normalizedPeriod,
+                startDate,
+                endDate
+        );
+        List<AdminEmotionActivity> emotionActivity = adminDao.selectDashboardEmotionActivity(
+                normalizedPeriod,
+                startDate,
+                endDate
+        );
+
+        return new AdminStatisticsDashboardResponse(
+                summary == null ? new AdminStatisticsSummary(0L, 0L, 0L, 0L, 0L, 0L) : summary,
+                subscriberTrend == null ? Collections.emptyList() : subscriberTrend,
+                activeUserTrend == null ? Collections.emptyList() : activeUserTrend,
+                contentActivity == null ? Collections.emptyList() : contentActivity,
+                emotionActivity == null ? Collections.emptyList() : emotionActivity
+        );
+    }
+
+    private String buildStatisticsDashboardCacheKey(
+            String normalizedPeriod,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        return "admin:statistics:dashboard:"
+                + normalizedPeriod
+                + ":"
+                + startDate
+                + ":"
+                + endDate;
+    }
+
+    private AdminStatisticsDashboardResponse readStatisticsDashboardCache(String cacheKey) {
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(cacheKey);
+
+            if (cachedJson == null || cachedJson.isBlank()) {
+                return null;
+            }
+
+            return objectMapper.readValue(cachedJson, AdminStatisticsDashboardResponse.class);
+        } catch (Exception exception) {
+            log.warn("[ADMIN_API] statistics dashboard cache read failed key={}", cacheKey, exception);
+            return null;
+        }
+    }
+
+    private void writeStatisticsDashboardCache(
+            String cacheKey,
+            AdminStatisticsDashboardResponse response
+    ) {
+        try {
+            redisTemplate.opsForValue().set(
+                    cacheKey,
+                    objectMapper.writeValueAsString(response),
+                    STATISTICS_DASHBOARD_CACHE_TTL
+            );
+        } catch (JsonProcessingException exception) {
+            log.warn("[ADMIN_API] statistics dashboard cache serialization failed key={}", cacheKey, exception);
+        } catch (Exception exception) {
+            log.warn("[ADMIN_API] statistics dashboard cache write failed key={}", cacheKey, exception);
+        }
     }
 
     private String normalizeDashboardPeriod(String period) {

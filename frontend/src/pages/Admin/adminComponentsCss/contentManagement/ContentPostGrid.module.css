@@ -2,7 +2,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap: 12px;
-  min-width: 780px;
+  min-width: 0;
 }
 
 .emptyFeed {
@@ -36,6 +36,7 @@
   display: grid;
   grid-template-rows: auto 190px minmax(160px, 1fr) auto auto;
   gap: 12px;
+  min-width: 0;
   min-height: 390px;
   padding: 16px;
   border: 1px solid rgba(124, 77, 255, 0.1);
@@ -54,6 +55,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
 }
 
 .cardSelectLabel {
@@ -73,9 +75,13 @@
 }
 
 .postId {
+  min-width: 0;
+  overflow: hidden;
   color: #667085;
   font-size: 0.82rem;
   font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusBadge {
@@ -286,6 +292,7 @@
 
 .cardActions {
   align-self: end;
+  min-width: 0;
 }
 
 .cardActions button,
@@ -359,59 +366,135 @@
 
 .pagination {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 10px 0 4px;
+  margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(102, 112, 133, 0.12);
 }
 
 .paginationButtons {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 6px;
 }
 
 .paginationButtons button {
-  /*
-  min-width: 31px;
-  min-height: 31px;
-  padding: 0 9px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
+  border-radius: 8px;
   color: #475467;
+  font-size: 0.76rem;
+  font-weight: 900;
   background: #fff;
-  border: 1px solid rgba(102, 112, 133, 0.16);
-  font-size: 0.78rem;
-  */
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0 9px;
-  color: #7b3ff2;
-  background: #f6f2ff;
-  border: 1px solid #ddd8ff;
-  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
 .paginationButtons .activePage {
-  /*
-  color: #fff;
   border-color: #7c4dff;
-  background: #7c4dff;
-  */
   color: #fff;
-  border-color: transparent;
-  background: linear-gradient(135deg, #4da6ff, #7c4dff, #ec24c7);
+  background: #7c4dff;
   box-shadow: 0 10px 20px rgba(124, 77, 255, 0.2);
 }
 
-.cardActions button:hover,
 .paginationButtons button:not(:disabled):hover {
+  color: #633df2;
+  background: rgba(124, 77, 255, 0.08);
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.13);
 }
 
-.cardActions button:active,
 .paginationButtons button:not(:disabled):active {
   transform: translateY(0) scale(0.98);
 }
 
+.paginationButtons button:disabled {
+  color: #475467;
+  background: #fff;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.cardActions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(124, 77, 255, 0.13);
+}
+
+.cardActions button:active {
+  transform: translateY(0) scale(0.98);
+}
+
 @media (max-width: 760px) {
+  .feedList {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .emptyFeed {
+    min-height: 180px;
+    padding: 20px 14px;
+  }
+
+  .emptyFeed strong,
+  .emptyFeed span {
+    white-space: normal;
+  }
+
+  .contentCard {
+    grid-template-rows: auto minmax(150px, auto) auto auto auto;
+    min-height: 0;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .cardTopRow {
+    flex-wrap: wrap;
+  }
+
+  .adminPostImageWrap {
+    height: clamp(150px, 52vw, 220px);
+    min-height: 150px;
+    aspect-ratio: auto;
+    overflow: hidden;
+  }
+
+  .adminPostImage {
+    width: 100%;
+    height: 100%;
+    max-height: 220px;
+    object-fit: contain;
+  }
+
+  .titleWithEmotion {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .statRow {
+    gap: 6px;
+  }
+
   .cardActions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .pagination {
+    margin-top: 10px;
+  }
+
+  .paginationButtons {
+    gap: 5px;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1120px) {
+  .feedList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
