@@ -13,6 +13,20 @@ import {
 
 const SAVED_EMAIL_KEY = "moodcast-saved-email";
 const ADMIN_ROLES = ["SUPER_ADMIN"];
+const TEST_LOGIN_ACCOUNTS = {
+  admin: {
+    email: "admin01@gmail.com",
+    password: "admin01!@",
+  },
+  user01: {
+    email: "user01@gmail.com",
+    password: "user01!@",
+  },
+  user02: {
+    email: "user02@gmail.com",
+    password: "user02!@",
+  },
+};
 
 /*
  * 관리자 기능 담당 작업(문건우): 관리자 제재로 로그인 제한된 회원에게
@@ -132,6 +146,21 @@ export const LoginPage = () => {
     setMessage("");
   };
 
+  const fillTestLoginAccount = (accountType) => {
+    const account = TEST_LOGIN_ACCOUNTS[accountType];
+
+    if (!account) {
+      return;
+    }
+
+    setMember((prev) => ({
+      ...prev,
+      email: account.email,
+      password: account.password,
+    }));
+    setMessage("");
+  };
+
   const handleLogin = (e) => {
     if (e) {
       e.preventDefault();
@@ -140,7 +169,7 @@ export const LoginPage = () => {
     if (!member.email.trim() || !member.password.trim()) {
       showToast(
         "error",
-        "\uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638\uB97C \uC785\uB825\uD574\uC8FC\uC138\uC694.",
+        "이메일과 비밀번호를 입력해주세요.",
       );
       return;
     }
@@ -253,6 +282,8 @@ export const LoginPage = () => {
         handleKakaoLogin={handleKakaoLogin}
         handleGoogleLogin={handleGoogleLogin}
         handleNaverLogin={handleNaverLogin}
+        fillTestLoginAccount={fillTestLoginAccount}
+        testLoginAccounts={TEST_LOGIN_ACCOUNTS}
         showReadyMessage={showReadyMessage}
         goRecovery={goRecovery}
         goSignup={goSignup}
@@ -260,10 +291,10 @@ export const LoginPage = () => {
 
       <AuthConfirmModal
         open={sanctionModal.open}
-        title={"\uB85C\uADF8\uC778 \uC81C\uD55C \uC548\uB0B4"}
+        title={"로그인 제한 안내"}
         description={sanctionModal.message}
         confirmOnly
-        confirmText={"\uD655\uC778"}
+        confirmText={"확인"}
         onConfirm={() => setSanctionModal({ open: false, message: "" })}
       />
     </>

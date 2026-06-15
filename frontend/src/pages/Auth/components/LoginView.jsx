@@ -1,6 +1,13 @@
+import { useState } from "react";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import AuthToast from "./AuthToast";
 import styles from "../LoginPage.module.css";
+
+const TEST_ACCOUNT_ITEMS = [
+  { key: "admin", label: "관리자" },
+  { key: "user01", label: "일반회원 01" },
+  { key: "user02", label: "일반회원 02" },
+];
 
 export const LoginView = ({
   member,
@@ -12,10 +19,14 @@ export const LoginView = ({
   handleKakaoLogin,
   handleGoogleLogin,
   handleNaverLogin,
+  fillTestLoginAccount,
+  testLoginAccounts,
   showReadyMessage,
   goRecovery,
   goSignup,
 }) => {
+  const [isTestAccountOpen, setIsTestAccountOpen] = useState(false);
+
   return (
     <main className={styles.page}>
       <AuthToast toast={toast} />
@@ -83,17 +94,11 @@ export const LoginView = ({
             </div>
 
             <div className={styles.findLinks}>
-              <button
-                type="button"
-                onClick={() => goRecovery("email")}
-              >
+              <button type="button" onClick={() => goRecovery("email")}>
                 아이디 찾기
               </button>
               <i />
-              <button
-                type="button"
-                onClick={() => goRecovery("password")}
-              >
+              <button type="button" onClick={() => goRecovery("password")}>
                 비밀번호 찾기
               </button>
             </div>
@@ -122,6 +127,9 @@ export const LoginView = ({
             카카오로 로그인
           </button>
 
+          {/*
+            네이버 로그인 버튼 임시 숨김 처리 구간입니다.
+            다시 노출하려면 이 주석 블록만 해제하면 기존 handleNaverLogin 기능으로 정상 동작합니다.
           <button
             type="button"
             className={`${styles.socialButton} ${styles.naver}`}
@@ -130,6 +138,7 @@ export const LoginView = ({
             <b>N</b>
             네이버로 로그인
           </button>
+          */}
 
           <button
             type="button"
@@ -139,6 +148,59 @@ export const LoginView = ({
             <span className={styles.googleMark}>G</span>
             Google로 로그인
           </button>
+
+          <div className={styles.divider}>
+            <span />
+            <button
+              type="button"
+              className={styles.dividerToggle}
+              onClick={() => setIsTestAccountOpen((prev) => !prev)}
+              aria-expanded={isTestAccountOpen}
+            >
+              테스트 계정 <span aria-hidden="true">{isTestAccountOpen ? "▲" : "▼"}</span>
+            </button>
+            <span />
+          </div>
+
+          {isTestAccountOpen ? (
+            <div className={styles.testAccountInfo}>
+              {TEST_ACCOUNT_ITEMS.map((item) => {
+                const account = testLoginAccounts[item.key];
+
+                return (
+                  <dl key={item.key}>
+                    <dt>{item.label}</dt>
+                    <dd>
+                      <span>이메일</span>
+                      <strong>{account.email}</strong>
+                    </dd>
+                    <dd>
+                      <span>비밀번호</span>
+                      <strong>{account.password}</strong>
+                    </dd>
+                  </dl>
+                );
+              })}
+            </div>
+          ) : null}
+
+          <div className={styles.testAccountButtons}>
+            <button type="button" onClick={() => fillTestLoginAccount("admin")}>
+              관리자
+            </button>
+            <button
+              type="button"
+              onClick={() => fillTestLoginAccount("user01")}
+            >
+              일반회원 1
+            </button>
+            <button
+              type="button"
+              onClick={() => fillTestLoginAccount("user02")}
+            >
+              일반회원 2
+            </button>
+          </div>
         </div>
 
         <p className={styles.signupText}>

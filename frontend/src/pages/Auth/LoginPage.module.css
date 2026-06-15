@@ -180,6 +180,31 @@
   color: #e14d61;
 }
 
+.testAccountButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.testAccountButtons button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 10px;
+  border: 1px solid #ddd8ff;
+  border-radius: 12px;
+  color: #6f35e8;
+  background: #f8f5ff;
+  font-size: 0.84rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.testAccountButtons button:hover {
+  border-color: #b99dff;
+  background: #f1ebff;
+}
+
 .tabs {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -298,6 +323,66 @@
   font-style: normal;
 }
 
+.dividerToggle {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-style: normal;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.dividerToggle:hover {
+  color: #7b3ff2;
+}
+
+.testAccountInfo {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #ece6ff;
+  border-radius: 14px;
+  background: #fbf9ff;
+}
+
+.testAccountInfo dl {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #30274f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.testAccountInfo dt {
+  color: #6f35e8;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.testAccountInfo dd {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+}
+
+.testAccountInfo span {
+  color: #9aa0af;
+  font-size: 0.7rem;
+}
+
+.testAccountInfo strong {
+  min-width: 0;
+  color: #25213d;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
 .socialButton {
   border: 1px solid #e1e4ec;
   color: #3d3658;
@@ -401,6 +486,26 @@
   .socialButton,
   .secondary {
     min-height: 48px;
+  }
+
+  .testAccountButtons {
+    gap: 6px;
+  }
+
+  .testAccountButtons button {
+    min-height: 40px;
+    padding-inline: 6px;
+    font-size: 0.78rem;
+  }
+
+  .testAccountInfo dl {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .testAccountInfo dd {
+    grid-template-columns: 54px minmax(0, 1fr);
+    align-items: center;
   }
 
   .tabs button,
