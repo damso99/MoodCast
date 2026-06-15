@@ -1,13 +1,14 @@
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
+﻿import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
 import styles from "../../adminComponentsCss/common/SearchBar.module.css";
 
 export function SearchBar({
-  placeholder = "\uAC80\uC0C9\uC5B4\uB97C \uC785\uB825\uD558\uC138\uC694.",
+  placeholder = "검색어를 입력하세요.",
   value,
   onChange,
+  className = "",
 }) {
   return (
-    <label className={styles.searchBar}>
+    <label className={`${styles.searchBar} ${className}`.trim()}>
       <SearchOutlinedIcon />
       <input
         type="search"

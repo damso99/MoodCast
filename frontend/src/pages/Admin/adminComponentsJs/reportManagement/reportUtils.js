@@ -1,4 +1,4 @@
-import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+﻿import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import ChatBubbleOutlineOutlinedIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import { REPORT_LABELS } from "./reportConstants";
 
@@ -9,7 +9,7 @@ export function getTypeIcon(type) {
 
 export function getReleaseDate(days) {
   if (days === "custom") {
-    return "\uC9C1\uC811 \uC785\uB825\uD55C \uAE30\uAC04 \uAE30\uC900\uC73C\uB85C \uACC4\uC0B0\uD569\uB2C8\uB2E4.";
+    return "직접 입력한 기간 기준으로 계산합니다.";
   }
 
   if (!days) return "-";

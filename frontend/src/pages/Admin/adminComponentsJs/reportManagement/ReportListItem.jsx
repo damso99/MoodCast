@@ -1,4 +1,4 @@
-import { REPORT_LABELS, statusMeta } from "./reportConstants";
+﻿import { REPORT_LABELS, statusMeta } from "./reportConstants";
 import { getTypeIcon } from "./reportUtils";
 import {
   extractImageUrls,
@@ -27,12 +27,12 @@ export function ReportListItem({ report, onOpen }) {
       <div className={styles.reportSummary}>
         <h3>{report.title}</h3>
         <p>
-          {"\uC2E0\uACE0 \uB300\uC0C1"} <strong>{report.targetName}</strong>
-          <span>{"\u00B7"}</span>
+          {"신고 대상"} <strong>{report.targetName}</strong>
+          <span>{"·"}</span>
           {report.reportedAgo}
         </p>
         <p>
-          {"\uC2E0\uACE0 \uC0AC\uC720"} <strong>{report.reason}</strong>
+          {"신고 사유"} <strong>{report.reason}</strong>
         </p>
         <p className={styles.ellipsis}>{summaryText || "-"}</p>
       </div>
@@ -47,15 +47,15 @@ export function ReportListItem({ report, onOpen }) {
           {report.status}
         </span>
         <strong>
-          {"\uC2E0\uACE0"} <b>{report.reportCount}{"\uAC74"}</b>
+          {"신고"} <b>{report.reportCount}{"건"}</b>
         </strong>
       </div>
       <div className={styles.reportAction}>
         <strong>#{report.id}</strong>
         <button type="button" onClick={() => onOpen(report)}>
           {isResolved
-            ? "\uCC98\uB9AC \uACB0\uACFC"
-            : "\uAC80\uD1A0\uD558\uAE30"}
+            ? "처리 결과"
+            : "검토하기"}
         </button>
       </div>
     </article>

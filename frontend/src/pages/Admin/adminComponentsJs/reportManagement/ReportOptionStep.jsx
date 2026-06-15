@@ -1,4 +1,4 @@
-import { sanctionOptions } from "./reportConstants";
+﻿import { sanctionOptions } from "./reportConstants";
 import { DrawerHeader } from "./ReportDrawerHeader";
 import styles from "../../adminComponentsCss/reportManagement/ReportOptionStep.module.css";
 
@@ -20,7 +20,7 @@ export function ReportOptionStep({
       <div className={styles.drawerBody}>
         <p className={styles.guideText}>
           {
-            "\uC120\uD0DD\uD55C \uC2E0\uACE0\uB97C \uC5B4\uB5A4 \uBC29\uC2DD\uC73C\uB85C \uCC98\uB9AC\uD560\uC9C0 \uC120\uD0DD\uD574\uC8FC\uC138\uC694."
+            "선택한 신고를 어떤 방식으로 처리할지 선택해주세요."
           }
         </p>
 
@@ -48,15 +48,15 @@ export function ReportOptionStep({
         </section>
 
         <section className={styles.noticeBox}>
-          <strong>{"\uC548\uB0B4"}</strong>
+          <strong>{"안내"}</strong>
           <p>
             {
-              "\uC81C\uC7AC\uB97C \uC801\uC6A9\uD558\uAE30 \uC804\uC5D0 \uC2E0\uACE0 \uB0B4\uC6A9\uACFC \uC99D\uAC70\uB97C \uCDA9\uBD84\uD788 \uAC80\uD1A0\uD574\uC8FC\uC138\uC694."
+              "제재를 적용하기 전에 신고 내용과 증거를 충분히 검토해주세요."
             }
           </p>
           <p>
             {
-              "\uC798\uBABB\uB41C \uC81C\uC7AC\uB294 \uC0AC\uC6A9\uC790 \uACBD\uD5D8\uC5D0 \uBD80\uC815\uC801\uC778 \uC601\uD5A5\uC744 \uC904 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+              "잘못된 제재는 사용자 경험에 부정적인 영향을 줄 수 있습니다."
             }
           </p>
         </section>
@@ -64,7 +64,7 @@ export function ReportOptionStep({
 
       <footer className={styles.drawerFooter}>
         <button className={styles.secondaryButton} type="button" onClick={onBack}>
-          {"\uCDE8\uC18C"}
+          {"취소"}
         </button>
         <button
           className={styles.primaryButton}
@@ -72,7 +72,7 @@ export function ReportOptionStep({
           disabled={!selectedAction}
           onClick={onNext}
         >
-          {"\uB2E4\uC74C"}
+          {"다음"}
         </button>
       </footer>
     </>

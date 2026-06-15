@@ -50,6 +50,25 @@ const periodOptions = [
   { label: "주", value: "week" },
   { label: "월", value: "month" },
 ];
+const STATISTICS_POLLING_INTERVAL_MS = 30000;
+
+function isDateRangeReadyForPeriod(period, range) {
+  const { startDate, endDate } = range;
+
+  if (!startDate || !endDate) {
+    return true;
+  }
+
+  if (period === "day") {
+    return startDate === endDate;
+  }
+
+  return startDate <= endDate;
+}
+
+function isCanceledRequest(error) {
+  return axios.isCancel?.(error) || error?.code === "ERR_CANCELED";
+}
 
 const emptySummary = {
   totalMemberCount: 0,
@@ -546,12 +565,23 @@ export function StatisticsDashboardPage() {
     }
 
     let isMounted = true;
+    const controllers = new Set();
     let previousYearSummaryData = null;
 
     const fetchAllStatistics = async ({ showLoading = false } = {}) => {
       if (!isMounted) {
         return;
       }
+
+      if (!isDateRangeReadyForPeriod(currentPeriod.value, dateRange)) {
+        if (showLoading) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      const controller = new AbortController();
+      controllers.add(controller);
 
       if (showLoading) {
         setLoading(true);
@@ -565,13 +595,15 @@ export function StatisticsDashboardPage() {
           period: currentPeriod.value,
           ...dateRange,
         },
+        signal: controller.signal,
       };
       const previousYearRange =
         currentPeriod.value === "month" ? buildPreviousYearRange(dateRange) : null;
 
       /*
        * 월 탭의 전년 대비 값은 선택 연도와 비교 대상 연도가 바뀔 때만 다시 조회합니다.
-       * 10초 폴링마다 전년 데이터까지 반복 조회하면 실제 화면 변화 가능성보다 요청 비용이 커집니다.
+       * 30초 폴링마다 전년 데이터까지 반복 조회하면 실제 화면 변화 가능성보다 요청 비용이 커집니다.
+       * 탭 전환으로 현재 요청 묶음이 무효화되면 취소 응답이 최신 화면 상태를 변경하지 않도록 아래 catch에서 빠져나갑니다.
        */
       if (showLoading && previousYearRange) {
         try {
@@ -583,124 +615,133 @@ export function StatisticsDashboardPage() {
                 period: currentPeriod.value,
                 ...previousYearRange,
               },
+              signal: controller.signal,
             },
           );
           previousYearSummaryData = previousYearSummaryResponse.data || null;
-        } catch {
+        } catch (error) {
+          if (!isMounted || isCanceledRequest(error)) {
+            controllers.delete(controller);
+
+            if (showLoading && isMounted) {
+              setLoading(false);
+            }
+
+            return;
+          }
+
           previousYearSummaryData = null;
         }
       }
 
       /*
-       * 통계 API 병렬 호출 및 10초 폴링
+       * 통계 대시보드 통합 API 조회
        * ----------------------------------------------------------------------
-       * 초보자 설명:
-       * - Promise.allSettled는 일부 API가 실패해도 성공한 API 데이터는 화면에 반영합니다.
-       * - 최초 조회만 로딩 화면을 표시하고, 10초 폴링은 기존 화면을 유지한 채 데이터만 갱신합니다.
-       * - 화면을 벗어나면 cleanup에서 interval을 정리해 불필요한 반복 요청을 멈춥니다.
+       * 기존 구조:
+       * - 프론트가 요약/가입자 추이/활성 사용자/콘텐츠 활동/감정 활동 API를 각각 호출했습니다.
+       * - 이 호출 묶음이 폴링마다 반복되어 브라우저 요청 수와 서버 진입 요청 수가 함께 늘었습니다.
+       *
+       * 변경 구조:
+       * - 프론트는 /admin/api/statistics/dashboard 통합 API 1개만 호출합니다.
+       * - 서버가 기존 통계 조회 로직을 내부에서 실행한 뒤 하나의 응답 객체로 묶어 반환합니다.
+       * - 서버 통합 API에는 Redis TTL 캐시가 적용되어 같은 기간 조건의 반복 폴링이 DB 집계를 매번 실행하지 않습니다.
+       *
+       * 참고:
+       * - 월 탭의 전년 대비 계산에 필요한 이전 연도 summary만 초기 로딩 시 별도로 조회합니다.
+       * - 해당 조회는 폴링 대상이 아니므로 30초마다 반복 호출되지 않습니다.
+       * - period와 dateRange가 맞지 않는 전환 중 요청은 실행하지 않습니다.
+       * - 이전 요청은 AbortController로 취소해 늦은 실패 응답이 최신 성공 데이터를 덮어쓰지 못하게 합니다.
        */
-      Promise.allSettled([
-        axios.get(`${BACKSERVER}/admin/api/statistics/summary`, requestConfig),
-        axios.get(`${BACKSERVER}/admin/api/statistics/subscribers`, requestConfig),
-        axios.get(`${BACKSERVER}/admin/api/dashboard/active-users`, requestConfig),
-        axios.get(`${BACKSERVER}/admin/api/statistics/content-activity`, requestConfig),
-        axios.get(`${BACKSERVER}/admin/api/dashboard/emotion-activity`, requestConfig),
-      ])
-        .then(
-          ([
-            summaryResult,
-            subscriberResult,
-            activeUserResult,
-            contentActivityResult,
-            emotionActivityResult,
-          ]) => {
-            if (!isMounted) {
-              return;
-            }
+      try {
+        const response = await axios.get(
+          `${BACKSERVER}/admin/api/statistics/dashboard`,
+          requestConfig,
+        );
 
-            const hasSummary = summaryResult.status === "fulfilled";
-            const nextSummary = hasSummary ? summaryResult.value.data || emptySummary : null;
+        if (!isMounted) {
+          return;
+        }
 
-            if (hasSummary) {
-              setSummary(nextSummary);
-            } else if (showLoading) {
-              setSummary(emptySummary);
-            }
+        const data = response.data || {};
+        const nextSummary = data.summary || emptySummary;
 
-            if (subscriberResult.status === "fulfilled") {
-              setSubscriberTrend(
-                Array.isArray(subscriberResult.value.data?.items)
-                  ? subscriberResult.value.data.items
-                  : [],
-              );
-            } else if (showLoading) {
-              setSubscriberTrend([]);
-            }
+        setSummary(nextSummary);
+        setSubscriberTrend(
+          Array.isArray(data.subscriberTrend) ? data.subscriberTrend : [],
+        );
+        setActiveUserTrend(
+          Array.isArray(data.activeUserTrend) ? data.activeUserTrend : [],
+        );
+        setContentActivity(
+          Array.isArray(data.contentActivity) ? data.contentActivity : [],
+        );
+        setEmotionActivity(
+          Array.isArray(data.emotionActivity) ? data.emotionActivity : [],
+        );
 
-            if (activeUserResult.status === "fulfilled") {
-              setActiveUserTrend(
-                Array.isArray(activeUserResult.value.data?.items)
-                  ? activeUserResult.value.data.items
-                  : [],
-              );
-            } else if (showLoading) {
-              setActiveUserTrend([]);
-            }
+        if (currentPeriod.value !== "month") {
+          setActiveUserGrowthRate(null);
+        } else if (previousYearSummaryData) {
+          setActiveUserGrowthRate(
+            calculateGrowthRate(
+              nextSummary.activeUserCount,
+              previousYearSummaryData.activeUserCount,
+            ),
+          );
+        } else if (showLoading) {
+          setActiveUserGrowthRate(null);
+        }
+      } catch (error) {
+        if (!isMounted || isCanceledRequest(error)) {
+          return;
+        }
 
-            if (contentActivityResult.status === "fulfilled") {
-              setContentActivity(
-                Array.isArray(contentActivityResult.value.data?.items)
-                  ? contentActivityResult.value.data.items
-                  : [],
-              );
-            } else if (showLoading) {
-              setContentActivity([]);
-            }
+        if (showLoading && isMounted) {
+          setSummary(emptySummary);
+          setSubscriberTrend([]);
+          setActiveUserTrend([]);
+          setContentActivity([]);
+          setEmotionActivity([]);
+          setActiveUserGrowthRate(null);
+        }
+      } finally {
+        controllers.delete(controller);
 
-            if (emotionActivityResult.status === "fulfilled") {
-              setEmotionActivity(
-                Array.isArray(emotionActivityResult.value.data?.items)
-                  ? emotionActivityResult.value.data.items
-                  : [],
-              );
-            } else if (showLoading) {
-              setEmotionActivity([]);
-            }
-
-            if (currentPeriod.value !== "month") {
-              setActiveUserGrowthRate(null);
-            } else if (hasSummary && previousYearSummaryData) {
-              setActiveUserGrowthRate(
-                calculateGrowthRate(
-                  nextSummary.activeUserCount,
-                  previousYearSummaryData.activeUserCount,
-                ),
-              );
-            } else if (showLoading) {
-              setActiveUserGrowthRate(null);
-            }
-          },
-        )
-        .finally(() => {
-          if (!isMounted) {
-            return;
-          }
-
-          if (showLoading) {
-            setLoading(false);
-          }
-        });
+        if (showLoading && isMounted) {
+          setLoading(false);
+        }
+      }
     };
 
     fetchAllStatistics({ showLoading: true });
 
+    /*
+     * 통계 대시보드 폴링
+     * ----------------------------------------------------------------------
+     * 30초마다 통합 API 1개만 재조회합니다.
+     * 브라우저 탭이 비활성 상태이면 폴링을 건너뛰고, 다시 활성화될 때 한 번 즉시 조회해 화면을 갱신합니다.
+     */
     const pollingId = window.setInterval(() => {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+
       fetchAllStatistics({ showLoading: false });
-    }, 10000);
+    }, STATISTICS_POLLING_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchAllStatistics({ showLoading: false });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       isMounted = false;
       window.clearInterval(pollingId);
+      controllers.forEach((controller) => controller.abort());
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [BACKSERVER, accessToken, currentPeriod.value, dateRange]);
 

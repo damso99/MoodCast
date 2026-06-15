@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import axios from "axios";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
@@ -73,29 +73,29 @@ export function DashboardMetricCards() {
   return (
     <section className={styles.metricGrid}>
       <MetricCard
-        label={"\uD68C\uC6D0 \uC218"}
+        label={"회원 수"}
         value={formatCount(dashboardSummary.totalMemberCount)}
-        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
+        helperText={hasError ? "조회 실패" : ""}
         icon={<GroupOutlinedIcon />}
       />
       <MetricCard
-        label={"\uC624\uB298 \uAC00\uC785\uC790"}
+        label={"오늘 가입자"}
         value={formatCount(dashboardSummary.todayNewMemberCount)}
-        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
+        helperText={hasError ? "조회 실패" : ""}
         icon={<AddOutlinedIcon />}
         accent="blue"
       />
       <MetricCard
-        label={"\uAC8C\uC2DC\uAE00 \uC218"}
+        label={"게시글 수"}
         value={formatCount(dashboardSummary.postCount)}
-        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
+        helperText={hasError ? "조회 실패" : ""}
         icon={<Inventory2OutlinedIcon />}
         accent="pink"
       />
       <MetricCard
-        label={"\uC2E0\uACE0 \uCC98\uB9AC \uB300\uAE30"}
+        label={"신고 처리 대기"}
         value={formatCount(dashboardSummary.pendingReportCount)}
-        helperText={hasError ? "\uC870\uD68C \uC2E4\uD328" : ""}
+        helperText={hasError ? "조회 실패" : ""}
         icon={<GppMaybeOutlinedIcon />}
         accent="orange"
       />

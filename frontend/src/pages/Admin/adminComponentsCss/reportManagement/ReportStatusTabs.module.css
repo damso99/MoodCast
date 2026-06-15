@@ -2,8 +2,11 @@
  * 전체 / 처리 대기 / 검토 중 / 처리 완료 / 반려 버튼과 숫자 배지 디자인입니다.
  */
 .statusTabs {
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
   padding: 8px;
@@ -15,6 +18,7 @@
 .statusTabs button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-height: 38px;
   padding: 0 14px;
@@ -22,6 +26,8 @@
   border-radius: 11px;
   color: #111827;
   font-weight: 900;
+  white-space: nowrap;
+  word-break: keep-all;
   background: transparent;
   transition:
     transform 0.16s ease,
@@ -40,6 +46,7 @@
 
 .statusTabs strong,
 .typeTabs strong {
+  flex: 0 0 auto;
   min-width: 28px;
   height: 24px;
   display: inline-grid;
@@ -61,4 +68,11 @@
 .activeStatusTab {
   color: #fff !important;
   background: #7c4dff !important;
+}
+
+@media (max-width: 1120px) {
+  .statusTabs button {
+    flex: 1 1 120px;
+    justify-content: center;
+  }
 }

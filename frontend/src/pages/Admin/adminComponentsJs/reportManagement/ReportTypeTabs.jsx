@@ -1,11 +1,11 @@
-import { typeMeta } from "./reportConstants";
+﻿import { typeMeta } from "./reportConstants";
 import styles from "../../adminComponentsCss/reportManagement/ReportTypeTabs.module.css";
 
 export function ReportTypeTabs({ tabs, selectedTab, counts, onSelect }) {
   return (
     <div
       className={styles.typeTabs}
-      aria-label="\uC2E0\uACE0 \uB300\uC0C1 \uC720\uD615 \uD544\uD130"
+      aria-label="신고 대상 유형 필터"
     >
       {tabs.map((label) => {
         const Icon = typeMeta[label]?.icon;

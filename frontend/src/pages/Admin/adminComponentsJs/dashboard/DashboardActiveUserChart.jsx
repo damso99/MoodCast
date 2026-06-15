@@ -37,6 +37,24 @@ const WEEKDAY_TOOLTIP_LABELS = {
   일: "일요일",
 };
 
+function isDateRangeReadyForPeriod(period, range) {
+  const { startDate, endDate } = range;
+
+  if (!startDate || !endDate) {
+    return true;
+  }
+
+  if (period === "day") {
+    return startDate === endDate;
+  }
+
+  return startDate <= endDate;
+}
+
+function isCanceledRequest(error) {
+  return axios.isCancel?.(error) || error?.code === "ERR_CANCELED";
+}
+
 const formatAverageValue = (value) => {
   const numberValue = Number(value ?? 0);
 
@@ -149,7 +167,8 @@ const buildChartItems = (items, period) => {
 /*
  * 시간별 활성 사용자 차트
  * 데이터 조회 방식은 기존 /admin/api/dashboard/active-users API를 그대로 사용합니다.
- * 아래 로직은 화면 좌표, hover tooltip, 보라색 라인/면적 디자인만 담당합니다.
+ * 기간 탭 변경 시 period와 dateRange가 잠깐 어긋날 수 있으므로, 아래 effect에서
+ * 요청 전 기간 조합을 검증하고 이전 요청을 취소해 늦은 실패 응답이 화면을 덮어쓰지 못하게 합니다.
  */
 export function DashboardActiveUserChart() {
   const [activePeriod, setActivePeriod] = useState("일");
@@ -169,7 +188,32 @@ export function DashboardActiveUserChart() {
       return;
     }
 
+    let isCurrentRequestGroup = true;
+    const controllers = new Set();
+
+    /*
+     * 활성 사용자 조회 및 폴링
+     * ----------------------------------------------------------------------
+     * period=day 요청은 startDate와 endDate가 같은 하루 범위여야 합니다.
+     * 월/주 탭에서 일 탭으로 이동하는 순간에는 이전 월/주 dateRange가 남아 있을 수 있으므로,
+     * 현재 탭과 날짜 범위가 맞지 않는 요청은 실행하지 않습니다.
+     *
+     * 또한 이전 탭의 요청이 늦게 실패하더라도 현재 탭의 성공 데이터를 지우지 않도록
+     * cleanup에서 AbortController로 요청을 취소하고 isCurrentRequestGroup으로 state 반영을 막습니다.
+     */
     const fetchActiveUsers = ({ showLoading = false } = {}) => {
+      const selectedPeriod = periodApiValue[activePeriod];
+
+      if (!isDateRangeReadyForPeriod(selectedPeriod, dateRange)) {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      const controller = new AbortController();
+      controllers.add(controller);
+
       if (showLoading) {
         setIsLoading(true);
       }
@@ -182,23 +226,34 @@ export function DashboardActiveUserChart() {
             Authorization: `Bearer ${accessToken}`,
           },
           params: {
-            period: periodApiValue[activePeriod],
+            period: selectedPeriod,
             ...dateRange,
           },
+          signal: controller.signal,
         })
         .then((res) => {
+          if (!isCurrentRequestGroup) {
+            return;
+          }
+
           setActiveUserItems(
             Array.isArray(res.data?.items) ? res.data.items : [],
           );
         })
-        .catch(() => {
+        .catch((error) => {
+          if (!isCurrentRequestGroup || isCanceledRequest(error)) {
+            return;
+          }
+
           if (showLoading) {
             setActiveUserItems([]);
             setHasError(true);
           }
         })
         .finally(() => {
-          if (showLoading) {
+          controllers.delete(controller);
+
+          if (showLoading && isCurrentRequestGroup) {
             setIsLoading(false);
           }
         });
@@ -212,7 +267,9 @@ export function DashboardActiveUserChart() {
     );
 
     return () => {
+      isCurrentRequestGroup = false;
       window.clearInterval(pollingId);
+      controllers.forEach((controller) => controller.abort());
     };
   }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
@@ -295,6 +352,12 @@ export function DashboardActiveUserChart() {
   const tooltipY = activePoint
     ? Math.max(activePoint.y - TOOLTIP_HEIGHT - 38, 8)
     : 0;
+  /*
+   * 탭 변경마다 새 데이터를 조회하더라도 기존 차트 데이터가 있으면 차트 DOM을 유지합니다.
+   * 로딩 EmptyState로 즉시 교체하면 일/주/월 탭 전환 순간에 화면이 깜빡이므로,
+   * 첫 조회처럼 데이터가 비어 있을 때만 로딩 안내를 보여줍니다.
+   */
+  const shouldShowInitialLoading = isLoading && activeUserItems.length === 0;
 
   return (
     <section className={`${styles.panel} ${styles.widePanel}`}>
@@ -313,7 +376,7 @@ export function DashboardActiveUserChart() {
         </div>
       </div>
 
-      {isLoading ? (
+      {shouldShowInitialLoading ? (
         <EmptyState
           title="조회 중"
           description="시간대별 활성 사용자 데이터를 불러오고 있습니다."

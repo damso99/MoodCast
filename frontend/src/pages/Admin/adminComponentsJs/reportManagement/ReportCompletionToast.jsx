@@ -1,4 +1,4 @@
-import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
+﻿import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import DoneOutlinedIcon from "@mui/icons-material/DoneOutlined";
 import styles from "../../adminComponentsCss/reportManagement/ReportCompletionToast.module.css";
 
@@ -14,7 +14,7 @@ export function ReportCompletionToast({ message, onClose }) {
       <button
         type="button"
         onClick={onClose}
-        aria-label="\uCC98\uB9AC \uC644\uB8CC \uC548\uB0B4 \uB2EB\uAE30"
+        aria-label="처리 완료 안내 닫기"
       >
         <CloseOutlinedIcon />
       </button>

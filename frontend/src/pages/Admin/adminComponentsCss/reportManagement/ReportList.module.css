@@ -2,6 +2,8 @@
  * 신고 목록 전체와 신고 1건 카드의 그리드 레이아웃입니다.
  */
 .reportList {
+  min-width: 0;
+  width: 100%;
   display: grid;
 }
 

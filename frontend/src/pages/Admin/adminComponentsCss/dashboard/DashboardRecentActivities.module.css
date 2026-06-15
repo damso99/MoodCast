@@ -188,46 +188,45 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
   margin-top: 14px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(102, 112, 133, 0.12);
 }
 
 .modalPagination button {
-  /*
+  min-width: 30px;
+  height: 30px;
   min-height: 30px;
-  padding: 0 12px;
-  border: 1px solid rgba(102, 112, 133, 0.18);
+  padding: 0 8px;
+  border: 1px solid rgba(124, 77, 255, 0.14);
   border-radius: 8px;
-  color: #344054;
-  font-weight: 800;
-  background: #ffffff;
-  cursor: pointer;
-  */
-  min-height: 32px;
-  padding: 0 13px;
-  border: 1px solid #ddd8ff;
-  border-radius: 12px;
-  color: #7b3ff2;
+  color: #475467;
+  font-size: 0.76rem;
   font-weight: 900;
-  background: #f6f2ff;
+  background: #fff;
   cursor: pointer;
-  transition: transform 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
 .modalPagination button:hover:not(:disabled) {
-  background: #eee7ff;
-  box-shadow: 0 10px 20px rgba(124, 77, 255, 0.14);
+  color: #633df2;
+  background: rgba(124, 77, 255, 0.08);
   transform: translateY(-1px);
 }
 
 .modalPagination button:disabled {
-  color: #98a2b3;
   cursor: not-allowed;
-  background: #f2f4f7;
+  opacity: 0.45;
 }
 
 .modalPagination span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 8px;
   color: #475467;
-  font-size: 0.86rem;
+  font-size: 0.76rem;
   font-weight: 900;
 }

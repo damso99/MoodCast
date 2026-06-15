@@ -1,11 +1,11 @@
-import { REPORT_LABELS, statusMeta } from "./reportConstants";
+﻿import { REPORT_LABELS, statusMeta } from "./reportConstants";
 import styles from "../../adminComponentsCss/reportManagement/ReportStatusTabs.module.css";
 
 export function ReportStatusTabs({ tabs, selectedTab, counts, onSelect }) {
   return (
     <div
       className={styles.statusTabs}
-      aria-label="\uC2E0\uACE0 \uCC98\uB9AC \uC0C1\uD0DC \uD544\uD130"
+      aria-label="신고 처리 상태 필터"
     >
       {tabs.map((label) => (
         <button

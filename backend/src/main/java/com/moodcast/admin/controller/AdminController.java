@@ -19,6 +19,7 @@ import com.moodcast.admin.vo.AdminReport;
 import com.moodcast.admin.vo.AdminReportProcessRequest;
 import com.moodcast.admin.vo.AdminReportProcessRateStat;
 import com.moodcast.admin.vo.AdminRoleUpdateRequest;
+import com.moodcast.admin.vo.AdminStatisticsDashboardResponse;
 import com.moodcast.admin.vo.AdminStatisticsSummary;
 import com.moodcast.admin.vo.AdminStatisticsTrend;
 import com.moodcast.admin.vo.AdminUserManagementSummary;
@@ -619,6 +620,22 @@ public class AdminController {
             @RequestParam(required = false) String endDate
     ) {
         return adminService.getStatisticsSummary(authorizationHeader, period, startDate, endDate);
+    }
+
+    /*
+     * 통계 대시보드 통합 API
+     * --------------------------------------------------------------------------
+     * 기존 통계 대시보드가 호출하던 5개 API 데이터를 한 번에 조회합니다.
+     * 서버는 Redis TTL 캐시를 먼저 확인해 반복 폴링의 DB 집계 부하를 줄입니다.
+     */
+    @GetMapping("/statistics/dashboard")
+    public AdminStatisticsDashboardResponse getStatisticsDashboard(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String period,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate
+    ) {
+        return adminService.getStatisticsDashboard(authorizationHeader, period, startDate, endDate);
     }
 
     /*

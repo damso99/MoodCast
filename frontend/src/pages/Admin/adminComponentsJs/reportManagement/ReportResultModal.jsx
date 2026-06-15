@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+﻿import { useEffect } from "react";
 import CloseOutlinedIcon from "@mui/icons-material/CloseOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import { statusMeta } from "./reportConstants";
@@ -25,12 +25,12 @@ export function ReportResultModal({ report, onClose }) {
       className={styles.resultOverlay}
       role="dialog"
       aria-modal="true"
-      aria-label="\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC \uC870\uD68C"
+      aria-label="신고 처리 결과 조회"
     >
       <button
         className={styles.resultDimmedArea}
         type="button"
-        aria-label="\uCC98\uB9AC \uACB0\uACFC \uD31D\uC5C5 \uB2EB\uAE30"
+        aria-label="처리 결과 팝업 닫기"
         onClick={onClose}
       />
 
@@ -42,12 +42,12 @@ export function ReportResultModal({ report, onClose }) {
             >
               {report.status}
             </span>
-            <h2>{"\uC2E0\uACE0 \uCC98\uB9AC \uACB0\uACFC"}</h2>
+            <h2>{"신고 처리 결과"}</h2>
           </div>
           <button
             className={styles.iconButton}
             type="button"
-            aria-label="\uCC98\uB9AC \uACB0\uACFC \uD31D\uC5C5 \uB2EB\uAE30"
+            aria-label="처리 결과 팝업 닫기"
             onClick={onClose}
           >
             <CloseOutlinedIcon />
@@ -64,37 +64,37 @@ export function ReportResultModal({ report, onClose }) {
           </div>
           <dl>
             <div>
-              <dt>{"\uC2E0\uACE0 \uBC88\uD638"}</dt>
+              <dt>{"신고 번호"}</dt>
               <dd>#{report.id}</dd>
             </div>
             <div>
-              <dt>{"\uC2E0\uACE0 \uC218"}</dt>
-              <dd>{report.reportCount}{"\uAC74"}</dd>
+              <dt>{"신고 수"}</dt>
+              <dd>{report.reportCount}{"건"}</dd>
             </div>
           </dl>
         </section>
 
         <section className={styles.confirmTable}>
-          <h3>{"\uCC98\uB9AC \uB0B4\uC6A9"}</h3>
+          <h3>{"처리 내용"}</h3>
           <dl>
             <div>
-              <dt>{"\uCC98\uB9AC \uC720\uD615"}</dt>
+              <dt>{"처리 유형"}</dt>
               <dd>{result?.actionLabel || report.status}</dd>
             </div>
             <div>
-              <dt>{"\uCC98\uB9AC \uC0AC\uC720"}</dt>
+              <dt>{"처리 사유"}</dt>
               <dd>{result?.reason || report.reason}</dd>
             </div>
             <div>
-              <dt>{"\uC0C1\uC138 \uC124\uBA85"}</dt>
+              <dt>{"상세 설명"}</dt>
               <dd>{result?.detail || report.detail}</dd>
             </div>
             <div>
-              <dt>{"\uCC98\uB9AC \uAD00\uB9AC\uC790"}</dt>
-              <dd>{result?.adminName || "\uAD00\uB9AC\uC790"}</dd>
+              <dt>{"처리 관리자"}</dt>
+              <dd>{result?.adminName || "관리자"}</dd>
             </div>
             <div>
-              <dt>{"\uCC98\uB9AC \uC2DC\uAC04"}</dt>
+              <dt>{"처리 시간"}</dt>
               <dd>{result?.handledAt || "-"}</dd>
             </div>
           </dl>
@@ -102,7 +102,7 @@ export function ReportResultModal({ report, onClose }) {
 
         <footer className={styles.resultFooter}>
           <button className={styles.primaryButton} type="button" onClick={onClose}>
-            {"\uD655\uC778"}
+            {"확인"}
           </button>
         </footer>
       </section>
