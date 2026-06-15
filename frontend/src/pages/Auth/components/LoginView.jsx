@@ -1,5 +1,7 @@
 import { useState } from "react";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
 import AuthToast from "./AuthToast";
 import styles from "../LoginPage.module.css";
 
@@ -157,7 +159,12 @@ export const LoginView = ({
               onClick={() => setIsTestAccountOpen((prev) => !prev)}
               aria-expanded={isTestAccountOpen}
             >
-              테스트 계정 <span aria-hidden="true">{isTestAccountOpen ? "▲" : "▼"}</span>
+              테스트 계정
+              {isTestAccountOpen ? (
+                <KeyboardArrowUpRoundedIcon fontSize="small" aria-hidden="true" />
+              ) : (
+                <KeyboardArrowDownRoundedIcon fontSize="small" aria-hidden="true" />
+              )}
             </button>
             <span />
           </div>
