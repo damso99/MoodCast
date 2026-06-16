@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import axios from "axios";
+import { useMemo, useState } from "react";
 import { EmptyState } from "../common/EmptyState";
 import { AdminPeriodRangeControl } from "../common/AdminPeriodRangeControl";
 import { SegmentedControl } from "../common/SegmentedControl";
-import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/dashboard/DashboardActiveUserChart.module.css";
 
 const periodApiValue = {
@@ -11,8 +9,6 @@ const periodApiValue = {
   주: "week",
   월: "month",
 };
-
-const DASHBOARD_POLLING_INTERVAL_MS = 10000;
 
 const CHART_WIDTH = 780;
 const CHART_HEIGHT = 320;
@@ -36,24 +32,6 @@ const WEEKDAY_TOOLTIP_LABELS = {
   토: "토요일",
   일: "일요일",
 };
-
-function isDateRangeReadyForPeriod(period, range) {
-  const { startDate, endDate } = range;
-
-  if (!startDate || !endDate) {
-    return true;
-  }
-
-  if (period === "day") {
-    return startDate === endDate;
-  }
-
-  return startDate <= endDate;
-}
-
-function isCanceledRequest(error) {
-  return axios.isCancel?.(error) || error?.code === "ERR_CANCELED";
-}
 
 const formatAverageValue = (value) => {
   const numberValue = Number(value ?? 0);
@@ -166,112 +144,18 @@ const buildChartItems = (items, period) => {
 
 /*
  * 시간별 활성 사용자 차트
- * 데이터 조회 방식은 기존 /admin/api/dashboard/active-users API를 그대로 사용합니다.
- * 기간 탭 변경 시 period와 dateRange가 잠깐 어긋날 수 있으므로, 아래 effect에서
- * 요청 전 기간 조합을 검증하고 이전 요청을 취소해 늦은 실패 응답이 화면을 덮어쓰지 못하게 합니다.
+ * 데이터 조회는 AdminDashboardPage의 통합 API 호출이 담당합니다.
+ * 이 컴포넌트는 기간 선택 UI와 전달받은 활성 사용자 데이터 표시만 담당합니다.
  */
-export function DashboardActiveUserChart() {
-  const [activePeriod, setActivePeriod] = useState("일");
-  const [activeUserItems, setActiveUserItems] = useState([]);
-  const [dateRange, setDateRange] = useState({ startDate: "", endDate: "" });
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasError, setHasError] = useState(false);
+export function DashboardActiveUserChart({
+  activePeriod = "일",
+  activeUserItems = [],
+  isLoading = false,
+  hasError = false,
+  onPeriodChange = () => {},
+  onRangeChange = () => {},
+}) {
   const [hoveredPoint, setHoveredPoint] = useState(null);
-  const { accessToken } = useAuthStore();
-
-  const BACKSERVER = (
-    import.meta.env.VITE_BACKSERVER || "http://localhost:8080"
-  ).replace(/\/$/, "");
-
-  useEffect(() => {
-    if (!accessToken) {
-      return;
-    }
-
-    let isCurrentRequestGroup = true;
-    const controllers = new Set();
-
-    /*
-     * 활성 사용자 조회 및 폴링
-     * ----------------------------------------------------------------------
-     * period=day 요청은 startDate와 endDate가 같은 하루 범위여야 합니다.
-     * 월/주 탭에서 일 탭으로 이동하는 순간에는 이전 월/주 dateRange가 남아 있을 수 있으므로,
-     * 현재 탭과 날짜 범위가 맞지 않는 요청은 실행하지 않습니다.
-     *
-     * 또한 이전 탭의 요청이 늦게 실패하더라도 현재 탭의 성공 데이터를 지우지 않도록
-     * cleanup에서 AbortController로 요청을 취소하고 isCurrentRequestGroup으로 state 반영을 막습니다.
-     */
-    const fetchActiveUsers = ({ showLoading = false } = {}) => {
-      const selectedPeriod = periodApiValue[activePeriod];
-
-      if (!isDateRangeReadyForPeriod(selectedPeriod, dateRange)) {
-        if (showLoading) {
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      const controller = new AbortController();
-      controllers.add(controller);
-
-      if (showLoading) {
-        setIsLoading(true);
-      }
-
-      setHasError(false);
-
-      axios
-        .get(`${BACKSERVER}/admin/api/dashboard/active-users`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          params: {
-            period: selectedPeriod,
-            ...dateRange,
-          },
-          signal: controller.signal,
-        })
-        .then((res) => {
-          if (!isCurrentRequestGroup) {
-            return;
-          }
-
-          setActiveUserItems(
-            Array.isArray(res.data?.items) ? res.data.items : [],
-          );
-        })
-        .catch((error) => {
-          if (!isCurrentRequestGroup || isCanceledRequest(error)) {
-            return;
-          }
-
-          if (showLoading) {
-            setActiveUserItems([]);
-            setHasError(true);
-          }
-        })
-        .finally(() => {
-          controllers.delete(controller);
-
-          if (showLoading && isCurrentRequestGroup) {
-            setIsLoading(false);
-          }
-        });
-    };
-
-    fetchActiveUsers({ showLoading: true });
-
-    const pollingId = window.setInterval(
-      fetchActiveUsers,
-      DASHBOARD_POLLING_INTERVAL_MS,
-    );
-
-    return () => {
-      isCurrentRequestGroup = false;
-      window.clearInterval(pollingId);
-      controllers.forEach((controller) => controller.abort());
-    };
-  }, [BACKSERVER, accessToken, activePeriod, dateRange]);
 
   const chartData = useMemo(() => {
     const chartWidth = CHART_RIGHT - CHART_LEFT;
@@ -367,11 +251,11 @@ export function DashboardActiveUserChart() {
           <SegmentedControl
             labels={["일", "주", "월"]}
             selectedLabel={activePeriod}
-            onSelect={setActivePeriod}
+            onSelect={onPeriodChange}
           />
           <AdminPeriodRangeControl
             period={periodApiValue[activePeriod]}
-            onRangeChange={setDateRange}
+            onRangeChange={onRangeChange}
           />
         </div>
       </div>

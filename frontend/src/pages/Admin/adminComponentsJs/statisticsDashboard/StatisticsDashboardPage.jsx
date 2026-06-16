@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
@@ -554,10 +554,13 @@ export function StatisticsDashboardPage() {
   const [emotionActivity, setEmotionActivity] = useState([]); // 감정별 활동 막대 그래프 데이터입니다.
   const [activeUserGrowthRate, setActiveUserGrowthRate] = useState(null); // 선택 연도 활성 사용자 전년 대비 성장률입니다.
   const [loading, setLoading] = useState(false); // 여러 통계 API를 불러오는 중인지 저장합니다.
+  const [hasStatisticsLoaded, setHasStatisticsLoaded] = useState(false); // 최초 통계 조회 성공 여부입니다.
+  const hasStatisticsLoadedRef = useRef(false); // 비동기 요청 내부에서 최신 최초 조회 성공 여부를 확인합니다.
   const { accessToken } = useAuthStore(); // 관리자 API 호출에 필요한 로그인 토큰입니다.
 
   const BACKSERVER = import.meta.env.VITE_BACKSERVER || "http://localhost:8080";
   const currentPeriod = getCurrentPeriodOption(periodLabel);
+  const isInitialStatisticsLoading = loading && !hasStatisticsLoaded;
 
   useEffect(() => {
     if (!accessToken) {
@@ -691,12 +694,22 @@ export function StatisticsDashboardPage() {
         } else if (showLoading) {
           setActiveUserGrowthRate(null);
         }
+
+        if (!hasStatisticsLoadedRef.current) {
+          hasStatisticsLoadedRef.current = true;
+          setHasStatisticsLoaded(true);
+        }
       } catch (error) {
         if (!isMounted || isCanceledRequest(error)) {
           return;
         }
 
-        if (showLoading && isMounted) {
+        /*
+         * 최초 조회 전에는 빈 상태를 보여주되, 한 번이라도 성공한 뒤의 탭 변경/폴링 실패에서는
+         * 기존 차트 데이터를 유지합니다. 재조회 중 데이터를 비우면 차트 영역이 사라졌다가 다시 그려져
+         * 일/주/월 탭 변경 시 화면 전체가 깜빡이는 것처럼 보입니다.
+         */
+        if (showLoading && isMounted && !hasStatisticsLoadedRef.current) {
           setSummary(emptySummary);
           setSubscriberTrend([]);
           setActiveUserTrend([]);
@@ -720,6 +733,8 @@ export function StatisticsDashboardPage() {
      * ----------------------------------------------------------------------
      * 30초마다 통합 API 1개만 재조회합니다.
      * 브라우저 탭이 비활성 상태이면 폴링을 건너뛰고, 다시 활성화될 때 한 번 즉시 조회해 화면을 갱신합니다.
+     * 최초 조회가 끝난 뒤에는 탭 변경이나 폴링 중에도 기존 차트를 유지하고 응답이 도착하면 값만 교체합니다.
+     * 공통 loading으로 차트 children을 대체하지 않아 재조회 순간의 깜빡임을 줄입니다.
      */
     const pollingId = window.setInterval(() => {
       if (document.visibilityState === "hidden") {
@@ -826,7 +841,7 @@ export function StatisticsDashboardPage() {
           <MetricCard
             key={card.label}
             label={card.label}
-            value={loading ? "-" : formatNumber(card.value)}
+            value={isInitialStatisticsLoading ? "-" : formatNumber(card.value)}
             helperText={card.helperText}
             icon={card.icon}
             accent={card.accent}
@@ -837,7 +852,7 @@ export function StatisticsDashboardPage() {
       <section className={styles.dashboardGrid}>
         <ChartCard
           title={`가입자 추이 (${periodLabel})`}
-          loading={loading}
+          loading={isInitialStatisticsLoading}
         >
           <PreviewTimeBarChart
             items={subscriberTrend}
@@ -850,7 +865,7 @@ export function StatisticsDashboardPage() {
 
         <ChartCard
           title={`시간별 활성 사용자 (${periodLabel})`}
-          loading={loading}
+          loading={isInitialStatisticsLoading}
         >
           <PreviewTimeBarChart
             items={activeUserTrend}
@@ -863,14 +878,14 @@ export function StatisticsDashboardPage() {
 
         <ChartCard
           title={`콘텐츠 활동 (${periodLabel})`}
-          loading={loading}
+          loading={isInitialStatisticsLoading}
         >
           <PreviewBarChart items={contentBars} maxRows={3} />
         </ChartCard>
 
         <ChartCard
           title={`감정별 활동 구성 (${periodLabel})`}
-          loading={loading}
+          loading={isInitialStatisticsLoading}
         >
           <PreviewBarChart items={emotionBars} />
         </ChartCard>
