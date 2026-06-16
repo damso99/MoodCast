@@ -196,7 +196,7 @@ export const LoginPage = () => {
         }
 
         const loginMember = res.data?.member || {};
-        setAuthData(res.data.accessToken, loginMember);
+        setAuthData(res.data.accessToken, loginMember, res.data.remember);
         setMember({
           email: member.rememberId ? member.email : "",
           password: "",

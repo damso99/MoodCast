@@ -147,7 +147,7 @@ export const SocialExtraSignupPage = () => {
       )
       .then((res) => {
         window.sessionStorage.removeItem(SOCIAL_SIGNUP_PENDING_KEY);
-        setAuthData(res.data.accessToken, res.data.member);
+        setAuthData(res.data.accessToken, res.data.member, res.data.remember);
         setSignupCompleteModalOpen(true);
       })
       .catch((err) => {

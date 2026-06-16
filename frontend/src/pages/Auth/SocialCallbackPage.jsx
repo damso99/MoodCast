@@ -157,7 +157,7 @@ export const SocialCallbackPage = () => {
       )
       .then((res) => {
         if (res.data?.accessToken) {
-          setAuthData(res.data.accessToken, res.data.member);
+          setAuthData(res.data.accessToken, res.data.member, res.data.remember);
           navigate("/app/feed", { replace: true });
           return;
         }

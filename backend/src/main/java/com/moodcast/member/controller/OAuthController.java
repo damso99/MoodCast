@@ -105,7 +105,13 @@ public class OAuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new LoginResponse(true, providerLabel + " 로그인 성공", loginResult.getAccessToken(), loginResult.getMember()));
+                .body(new LoginResponse(
+                        true,
+                        providerLabel + " 로그인 성공",
+                        loginResult.getAccessToken(),
+                        loginResult.getMember(),
+                        loginResult.isRemember()
+                ));
     }
 
     // 카카오 인가 code를 검증하고 기존 연결 계정이면 바로 로그인 처리함
@@ -327,6 +333,12 @@ public class OAuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-                .body(new LoginResponse(true, "소셜 회원가입 성공", loginResult.getAccessToken(), loginResult.getMember()));
+                .body(new LoginResponse(
+                        true,
+                        "소셜 회원가입 성공",
+                        loginResult.getAccessToken(),
+                        loginResult.getMember(),
+                        loginResult.isRemember()
+                ));
     }
 }

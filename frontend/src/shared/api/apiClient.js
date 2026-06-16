@@ -58,7 +58,7 @@ axios.interceptors.response.use(
           )
           .then((res) => {
             const { accessToken, member } = res.data || {};
-            useAuthStore.getState().setAuthData(accessToken, member);
+            useAuthStore.getState().setAuthData(accessToken, member, res.data?.remember);
             return accessToken;
           })
           .finally(() => {

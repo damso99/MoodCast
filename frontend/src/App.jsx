@@ -35,6 +35,17 @@ function AppRoutes() {
   const authRoute = (element) => (
     <RequireAuth authChecked={authChecked}>{element}</RequireAuth>
   );
+  const guestOnlyRoute = (element) => {
+    if (!authChecked) {
+      return null;
+    }
+
+    if (isLoggedIn && accessToken) {
+      return <Navigate to="/app/feed" replace />;
+    }
+
+    return element;
+  };
 
   useRealtimeAccountSanction(isLoggedIn ? member?.memberId : null);
 
@@ -53,7 +64,7 @@ function AppRoutes() {
         },
       );
 
-      setAuthData(res.data.accessToken, res.data.member);
+      setAuthData(res.data.accessToken, res.data.member, res.data.remember);
     };
 
     const checkLogin = async () => {
@@ -89,16 +100,16 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/app/feed" replace />} />
-      <Route path="/auth/login" element={<LoginPage />} />
-      <Route path="/auth/signup" element={<SignupPage />} />
+      <Route path="/auth/login" element={guestOnlyRoute(<LoginPage />)} />
+      <Route path="/auth/signup" element={guestOnlyRoute(<SignupPage />)} />
       <Route path="/auth/recovery" element={<AccountRecoveryPage />} />
       <Route path="/auth/kakao/callback" element={<SocialCallbackPage />} />
       <Route path="/auth/google/callback" element={<SocialCallbackPage />} />
       <Route path="/auth/naver/callback" element={<SocialCallbackPage />} />
       <Route path="/auth/social/signup" element={<SocialExtraSignupPage />} />
       <Route path="/auth/setup" element={<ProfileSetupPage />} />
-      <Route path="/app/login" element={<LoginPage />} />
-      <Route path="/app/signup" element={<SignupPage />} />
+      <Route path="/app/login" element={guestOnlyRoute(<LoginPage />)} />
+      <Route path="/app/signup" element={guestOnlyRoute(<SignupPage />)} />
       <Route path="/app/profile-setup" element={<ProfileSetupPage />} />
       <Route
         path="/app/feed"

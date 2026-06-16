@@ -3,75 +3,165 @@ import { create } from "zustand";
 const ACCESS_TOKEN_KEY = "moodcast-access-token";
 const MEMBER_KEY = "moodcast-member";
 
-// 새로고침 후 accessToken 복구 함수
-const readAccessToken = () => {
-  // 브라우저 sessionStorage에 저장된 토큰을 가져옴
-  // 이 토큰이 있으면 로그인 상태로 취급함
-  return window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
-};
-
-// 새로고침 후 member 복구 함수
-const readMember = () => {
-  const memberText = window.sessionStorage.getItem(MEMBER_KEY);
-
-  if (!memberText) {
+const safeStorageGet = (storage, key) => {
+  if (typeof window === "undefined") {
     return null;
   }
 
   try {
-    return JSON.parse(memberText);
-  } catch (e) {
+    return storage.getItem(key);
+  } catch (error) {
     return null;
   }
 };
 
+const safeStorageSet = (storage, key, value) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    storage.setItem(key, value);
+  } catch (error) {
+    // 저장 실패는 로그인 흐름을 막지 않도록 무시합니다.
+  }
+};
+
+const safeStorageRemove = (storage, key) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    storage.removeItem(key);
+  } catch (error) {
+    // 정리 실패는 치명적이지 않으므로 무시합니다.
+  }
+};
+
+const readMemberFromStorage = (storage) => {
+  const rawValue = safeStorageGet(storage, MEMBER_KEY);
+
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    return null;
+  }
+};
+
+const readAccessToken = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const persistentToken = safeStorageGet(window.localStorage, ACCESS_TOKEN_KEY);
+  if (persistentToken) {
+    return persistentToken;
+  }
+
+  return safeStorageGet(window.sessionStorage, ACCESS_TOKEN_KEY);
+};
+
+const readMember = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const persistentMember = readMemberFromStorage(window.localStorage);
+  if (persistentMember) {
+    return persistentMember;
+  }
+
+  return readMemberFromStorage(window.sessionStorage);
+};
+
+const readRemember = () => {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return Boolean(safeStorageGet(window.localStorage, ACCESS_TOKEN_KEY));
+};
+
+const persistAuthData = (accessToken, member, remember) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  safeStorageRemove(window.sessionStorage, ACCESS_TOKEN_KEY);
+  safeStorageRemove(window.sessionStorage, MEMBER_KEY);
+  safeStorageRemove(window.localStorage, ACCESS_TOKEN_KEY);
+  safeStorageRemove(window.localStorage, MEMBER_KEY);
+
+  if (remember) {
+    safeStorageSet(window.localStorage, ACCESS_TOKEN_KEY, accessToken);
+    safeStorageSet(window.localStorage, MEMBER_KEY, JSON.stringify(member));
+  }
+
+  safeStorageSet(window.sessionStorage, ACCESS_TOKEN_KEY, accessToken);
+  safeStorageSet(window.sessionStorage, MEMBER_KEY, JSON.stringify(member));
+};
+
 export const useAuthStore = create((set) => ({
-  // 초기 상태 세팅
   accessToken: readAccessToken(),
   member: readMember(),
-  isLoggedIn: Boolean(readAccessToken()), // 토큰 존재 여부로 로그인 판단함
+  remember: readRemember(),
+  isLoggedIn: Boolean(readAccessToken()),
 
-  // 로그인 성공 시
-  setAuthData: (accessToken, member) => {
-    // sessionStorage에 token과 member를 저장함
-    window.sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-    window.sessionStorage.setItem(MEMBER_KEY, JSON.stringify(member)); // member 객체는 문자열로 저장함
+  setAuthData: (accessToken, member, remember) => {
+    const nextRemember =
+      typeof remember === "boolean"
+        ? remember
+        : Boolean(safeStorageGet(window.localStorage, ACCESS_TOKEN_KEY));
 
-    // 상태 업데이트
+    persistAuthData(accessToken, member, nextRemember);
+
     set({
-      accessToken: accessToken,
-      member: member,
+      accessToken,
+      member,
+      remember: nextRemember,
       isLoggedIn: true,
     });
   },
 
-  // 로그아웃
   clearAuthData: () => {
-    // 저장된 토큰과 회원 정보를 모두 삭제함
-    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    window.sessionStorage.removeItem(MEMBER_KEY);
+    safeStorageRemove(window.sessionStorage, ACCESS_TOKEN_KEY);
+    safeStorageRemove(window.sessionStorage, MEMBER_KEY);
+    safeStorageRemove(window.localStorage, ACCESS_TOKEN_KEY);
+    safeStorageRemove(window.localStorage, MEMBER_KEY);
 
-    // 로그인 상태를 false로 바꿈
     set({
       accessToken: null,
       member: null,
+      remember: false,
       isLoggedIn: false,
     });
   },
 }));
 
 export const logoutAndRedirect = () => {
-  // 인증 실패나 토큰 만료 시 호출됨
-  // 회원 정보와 토큰을 모두 삭제하고 로그인 페이지로 이동함
   const store = useAuthStore.getState();
-  if (store && typeof store.clearAuthData === 'function') {
+
+  if (store && typeof store.clearAuthData === "function") {
     store.clearAuthData();
   } else {
-    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-    window.sessionStorage.removeItem(MEMBER_KEY);
-    useAuthStore.setState({ accessToken: null, member: null, isLoggedIn: false });
+    safeStorageRemove(window.sessionStorage, ACCESS_TOKEN_KEY);
+    safeStorageRemove(window.sessionStorage, MEMBER_KEY);
+    safeStorageRemove(window.localStorage, ACCESS_TOKEN_KEY);
+    safeStorageRemove(window.localStorage, MEMBER_KEY);
+    useAuthStore.setState({
+      accessToken: null,
+      member: null,
+      remember: false,
+      isLoggedIn: false,
+    });
   }
-  if (typeof window !== 'undefined') {
-    window.location.replace('/auth/login');
+
+  if (typeof window !== "undefined") {
+    window.location.replace("/auth/login");
   }
 };

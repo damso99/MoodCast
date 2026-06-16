@@ -169,7 +169,8 @@ public class LoginController {
                     true,
                     "\uB85C\uADF8\uC778 \uC131\uACF5",
                     result.getAccessToken(),
-                    result.getMember()
+                    result.getMember(),
+                    result.isRemember()
             );
 
             return ResponseEntity.ok()
@@ -602,7 +603,8 @@ public class LoginController {
                 true,
                 "\uD1A0\uD070 \uC7AC\uBC1C\uAE09 \uC131\uACF5",
                 result.getAccessToken(),
-                result.getMember()
+                result.getMember(),
+                result.isRemember()
         );
         ResponseCookie refreshCookie = jwtService.createRefreshCookie(result.getRefreshToken(), result.isRemember());
         return ResponseEntity.ok()
