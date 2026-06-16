@@ -21,6 +21,7 @@ import { ReportList } from "./ReportList";
 import { ReportResultModal } from "./ReportResultModal";
 import { ReportStatusTabs } from "./ReportStatusTabs";
 import { ReportTypeTabs } from "./ReportTypeTabs";
+import { useAuthStore } from "../../../../stores/useAuthStore";
 import styles from "../../adminComponentsCss/reportManagement/ReportManagementPage.module.css";
 
 const BACKSERVER =
@@ -116,7 +117,7 @@ const LINE_CHART_TEXT = {
 };
 
 export function ReportManagementPage() {
-  const accessToken = localStorage.getItem("accessToken");
+  const { accessToken } = useAuthStore();
   const authHeaders = useMemo(
     () => ({ Authorization: `Bearer ${accessToken}` }),
     [accessToken],

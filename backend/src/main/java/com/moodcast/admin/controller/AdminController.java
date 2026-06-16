@@ -6,6 +6,7 @@ import com.moodcast.admin.vo.AdminActiveUserStat;
 import com.moodcast.admin.vo.AdminContentComment;
 import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
+import com.moodcast.admin.vo.AdminDashboardResponse;
 import com.moodcast.admin.vo.AdminDashboardSummary;
 import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
@@ -539,6 +540,33 @@ public class AdminController {
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         return adminService.getDashboardSummary(authorizationHeader);
+    }
+
+    /*
+     * 관리자 메인 대시보드 통합 API
+     * --------------------------------------------------------------------------
+     * 기존 summary, emotion-activity, active-users, recent-activities API는 유지합니다.
+     * 메인 대시보드 화면은 이 API 하나를 호출해 첫 화면 데이터를 한 번에 받습니다.
+     */
+    @GetMapping("/dashboard")
+    public AdminDashboardResponse getDashboard(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestParam(defaultValue = "day") String emotionPeriod,
+            @RequestParam(required = false) String emotionStartDate,
+            @RequestParam(required = false) String emotionEndDate,
+            @RequestParam(defaultValue = "day") String activeUserPeriod,
+            @RequestParam(required = false) String activeUserStartDate,
+            @RequestParam(required = false) String activeUserEndDate
+    ) {
+        return adminService.getDashboard(
+                authorizationHeader,
+                emotionPeriod,
+                emotionStartDate,
+                emotionEndDate,
+                activeUserPeriod,
+                activeUserStartDate,
+                activeUserEndDate
+        );
     }
 
     /*

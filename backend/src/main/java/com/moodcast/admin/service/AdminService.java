@@ -9,6 +9,7 @@ import com.moodcast.admin.vo.AdminActiveUserStat;
 import com.moodcast.admin.vo.AdminContentComment;
 import com.moodcast.admin.vo.AdminContentHashtag;
 import com.moodcast.admin.vo.AdminContentPost;
+import com.moodcast.admin.vo.AdminDashboardResponse;
 import com.moodcast.admin.vo.AdminEmotionActivity;
 import com.moodcast.admin.vo.AdminMember;
 import com.moodcast.admin.vo.AdminMemberDetail;
@@ -1486,6 +1487,59 @@ public class AdminService {
     public AdminDashboardSummary getDashboardSummary(String authorizationHeader) {
         validateAdmin(authorizationHeader);
         return adminDao.selectDashboardSummary();
+    }
+
+    /*
+     * 관리자 메인 대시보드 통합 조회
+     * --------------------------------------------------------------------------
+     * 기존 개별 API는 유지하되, 메인 대시보드 화면에서는 이 응답 하나로
+     * 요약 카드, 감정별 활동, 활성 사용자, 최근 활동 데이터를 함께 받습니다.
+     * 감정 차트와 활성 사용자 차트는 각자 기간 탭을 가질 수 있으므로
+     * period/startDate/endDate 파라미터를 분리해서 처리합니다.
+     */
+    public AdminDashboardResponse getDashboard(
+            String authorizationHeader,
+            String emotionPeriod,
+            String emotionStartDate,
+            String emotionEndDate,
+            String activeUserPeriod,
+            String activeUserStartDate,
+            String activeUserEndDate
+    ) {
+        validateAdmin(authorizationHeader);
+
+        String normalizedEmotionPeriod = normalizeDashboardPeriod(emotionPeriod);
+        AdminDateRange emotionDateRange = resolveAdminDateRange(
+                normalizedEmotionPeriod,
+                emotionStartDate,
+                emotionEndDate
+        );
+        String normalizedActiveUserPeriod = normalizeDashboardPeriod(activeUserPeriod);
+        AdminDateRange activeUserDateRange = resolveAdminDateRange(
+                normalizedActiveUserPeriod,
+                activeUserStartDate,
+                activeUserEndDate
+        );
+
+        AdminDashboardSummary summary = adminDao.selectDashboardSummary();
+        List<AdminEmotionActivity> emotionActivity = adminDao.selectDashboardEmotionActivity(
+                normalizedEmotionPeriod,
+                emotionDateRange.startDate(),
+                emotionDateRange.endDate()
+        );
+        List<AdminActiveUserStat> activeUsers = adminDao.selectDashboardActiveUsers(
+                normalizedActiveUserPeriod,
+                activeUserDateRange.startDate(),
+                activeUserDateRange.endDate()
+        );
+        List<AdminRecentActivity> recentActivities = adminDao.selectRecentDashboardActivities();
+
+        return new AdminDashboardResponse(
+                summary == null ? new AdminDashboardSummary(0L, 0L, 0L, 0L) : summary,
+                emotionActivity == null ? Collections.emptyList() : emotionActivity,
+                activeUsers == null ? Collections.emptyList() : activeUsers,
+                recentActivities == null ? Collections.emptyList() : recentActivities
+        );
     }
 
     /*
